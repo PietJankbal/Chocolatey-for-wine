@@ -13,11 +13,11 @@ Optional:
 
 Notes:
 
-    - Only works on recent wine-versions (>5.18 probably); Will fail for sure in wine-stable 5.0....
-    - Do NOT use on existing wineprefix, only on fresh new created prefix! The installation just stupidly installs dotnet40/48 itsself and messes with registrykeys.
-      If you have any dotnet version already installed with winetricks, it will likely fail, and even if it succeeds, you`ll likely end up with a broken prefix.
-    - WINEARCH=win32 is _not_ supported!
-    - If you want to compile yourself instead of downloading binaries:
+  - Only works on recent wine-versions (>5.18 probably); Will fail for sure in wine-stable 5.0....
+  - Do NOT use on existing wineprefix, only on fresh new created prefix! The installation just stupidly installs dotnet40/48 itsself and messes with registrykeys.
+    If you have any dotnet version already installed with winetricks, it will likely fail, and even if it succeeds, you'll likely end up with a broken prefix.
+  - WINEARCH=win32 is _not_ supported!
+  - If you want to compile yourself instead of downloading binaries:
     
     i686-w64-mingw32-gcc -municode -mconsole mainv1.c -lurlmon -s -o powershell32.exe
 
