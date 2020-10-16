@@ -108,8 +108,8 @@ int __cdecl wmain(int argc, WCHAR *argv[])
                                                L"dotNetFx40_Full_x86_x64.exe",
                                                L"https://download.visualstudio.microsoft.com/download/pr/7afca223-55d2-470a-8edc-6a1739ae3252/abd170b4b0ec15ad0222a809b761a036/ndp48-x86-x64-allos-enu.exe",
                                                L"ndp48-x86-x64-allos-enu.exe",
-                                               L"https://download.microsoft.com/download/6/0/f/60fc5854-3cb8-4892-b6db-bd4f42510f28/dotnetfx35.exe",
-                                               L"dotnetfx35.exe",
+//                                               L"https://download.microsoft.com/download/6/0/f/60fc5854-3cb8-4892-b6db-bd4f42510f28/dotnetfx35.exe",
+//                                               L"dotnetfx35.exe",
 
                                              };
 
@@ -182,7 +182,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
     /* Install choco */
     system("start /WAIT pwsh.exe -c Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')) ");
 
-    /* Install dotnet48 otherwise choco fails to install packages; procedure copied from winetricks */
+    /* Install dotnet40/48 otherwise choco fails to install packages; procedure copied from winetricks */
     /* remove_mono */
     system("start /wait uninstaller --remove {3731D2B3-8EA4-5C7F-9F05-AB04B8C3070E}");
     system("start /wait uninstaller --remove {671DE1A2-3373-5AAD-8227-C62B4E5CAEF6}");
@@ -193,7 +193,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
     system("del %SystemDrive%\\windows\\SysNative\\mscoree.dll");
     system("del %WinSysDir%\\mscoree.dll");
     /* END remove_mono */
-
+goto dotnet35_skipped;
     /* dotnet35 */
 
     system(" start /WAIT pwsh.exe -c New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides' ");
@@ -202,7 +202,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
     system("start /WAIT winecfg.exe /v winxp64");
     system("start /WAIT dotnetfx35.exe /q /lang:ENU");
     /* END dotnet35 */
-
+dotnet35_skipped:
     system("start /WAIT winecfg.exe /v win7"); 
     system(" start /WAIT pwsh.exe -c New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides' ");
     system(" start /WAIT pwsh.exe -c New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'fusion' -Value 'builtin' -PropertyType 'String' ");
