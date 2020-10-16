@@ -193,12 +193,12 @@ int __cdecl wmain(int argc, WCHAR *argv[])
     system("del %SystemDrive%\\windows\\SysNative\\mscoree.dll");
     system("del %WinSysDir%\\mscoree.dll");
     /* END remove_mono */
-goto dotnet35_skipped;
-    /* dotnet35 */
 
+    /* dotnet35 */
     system(" start /WAIT pwsh.exe -c New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides' ");
     system(" start /WAIT pwsh.exe -c New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscorwks' -Value 'native' -PropertyType 'String' ");
     system(" start /WAIT pwsh.exe -c New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'native' -PropertyType 'String' ");
+goto dotnet35_skipped;
     system("start /WAIT winecfg.exe /v winxp64");
     system("start /WAIT dotnetfx35.exe /q /lang:ENU");
     /* END dotnet35 */
