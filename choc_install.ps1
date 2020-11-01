@@ -18,7 +18,7 @@
 
     Start-Process  "windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe" -Wait -ArgumentList "/q /passive /nobackup"
     $w2003id = (Get-Process windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c).id; Wait-Process -Id $w2003id
-
+    Start-Process  "winecfg.exe" -Wait -ArgumentList "/v win7"
     $winecfgid = (Get-Process winecfg).id; Wait-Process -Id $winecfgid
 
 
