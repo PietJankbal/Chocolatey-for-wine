@@ -102,7 +102,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
                                                L"PowerShell-7.0.3-win-x64.msi",
                                                L"https://conemu.github.io/install2.ps1",
                                                L"install2.ps1",
-                                               L"https://github.com/PietJankbal/Chocolatey-for-wine/raw/master/choc_install.ps1",
+                                               L"https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/choc_install.ps1",
                                                L"choc_install.ps1"
                                              };
 
