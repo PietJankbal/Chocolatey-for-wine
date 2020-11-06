@@ -94,7 +94,7 @@
     New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides'
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscorwks' -Value 'native' -PropertyType 'String'
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'native' -PropertyType 'String'
-if(0){
+if(Test-Path 'env:CHOC_INSTALL_ALL'){
     Start-Process winecfg.exe  -Wait -ArgumentList "/v winxp64"
     Start-Process dotnetfx35.exe  -Wait -ArgumentList "/q /lang:ENU"
     $dotnet35id = (Get-Process dotnetfx35).id; Wait-Process -Id $dotnet35id
@@ -123,7 +123,7 @@ if(0){
     Start-Process ndp48-x86-x64-allos-enu.exe  -Wait -ArgumentList "sfxlang:1027 /q /norestart"
     $dotnet48id = (Get-Process ndp48-x86-x64-allos-enu).id; Wait-Process -Id $dotnet48id
 
-if(0){
+if(Test-Path 'env:CHOC_INSTALL_ALL'){
 
     Start-Process wineboot.exe  -Wait -ArgumentList "-u"
     Start-Process winecfg.exe  -Wait -ArgumentList "/v win7" 
