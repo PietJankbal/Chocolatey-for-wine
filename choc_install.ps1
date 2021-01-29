@@ -125,6 +125,35 @@ if(Test-Path 'env:CHOC_INSTALL_ALL'){
     Start-Process ndp48-x86-x64-allos-enu.exe  -Wait -ArgumentList "sfxlang:1027 /q /norestart"
     $dotnet48id = (Get-Process ndp48-x86-x64-allos-enu).id; Wait-Process -Id $dotnet48id
 
+if(Test-Path 'env:SCOOP_INSTALL'){
+
+    (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/a/9/4/a94c5d25-3195-43dc-8dbe-28e1a87e1b59/Windows6.0-KB936330-X64-wave1.exe", "$env:TEMP\\Windows6.0-KB936330-X64-wave1.exe")
+
+    Start-Process -FilePath ${env:ProgramFiles}\\7-zip\\7z.exe -Wait -ArgumentList  "x Windows6.0-KB936330-X64-wave1.exe amd64_microsoft-windows-robocopy_31bf3856ad364e35_6.0.6001.18000_none_2325cb04a4c1adef/robocopy.exe"
+    Start-Process -FilePath ${env:ProgramFiles}\\7-zip\\7z.exe -Wait -ArgumentList  "x Windows6.0-KB936330-X64-wave1.exe x86_microsoft-windows-robocopy_31bf3856ad364e35_6.0.6001.18000_none_c7072f80ec643cb9/robocopy.exe"
+
+    Start-Process -FilePath ${env:ProgramFiles}\\7-zip\\7z.exe -Wait -ArgumentList  "x Windows6.0-KB936330-X64-wave1.exe amd64_microsoft-windows-mfc42x_31bf3856ad364e35_6.0.6001.18000_none_4f3369c50dec2a50/mfc42u.dll"
+    Start-Process -FilePath ${env:ProgramFiles}\\7-zip\\7z.exe -Wait -ArgumentList  "x Windows6.0-KB936330-X64-wave1.exe x86_microsoft-windows-mfc42x_31bf3856ad364e35_6.0.6001.18000_none_f314ce41558eb91a/mfc42u.dll"
+
+    Copy-Item -Path "$env:TEMP\\amd64_microsoft-windows-robocopy_31bf3856ad364e35_6.0.6001.18000_none_2325cb04a4c1adef\\robocopy.exe" -Destination "$env:SystemRoot\\system32\\robocopy.exe"
+    Copy-Item -Path "$env:TEMP\\x86_microsoft-windows-robocopy_31bf3856ad364e35_6.0.6001.18000_none_c7072f80ec643cb9\\robocopy.exe" -Destination "$env:SystemRoot\\syswow64\\robocopy.exe"}
+ 
+    Copy-Item -Path "$env:TEMP\\amd64_microsoft-windows-robocopy_31bf3856ad364e35_6.0.6001.18000_none_2325cb04a4c1adef\\robocopy.exe" -Destination "$env:SystemRoot\\system32\\robocopy.exe"
+    Copy-Item -Path "$env:TEMP\\x86_microsoft-windows-robocopy_31bf3856ad364e35_6.0.6001.18000_none_c7072f80ec643cb9\\robocopy.exe" -Destination "$env:SystemRoot\\syswow64\\robocopy.exe"}
+
+    Copy-Item -Path "$env:TEMP\\amd64_microsoft-windows-mfc42x_31bf3856ad364e35_6.0.6001.18000_none_4f3369c50dec2a50/mfc42u.dll" -Destination "$env:SystemRoot\\system32\\mfc42u.dll"
+    Copy-Item -Path "$env:TEMP\\x86_microsoft-windows-mfc42x_31bf3856ad364e35_6.0.6001.18000_none_f314ce41558eb91a/mfc42u.dll" -Destination "$env:SystemRoot\\syswow64\\mfc42u.dll"}
+
+    Start-Process  "pwsh.exe" -ArgumentList "-c iwr -useb get.scoop.sh | iex"
+
+    Start-Process  "pwsh.exe" -ArgumentList "-c scoop config MSIEXTRACT_USE_LESSMSI true"
+
+    Start-Process  "pwsh.exe" -ArgumentList "-c scoop install 7zip"
+
+}
+
+
+
 if(Test-Path 'env:CHOC_INSTALL_ALL'){
 
     Start-Process wineboot.exe  -Wait -ArgumentList "-u"
