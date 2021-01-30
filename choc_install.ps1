@@ -157,10 +157,10 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-o$env:TEMP","Windows/System32/msdelta.dll"
     Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "e","$env:TEMP\\winpe32.wim","-o$env:TEMP","Windows/System32/msdelta.dll"
 
-    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-o$env:TEMP","/Windows/WinSxS/amd64_microsoft-windows-robocopy_31bf3856ad364e35_6.3.9600.16384_none_b7c58f8bc05b432d/Robocopy.exe"
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-o$env:TEMP","Windows/WinSxS/amd64_microsoft-windows-robocopy_31bf3856ad364e35_6.3.9600.16384_none_b7c58f8bc05b432d/Robocopy.exe"
     Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "e","$env:TEMP\\winpe32.wim","-o$env:TEMP","Windows/WinSxS/x86_microsoft-windows-robocopy_31bf3856ad364e35_6.3.9600.16384_none_5ba6f40807fdd1f7/Robocopy.exe"
 
-    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-o$env:TEMP","/Windows/WinSxS/amd64_microsoft-windows-mfc42x_31bf3856ad364e35_6.3.9600.16384_none_e3d32e4c2985bf8e/mfc42u.dll"
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-o$env:TEMP","Windows/WinSxS/amd64_microsoft-windows-mfc42x_31bf3856ad364e35_6.3.9600.16384_none_e3d32e4c2985bf8e/mfc42u.dll"
     Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "e","$env:TEMP\\winpe32.wim","-o$env:TEMP","Windows/WinSxS/x86_microsoft-windows-mfc42x_31bf3856ad364e35_6.3.9600.16384_none_87b492c871284e58/mfc42u.dll"
 
 
@@ -180,7 +180,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Copy-Item -Path "$env:TEMP\\Windows\\System32\\msdelta.dll" -Destination "$env:SystemRoot\\system32\\msdelta.dll"
 
     Copy-Item -Path "$env:TEMP\\Robocopy.exe" -Destination "$env:SystemRoot\\syswow64\\robocopy.exe"
-    Copy-Item -Path "$env:TEMP\\Windows\\\\WinSxS\\amd64_microsoft-windows-robocopy_31bf3856ad364e35_6.3.9600.16384_none_b7c58f8bc05b432d\\Robocopy.exe" -Destination "$env:SystemRoot\\system32\\robocopy.exe"
+    Copy-Item -Path "$env:TEMP\\Windows\\WinSxS\\amd64_microsoft-windows-robocopy_31bf3856ad364e35_6.3.9600.16384_none_b7c58f8bc05b432d\\Robocopy.exe" -Destination "$env:SystemRoot\\system32\\robocopy.exe"
 
     Copy-Item -Path "$env:TEMP\\mfc42u.dll" -Destination "$env:SystemRoot\\syswow64\\mfc42u.dll"
     Copy-Item -Path "$env:TEMP\\Windows\\WinSxS\\amd64_microsoft-windows-mfc42x_31bf3856ad364e35_6.3.9600.16384_none_e3d32e4c2985bf8e/mfc42u.dll" -Destination "$env:SystemRoot\\system32\\mfc42u.dll"
