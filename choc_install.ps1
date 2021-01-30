@@ -127,14 +127,14 @@ if(Test-Path 'env:CHOC_INSTALL_ALL'){
 
 if(Test-Path 'env:SCOOP_INSTALL'){
 
+    Start-Process wineboot.exe  -Wait -ArgumentList "-u"
+    Start-Process winecfg.exe  -Wait -ArgumentList "/v win7" 
+    
     Write-Host "Downloading and installing adk, this may take quite some time..."
 
     (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/6/A/E/6AEA92B0-A412-4622-983E-5B305D2EBE56/adk/adksetup.exe", "$env:TEMP\\adksetup.exe")
-    (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/a/9/4/a94c5d25-3195-43dc-8dbe-28e1a87e1b59/Windows6.0-KB936330-X64-wave1.exe", "$env:TEMP\\Windows6.0-KB936330-X64-wave1.exe")
+#    (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/a/9/4/a94c5d25-3195-43dc-8dbe-28e1a87e1b59/Windows6.0-KB936330-X64-wave1.exe", "$env:TEMP\\Windows6.0-KB936330-X64-wave1.exe")
 
-
-    #Start-Process wineboot.exe  -Wait -ArgumentList "-u"
-    Start-Process winecfg.exe  -Wait -ArgumentList "/v win7" 
 
     Start-Process adksetup.exe  -ArgumentList "/quiet /features OptionId.WindowsPreinstallationEnvironment"
     $adkid = (Get-Process adksetup).id; Wait-Process -Id $adkid;
@@ -157,6 +157,14 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-o$env:TEMP","Windows/System32/msdelta.dll"
     Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "e","$env:TEMP\\winpe32.wim","-o$env:TEMP","Windows/System32/msdelta.dll"
 
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-o$env:TEMP","/Windows/WinSxS/amd64_microsoft-windows-robocopy_31bf3856ad364e35_6.3.9600.16384_none_b7c58f8bc05b432d/Robocopy.exe"
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "e","$env:TEMP\\winpe32.wim","-o$env:TEMP","Windows/WinSxS/x86_microsoft-windows-robocopy_31bf3856ad364e35_6.3.9600.16384_none_5ba6f40807fdd1f7/Robocopy.exe"
+
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-o$env:TEMP","/Windows/WinSxS/amd64_microsoft-windows-mfc42x_31bf3856ad364e35_6.3.9600.16384_none_e3d32e4c2985bf8e/mfc42u.dll"
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "e","$env:TEMP\\winpe32.wim","-o$env:TEMP","Windows/WinSxS/x86_microsoft-windows-mfc42x_31bf3856ad364e35_6.3.9600.16384_none_87b492c871284e58/mfc42u.dll"
+
+
+
     $7zid = (Get-Process 7z).id; Wait-Process -Id $7zid;
 
     Copy-Item -Path "$env:TEMP\\expand.exe" -Destination "$env:SystemRoot\\syswow64\\expand.exe"
@@ -171,25 +179,18 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Copy-Item -Path "$env:TEMP\\msdelta.dll" -Destination "$env:SystemRoot\\syswow64\\msdelta.dll"
     Copy-Item -Path "$env:TEMP\\Windows\\System32\\msdelta.dll" -Destination "$env:SystemRoot\\system32\\msdelta.dll"
 
+    Copy-Item -Path "$env:TEMP\\Robocopy.exe" -Destination "$env:SystemRoot\\syswow64\\robocopy.exe"
+    Copy-Item -Path "$env:TEMP\\Windows\\\\WinSxS\\amd64_microsoft-windows-robocopy_31bf3856ad364e35_6.3.9600.16384_none_b7c58f8bc05b432d\\Robocopy.exe" -Destination "$env:SystemRoot\\system32\\robocopy.exe"
+
+    Copy-Item -Path "$env:TEMP\\mfc42u.dll" -Destination "$env:SystemRoot\\syswow64\\mfc42u.dll"
+    Copy-Item -Path "$env:TEMP\\Windows\\WinSxS\\amd64_microsoft-windows-mfc42x_31bf3856ad364e35_6.3.9600.16384_none_e3d32e4c2985bf8e/mfc42u.dll" -Destination "$env:SystemRoot\\system32\\mfc42u.dll"
 
 
 
-
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String' 
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'native' -PropertyType 'String' 
-
-    Start-Process expand.exe -ArgumentList "$env:TEMP\\Windows6.0-KB936330-X64-wave1.exe","-F:robocopy.exe","$env:TEMP"
-    $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
-    Copy-Item -Path "$env:TEMP\\amd64_*\\robocopy.exe" -Destination "$env:SystemRoot\\system32\\robocopy.exe"
-    Copy-Item -Path "$env:TEMP\\wow64_*\\robocopy.exe" -Destination "$env:SystemRoot\\syswow64\\robocopy.exe"
-    Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*"  
+#    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String' 
+#    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'native' -PropertyType 'String' 
 
 
-    Start-Process expand.exe -ArgumentList "$env:TEMP\\Windows6.0-KB936330-X64-wave1.exe","-F:mfcu42.dll","$env:TEMP"
-    $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
-    Copy-Item -Path "$env:TEMP\\amd64_*\\mfcu42.dll" -Destination "$env:SystemRoot\\system32\\mfcu42.dll"
-    Copy-Item -Path "$env:TEMP\\wow64_*\\mfcu42.dll" -Destination "$env:SystemRoot\\syswow64\\mfcu42.dll"
-    Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*"  
 
 
     Start-Process  "pwsh.exe" -ArgumentList "-c iwr -useb get.scoop.sh | iex"
