@@ -159,11 +159,11 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
 
     Start-Process  "pwsh.exe" -ArgumentList "-c iwr -useb get.scoop.sh | iex"
-
+    $pwshid = (Get-Process pwsh).id; Wait-Process -Id $pwsh;
     Start-Process  "pwsh.exe" -ArgumentList "-c scoop config MSIEXTRACT_USE_LESSMSI true"
-
+    $pwshid = (Get-Process pwsh).id; Wait-Process -Id $pwsh;
     Start-Process  "pwsh.exe" -ArgumentList "-c scoop install 7zip"
-
+    $pwshid = (Get-Process pwsh).id; Wait-Process -Id $pwsh;
 }
 
 
