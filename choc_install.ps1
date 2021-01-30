@@ -127,11 +127,11 @@ if(Test-Path 'env:CHOC_INSTALL_ALL'){
 
 if(Test-Path 'env:SCOOP_INSTALL'){
 
-    [System.Environment]::SetEnvironmentVariable('OnlyUseLatestCLR', '1',[System.EnvironmentVariableTarget]::Machine)
-    #"HKLM\\Software\\Microsoft\\.NETFramework" /v OnlyUseLatestCLR /t REG_DWORD /d 0001 /f
-
-
-    Start-Process wineboot.exe  -Wait -ArgumentList "-u"
+    #[System.Environment]::SetEnvironmentVariable('OnlyUseLatestCLR', '1',[System.EnvironmentVariableTarget]::Machine)
+    #Start-Process reg.exe -Wait  -ArgumentList "add \"HKLM\\Software\\Microsoft\\.NETFramework\" /v OnlyUseLatestCLR /t REG_DWORD /d 0001 /f"
+    Write-Host "Downloading and installing adk, this may take quite some time..."
+    #Start-Process wineboot.exe  -Wait -ArgumentList "-u"
+    Start-Sleep -Second 10
     Start-Process winecfg.exe  -Wait -ArgumentList "/v win7" 
     
     Write-Host "Downloading and installing adk, this may take quite some time..."
