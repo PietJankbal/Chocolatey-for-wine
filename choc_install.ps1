@@ -127,7 +127,7 @@ if(Test-Path 'env:CHOC_INSTALL_ALL'){
 
 if(Test-Path 'env:SCOOP_INSTALL'){
 
-    [System.Environment]::SetEnvironmentVariable('OnlyUseatestCLR', '1',[System.EnvironmentVariableTarget]::Machine)
+    [System.Environment]::SetEnvironmentVariable('OnlyUseLatestCLR', '1',[System.EnvironmentVariableTarget]::Machine)
     #"HKLM\\Software\\Microsoft\\.NETFramework" /v OnlyUseLatestCLR /t REG_DWORD /d 0001 /f
 
 
