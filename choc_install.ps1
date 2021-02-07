@@ -202,6 +202,8 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Start-Process  "pwsh.exe" -Wait -ArgumentList "-c scoop config MSIEXTRACT_USE_LESSMSI true"
 
     Start-Process  "pwsh.exe" -Wait -ArgumentList "-c scoop install 7zip"
+    
+    Get-Process pwsh | Foreach-Object { $_.WaitForExit() }
 
 }
 
