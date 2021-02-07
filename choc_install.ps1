@@ -168,8 +168,8 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "e","$env:TEMP\\winpe32.wim","-o$env:TEMP","Windows/WinSxS/x86_microsoft-windows-mfc42x_31bf3856ad364e35_6.3.9600.16384_none_87b492c871284e58/mfc42u.dll"
 
 
-
-    $7zid = (Get-Process 7z).id; Wait-Process -Id $7zid;
+    Get-Process 7z | Foreach-Object { $_.WaitForExit() }
+    #$7zid = (Get-Process 7z).id; Wait-Process -Id $7zid;
 
     Copy-Item -Path "$env:TEMP\\expand.exe" -Destination "$env:SystemRoot\\syswow64\\expand.exe"
     Copy-Item -Path "$env:TEMP\\Windows\\System32\\expand.exe" -Destination "$env:SystemRoot\\system32\\expand.exe"
