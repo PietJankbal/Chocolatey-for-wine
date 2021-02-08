@@ -203,7 +203,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
     Start-Process  "pwsh.exe" -Wait -ArgumentList "-c scoop install 7zip"
     
-    Get-Process pwsh | Foreach-Object { $_.WaitForExit() }
+#    Get-Process pwsh | Foreach-Object { $_.WaitForExit() }
 
 }
 
