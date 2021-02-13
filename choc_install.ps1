@@ -15,7 +15,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     #Start-Process reg.exe -Wait  -ArgumentList "add \"HKLM\\Software\\Microsoft\\.NETFramework\" /v OnlyUseLatestCLR /t REG_DWORD /d 0001 /f"
     Write-Host "Downloading and installing adk, this may take quite some time..."
     #Start-Process wineboot.exe  -Wait -ArgumentList "-u"
-    Start-Sleep -Second 10
+
     Start-Process winecfg.exe  -Wait -ArgumentList "/v win81" 
     
     Write-Host "Downloading and installing adk, this may take quite some time..."
@@ -79,7 +79,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 #    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'native' -PropertyType 'String' 
 
 
-
+    Start-Sleep -Second 10
 
     Start-Process  "pwsh.exe" -Wait -ArgumentList "-c iwr -useb get.scoop.sh | iex"
 
@@ -182,7 +182,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
     New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides'
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscorwks' -Value 'native' -PropertyType 'String'
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'native' -PropertyType 'String'
+    #New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'native' -PropertyType 'String'
    #/* dotnet35 */
 if(Test-Path 'env:CHOC_INSTALL_ALL'){
 
