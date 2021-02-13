@@ -174,6 +174,9 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Remove-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.5' -Recurse
     Remove-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v4'  -Recurse  
 
+    Remove-Item -Path 'HKLM:\\Software\\ Wow6432Node\\Microsoft\\NET Framework Setup\\NDP\\v3.5' -Recurse
+    Remove-Item -Path 'HKLM:\\Software\\ Wow6432Node\\Microsoft\\NET Framework Setup\\NDP\\v4'  -Recurse  
+
     Remove-Item -Path "$env:windir\\SysWOW64\\mscoree.dll" -Force
     Remove-Item -Path "$env:winsysdir\\mscoree.dll" -Force
     #/* END remove_mono */
