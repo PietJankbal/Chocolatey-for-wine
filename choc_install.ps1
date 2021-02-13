@@ -208,8 +208,6 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 }
 
 
-
-
 if(Test-Path 'env:CHOC_INSTALL_ALL'){
 
     Start-Process wineboot.exe  -Wait -ArgumentList "-u"
@@ -236,6 +234,16 @@ if(Test-Path 'env:CHOC_INSTALL_ALL'){
     Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-o$env:TEMP","Windows/System32/msdelta.dll"
     Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "e","$env:TEMP\\winpe32.wim","-o$env:TEMP","Windows/System32/msdelta.dll"
 
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-o$env:TEMP","Windows/System32/wkscli.dll"
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "e","$env:TEMP\\winpe32.wim","-o$env:TEMP","Windows/System32/wkscli.dll"
+
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-o$env:TEMP","Windows/System32/dsrole.dll"
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "e","$env:TEMP\\winpe32.wim","-o$env:TEMP","Windows/System32/dsrole.dll"
+
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-o$env:TEMP","Windows/System32/netapi32.dll"
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "e","$env:TEMP\\winpe32.wim","-o$env:TEMP","Windows/System32/netapi32.dll"
+
+
     $7zid = (Get-Process 7z).id; Wait-Process -Id $7zid;
 
     Copy-Item -Path "$env:TEMP\\expand.exe" -Destination "$env:SystemRoot\\syswow64\\expand.exe"
@@ -249,6 +257,15 @@ if(Test-Path 'env:CHOC_INSTALL_ALL'){
 
     Copy-Item -Path "$env:TEMP\\msdelta.dll" -Destination "$env:SystemRoot\\syswow64\\msdelta.dll"
     Copy-Item -Path "$env:TEMP\\Windows\\System32\\msdelta.dll" -Destination "$env:SystemRoot\\system32\\msdelta.dll"
+
+    Copy-Item -Path "$env:TEMP\\wkscli.dll" -Destination "$env:SystemRoot\\syswow64\\wkscli.dll"
+    Copy-Item -Path "$env:TEMP\\Windows\\System32\\wkscli.dll" -Destination "$env:SystemRoot\\system32\\wkscli.dll"
+
+    Copy-Item -Path "$env:TEMP\\dsrole.dll" -Destination "$env:SystemRoot\\syswow64\\dsrole.dll"
+    Copy-Item -Path "$env:TEMP\\Windows\\System32\\dsrole.dll" -Destination "$env:SystemRoot\\system32\\dsrole.dll"
+
+    Copy-Item -Path "$env:TEMP\\netapi32.dll" -Destination "$env:SystemRoot\\syswow64\\netapi32.dll"
+    Copy-Item -Path "$env:TEMP\\Windows\\System32\\netapi32.dll" -Destination "$env:SystemRoot\\system32\\netapi32.dll"
 
     Start-Process -FilePath ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\Win7AndW2K8R2-KB3191566-x64.zip","-o$env:TEMP","Win7AndW2K8R2-KB3191566-x64.msu"
     $7zid = (Get-Process 7z).id; Wait-Process -Id $7zid;
@@ -300,4 +317,4 @@ if(Test-Path 'env:CHOC_INSTALL_ALL'){
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'builtin' -PropertyType 'String' 
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'builtin' -PropertyType 'String' 
 }
-    Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
+#    Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
