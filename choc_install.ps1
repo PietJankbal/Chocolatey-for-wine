@@ -91,7 +91,8 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
 }
 
-
+    Start-Process uninstaller -Wait -ArgumentList "--remove {3731D2B3-8EA4-5C7F-9F05-AB04B8C3070E}"
+    Start-Process uninstaller  -Wait -ArgumentList "--remove {671DE1A2-3373-5AAD-8227-C62B4E5CAEF6}"
 
 
 
@@ -168,8 +169,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
     #/* Install dotnet48 otherwise choco fails to install packages; procedure copied from winetricks */
     #/* remove_mono */
-    Start-Process uninstaller -Wait -ArgumentList "--remove {3731D2B3-8EA4-5C7F-9F05-AB04B8C3070E}"
-    Start-Process uninstaller  -Wait -ArgumentList "--remove {671DE1A2-3373-5AAD-8227-C62B4E5CAEF6}"
+
 
     Remove-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.5' -Recurse
     Remove-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v4'  -Recurse  
