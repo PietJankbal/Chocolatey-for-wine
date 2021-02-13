@@ -97,6 +97,9 @@ if(Test-Path 'env:CHOC_INSTALL_ALL'){
     (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/6/A/E/6AEA92B0-A412-4622-983E-5B305D2EBE56/adk/adksetup.exe", "$env:TEMP\\adksetup.exe")
     (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/6/F/5/6F5FF66C-6775-42B0-86C4-47D41F2DA187/Win7AndW2K8R2-KB3191566-x64.zip", "$env:TEMP\\Win7AndW2K8R2-KB3191566-x64.zip")
 
+    (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/6/A/E/6AEA92B0-A412-4622-983E-5B305D2EBE56/adk/adksetup.exe", "$env:TEMP\\adksetup.exe")
+
+
     Start-Process winecfg.exe  -Wait -ArgumentList "/v winxp64"
     Start-Process dotnetfx35.exe  -Wait -ArgumentList "/q /lang:ENU"
     $dotnet35id = (Get-Process dotnetfx35).id; Wait-Process -Id $dotnet35id
@@ -211,14 +214,14 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 if(Test-Path 'env:CHOC_INSTALL_ALL'){
 
     Start-Process wineboot.exe  -Wait -ArgumentList "-u"
-    Start-Process winecfg.exe  -Wait -ArgumentList "/v win7" 
+    Start-Process winecfg.exe  -Wait -ArgumentList "/v win81" 
 
     Write-Host "Downloading and installing adk, this may take quite some time..."
 
-    (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/6/A/E/6AEA92B0-A412-4622-983E-5B305D2EBE56/adk/adksetup.exe", "$env:TEMP\\adksetup.exe")
 
 
     Start-Process adksetup.exe  -ArgumentList "/quiet /features OptionId.WindowsPreinstallationEnvironment"
+        Start-Sleep -Second 10
     $adkid = (Get-Process adksetup).id; Wait-Process -Id $adkid;
 
     Copy-Item "${env:ProgramFiles`(x86`)}\\Windows Kits\\8.1\\Assessment and Deployment Kit\\Windows Preinstallation Environment\\amd64\\en-us\\winpe.wim" "$env:TEMP\\winpe64.wim"
