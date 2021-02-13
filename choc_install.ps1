@@ -213,6 +213,11 @@ if(Test-Path 'env:CHOC_INSTALL_ALL'){
     Start-Process wineboot.exe  -Wait -ArgumentList "-u"
     Start-Process winecfg.exe  -Wait -ArgumentList "/v win7" 
 
+    Write-Host "Downloading and installing adk, this may take quite some time..."
+
+    (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/6/A/E/6AEA92B0-A412-4622-983E-5B305D2EBE56/adk/adksetup.exe", "$env:TEMP\\adksetup.exe")
+
+
     Start-Process adksetup.exe  -ArgumentList "/quiet /features OptionId.WindowsPreinstallationEnvironment"
     $adkid = (Get-Process adksetup).id; Wait-Process -Id $adkid;
 
