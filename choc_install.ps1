@@ -80,7 +80,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Write-Host "Downloading and installing adk, this may take quite some time..."
     #Start-Process wineboot.exe  -Wait -ArgumentList "-u"
     Start-Sleep -Second 10
-    Start-Process winecfg.exe  -Wait -ArgumentList "/v win81" 
+    Start-Process winecfg.exe  -Wait -ArgumentList "/v win7" 
     
     Write-Host "Downloading and installing adk, this may take quite some time..."
 
