@@ -107,9 +107,9 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
 }
 
-
-    Start-Process uninstaller -Wait -ArgumentList "--remove {3731D2B3-8EA4-5C7F-9F05-AB04B8C3070E}"
-    Start-Process uninstaller  -Wait -ArgumentList "--remove {671DE1A2-3373-5AAD-8227-C62B4E5CAEF6}"
+#FIXME!! Needs to be updated when Mono updates; Find better solution...........
+    Start-Process uninstaller -Wait -ArgumentList "--remove {0A7C8977-1185-5C3F-A4E7-7A90611227C3}"
+    Start-Process uninstaller  -Wait -ArgumentList "--remove {05C9CD26-9144-58FC-8A6E-B4DE47B661EC}"
 
 
 
