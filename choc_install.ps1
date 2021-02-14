@@ -33,45 +33,36 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
 
 
-    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-o$env:TEMP","Windows/System32/expand.exe"
-    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "e","$env:TEMP\\winpe32.wim","-o$env:TEMP","Windows/System32/expand.exe"
-
-    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-o$env:TEMP","Windows/System32/dpx.dll"
-    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "e","$env:TEMP\\winpe32.wim","-o$env:TEMP","Windows/System32/dpx.dll"
-
-    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-o$env:TEMP","Windows/System32/cabinet.dll"
-    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "e","$env:TEMP\\winpe32.wim","-o$env:TEMP","Windows/System32/cabinet.dll"
-
-    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-o$env:TEMP","Windows/System32/msdelta.dll"
-    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "e","$env:TEMP\\winpe32.wim","-o$env:TEMP","Windows/System32/msdelta.dll"
-
-    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-o$env:TEMP","Windows/WinSxS/amd64_microsoft-windows-robocopy_31bf3856ad364e35_6.3.9600.16384_none_b7c58f8bc05b432d/Robocopy.exe"
-    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "e","$env:TEMP\\winpe32.wim","-o$env:TEMP","Windows/WinSxS/x86_microsoft-windows-robocopy_31bf3856ad364e35_6.3.9600.16384_none_5ba6f40807fdd1f7/Robocopy.exe"
-
-    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-o$env:TEMP","Windows/WinSxS/amd64_microsoft-windows-mfc42x_31bf3856ad364e35_6.3.9600.16384_none_e3d32e4c2985bf8e/mfc42u.dll"
-    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "e","$env:TEMP\\winpe32.wim","-o$env:TEMP","Windows/WinSxS/x86_microsoft-windows-mfc42x_31bf3856ad364e35_6.3.9600.16384_none_87b492c871284e58/mfc42u.dll"
-
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-o$env:TEMP\\pe64"
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe32.wim","-o$env:TEMP\\pe32"
 
     Get-Process 7z | Foreach-Object { $_.WaitForExit() }
     #$7zid = (Get-Process 7z).id; Wait-Process -Id $7zid;
 
-    Copy-Item -Path "$env:TEMP\\expand.exe" -Destination "$env:SystemRoot\\syswow64\\expand.exe"
-    Copy-Item -Path "$env:TEMP\\Windows\\System32\\expand.exe" -Destination "$env:SystemRoot\\system32\\expand.exe"
+    Rename-Item "$env:TEMP\\pe32\\Windows\System32" "$env:TEMP\\pe32\\Windows\syswow64"
+    
+    Copy-Item -Path "$env:TEMP\\pe64\\Windows\\*"  -Destination "C:\\Windows" -Recurse
+    Copy-Item -Path "$env:TEMP\\pe32\\Windows\\*"  -Destination "C:\\Windows" -Recurse
 
-    Copy-Item -Path "$env:TEMP\\dpx.dll" -Destination "$env:SystemRoot\\syswow64\\dpx.dll"
-    Copy-Item -Path "$env:TEMP\\Windows\\System32\\dpx.dll" -Destination "$env:SystemRoot\\system32\\dpx.dll"
+    
 
-    Copy-Item -Path "$env:TEMP\\cabinet.dll" -Destination "$env:SystemRoot\\syswow64\\cabinet.dll"
-    Copy-Item -Path "$env:TEMP\\Windows\\System32\\cabinet.dll" -Destination "$env:SystemRoot\\system32\\cabinet.dll"
+#    Copy-Item -Path "$env:TEMP\\expand.exe" -Destination "$env:SystemRoot\\syswow64\\expand.exe"
+ #   Copy-Item -Path "$env:TEMP\\Windows\\System32\\expand.exe" -Destination "$env:SystemRoot\\system32\\expand.exe"
 
-    Copy-Item -Path "$env:TEMP\\msdelta.dll" -Destination "$env:SystemRoot\\syswow64\\msdelta.dll"
-    Copy-Item -Path "$env:TEMP\\Windows\\System32\\msdelta.dll" -Destination "$env:SystemRoot\\system32\\msdelta.dll"
+  #  Copy-Item -Path "$env:TEMP\\dpx.dll" -Destination "$env:SystemRoot\\syswow64\\dpx.dll"
+  #  Copy-Item -Path "$env:TEMP\\Windows\\System32\\dpx.dll" -Destination "$env:SystemRoot\\system32\\dpx.dll"
 
-    Copy-Item -Path "$env:TEMP\\Robocopy.exe" -Destination "$env:SystemRoot\\syswow64\\robocopy.exe"
-    Copy-Item -Path "$env:TEMP\\Windows\\WinSxS\\amd64_microsoft-windows-robocopy_31bf3856ad364e35_6.3.9600.16384_none_b7c58f8bc05b432d\\Robocopy.exe" -Destination "$env:SystemRoot\\system32\\robocopy.exe"
+ #   Copy-Item -Path "$env:TEMP\\cabinet.dll" -Destination "$env:SystemRoot\\syswow64\\cabinet.dll"
+  #  Copy-Item -Path "$env:TEMP\\Windows\\System32\\cabinet.dll" -Destination "$env:SystemRoot\\system32\\cabinet.dll"
 
-    Copy-Item -Path "$env:TEMP\\mfc42u.dll" -Destination "$env:SystemRoot\\syswow64\\mfc42u.dll"
-    Copy-Item -Path "$env:TEMP\\Windows\\WinSxS\\amd64_microsoft-windows-mfc42x_31bf3856ad364e35_6.3.9600.16384_none_e3d32e4c2985bf8e/mfc42u.dll" -Destination "$env:SystemRoot\\system32\\mfc42u.dll"
+   # Copy-Item -Path "$env:TEMP\\msdelta.dll" -Destination "$env:SystemRoot\\syswow64\\msdelta.dll"
+#    Copy-Item -Path "$env:TEMP\\Windows\\System32\\msdelta.dll" -Destination "$env:SystemRoot\\system32\\msdelta.dll"
+
+ #   Copy-Item -Path "$env:TEMP\\Robocopy.exe" -Destination "$env:SystemRoot\\syswow64\\robocopy.exe"
+  #  Copy-Item -Path "$env:TEMP\\Windows\\WinSxS\\amd64_microsoft-windows-robocopy_31bf3856ad364e35_6.3.9600.16384_none_b7c58f8bc05b432d\\Robocopy.exe" -Destination "$env:SystemRoot\\system32\\robocopy.exe"
+
+   # Copy-Item -Path "$env:TEMP\\mfc42u.dll" -Destination "$env:SystemRoot\\syswow64\\mfc42u.dll"
+    #Copy-Item -Path "$env:TEMP\\Windows\\WinSxS\\amd64_microsoft-windows-mfc42x_31bf3856ad364e35_6.3.9600.16384_none_e3d32e4c2985bf8e/mfc42u.dll" -Destination "$env:SystemRoot\\system32\\mfc42u.dll"
 
 
 
@@ -90,6 +81,9 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     #Get-Process pwsh | Foreach-Object { $_.WaitForExit() }
 
 }
+Write-Host "now exiting"
+
+Exit
 
     Start-Process uninstaller -Wait -ArgumentList "--remove {3731D2B3-8EA4-5C7F-9F05-AB04B8C3070E}"
     Start-Process uninstaller  -Wait -ArgumentList "--remove {671DE1A2-3373-5AAD-8227-C62B4E5CAEF6}"
