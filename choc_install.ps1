@@ -32,7 +32,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Copy-Item "${env:ProgramFiles`(x86`)}\\Windows Kits\\8.1\\Assessment and Deployment Kit\\Windows Preinstallation Environment\\x86\\en-us\\winpe.wim" "$env:TEMP\\winpe32.wim"
 
 
-    Rename-Item "$env:SystemDrive\\win.ini" "$env:SystemDrive\\winbak.ini" 
+    Rename-Item "$env:SystemRoot\\win.ini" "$env:SystemRoot\\winbak.ini" 
 
     Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-o$env:SystemDrive"
     Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe32.wim","-o$env:TEMP\\pe32"
