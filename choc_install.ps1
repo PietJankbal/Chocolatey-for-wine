@@ -49,7 +49,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     
     
     New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides'
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'aclui -Value 'builtin' -PropertyType 'String'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'aclui' -Value 'builtin' -PropertyType 'String'
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'userenv' -Value 'builtin' -PropertyType 'String'
     
 
