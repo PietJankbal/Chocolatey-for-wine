@@ -33,7 +33,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
 
 
-    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-o$env:TEMP\\pe64"
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-o$env:SystemDrive"
     Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe32.wim","-o$env:TEMP\\pe32"
 
     Get-Process 7z | Foreach-Object { $_.WaitForExit() }
@@ -41,8 +41,8 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
     Rename-Item "$env:TEMP\\pe32\\Windows\System32" "$env:TEMP\\pe32\\Windows\syswow64"
     
-    Copy-Item -Path "$env:TEMP\\pe64\\Windows\\*"  -Destination "C:\\Windows" -Recurse
-    Copy-Item -Path "$env:TEMP\\pe32\\Windows\\*"  -Destination "C:\\Windows" -Recurse
+   # Copy-Item -Path "$env:TEMP\\pe64\\Windows\\*"  -Destination "C:\\Windows" -Recurse
+    Copy-Item -Path "$env:TEMP\\pe32\\Windows\\syswow64*"  -Destination "C:\\Windows\\syswow64" -Recurse -Force
 
     
 
