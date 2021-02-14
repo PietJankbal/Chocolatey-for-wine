@@ -32,20 +32,22 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Copy-Item "${env:ProgramFiles`(x86`)}\\Windows Kits\\8.1\\Assessment and Deployment Kit\\Windows Preinstallation Environment\\x86\\en-us\\winpe.wim" "$env:TEMP\\winpe32.wim"
 
 
-    Rename-Item "$env:SystemRoot\\win.ini" "$env:SystemRoot\\winbak.ini" 
+  #  Rename-Item "$env:SystemRoot\\win.ini" "$env:SystemRoot\\winbak.ini" 
 
-    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-o$env:SystemDrive"
-    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe32.wim","-o$env:TEMP\\pe32"
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe64.wim","-aot","-o$env:SystemDrive"
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "rn","$env:TEMP\\winpe32.wim","Windows\\System32","Windows\\syswow64"
+
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\winpe32.wim","-aot","-o$env:SystemDrive"
 
     Get-Process 7z | Foreach-Object { $_.WaitForExit() }
     #$7zid = (Get-Process 7z).id; Wait-Process -Id $7zid;
 
-    Rename-Item "$env:TEMP\\pe32\\Windows\System32" "$env:TEMP\\pe32\\Windows\syswow64"
+#    Rename-Item "$env:TEMP\\pe32\\Windows\System32" "$env:TEMP\\pe32\\Windows\syswow64"
     
    # Copy-Item -Path "$env:TEMP\\pe64\\Windows\\*"  -Destination "C:\\Windows" -Recurse
-    Copy-Item -Path "$env:TEMP\\pe32\\Windows\\syswow64\\*"  -Destination "C:\\Windows\\syswow64" -Recurse -Force
+#    Copy-Item -Path "$env:TEMP\\pe32\\Windows\\syswow64\\*"  -Destination "C:\\Windows\\syswow64" -Recurse -Force
 
-    Rename-Item "$env:SystemDrive\\winbak.ini" "$env:SystemDrive\\win.ini" -Force 
+#    Rename-Item "$env:SystemDrive\\winbak.ini" "$env:SystemDrive\\win.ini" -Force 
     
     
     New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides'
