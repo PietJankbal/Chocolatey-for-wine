@@ -36,10 +36,14 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
  #   Remove-Item –path c:\windows –recurse
 #7z.exe x -r -aoa
-    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","-r,""$env:TEMP\\winpe64.wim","-aoa","-o$env:SystemDrive","Windows"
-    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "rn","$env:TEMP\\winpe32.wim","Windows/System32","Windows/syswow64"
 
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "rn","$env:TEMP\\winpe32.wim","Windows/System32","Windows/syswow64"
+    Get-Process 7z | Foreach-Object { $_.WaitForExit() }
     Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","-r","$env:TEMP\\winpe32.wim","-aoa","-o$env:SystemDrive","Windows"
+
+
+
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","-r,""$env:TEMP\\winpe64.wim","-aoa","-o$env:SystemDrive","Windows"
 
     Get-Process 7z | Foreach-Object { $_.WaitForExit() }
     #$7zid = (Get-Process 7z).id; Wait-Process -Id $7zid;
