@@ -202,7 +202,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
     New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides'
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscorwks' -Value 'native' -PropertyType 'String'
-    #New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'native' -PropertyType 'String'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'native' -PropertyType 'String'
    #/* dotnet35 */
 if(Test-Path 'env:SCOOP_INSTALL'){
 
