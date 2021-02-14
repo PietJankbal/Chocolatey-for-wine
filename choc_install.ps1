@@ -20,6 +20,14 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     
     Write-Host "Downloading and installing adk, this may take quite some time..."
 
+    
+    New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'aclui' -Value 'builtin' -PropertyType 'String'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'userenv' -Value 'builtin' -PropertyType 'String'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'shcore' -Value 'builtin' -PropertyType 'String'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'hid' -Value 'builtin' -PropertyType 'String'
+    
+
 #    (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/a/9/4/a94c5d25-3195-43dc-8dbe-28e1a87e1b59/Windows6.0-KB936330-X64-wave1.exe", "$env:TEMP\\Windows6.0-KB936330-X64-wave1.exe")
 
 
@@ -58,12 +66,8 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 #    Copy-Item -Path "$env:TEMP\\pe32\\Windows\\syswow64\\*"  -Destination "C:\\Windows\\syswow64" -Recurse -Force
 
 #    Rename-Item "$env:SystemDrive\\winbak.ini" "$env:SystemDrive\\win.ini" -Force 
-    
-    
-    New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides'
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'aclui' -Value 'builtin' -PropertyType 'String'
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'userenv' -Value 'builtin' -PropertyType 'String'
-    
+  #   Get-Process 7z | Foreach-Object { $_.WaitForExit() }
+
 
 #    Copy-Item -Path "$env:TEMP\\expand.exe" -Destination "$env:SystemRoot\\syswow64\\expand.exe"
  #   Copy-Item -Path "$env:TEMP\\Windows\\System32\\expand.exe" -Destination "$env:SystemRoot\\system32\\expand.exe"
