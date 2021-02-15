@@ -123,7 +123,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
     startup_info.cb = sizeof(STARTUPINFO);
     memset(&process_info, 0, sizeof(PROCESS_INFORMATION));
 
-    CreateProcessW(pwsh_pathW,L" -file install2.ps1",0,0,0,0,0,0,&startup_info,&process_info);
+    CreateProcessW(pwsh_pathW,L" -file install2.ps1",0,0,0,0,0,0,&startup_info,&process_info); Sleep(10000);
     CreateProcessW(pwsh_pathW,L" -file choc_install.ps1",0,0,0,0,0,0,&startup_info,&process_info);
 
     return 0;
