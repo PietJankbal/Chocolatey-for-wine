@@ -318,28 +318,28 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'builtin' -PropertyType 'String' 
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'builtin' -PropertyType 'String' 
-}
-
-#REGEDIT4
-
-#[HKEY_LOCAL_MACHINE\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Internet Settings\Lockdown_Zones]
-
-#[HKEY_LOCAL_MACHINE\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Internet Settings\Lockdown_Zones\0]
-
-#https://download.microsoft.com/download/E/7/F/E7F5E0D8-F9DE-4195-9627-A7F884B61686/IE10-Windows6.1-KB2859903-x64.msu 
-# has more recent mshtml etc. but currently only gives black screen (with coreldrawdemo installer). Fall back to ancient ie8 dlls..
-
-[System.IO.Directory]::SetCurrentDirectory("$env:TEMP")
-
-(New-Object System.Net.WebClient).DownloadFile("http://download.microsoft.com/download/7/5/4/754D6601-662D-4E39-9788-6F90D8E5C097/IE8-WindowsServer2003-x64-ENU.exe", "$env:TEMP\\IE8-WindowsServer2003-x64-ENU.exe")
-
-Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\IE8-WindowsServer2003-x64-ENU.exe","-y"
-Get-Process 7z | Foreach-Object { $_.WaitForExit() }
 
 
-$iedlls = @('jscript','ieframe','urlmon','mshtml','iertutil')
+    #REGEDIT4
 
-foreach ($i in $iedlls) {
+    #[HKEY_LOCAL_MACHINE\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Internet Settings\Lockdown_Zones]
+
+    #[HKEY_LOCAL_MACHINE\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Internet Settings\Lockdown_Zones\0]
+
+    #https://download.microsoft.com/download/E/7/F/E7F5E0D8-F9DE-4195-9627-A7F884B61686/IE10-Windows6.1-KB2859903-x64.msu 
+    # has more recent mshtml etc. but currently only gives black screen (with coreldrawdemo installer). Fall back to ancient ie8 dlls..
+
+    [System.IO.Directory]::SetCurrentDirectory("$env:TEMP")
+
+    (New-Object System.Net.WebClient).DownloadFile("http://download.microsoft.com/download/7/5/4/754D6601-662D-4E39-9788-6F90D8E5C097/IE8-WindowsServer2003-x64-ENU.exe", "$env:TEMP\\IE8-WindowsServer2003-x64-ENU.exe")
+
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\IE8-WindowsServer2003-x64-ENU.exe","-y"
+    Get-Process 7z | Foreach-Object { $_.WaitForExit() }
+
+
+    $iedlls = @('jscript','ieframe','urlmon','mshtml','iertutil')
+
+    foreach ($i in $iedlls) {
 
                               $wsrc = ("w"+"$i"+".dll")
                               $dlls = ("$i"+".dll")
@@ -348,10 +348,10 @@ foreach ($i in $iedlls) {
                               Copy-Item -Path "$env:TEMP\\wow\\$wsrc" -Destination "$env:windir\\SysWOW64\\$dlls"
                               }
 
-New-Item -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Lockdown_Zones'
-New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Lockdown_Zones'
+    New-Item -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Lockdown_Zones'
+    New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Lockdown_Zones'
 
-New-Item -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Lockdown_Zones\\0'
-New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Lockdown_Zones\\0'
-
+    New-Item -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Lockdown_Zones\\0'
+    New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Lockdown_Zones\\0'
+}
     Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
