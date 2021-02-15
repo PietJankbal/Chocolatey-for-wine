@@ -242,6 +242,27 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
 if(Test-Path 'env:SCOOP_INSTALL'){
 
+    $folders = @('msxml3','msxml6','gdiplus','cabinet','msdelta')
+    $exe = @('expand','findstr')
+    
+    foreach ($i in $folders) {
+
+                              $src = ("$i" + "_1.dll")
+                              $dst = ("$i" + ".dll")
+                           
+                              Copy-Item -Path "$env:winsysdir\\$src" -Destination "$env:winsysdir\\$dst"
+                              Copy-Item -Path "$env:windir\\SysWOW64\\$src" -Destination "$env:windir\\SysWOW64\\$dst"
+                              }
+    foreach ($i in $exe) {
+
+                              $src = ("$i" + "_1.exe")
+                              $dst = ("$i" + ".exe")
+                           
+                              Copy-Item -Path "$env:winsysdir\\$src" -Destination "$env:winsysdir\\$dst"
+                              Copy-Item -Path "$env:windir\\SysWOW64\\$src" -Destination "$env:windir\\SysWOW64\\$dst"
+                              }
+
+
 #    Start-Process wineboot.exe  -Wait -ArgumentList "-u"
     Start-Process winecfg.exe  -Wait -ArgumentList "/v win7" 
 
