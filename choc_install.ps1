@@ -242,8 +242,9 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
 if(Test-Path 'env:SCOOP_INSTALL'){
 
-    $folders = @('msxml3','msxml6','gdiplus','cabinet','msdelta')
-    $exe = @('expand','findstr')
+    $folders = @('msxml3','msxml6','gdiplus','cabinet','msdelta','netapi32','wininet','urlmon','winhttp','windowscodecs', `
+                 'riched20','riched32','netcfgx','netutils','oleaut32','msvcrt','msvcirt','mspatcha','msls31','crypt32','rsaenh','schannel')
+    $exe = @('expand','find','cmd','xcopy')
     
     foreach ($i in $folders) {
 
