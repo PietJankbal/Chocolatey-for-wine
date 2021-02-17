@@ -175,7 +175,88 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')) 
 
 
+if(Test-Path 'env:TRY_LESSMSI'){
 
+  [System.IO.Directory]::SetCurrentDirectory("$env:TEMP")
+
+    (New-Object System.Net.WebClient).DownloadFile("https://www.7-zip.org/a/7z1900-x64.exe", "$env:TEMP\\7z1900-x64.exe")
+#    (New-Object System.Net.WebClient).DownloadFile("http://download.windowsupdate.com/msdownload/update/software/updt/2009/11/windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe", "$env:TEMP\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe")
+    (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/9/5/A/95A9616B-7A37-4AF6-BC36-D6EA96C8DAAE/dotNetFx40_Full_x86_x64.exe", "$env:TEMP\\dotNetFx40_Full_x86_x64.exe")
+    (New-Object System.Net.WebClient).DownloadFile("https://download.visualstudio.microsoft.com/download/pr/7afca223-55d2-470a-8edc-6a1739ae3252/abd170b4b0ec15ad0222a809b761a036/ndp48-x86-x64-allos-enu.exe", "$env:TEMP\\ndp48-x86-x64-allos-enu.exe")
+
+    Start-Process -FilePath 7z1900-x64.exe -Wait -ArgumentList "/S"
+
+
+(New-Object System.Net.WebClient).DownloadFile("https://github.com/activescott/lessmsi/releases/download/v1.3/lessmsi-v1.3.zip", "$env:TEMP\\lessmsi-v1.3.zip")
+    
+Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\lessmsi-v1.3.zip"
+ Get-Process 7z | Foreach-Object { $_.WaitForExit() }
+
+# temporary work around because lessmsi crashes with mono..." 
+
+#New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides'
+#New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'builtin' -PropertyType 'String'
+
+
+#  Remove-Item -Path "$env:winsysdir\\mscoree.dll" -Force
+
+
+
+#Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\dotNetFx40_Full_x86_x64.exe","-o61","Windows6.1-KB958488-v6001-x64.msu"
+# Get-Process 7z | Foreach-Object { $_.WaitForExit() }
+#Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\61\\Windows6.1-KB958488-v6001-x64.msu","-o61","Windows6.1-KB958488-x64.cab"
+# Get-Process 7z | Foreach-Object { $_.WaitForExit() }
+#Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\61\\Windows6.1-KB958488-x64.cab","amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5/mscoree.dll"
+# Get-Process 7z | Foreach-Object { $_.WaitForExit() }
+
+
+#Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\61\\Windows6.1-KB958488-x64.cab","amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5/mscoree.dll"
+# Get-Process 7z | Foreach-Object { $_.WaitForExit() }
+#Copy-Item -Path $env:TEMP\\amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5\\mscoree.dll -Destination $env:SystemRoot\\system32\\mscoree.dll -Force
+
+#
+#Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\61\\Windows6.1-KB958488-x64.cab","x86_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_7daed23956119a9f/mscoree.dll"
+# Get-Process 7z | Foreach-Object { $_.WaitForExit() }
+#Copy-Item -Path $env:TEMP\\x86_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_7daed23956119a9f\\mscoree.dll -Destination $env:SystemRoot\\syswow64\\mscoree.dll -Force
+
+
+#   New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides'
+#New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'native' -PropertyType 'String'
+
+# end workaround
+
+
+
+#dotnet40
+                                          
+
+
+
+Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\dotNetFx40_Full_x86_x64.exe"
+ Get-Process 7z | Foreach-Object { $_.WaitForExit() }
+
+Start-Process $env:TEMP\\lessmsi.exe  -ArgumentList "x","$env:TEMP\\netfx_Core_x64.msi"
+Get-Process lessmsi | Foreach-Object { $_.WaitForExit() }
+
+Rename-Item  "$env:TEMP\\netfx_Core_x64\\SourceDir\\Windows\\System64\" -NewName "system32" #"$env:TEMP\\netfx_Full_x64\\SourceDir\\Windows\\System32"
+Rename-Item  "$env:TEMP\\netfx_Core_x64\\SourceDir\\Windows\\System\" -NewName "syswow64" #"$env:TEMP\\netfx_Full_x64\\SourceDir\\Windows\\syswow64"
+
+Copy-Item -Path "$env:TEMP\\netfx_Core_x64\\SourceDir\\Windows\\*" -Destination "$env:SystemRoot" -Recurse -Force
+
+#dotnet48
+
+Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\ndp48-x86-x64-allos-enu.exe"
+ Get-Process 7z | Foreach-Object { $_.WaitForExit() }
+
+Start-Process $env:TEMP\\lessmsi.exe  -ArgumentList "x","$env:TEMP\\netfx_Full_x64.msi"
+Get-Process lessmsi | Foreach-Object { $_.WaitForExit() }
+
+Move-Item $env:TEMP\\netfx_Full_x64\\SourceDir\\Windows\\System64 $env:TEMP\\netfx_Full_x64\\SourceDir\\Windows\\System32
+Move-Item $env:TEMP\\netfx_Full_x64\\SourceDir\\Windows\\System $env:TEMP\\netfx_Full_x64\\SourceDir\\Windows\\syswow64
+
+Copy-Item -Path "$env:TEMP\\netfx_Full_x64\\SourceDir\\Windows\\*" -Destination "$env:SystemRoot" -Recurse -Force
+
+}
 
 
 
