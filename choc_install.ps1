@@ -187,43 +187,14 @@ if(Test-Path 'env:TRY_LESSMSI'){
     Start-Process -FilePath 7z1900-x64.exe -Wait -ArgumentList "/S"
 
 
-(New-Object System.Net.WebClient).DownloadFile("https://github.com/activescott/lessmsi/releases/download/v1.3/lessmsi-v1.3.zip", "$env:TEMP\\lessmsi-v1.3.zip")
+    (New-Object System.Net.WebClient).DownloadFile("https://github.com/activescott/lessmsi/releases/download/v1.8.1/lessmsi.1.8.1.nupkg", "$env:TEMP\\lessmsi.1.8.1.nupkg")
     
-Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\lessmsi-v1.3.zip"
- Get-Process 7z | Foreach-Object { $_.WaitForExit() }
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\lessmsi.1.8.1.nupkg"
+    Get-Process 7z | Foreach-Object { $_.WaitForExit() }
 
-# temporary work around because lessmsi crashes with mono..." 
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\tools\\lessmsi-v1.8.1.zip"
+    Get-Process 7z | Foreach-Object { $_.WaitForExit() }
 
-#New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides'
-#New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'builtin' -PropertyType 'String'
-
-
-#  Remove-Item -Path "$env:winsysdir\\mscoree.dll" -Force
-
-
-
-#Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\dotNetFx40_Full_x86_x64.exe","-o61","Windows6.1-KB958488-v6001-x64.msu"
-# Get-Process 7z | Foreach-Object { $_.WaitForExit() }
-#Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\61\\Windows6.1-KB958488-v6001-x64.msu","-o61","Windows6.1-KB958488-x64.cab"
-# Get-Process 7z | Foreach-Object { $_.WaitForExit() }
-#Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\61\\Windows6.1-KB958488-x64.cab","amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5/mscoree.dll"
-# Get-Process 7z | Foreach-Object { $_.WaitForExit() }
-
-
-#Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\61\\Windows6.1-KB958488-x64.cab","amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5/mscoree.dll"
-# Get-Process 7z | Foreach-Object { $_.WaitForExit() }
-#Copy-Item -Path $env:TEMP\\amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5\\mscoree.dll -Destination $env:SystemRoot\\system32\\mscoree.dll -Force
-
-#
-#Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\61\\Windows6.1-KB958488-x64.cab","x86_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_7daed23956119a9f/mscoree.dll"
-# Get-Process 7z | Foreach-Object { $_.WaitForExit() }
-#Copy-Item -Path $env:TEMP\\x86_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_7daed23956119a9f\\mscoree.dll -Destination $env:SystemRoot\\syswow64\\mscoree.dll -Force
-
-
-#   New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides'
-#New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'native' -PropertyType 'String'
-
-# end workaround
 
 
 
@@ -232,30 +203,44 @@ Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\
 
 
 
-Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\dotNetFx40_Full_x86_x64.exe"
- Get-Process 7z | Foreach-Object { $_.WaitForExit() }
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\dotNetFx40_Full_x86_x64.exe"
+     Get-Process 7z | Foreach-Object { $_.WaitForExit() }
 
-Start-Process $env:TEMP\\lessmsi.exe  -ArgumentList "x","$env:TEMP\\netfx_Core_x64.msi"
-Get-Process lessmsi | Foreach-Object { $_.WaitForExit() }
+    Start-Process $env:TEMP\\lessmsi.exe  -ArgumentList "x","$env:TEMP\\netfx_Core_x64.msi"
+    Get-Process lessmsi | Foreach-Object { $_.WaitForExit() }
 
-Rename-Item  "$env:TEMP\\netfx_Core_x64\\SourceDir\\Windows\\System64\" -NewName "system32" #"$env:TEMP\\netfx_Full_x64\\SourceDir\\Windows\\System32"
-Rename-Item  "$env:TEMP\\netfx_Core_x64\\SourceDir\\Windows\\System\" -NewName "syswow64" #"$env:TEMP\\netfx_Full_x64\\SourceDir\\Windows\\syswow64"
+    Rename-Item  "$env:TEMP\\netfx_Core_x64\\SourceDir\\Windows\\System64\" -NewName "system32" #"$env:TEMP\\netfx_Core_x64\\SourceDir\\Windows\\System32"
+    Rename-Item  "$env:TEMP\\netfx_Core_x64\\SourceDir\\Windows\\System\" -NewName "syswow64" #"$env:TEMP\\netfx_Core_x64\\SourceDir\\Windows\\syswow64"
 
-Copy-Item -Path "$env:TEMP\\netfx_Core_x64\\SourceDir\\Windows\\*" -Destination "$env:SystemRoot" -Recurse -Force
 
 #dotnet48
 
-Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\ndp48-x86-x64-allos-enu.exe"
- Get-Process 7z | Foreach-Object { $_.WaitForExit() }
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","-o$env:TEMP\\48","$env:TEMP\\ndp48-x86-x64-allos-enu.exe"
+    Get-Process 7z | Foreach-Object { $_.WaitForExit() }
 
-Start-Process $env:TEMP\\lessmsi.exe  -ArgumentList "x","$env:TEMP\\netfx_Full_x64.msi"
-Get-Process lessmsi | Foreach-Object { $_.WaitForExit() }
+    Start-Process $env:TEMP\\lessmsi.exe  -ArgumentList "x","$env:TEMP\\48\\netfx_Full_x64.msi"
+    Get-Process lessmsi | Foreach-Object { $_.WaitForExit() }
 
-Move-Item $env:TEMP\\netfx_Full_x64\\SourceDir\\Windows\\System64 $env:TEMP\\netfx_Full_x64\\SourceDir\\Windows\\System32
-Move-Item $env:TEMP\\netfx_Full_x64\\SourceDir\\Windows\\System $env:TEMP\\netfx_Full_x64\\SourceDir\\Windows\\syswow64
+    Rename-Item  "$env:TEMP\\netfx_Full_x64\\SourceDir\\Windows\\System64\" -NewName "system32" #"$env:TEMP\\netfx_Full_x64\\SourceDir\\Windows\\System32"
+    Rename-Item  "$env:TEMP\\netfx_Full_x64\\SourceDir\\Windows\\System\" -NewName "syswow64" #"$env:TEMP\\netfx_Full_x64\\SourceDir\\Windows\\syswow64"
 
-Copy-Item -Path "$env:TEMP\\netfx_Full_x64\\SourceDir\\Windows\\*" -Destination "$env:SystemRoot" -Recurse -Force
 
+    Copy-Item -Path "$env:TEMP\\netfx_Core_x64\\SourceDir\\Windows\\*" -Destination "$env:SystemRoot\\" -Recurse -Force
+
+
+    Copy-Item -Path "$env:TEMP\\netfx_Full_x64\\SourceDir\\Windows\\*" -Destination "$env:SystemRoot\\" -Recurse -Force
+
+    Start-Process uninstaller -Wait -ArgumentList "--remove {0A7C8977-1185-5C3F-A4E7-7A90611227C3}"
+    Start-Process uninstaller  -Wait -ArgumentList "--remove {05C9CD26-9144-58FC-8A6E-B4DE47B661EC}"
+
+    Start-Process reg.exe  -ArgumentList "IMPORT","$env:TEMP\\d.reg"
+
+
+    New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'native' -PropertyType 'String'
+
+
+    Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
 }
 
 
