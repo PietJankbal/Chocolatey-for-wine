@@ -343,6 +343,11 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String' 
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'native' -PropertyType 'String' 
 
+    #FIXME try get regkeys from manifest (xml
+    # $XmlDocument = Get-Content -Path C:\\Cars.xml
+    # $XmlDocument.selectnodes('*/*/*').registryValue
+    # $XmlDocument.selectnodes('*/*').registrykey
+
     Start-Process expand.exe -ArgumentList "$env:TEMP\\Windows6.1-KB3191566-x64.cab","-F:powershell.exe","$env:TEMP"
     $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
     Copy-Item -Path "$env:TEMP\\amd64_*\\powershell.exe" -Destination "$env:SystemRoot\\system32\\WindowsPowerShell\\v1.0\\powershell51.exe"
