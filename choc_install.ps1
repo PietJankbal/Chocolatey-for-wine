@@ -373,11 +373,11 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Copy-Item -Path "$env:TEMP\\wow64_*\\wmitomi.dll" -Destination "$env:SystemRoot\\syswow64\\wmitomi.dll"
     Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*"  
 
-    Start-Process expand.exe -ArgumentList "$env:TEMP\\Windows6.1-KB3191566-x64.cab","-F:mi.dll","$env:TEMP"
-    $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
-    Copy-Item -Path "$env:TEMP\\amd64_*\\mi.dll" -Destination "$env:SystemRoot\\system32\\mi.dll"
-    Copy-Item -Path "$env:TEMP\\wow64_*\\mi.dll" -Destination "$env:SystemRoot\\syswow64\\mi.dll"
-    Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*" 
+    #Start-Process expand.exe -ArgumentList "$env:TEMP\\Windows6.1-KB3191566-x64.cab","-F:mi.dll","$env:TEMP"
+    #$expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
+    #Copy-Item -Path "$env:TEMP\\amd64_*\\mi.dll" -Destination "$env:SystemRoot\\system32\\mi.dll"
+    #Copy-Item -Path "$env:TEMP\\wow64_*\\mi.dll" -Destination "$env:SystemRoot\\syswow64\\mi.dll"
+    #Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*" 
     
     Start-Process expand.exe -ArgumentList "$env:TEMP\\Windows6.1-KB3191566-x64.cab","-F:wmidcom.dll","$env:TEMP"
     $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
@@ -385,11 +385,11 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Copy-Item -Path "$env:TEMP\\wow64_*\\wmidcom.dll" -Destination "$env:SystemRoot\\syswow64\\wmidcom.dll"
     Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*"  
 
-    Start-Process expand.exe -ArgumentList "$env:TEMP\\Windows6.1-KB3191566-x64.cab","-F:miutils.dll","$env:TEMP"
-    $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
-    Copy-Item -Path "$env:TEMP\\amd64_*\\miutils.dll" -Destination "$env:SystemRoot\\system32\\miutils.dll"
-    Copy-Item -Path "$env:TEMP\\wow64_*\\miutils.dll" -Destination "$env:SystemRoot\\syswow64\\miutils.dll"
-    Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*"  
+    #Start-Process expand.exe -ArgumentList "$env:TEMP\\Windows6.1-KB3191566-x64.cab","-F:miutils.dll","$env:TEMP"
+    #$expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
+    #Copy-Item -Path "$env:TEMP\\amd64_*\\miutils.dll" -Destination "$env:SystemRoot\\system32\\miutils.dll"
+    #Copy-Item -Path "$env:TEMP\\wow64_*\\miutils.dll" -Destination "$env:SystemRoot\\syswow64\\miutils.dll"
+    #Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*"  
 
     New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure'
     New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols'
@@ -397,7 +397,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols\\WMIDCOM\\1.0'
     #windows10
     New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols\\WMIDCOM\\1.0' -force -Name 'dllEntryPoint' -Value 'MI_Application_InitializeV1' -PropertyType 'String' 
-    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols\\WMIDCOM\\1.0' -force -Name 'dllpath' -Value 'c:\\windows\\system32\\Wmidcom.dll' -PropertyType 'String' 
+    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols\\WMIDCOM\\1.0' -force -Name 'dllpath' -Value 'c:\\Program Files\\PowerShell\\7\\mi.dll' -PropertyType 'String' 
 
     New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols\\WMIRM'
     New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols\\WMIRM\\1.0'
