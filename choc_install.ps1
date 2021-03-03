@@ -385,6 +385,12 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Copy-Item -Path "$env:TEMP\\wow64_*\\wmidcom.dll" -Destination "$env:SystemRoot\\syswow64\\wmidcom.dll"
     Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*"  
 
+    Start-Process expand.exe -ArgumentList "$env:TEMP\\Windows6.1-KB3191566-x64.cab","-F:miutils.dll","$env:TEMP"
+    $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
+    Copy-Item -Path "$env:TEMP\\amd64_*\\miutils.dll" -Destination "$env:SystemRoot\\system32\\miutils.dll"
+    Copy-Item -Path "$env:TEMP\\wow64_*\\miutils.dll" -Destination "$env:SystemRoot\\syswow64\\miutils.dll"
+    Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*"  
+
     New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure'
     New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols'
     New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols\\WMIDCOM'
