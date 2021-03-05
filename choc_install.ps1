@@ -131,7 +131,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
    #/* dotnet35 */
 if(Test-Path 'env:SCOOP_INSTALL'){
 
-    (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/6/0/f/60fc5854-3cb8-4892-b6db-bd4f42510f28/dotnetfx35.exe", "$env:TEMP\\dotnetfx35.exe")
+    (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/2/0/e/20e90413-712f-438c-988e-fdaa79a8ac3d/dotnetfx35.exe", "$env:TEMP\\dotnetfx35.exe")
     (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/6/A/E/6AEA92B0-A412-4622-983E-5B305D2EBE56/adk/adksetup.exe", "$env:TEMP\\adksetup.exe")
     (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/6/F/5/6F5FF66C-6775-42B0-86C4-47D41F2DA187/Win7AndW2K8R2-KB3191566-x64.zip", "$env:TEMP\\Win7AndW2K8R2-KB3191566-x64.zip")
 
