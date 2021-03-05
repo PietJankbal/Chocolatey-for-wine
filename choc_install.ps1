@@ -135,11 +135,22 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/6/A/E/6AEA92B0-A412-4622-983E-5B305D2EBE56/adk/adksetup.exe", "$env:TEMP\\adksetup.exe")
     (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/6/F/5/6F5FF66C-6775-42B0-86C4-47D41F2DA187/Win7AndW2K8R2-KB3191566-x64.zip", "$env:TEMP\\Win7AndW2K8R2-KB3191566-x64.zip")
 
-    Start-Process winecfg.exe  -Wait -ArgumentList "/v winxp64"
+
+
+    New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscorwks' -Value 'native' -PropertyType 'String'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'native' -PropertyType 'String'
+
+
+
+    Start-Process winecfg.exe  -Wait -ArgumentList "/v winxp"#64"
     Start-Process dotnetfx35.exe  -Wait -ArgumentList "/q /lang:ENU"
     $dotnet35id = (Get-Process dotnetfx35).id; Wait-Process -Id $dotnet35id
 }
     #/* END dotnet35 */
+
+
+
 
     New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides'
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscorwks' -Value 'native' -PropertyType 'String'
