@@ -109,6 +109,65 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
 
 
+    #/* Install dotnet48 otherwise choco fails to install packages; procedure copied from winetricks */
+    #/* remove_mono */
+
+#FIXME!! Needs to be updated when Mono updates; Find better solution...........
+    Start-Process uninstaller -Wait -ArgumentList "--remove {0A7C8977-1185-5C3F-A4E7-7A90611227C3}"
+    Start-Process uninstaller  -Wait -ArgumentList "--remove {05C9CD26-9144-58FC-8A6E-B4DE47B661EC}"
+
+    Remove-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.5' -Recurse
+    Remove-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v4'  -Recurse  
+
+    Remove-Item -Path 'HKLM:\\Software\\ Wow6432Node\\Microsoft\\NET Framework Setup\\NDP\\v3.5' -Recurse
+    Remove-Item -Path 'HKLM:\\Software\\ Wow6432Node\\Microsoft\\NET Framework Setup\\NDP\\v4'  -Recurse  
+
+    Remove-Item -Path "$env:windir\\SysWOW64\\mscoree.dll" -Force
+    Remove-Item -Path "$env:winsysdir\\mscoree.dll" -Force
+    #/* END remove_mono */
+
+ 
+
+    New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscorwks' -Value 'native' -PropertyType 'String'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'native' -PropertyType 'String'
+   #/* dotnet35 */
+if(Test-Path 'env:SCOOP_INSTALL'){
+
+    (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/6/0/f/60fc5854-3cb8-4892-b6db-bd4f42510f28/dotnetfx35.exe", "$env:TEMP\\dotnetfx35.exe")
+    (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/6/A/E/6AEA92B0-A412-4622-983E-5B305D2EBE56/adk/adksetup.exe", "$env:TEMP\\adksetup.exe")
+    (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/6/F/5/6F5FF66C-6775-42B0-86C4-47D41F2DA187/Win7AndW2K8R2-KB3191566-x64.zip", "$env:TEMP\\Win7AndW2K8R2-KB3191566-x64.zip")
+
+    Start-Process winecfg.exe  -Wait -ArgumentList "/v winxp64"
+    Start-Process dotnetfx35.exe  -Wait -ArgumentList "/q /lang:ENU"
+    $dotnet35id = (Get-Process dotnetfx35).id; Wait-Process -Id $dotnet35id
+}
+    #/* END dotnet35 */
+
+    Start-Process winecfg.exe  -Wait -ArgumentList "/v win7" 
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'fusion' -Value 'builtin' -PropertyType 'String'
+#//    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'native' -PropertyType 'String'
+
+    Start-Process winecfg.exe  -Wait -ArgumentList "/v winxp64"
+
+    Start-Process dotNetFx40_Full_x86_x64.exe  -Wait -ArgumentList "/q /c:install.exe /q"
+    $dotnet40id = (Get-Process dotNetFx40_Full_x86_x64).id; Wait-Process -Id $dotnet40id
+
+    Start-Process winecfg.exe  -Wait -ArgumentList "/v win7" 
+    Remove-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -Name 'fusion'
+
+    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v4\\Full' -Name 'Install' -Value '0001' -PropertyType 'DWord'
+    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v4\\Full' -Name 'Version' -Value '4.0.30319' -PropertyType 'String'
+
+    #/*FIXME FIXME commented out for now, installation already takes >5 minutes without this*/
+    #system(" start /WAIT %SystemDrive%\\windows\\Microsoft.NET\\Framework\\v4.0.30319\\ngen.exe executequeueditems "
+
+    #/*FIXME FIXME  add norestart????*/
+    Start-Process ndp48-x86-x64-allos-enu.exe  -Wait -ArgumentList "sfxlang:1027 /q /norestart"
+    $dotnet48id = (Get-Process ndp48-x86-x64-allos-enu).id; Wait-Process -Id $dotnet48id
+
+
+
 
 
     Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell_orig.exe"
@@ -244,65 +303,6 @@ if(Test-Path 'env:TRY_LESSMSI'){
 }
 
 
-
-
-
-    #/* Install dotnet48 otherwise choco fails to install packages; procedure copied from winetricks */
-    #/* remove_mono */
-
-#FIXME!! Needs to be updated when Mono updates; Find better solution...........
-    Start-Process uninstaller -Wait -ArgumentList "--remove {0A7C8977-1185-5C3F-A4E7-7A90611227C3}"
-    Start-Process uninstaller  -Wait -ArgumentList "--remove {05C9CD26-9144-58FC-8A6E-B4DE47B661EC}"
-
-    Remove-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.5' -Recurse
-    Remove-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v4'  -Recurse  
-
-    Remove-Item -Path 'HKLM:\\Software\\ Wow6432Node\\Microsoft\\NET Framework Setup\\NDP\\v3.5' -Recurse
-    Remove-Item -Path 'HKLM:\\Software\\ Wow6432Node\\Microsoft\\NET Framework Setup\\NDP\\v4'  -Recurse  
-
-    Remove-Item -Path "$env:windir\\SysWOW64\\mscoree.dll" -Force
-    Remove-Item -Path "$env:winsysdir\\mscoree.dll" -Force
-    #/* END remove_mono */
-
- 
-
-    New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides'
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscorwks' -Value 'native' -PropertyType 'String'
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'native' -PropertyType 'String'
-   #/* dotnet35 */
-if(Test-Path 'env:SCOOP_INSTALL'){
-
-    (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/6/0/f/60fc5854-3cb8-4892-b6db-bd4f42510f28/dotnetfx35.exe", "$env:TEMP\\dotnetfx35.exe")
-    (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/6/A/E/6AEA92B0-A412-4622-983E-5B305D2EBE56/adk/adksetup.exe", "$env:TEMP\\adksetup.exe")
-    (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/6/F/5/6F5FF66C-6775-42B0-86C4-47D41F2DA187/Win7AndW2K8R2-KB3191566-x64.zip", "$env:TEMP\\Win7AndW2K8R2-KB3191566-x64.zip")
-
-    Start-Process winecfg.exe  -Wait -ArgumentList "/v winxp64"
-    Start-Process dotnetfx35.exe  -Wait -ArgumentList "/q /lang:ENU"
-    $dotnet35id = (Get-Process dotnetfx35).id; Wait-Process -Id $dotnet35id
-}
-    #/* END dotnet35 */
-
-    Start-Process winecfg.exe  -Wait -ArgumentList "/v win7" 
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'fusion' -Value 'builtin' -PropertyType 'String'
-#//    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'native' -PropertyType 'String'
-
-    Start-Process winecfg.exe  -Wait -ArgumentList "/v winxp64"
-
-    Start-Process dotNetFx40_Full_x86_x64.exe  -Wait -ArgumentList "/q /c:install.exe /q"
-    $dotnet40id = (Get-Process dotNetFx40_Full_x86_x64).id; Wait-Process -Id $dotnet40id
-
-    Start-Process winecfg.exe  -Wait -ArgumentList "/v win7" 
-    Remove-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -Name 'fusion'
-
-    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v4\\Full' -Name 'Install' -Value '0001' -PropertyType 'DWord'
-    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v4\\Full' -Name 'Version' -Value '4.0.30319' -PropertyType 'String'
-
-    #/*FIXME FIXME commented out for now, installation already takes >5 minutes without this*/
-    #system(" start /WAIT %SystemDrive%\\windows\\Microsoft.NET\\Framework\\v4.0.30319\\ngen.exe executequeueditems "
-
-    #/*FIXME FIXME  add norestart????*/
-    Start-Process ndp48-x86-x64-allos-enu.exe  -Wait -ArgumentList "sfxlang:1027 /q /norestart"
-    $dotnet48id = (Get-Process ndp48-x86-x64-allos-enu).id; Wait-Process -Id $dotnet48id
 
 
 
