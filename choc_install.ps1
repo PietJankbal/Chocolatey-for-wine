@@ -128,9 +128,6 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
  
 
-    New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides'
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscorwks' -Value 'native' -PropertyType 'String'
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'native' -PropertyType 'String'
    #/* dotnet35 */
 if(Test-Path 'env:SCOOP_INSTALL'){
 
@@ -143,6 +140,13 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     $dotnet35id = (Get-Process dotnetfx35).id; Wait-Process -Id $dotnet35id
 }
     #/* END dotnet35 */
+
+    New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscorwks' -Value 'native' -PropertyType 'String'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'native' -PropertyType 'String'
+
+
+
 
     Start-Process winecfg.exe  -Wait -ArgumentList "/v win7" 
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'fusion' -Value 'builtin' -PropertyType 'String'
