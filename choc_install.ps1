@@ -211,7 +211,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
 
 
-    Start-Process winecfg.exe  -Wait -ArgumentList "/v winxp"#64"
+    Start-Process winecfg.exe  -Wait -ArgumentList "/v winxp64"
     Start-Process dotnetfx35.exe  -Wait -ArgumentList "/q /lang:ENU"
     $dotnet35id = (Get-Process dotnetfx35).id; Wait-Process -Id $dotnet35id
 }
