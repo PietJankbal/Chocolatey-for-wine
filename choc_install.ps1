@@ -224,7 +224,8 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscorwks' -Value 'native' -PropertyType 'String'
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'native' -PropertyType 'String'
 
-
+    Remove-Item -Path "$env:windir\\SysWOW64\\mscoree.dll" -Force
+    Remove-Item -Path "$env:winsysdir\\mscoree.dll" -Force
 
 
     Start-Process winecfg.exe  -Wait -ArgumentList "/v win7" 
