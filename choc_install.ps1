@@ -189,8 +189,8 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Remove-Item -Path 'HKLM:\\Software\\ Wow6432Node\\Microsoft\\NET Framework Setup\\NDP\\v3.5' -Recurse
     Remove-Item -Path 'HKLM:\\Software\\ Wow6432Node\\Microsoft\\NET Framework Setup\\NDP\\v4'  -Recurse  
 
-    Remove-Item -Path "$env:windir\\SysWOW64\\mscoree.dll" -Force
-    Remove-Item -Path "$env:winsysdir\\mscoree.dll" -Force
+    Remove-Item -Path "$env:SystemRoot\\SysWOW64\\mscoree.dll" -Force
+    Remove-Item -Path "$env:SystemRoot\\System32\\mscoree.dll" -Force
     #/* END remove_mono */
 
  
@@ -224,8 +224,8 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscorwks' -Value 'native' -PropertyType 'String'
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'native' -PropertyType 'String'
 
-    Remove-Item -Path "$env:windir\\SysWOW64\\mscoree.dll" -Force
-    Remove-Item -Path "$env:winsysdir\\mscoree.dll" -Force
+    Remove-Item -Path "$env:SystemRoot\\SysWOW64\\mscoree.dll" -Force
+    Remove-Item -Path "$env:SystemRoot\\System32\\mscoree.dll" -Force
 
 
     Start-Process winecfg.exe  -Wait -ArgumentList "/v win7" 
