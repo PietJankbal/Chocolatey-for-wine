@@ -335,6 +335,8 @@ if(Test-Path 'env:SCOOP_INSTALL'){
                            
                               Copy-Item -Path "$env:winsysdir\\$src" -Destination "$env:winsysdir\\$dst"
                               Copy-Item -Path "$env:windir\\SysWOW64\\$src" -Destination "$env:windir\\SysWOW64\\$dst"
+                              Remove-Item "$env:winsysdir\\$src"
+                              "$env:windir\\SysWOW64\\$src"
                               }
     foreach ($i in $exe) {
 
@@ -347,7 +349,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
                               
     $native = @('msxml3','msxml6','gdiplus','winhttp','windowscodecs','riched20','riched32','iertutil')
     foreach ($i in $exe) {
-                              New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name $native -Value 'native' -PropertyType 'String'
+                              New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name $i -Value 'native' -PropertyType 'String'
                               }
 
 #    Start-Process wineboot.exe  -Wait -ArgumentList "-u"
@@ -455,7 +457,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
                               Copy-Item -Path "$env:TEMP\\$dlls" -Destination "$env:winsysdir\\$dlls"
                               Copy-Item -Path "$env:TEMP\\wow\\$wsrc" -Destination "$env:windir\\SysWOW64\\$dlls"
                               
-                              New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name $iedlls -Value 'native' -PropertyType 'String'
+                              New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name $i -Value 'native' -PropertyType 'String'
 
                               }
 
