@@ -344,7 +344,11 @@ if(Test-Path 'env:SCOOP_INSTALL'){
                               Copy-Item -Path "$env:winsysdir\\$src" -Destination "$env:winsysdir\\$dst"
                               Copy-Item -Path "$env:windir\\SysWOW64\\$src" -Destination "$env:windir\\SysWOW64\\$dst"
                               }
-
+                              
+    $native = @('msxml3','msxml6','gdiplus','winhttp','windowscodecs','riched20','riched32','iertutil')
+    foreach ($i in $exe) {
+                              New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name $native -Value 'native' -PropertyType 'String'
+                              }
 
 #    Start-Process wineboot.exe  -Wait -ArgumentList "-u"
     Start-Process winecfg.exe  -Wait -ArgumentList "/v win7" 
@@ -450,6 +454,9 @@ if(Test-Path 'env:SCOOP_INSTALL'){
                            
                               Copy-Item -Path "$env:TEMP\\$dlls" -Destination "$env:winsysdir\\$dlls"
                               Copy-Item -Path "$env:TEMP\\wow\\$wsrc" -Destination "$env:windir\\SysWOW64\\$dlls"
+                              
+                              New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name $iedlls -Value 'native' -PropertyType 'String'
+
                               }
 
     New-Item -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Lockdown_Zones'
@@ -458,4 +465,4 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     New-Item -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Lockdown_Zones\\0'
     New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Lockdown_Zones\\0'
 }
-    Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
+#    Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
