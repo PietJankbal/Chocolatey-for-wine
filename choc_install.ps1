@@ -378,7 +378,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Get-Process 7z | Foreach-Object { $_.WaitForExit() }
 
 
-    $iedlls = @('ieframe','urlmon')#,'mshtml','iertutil')
+    $iedlls = @('ieframe','urlmon','mshtml','iertutil','jscript')
 
     foreach ($i in $iedlls) {
 
@@ -388,7 +388,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
                               Copy-Item -Path "$env:TEMP\\$dlls" -Destination "$env:winsysdir\\$dlls"
                               Copy-Item -Path "$env:TEMP\\wow\\$wsrc" -Destination "$env:windir\\SysWOW64\\$dlls"
                               
-                              New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name $i -Value 'native' -PropertyType 'String'
+                              New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name $i -Value 'native,builtin' -PropertyType 'String'
 
                               }
 
