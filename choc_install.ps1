@@ -378,7 +378,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Get-Process 7z | Foreach-Object { $_.WaitForExit() }
 
 
-    $iedlls = @('jscript','ieframe','urlmon','mshtml','iertutil')
+    $iedlls = @('ieframe','urlmon')#,'mshtml','iertutil')
 
     foreach ($i in $iedlls) {
 
