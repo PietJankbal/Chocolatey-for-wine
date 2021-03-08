@@ -255,7 +255,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
 if(Test-Path 'env:SCOOP_INSTALL'){
 
-    $folders = @('msxml3','msxml6','gdiplus','cabinet','msdelta','netapi32','wininet','urlmon','windowscodecs', `
+    $folders = @('msxml3','msxml6','gdiplus','cabinet','msdelta','netapi32','wininet','urlmon','winhttp','windowscodecs', `
                  'riched20','riched32','netcfgx','netutils','oleaut32','msvcrt','msvcirt','mspatcha','msls31','crypt32', `
                  'rsaenh','schannel','iertutil')
     $exe = @('expand','find','cmd','xcopy')
@@ -278,7 +278,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
                               Copy-Item -Path "$env:windir\\SysWOW64\\$src" -Destination "$env:windir\\SysWOW64\\$dst"
                               }
                               
-    $native = @('msxml3','msxml6','gdiplus','winhttp','windowscodecs','riched20','riched32','iertutil')
+    $native = @('msxml3','msxml6','gdiplus','windowscodecs','riched20','riched32','iertutil')
     foreach ($i in $native) {
                               New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name $i -Value 'native' -PropertyType 'String'
                               }
