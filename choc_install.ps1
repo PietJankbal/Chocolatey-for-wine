@@ -314,10 +314,18 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
     Copy-Item -Path "$env:TEMP\\amd64_*\\$i" -Destination "$env:SystemRoot\\system32\\$i"
     Copy-Item -Path "$env:TEMP\\wow64_*\\$i" -Destination "$env:SystemRoot\\syswow64\\$i"
-    Copy-Item -Path "$env:TEMP\\amd*.manifest" -Destination "$env:SystemRoot\\system32\\"
-    Copy-Item -Path "$env:TEMP\\wow64*.manifest" -Destination "$env:SystemRoot\\syswow32\\"
-    Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*"
-    Remove-Item -Recurse "$env:TEMP\\amd*.manifest"  ; Remove-Item -Recurse "$env:TEMP\\wow64*.manifest"    
+    #also extract manifest
+    $relativePath = Get-Item wow64_*\$i | Resolve-Path -Relative
+    $manifest = $relativePath.split('\')[1] + ".manifest"
+    Start-Process expand.exe -ArgumentList $cab,"-F:$manifest","$env:SystemRoot\\syswow64\\"
+    $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
+
+    $relativePath = Get-Item amd64_*\$i | Resolve-Path -Relative
+    $manifest = $relativePath.split('\')[1] + ".manifest"
+    Start-Process expand.exe -ArgumentList $cab,"-F:$manifest","$env:SystemRoot\\system32\\"
+    $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
+
+    Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*" 
     }
 
     New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure'
