@@ -305,43 +305,20 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Copy-Item -Path "$env:TEMP\\amd64_*\\powershell.exe" -Destination "$env:SystemRoot\\system32\\WindowsPowerShell\\v1.0\\powershell51.exe"
     Copy-Item -Path "$env:TEMP\\wow64_*\\powershell.exe" -Destination "$env:SystemRoot\\syswow64\\WindowsPowerShell\\v1.0\\powershell51.exe"
     Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*"  
-
-    Start-Process expand.exe -ArgumentList "$env:TEMP\\Windows6.1-KB3191566-x64.cab","-F:pspluginwkr.dll","$env:TEMP"
-    $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
-    Copy-Item -Path "$env:TEMP\\amd64_*\\pspluginwkr.dll" -Destination "$env:SystemRoot\\system32\\pspluginwkr.dll"
-    Copy-Item -Path "$env:TEMP\\wow64_*\\pspluginwkr.dll" -Destination "$env:SystemRoot\\syswow64\\pspluginwkr.dll"
-    Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*"  
-
-
-    Start-Process expand.exe -ArgumentList "$env:TEMP\\Windows6.1-KB3191566-x64.cab","-F:wsmsvc.dll","$env:TEMP"
-    $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
-    Copy-Item -Path "$env:TEMP\\amd64_*\\wsmsvc.dll" -Destination "$env:SystemRoot\\system32\\wsmsvc.dll"
-    Copy-Item -Path "$env:TEMP\\wow64_*\\wsmsvc.dll" -Destination "$env:SystemRoot\\syswow64\\wsmsvc.dll"
-    Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*"  
-
-    Start-Process expand.exe -ArgumentList "$env:TEMP\\Windows6.1-KB3191566-x64.cab","-F:wmitomi.dll","$env:TEMP"
-    $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
-    Copy-Item -Path "$env:TEMP\\amd64_*\\wmitomi.dll" -Destination "$env:SystemRoot\\system32\\wmitomi.dll"
-    Copy-Item -Path "$env:TEMP\\wow64_*\\wmitomi.dll" -Destination "$env:SystemRoot\\syswow64\\wmitomi.dll"
-    Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*"  
-
-    #Start-Process expand.exe -ArgumentList "$env:TEMP\\Windows6.1-KB3191566-x64.cab","-F:mi.dll","$env:TEMP"
-    #$expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
-    #Copy-Item -Path "$env:TEMP\\amd64_*\\mi.dll" -Destination "$env:SystemRoot\\system32\\mi.dll"
-    #Copy-Item -Path "$env:TEMP\\wow64_*\\mi.dll" -Destination "$env:SystemRoot\\syswow64\\mi.dll"
-    #Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*" 
     
-    Start-Process expand.exe -ArgumentList "$env:TEMP\\Windows6.1-KB3191566-x64.cab","-F:wmidcom.dll","$env:TEMP"
-    $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
-    Copy-Item -Path "$env:TEMP\\amd64_*\\wmidcom.dll" -Destination "$env:SystemRoot\\system32\\wmidcom.dll"
-    Copy-Item -Path "$env:TEMP\\wow64_*\\wmidcom.dll" -Destination "$env:SystemRoot\\syswow64\\wmidcom.dll"
-    Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*"  
+    $dll_or_exe = @('wmitomi.dll','wsmsvc.dll','wmidcom.dll','pspluginwkr.dll')
+    $cab = "$env:TEMP\\Windows6.1-KB3191566-x64.cab"
 
-    #Start-Process expand.exe -ArgumentList "$env:TEMP\\Windows6.1-KB3191566-x64.cab","-F:miutils.dll","$env:TEMP"
-    #$expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
-    #Copy-Item -Path "$env:TEMP\\amd64_*\\miutils.dll" -Destination "$env:SystemRoot\\system32\\miutils.dll"
-    #Copy-Item -Path "$env:TEMP\\wow64_*\\miutils.dll" -Destination "$env:SystemRoot\\syswow64\\miutils.dll"
-    #Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*"  
+    foreach ($i in $dll_or_exe) {
+    Start-Process expand.exe -ArgumentList $cab,"-F:$i","$env:TEMP"
+    $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
+    Copy-Item -Path "$env:TEMP\\amd64_*\\$i" -Destination "$env:SystemRoot\\system32\\$i"
+    Copy-Item -Path "$env:TEMP\\wow64_*\\$i" -Destination "$env:SystemRoot\\syswow64\\$i"
+    Copy-Item -Path "$env:TEMP\\amd*.manifest" -Destination "$env:SystemRoot\\system32\\"
+    Copy-Item -Path "$env:TEMP\\wow64*.manifest" -Destination "$env:SystemRoot\\syswow32\\"
+    Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*"
+    Remove-Item -Recurse "$env:TEMP\\amd*.manifest"  ; Remove-Item -Recurse "$env:TEMP\\wow64*.manifest"    
+    }
 
     New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure'
     New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols'
