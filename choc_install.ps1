@@ -318,6 +318,43 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     $manifest = $relativePath.split('\')[1] + ".manifest"
     Start-Process expand.exe -ArgumentList $cab,"-F:$manifest","$env:SystemRoot\\syswow64\\"
     $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
+    
+    
+        #try write regkeys from manifest file
+    $Xml = [xml](Get-Content -Path "$env:SystemRoot\\syswow64\\$manifest")
+#Write the regkeys from manifest file
+#thanks some guy from freenode webchat channel powershell who wrote skeleton of this in 4 minutes...
+foreach ($key in $Xml.assembly.registryKeys.registryKey) {
+    $path = 'Registry::{0}' -f $key.keyName
+    if (-not (Test-Path -Path $path)) {
+        New-Item -Path $path -ItemType Key -Force
+    }
+
+    foreach ($value in $key.registryValue) {
+        $propertyType = switch ($value.valueType) {
+            'REG_SZ'         { 'String' }
+            'REG_BINARY'     { 'Binary' }
+            'REG_DWORD'      { 'DWORD'  }
+	    'REG_EXPAND_SZ'  { 'ExpandString' } 
+	    'REG_MULTI_SZ'   { 'MultiString'  } 
+	    'REG_QWORD'      { 'QWord' }
+            'REG_NONE'       { '' } 
+        }
+        $Regname = switch ($value.Name) {
+            '' { ‘(Default)’ }
+            default { $value.Name }
+        }
+        #If ($propertyType -eq "Binary") { $value.Value = [System.Text.Encoding]::Unicode.GetBytes($value.Value + "000") ; $value.Value.Replace(" ",",")}
+        #https://stackoverflow.com/questions/54543075/how-to-convert-a-hash-string-to-byte-array-in-powershell
+        If ($propertyType -eq "Binary") {$hashByteArray = [byte[]] ($value.Value -replace '..', '0x$&,' -split ',' -ne '');New-ItemProperty -Path $path -Name $Regname -Value $hashByteArray  -PropertyType $propertyType -Force}
+        else{
+
+        New-ItemProperty -Path $path -Name $Regname -Value $value.Value -PropertyType $propertyType -Force}
+    }
+}
+
+    
+    
 
     $relativePath = Get-Item amd64_*\$i | Resolve-Path -Relative
     $manifest = $relativePath.split('\')[1] + ".manifest"
@@ -325,24 +362,76 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
 
     Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*" 
+    
+
+  
+        #try write regkeys from manifest file
+    $Xml = [xml](Get-Content -Path "$env:SystemRoot\\system32\\$manifest")
+
+#thanks some guy from freenode webchat channel powershell who wrote skeleton of this in 4 minutes...
+foreach ($key in $Xml.assembly.registryKeys.registryKey) {
+    $path = 'Registry::{0}' -f $key.keyName
+    if (-not (Test-Path -Path $path)) {
+        New-Item -Path $path -ItemType Key -Force
     }
 
-    New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure'
-    New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols'
-    New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols\\WMIDCOM'
-    New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols\\WMIDCOM\\1.0'
+    foreach ($value in $key.registryValue) {
+        $propertyType = switch ($value.valueType) {
+            'REG_SZ'         { 'String' }
+            'REG_BINARY'     { 'Binary' }
+            'REG_DWORD'      { 'DWORD'  }
+	    'REG_EXPAND_SZ'  { 'ExpandString' } 
+	    'REG_MULTI_SZ'   { 'MultiString'  } 
+	    'REG_QWORD'      { 'QWord' }
+            'REG_NONE'       { '' } 
+        }
+        $Regname = switch ($value.Name) {
+            '' { ‘(Default)’ }
+            default { $value.Name }
+        }
+        #If ($propertyType -eq "Binary") { $value.Value = [System.Text.Encoding]::Unicode.GetBytes($value.Value + "000") ; $value.Value.Replace(" ",",")}
+        #https://stackoverflow.com/questions/54543075/how-to-convert-a-hash-string-to-byte-array-in-powershell
+        If ($propertyType -eq "Binary") {$hashByteArray = [byte[]] ($value.Value -replace '..', '0x$&,' -split ',' -ne '');New-ItemProperty -Path $path -Name $Regname -Value $hashByteArray  -PropertyType $propertyType -Force}
+        else{
+
+        New-ItemProperty -Path $path -Name $Regname -Value $value.Value -PropertyType $propertyType -Force}
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+    }
+
+   # New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure'
+   # New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols'
+   # New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols\\WMIDCOM'
+  #  New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols\\WMIDCOM\\1.0'
     #windows10
-    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols\\WMIDCOM\\1.0' -force -Name 'dllEntryPoint' -Value 'MI_Application_InitializeV1' -PropertyType 'String' 
-    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols\\WMIDCOM\\1.0' -force -Name 'dllpath' -Value 'c:\\Program Files\\PowerShell\\7\\mi.dll' -PropertyType 'String' 
+  #  New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols\\WMIDCOM\\1.0' -force -Name 'dllEntryPoint' -Value 'MI_Application_InitializeV1' -PropertyType 'String' 
+ #   New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols\\WMIDCOM\\1.0' -force -Name 'dllpath' -Value 'c:\\Program Files\\PowerShell\\7\\mi.dll' -PropertyType 'String' 
 
-    New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols\\WMIRM'
-    New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols\\WMIRM\\1.0'
+ #   New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols\\WMIRM'
+  #  New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols\\WMIRM\\1.0'
 
-    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols\\WMIRM\\1.0' -force -Name 'dllEntryPoint' -Value 'MI_Application_InitializeV1' -PropertyType 'String' 
-    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols\\WMIRM\\1.0' -force -Name 'dllpath' -Value 'c:\\windows\\system32\\WsmSvc.dll' -PropertyType 'String' 
+  #  New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols\\WMIRM\\1.0' -force -Name 'dllEntryPoint' -Value 'MI_Application_InitializeV1' -PropertyType 'String' 
+  #  New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols\\WMIRM\\1.0' -force -Name 'dllpath' -Value 'c:\\windows\\system32\\WsmSvc.dll' -PropertyType 'String' 
 
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'builtin' -PropertyType 'String' 
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'builtin' -PropertyType 'String' 
+  #  New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'builtin' -PropertyType 'String' 
+  #  New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'builtin' -PropertyType 'String' 
 
 
     #REGEDIT4
