@@ -305,7 +305,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Copy-Item -Path "$env:TEMP\\wow64_*\\powershell.exe" -Destination "$env:SystemRoot\\syswow64\\WindowsPowerShell\\v1.0\\powershell51.exe"
     Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*"  
     
-    $dll_or_exe = @('wmitomi.dll','wsmsvc.dll','wmidcom.dll','pspluginwkr.dll')
+    $dll_or_exe = @('wmitomi.dll','wsmsvc.dll','wmidcom.dll','pspluginwkr.dll','mi.dll','miutils.dll')
     $cab = "$env:TEMP\\Windows6.1-KB3191566-x64.cab"
 
     foreach ($i in $dll_or_exe) {
