@@ -482,8 +482,8 @@ foreach ($key in $Xml.assembly.registryKeys.registryKey) {
     Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\wusa.exe" -Force
 
 
-    [Environment]::SetEnvironmentVariable("WUSADUMMY","1","Process"); [Environment]::SetEnvironmentVariable("WINEDLLOVERRIDES","wusa.exe=n","Process");
+    [Environment]::SetEnvironmentVariable("WUSADUMMY","1","Machine"); [Environment]::SetEnvironmentVariable("WINEDLLOVERRIDES","wusa.exe=n","Machine");
     Start-Process choco.exe -ArgumentList "install","obs","-y";
-    [Environment]::SetEnvironmentVariable("WUSADUMMY",$null,"Process");[Environment]::SetEnvironmentVariable("WINEDLLOVERRIDES",$null,"Process");
+    [Environment]::SetEnvironmentVariable("WUSADUMMY",$null,"Machine");[Environment]::SetEnvironmentVariable("WINEDLLOVERRIDES",$null,"Machine");
 
     Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
