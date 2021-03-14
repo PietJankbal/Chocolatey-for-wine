@@ -480,13 +480,15 @@ foreach ($key in $Xml.assembly.registryKeys.registryKey) {
 
     Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\wusa.exe" -Force
     Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\wusa.exe" -Force
+    Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\wusadummy.exe" -Force
 
     [Environment]::SetEnvironmentVariable("WUSADUMMY","1","Process")
 
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'wusa.exe' -Value 'native' -PropertyType 'String'
+    Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\wusadummy.exe" -Force
     Start-Process choco.exe -ArgumentList "install","obs","-y"
 
-    Remove-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'wusa.exe'
-    [Environment]::SetEnvironmentVariable("WUSADUMMY",$null,"Process")
+    Remove-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'wusadummy.exe'
+    Remove-Item "$env:winsysdir\\wusadummy.exe" -Force
     
     Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
