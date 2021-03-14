@@ -478,6 +478,12 @@ foreach ($key in $Xml.assembly.registryKeys.registryKey) {
 #KB2454826 KB2519277 KB2533552 KB2533623 KB2534366 KB2670838 kb2701373-v2-64bit KB2842230 KB2919442 KB2999226 KB3063858
 #kb4480955 KB4554364 KB4554364 KB4567512 KB976932 
 
-    Start-Job -InitializationScript { $env:WUSADUMMY = '1' } "choco install KB2454826 KB2519277 KB2533552 -y" | Receive-Job -Wait -AutoRemoveJob
+    Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\wusa.exe" -Force
+    Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\wusa.exe" -Force
+
+
+    [Environment]::SetEnvironmentVariable("WUSADUMMY","1","Process"); [Environment]::SetEnvironmentVariable("WINEDLLOVERRIDES","wusa.exe=n","Process");
+    Start-Process choco.exe -ArgumentList "install","obs","-y";
+    [Environment]::SetEnvironmentVariable("WUSADUMMY",$null,"Process");[Environment]::SetEnvironmentVariable("WINEDLLOVERRIDES",$null,"Process");
 
     Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
