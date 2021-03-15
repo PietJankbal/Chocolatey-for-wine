@@ -79,17 +79,16 @@ int __cdecl wmain(int argc, WCHAR *argv[])
     BOOL contains_noexit = 0; BOOL use_pwsh20 = 0;
     WCHAR envvar[MAX_PATH] = L"";
     const WCHAR *new_args[3];
-    WCHAR pwsh_pathW[MAX_PATH]; WCHAR pwsh20_pathW[MAX_PATH]; WCHAR dummyW[MAX_PATH];
+    WCHAR pwsh_pathW[MAX_PATH]; WCHAR pwsh20_pathW[MAX_PATH];
     WCHAR *bufW = NULL;
 
 
     if(!ExpandEnvironmentStringsW(L"%ProgramW6432%", pwsh_pathW, MAX_PATH+1)) goto failed; /* win32 only apparently, not supported... */
     if(!ExpandEnvironmentStringsW(L"%SystemRoot%", pwsh20_pathW, MAX_PATH+1)) goto failed; /* win32 only apparently, not supported... */
-    if(!ExpandEnvironmentStringsW(L"%SystemRoot%", dummyW, MAX_PATH+1)) goto failed; /* win32 only apparently, not supported... */
 
     lstrcatW(pwsh_pathW, L"\\Powershell\\7\\pwsh.exe"); lstrcatW(pwsh20_pathW, L"\\system32\\WindowsPowerShell\\v1.0\\powershell20.exe");
     /* I can also act as dummy program.... */
-    if ( (GetFileAttributesW( lstrcatW(dummyW,L"\\system32\\wusadummy.exe")) != INVALID_FILE_ATTRIBUTES ))
+    if ( wcsncmp  (  &argv[0][lstrlenW(argv[0]) - 5 ]       ,   L"l"                    ,1 ) )
         {fprintf(stderr, "This is wusa-dummy, installing nothing... \n"); return 0;}
     
     if ( (GetFileAttributesW(pwsh_pathW) != INVALID_FILE_ATTRIBUTES) )
