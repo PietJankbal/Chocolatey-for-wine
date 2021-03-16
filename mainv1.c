@@ -87,8 +87,8 @@ int __cdecl wmain(int argc, WCHAR *argv[])
     if(!ExpandEnvironmentStringsW(L"%SystemRoot%", pwsh20_pathW, MAX_PATH+1)) goto failed; /* win32 only apparently, not supported... */
 
     lstrcatW(pwsh_pathW, L"\\Powershell\\7\\pwsh.exe"); lstrcatW(pwsh20_pathW, L"\\system32\\WindowsPowerShell\\v1.0\\powershell20.exe");
-    /* I can also act as dummy program.... */
-    if ( wcsncmp  (  &argv[0][lstrlenW(argv[0]) - 5 ]       ,   L"l"                    ,1 ) )
+    /* I can also act as a dummy program as long as my exe-name doesn`t end with the letter "l" .... */
+    if ( wcsncmp  (  &argv[0][lstrlenW(argv[0]) - 5 ]  , L"l" , 1 ) )
         {fprintf(stderr, "This is wusa-dummy, installing nothing... \n"); return 0;}
     
     if ( (GetFileAttributesW(pwsh_pathW) != INVALID_FILE_ATTRIBUTES) )
