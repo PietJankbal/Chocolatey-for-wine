@@ -486,3 +486,4 @@ foreach ($key in $Xml.assembly.registryKeys.registryKey) {
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'wusa.exe' -Value 'native' -PropertyType 'String'
     Start-Process  "winecfg.exe" -Wait -ArgumentList "/v win81"
     Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
+    Start-Process $env:SystemDrive\\ConEmu\\ConEmu.exe -ArgumentList "-Title This is Powershell Core (pwsh.exe), not (!) powershell.exe -resetdefault -run pwsh.exe"
