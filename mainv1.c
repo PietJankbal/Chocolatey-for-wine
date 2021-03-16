@@ -206,7 +206,7 @@ already_installed:
     if(!cmd_idx || contains_noexit)
     {
         if(!use_pwsh20)
-             _wsystem(lstrcatW(lstrcatW(start_conemuW, L" -resetdefault -run pwsh.exe "), cmdlineW));
+             _wsystem(lstrcatW(lstrcatW(start_conemuW, L" -resetdefault -Title \"This is Powershell Core (pwsh.exe), not (!) powershell.exe\" -run pwsh.exe "), cmdlineW));
         else
              _wsystem(lstrcatW(lstrcatW(start_conemuW, L" -resetdefault -run powershell20.exe "), cmdlineW));
          return 0;
