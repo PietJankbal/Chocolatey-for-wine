@@ -484,6 +484,6 @@ foreach ($key in $Xml.assembly.registryKeys.registryKey) {
 #    Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\wusadummy.exe" -Force
 
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'wusa.exe' -Value 'native' -PropertyType 'String'
-    Start-Process  "winecfg.exe" -Wait -ArgumentList "/v win81"
+    #Start-Process  "winecfg.exe" -Wait -ArgumentList "/v win81"
     Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
     powershell.exe
