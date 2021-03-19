@@ -329,7 +329,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     
     
         #try write regkeys from manifest file
-    $Xml = [xml](Get-Content -Path "$env:SystemRoot\\syswow64\\$manifest")
+    $Xml = [xml](Get-Content -Path "$env:SystemRoot\\$sys32_or_syswow64\\$manifest")
 #Write the regkeys from manifest file
 #thanks some guy from freenode webchat channel powershell who wrote skeleton of this in 4 minutes...
 foreach ($key in $Xml.assembly.registryKeys.registryKey) {
