@@ -315,9 +315,16 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Copy-Item -Path "$env:TEMP\\amd64_*\\$i" -Destination "$env:SystemRoot\\system32\\$i"
     Copy-Item -Path "$env:TEMP\\wow64_*\\$i" -Destination "$env:SystemRoot\\syswow64\\$i"
     #also extract manifest
-    $relativePath = Get-Item wow64_*\$i | Resolve-Path -Relative
+
+
+    Function write_keys_from_manifest{
+    Param ($amd64_or_wow64, $sys32_or_syswow64, $runtime_system32)
+
+    #Write-Output "$Name's Average = $Avg, $Runs, $Outs"
+
+    $relativePath = Get-Item $amd64_or_wow64_*\$i | Resolve-Path -Relative
     $manifest = $relativePath.split('\')[1] + ".manifest"
-    Start-Process expand.exe -ArgumentList $cab,"-F:$manifest","$env:SystemRoot\\syswow64\\"
+    Start-Process expand.exe -ArgumentList $cab,"-F:$manifest","$env:SystemRoot\\$sys32_or_syswow64\\"
     $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
     
     
@@ -349,57 +356,17 @@ foreach ($key in $Xml.assembly.registryKeys.registryKey) {
         #https://stackoverflow.com/questions/54543075/how-to-convert-a-hash-string-to-byte-array-in-powershell
         If ($propertyType -eq "Binary") {$hashByteArray = [byte[]] ($value.Value -replace '..', '0x$&,' -split ',' -ne '');New-ItemProperty -Path $path -Name $Regname -Value $hashByteArray  -PropertyType $propertyType -Force}
         else{
-        $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\system32" #????syswow64??
+        $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\$runtime_system32" #????syswow64??
 
         New-ItemProperty -Path $path -Name $Regname -Value $value.Value -PropertyType $propertyType -Force}
     }
 }
 
+}  
     
-    
-
-    $relativePath = Get-Item amd64_*\$i | Resolve-Path -Relative
-    $manifest = $relativePath.split('\')[1] + ".manifest"
-    Start-Process expand.exe -ArgumentList $cab,"-F:$manifest","$env:SystemRoot\\system32\\"
-    $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
-
-    Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*" 
-    
-
-  
-        #try write regkeys from manifest file
-    $Xml = [xml](Get-Content -Path "$env:SystemRoot\\system32\\$manifest")
-
-#thanks some guy from freenode webchat channel powershell who wrote skeleton of this in 4 minutes...
-foreach ($key in $Xml.assembly.registryKeys.registryKey) {
-    $path = 'Registry::{0}' -f $key.keyName
-    if (-not (Test-Path -Path $path)) {
-        New-Item -Path $path -ItemType Key -Force
-    }
-
-    foreach ($value in $key.registryValue) {
-        $propertyType = switch ($value.valueType) {
-            'REG_SZ'         { 'String' }
-            'REG_BINARY'     { 'Binary' }
-            'REG_DWORD'      { 'DWORD'  }
-	    'REG_EXPAND_SZ'  { 'ExpandString' } 
-	    'REG_MULTI_SZ'   { 'MultiString'  } 
-	    'REG_QWORD'      { 'QWord' }
-            'REG_NONE'       { '' } 
-        }
-        $Regname = switch ($value.Name) {
-            '' { ‘(Default)’ }
-            default { $value.Name }
-        }
-        #If ($propertyType -eq "Binary") { $value.Value = [System.Text.Encoding]::Unicode.GetBytes($value.Value + "000") ; $value.Value.Replace(" ",",")}
-        #https://stackoverflow.com/questions/54543075/how-to-convert-a-hash-string-to-byte-array-in-powershell
-        If ($propertyType -eq "Binary") {$hashByteArray = [byte[]] ($value.Value -replace '..', '0x$&,' -split ',' -ne '');New-ItemProperty -Path $path -Name $Regname -Value $hashByteArray  -PropertyType $propertyType -Force}
-        else{
-        $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\system32"
-	
-        New-ItemProperty -Path $path -Name $Regname -Value $value.Value -PropertyType $propertyType -Force}
-    }
-}
+     #Param ($amd64_or_wow64, $sys32_or_syswow64, $runtime_system32)
+     write_keys_from_manifest(amd64, system32, system32)  
+     write_keys_from_manifest(wow64, syswow64, system32)  #what should $(runtime.system32) be here, maybe syswow64???????????
 
 
 
