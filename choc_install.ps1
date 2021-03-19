@@ -365,8 +365,8 @@ foreach ($key in $Xml.assembly.registryKeys.registryKey) {
 }  
     
      #Param ($amd64_or_wow64, $sys32_or_syswow64, $runtime_system32)
-     write_keys_from_manifest(amd64, system32, system32)  
-     write_keys_from_manifest(wow64, syswow64, system32)  #what should $(runtime.system32) be here, maybe syswow64???????????
+     write_keys_from_manifest amd64  system32 system32   
+     write_keys_from_manifest wow64  syswow64 system32  #what should $(runtime.system32) be here, maybe syswow64???????????
 
 
 
