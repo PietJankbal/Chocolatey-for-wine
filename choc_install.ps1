@@ -322,7 +322,8 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
     #Write-Output "$Name's Average = $Avg, $Runs, $Outs"
 
-    $relativePath = Get-Item $amd64_or_wow64_*\$filetoget | Resolve-Path -Relative
+    #$relativePath = Get-Item $amd64_or_wow64_*\$filetoget | Resolve-Path -Relative
+    $relativePath = Resolve-Path  ($amd64_or_wow64 + "_*\$filetoget") -Relative; $relativePath ;
     $manifest = $relativePath.split('\')[1] + ".manifest"
     Start-Process expand.exe -ArgumentList $cab,"-F:$manifest","$env:SystemRoot\\$sys32_or_syswow64\\"
     $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
