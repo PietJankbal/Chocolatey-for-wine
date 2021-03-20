@@ -114,8 +114,8 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
     Start-Process  "winecfg.exe" -Wait -ArgumentList "/v win2003"
 
-    #Start-Process  "windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe" -Wait -ArgumentList "/q /passive /nobackup"
-    #$w2003id = (Get-Process windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c).id; Wait-Process -Id $w2003id
+    Start-Process  "windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe" -Wait -ArgumentList "/q /passive /nobackup"
+    $w2003id = (Get-Process windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c).id; Wait-Process -Id $w2003id
     Start-Process  "winecfg.exe" -Wait -ArgumentList "/v win7"
     $winecfgid = (Get-Process winecfg).id; Wait-Process -Id $winecfgid
 
@@ -345,11 +345,11 @@ if(Test-Path 'env:SCOOP_INSTALL'){
         New-Item -Path $finalpath -ItemType directory -Force}
 
 
-    $absPath = Get-Item $amd64_or_wow64_*\$filetoget
+    $absPath = Get-Item $amd64_or_wow64 + "_*\$filetoget"
      Write-Host Abspath is $absPath
      Write-Host finalpath is $finalpath
      
-    Copy-Item -Path "$absPath" -Destination "$finalpath\\" -Force
+    Copy-Item -Path "$absPath" -Destination "$finalpath" -Force
 #    Copy-Item -Path "$env:TEMP\\wow64_*\\$filename" -Destination "$finalpath\\$filename"
 
     
