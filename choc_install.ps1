@@ -306,7 +306,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Copy-Item -Path "$env:TEMP\\wow64_*\\powershell.exe" -Destination "$env:SystemRoot\\syswow64\\WindowsPowerShell\\v1.0\\powershell51.exe"
     Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*"  
     
-    $dll_or_exe = @('wmitomi.dll','wsmsvc.dll','wmidcom.dll','pspluginwkr.dll','mi.dll','miutils.dll','WSMan.Format.ps1xml')
+    $dll_or_exe = @('wmitomi.dll','wsmsvc.dll','wmidcom.dll','pspluginwkr.dll','mi.dll','miutils.dll','Certificate.format.ps1xml')
     $cab = "$env:TEMP\\Windows6.1-KB3191566-x64.cab"
 
     foreach ($i in $dll_or_exe) {
@@ -339,7 +339,8 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     if (-not (Test-Path -Path $finalpath )) {
         New-Item -Path $finalpath -ItemType directory -Force}
 	
-    Copy-Item -Path "$env:TEMP\\$amd64_or_wow64_*\\$filename" -Destination "$finalpath" -Force
+    $tmppath = $relativePath.split('\')[1] 
+    Copy-Item -Path "$env:TEMP\\$tmppath\\$filename" -Destination "$finalpath\\$filename" -Force
 #    Copy-Item -Path "$env:TEMP\\wow64_*\\$filename" -Destination "$finalpath\\$filename"
 
     }
