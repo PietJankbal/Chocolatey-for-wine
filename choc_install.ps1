@@ -366,6 +366,12 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 #thanks some guy from freenode webchat channel powershell who wrote skeleton of this in 4 minutes...
 foreach ($key in $Xml.assembly.registryKeys.registryKey) {
     $path = 'Registry::{0}' -f $key.keyName
+    
+    
+        if($amd64_or_wow64 -ne 'amd64')
+                {$path = $path -replace 'HKEY_LOCAL_MACHINE\\SOFTWARE\\','HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\'
+                 $path = $path -replace 'HKEY_CLASSES_ROOT\\','HKEY_CLASSES_ROOT\\Wow6432Node\\'}
+    
     if (-not (Test-Path -Path $path)) {
         New-Item -Path $path -ItemType Key -Force
     }
@@ -389,11 +395,6 @@ foreach ($key in $Xml.assembly.registryKeys.registryKey) {
         If ($propertyType -eq "Binary") {$hashByteArray = [byte[]] ($value.Value -replace '..', '0x$&,' -split ',' -ne '');New-ItemProperty -Path $path -Name $Regname -Value $hashByteArray  -PropertyType $propertyType -Force}
         else{
         $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\$runtime_system32" #????syswow64??
-
-
-        if($amd64_or_wow64 -ne 'amd64')
-                {$value.Value = $value.Value -replace 'HKEY_LOCAL_MACHINE\\SOFTWARE\\','HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\'
-                 $value.Value = $value.Value -replace 'HKEY_CLASSES_ROOT\\','HKEY_CLASSES_ROOT\\Wow6432Node\\'}
 
         New-ItemProperty -Path $path -Name $Regname -Value $value.Value -PropertyType $propertyType -Force}
     }
