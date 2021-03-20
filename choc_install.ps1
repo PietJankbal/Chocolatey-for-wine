@@ -345,7 +345,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
         New-Item -Path $finalpath -ItemType directory -Force}
 
 
-    $absPath =  Resolve-Path  $amd64_or_wow64_*\$filetoget
+    $absPath =  Resolve-Path  ($amd64_or_wow64 + "_*\$filetoget") #$amd64_or_wow64_*\$filetoget
      Write-Host Abspath is $absPath.Path
      Write-Host finalpath is $finalpath
      
