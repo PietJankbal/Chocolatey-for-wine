@@ -306,14 +306,14 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Copy-Item -Path "$env:TEMP\\wow64_*\\powershell.exe" -Destination "$env:SystemRoot\\syswow64\\WindowsPowerShell\\v1.0\\powershell51.exe"
     Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*"  
     
-    $dll_or_exe = @('wmitomi.dll','wsmsvc.dll','wmidcom.dll','pspluginwkr.dll','mi.dll','miutils.dll')
+    $dll_or_exe = @('wmitomi.dll','wsmsvc.dll','wmidcom.dll','pspluginwkr.dll','mi.dll','miutils.dll','WSMan.Format.ps1xml')
     $cab = "$env:TEMP\\Windows6.1-KB3191566-x64.cab"
 
     foreach ($i in $dll_or_exe) {
     Start-Process expand.exe -ArgumentList $cab,"-F:$i","$env:TEMP"
     $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
-    Copy-Item -Path "$env:TEMP\\amd64_*\\$i" -Destination "$env:SystemRoot\\system32\\$i"
-    Copy-Item -Path "$env:TEMP\\wow64_*\\$i" -Destination "$env:SystemRoot\\syswow64\\$i"
+#    Copy-Item -Path "$env:TEMP\\amd64_*\\$i" -Destination "$env:SystemRoot\\system32\\$i"
+#    Copy-Item -Path "$env:TEMP\\wow64_*\\$i" -Destination "$env:SystemRoot\\syswow64\\$i"
     #also extract manifest
 
 
@@ -328,8 +328,29 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
     
     
-        #try write regkeys from manifest file
     $Xml = [xml](Get-Content -Path "$env:SystemRoot\\$sys32_or_syswow64\\$manifest")
+    #copy files from manifest
+    foreach ($file in  $Xml.assembly.file) {
+    $destpath = '{0}' -f $file.destinationpath
+    $filename = '{0}' -f $file.name
+
+    $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\$sys32_or_syswow64"
+    #$filename
+    if (-not (Test-Path -Path $finalpath )) {
+        New-Item -Path $finalpath -ItemType directory -Force}
+	
+    Copy-Item -Path "$env:TEMP\\$amd64_or_wow64_*\\$filename" -Destination "$finalpath\\$filename"
+#    Copy-Item -Path "$env:TEMP\\wow64_*\\$filename" -Destination "$finalpath\\$filename"
+
+    }
+    
+    
+    
+    
+    
+    
+        #try write regkeys from manifest file
+
 #Write the regkeys from manifest file
 #thanks some guy from freenode webchat channel powershell who wrote skeleton of this in 4 minutes...
 foreach ($key in $Xml.assembly.registryKeys.registryKey) {
