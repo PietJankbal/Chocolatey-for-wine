@@ -343,9 +343,11 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     #$filename
     if (-not (Test-Path -Path $finalpath )) {
         New-Item -Path $finalpath -ItemType directory -Force}
-	
+
+
+    $absPath = Get-Item $amd64_or_wow64_*\$filetoget
      
-    Copy-Item -Path "$env:TEMP\\$relativePath" -Destination "$finalpath\\" -Force
+    Copy-Item -Path "$absPath" -Destination "$finalpath\\" -Force
 #    Copy-Item -Path "$env:TEMP\\wow64_*\\$filename" -Destination "$finalpath\\$filename"
 
     
