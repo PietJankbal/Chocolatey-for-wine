@@ -306,7 +306,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Copy-Item -Path "$env:TEMP\\wow64_*\\powershell.exe" -Destination "$env:SystemRoot\\syswow64\\WindowsPowerShell\\v1.0\\powershell51.exe"
     Remove-Item -Recurse "$env:TEMP\\amd64_*"  ; Remove-Item -Recurse "$env:TEMP\\wow64_*"  
     
-    $dll_or_exe = @('wmitomi.dll','wsmsvc.dll','wmidcom.dll','pspluginwkr.dll','mi.dll','miutils.dll','Certificate.format.ps1xml')
+    $dll_or_exe = @('wmitomi.dll','wsmsvc.dll','wmidcom.dll','pspluginwkr.dll','mi.dll','miutils.dll','Certificate.format.ps1xml','WSMan.Format.ps1xml','PSDiagnostics.psd1')
     $cab = "$env:TEMP\\Windows6.1-KB3191566-x64.cab"
 
     foreach ($i in $dll_or_exe) {
@@ -318,11 +318,11 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
 
     Function write_keys_from_manifest{
-    Param ($amd64_or_wow64, $sys32_or_syswow64, $runtime_system32)
+    Param ($filetoget, $amd64_or_wow64, $sys32_or_syswow64, $runtime_system32)
 
     #Write-Output "$Name's Average = $Avg, $Runs, $Outs"
 
-    $relativePath = Get-Item $amd64_or_wow64_*\$i | Resolve-Path -Relative
+    $relativePath = Get-Item $amd64_or_wow64_*\$filetoget | Resolve-Path -Relative
     $manifest = $relativePath.split('\')[1] + ".manifest"
     Start-Process expand.exe -ArgumentList $cab,"-F:$manifest","$env:SystemRoot\\$sys32_or_syswow64\\"
     $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
@@ -330,17 +330,22 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     
     $Xml = [xml](Get-Content -Path "$env:SystemRoot\\$sys32_or_syswow64\\$manifest")
     #copy files from manifest
-    foreach ($file in  $Xml.assembly.file) {
-    $destpath = '{0}' -f $file.destinationpath
-    $filename = '{0}' -f $file.name
+#    foreach ($file in  $Xml.assembly.file) {
+#    $destpath = '{0}' -f $file.destinationpath
+#    $filename = '{0}' -f $file.name
+
+    # $Xml.assembly.file | Where-Object -Property name -eq -Value "profile.ps1"
+      $select= $Xml.assembly.file | Where-Object -Property name -eq -Value $filetoget
+      $destpath = $select.destinationpath
+      $filename = $select.name
 
     $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\$sys32_or_syswow64"
     #$filename
     if (-not (Test-Path -Path $finalpath )) {
         New-Item -Path $finalpath -ItemType directory -Force}
 	
-    $tmppath = $relativePath.split('\')[1] 
-    Copy-Item -Path "$env:TEMP\\$tmppath\\$filename" -Destination "$finalpath\\$filename" -Force
+     
+    Copy-Item -Path "$env:TEMP\\$relativePath" -Destination "$finalpath\\" -Force
 #    Copy-Item -Path "$env:TEMP\\wow64_*\\$filename" -Destination "$finalpath\\$filename"
 
     }
@@ -386,9 +391,9 @@ foreach ($key in $Xml.assembly.registryKeys.registryKey) {
 
 }  
     
-     #Param ($amd64_or_wow64, $sys32_or_syswow64, $runtime_system32)
-     write_keys_from_manifest amd64 system32 system32   
-     write_keys_from_manifest wow64 syswow64 system32  #what should $(runtime.system32) be here, maybe syswow64???????????
+     #Param ($filetoget $amd64_or_wow64, $sys32_or_syswow64, $runtime_system32)
+     write_keys_from_manifest $i amd64 system32 system32   
+     write_keys_from_manifest $i wow64 syswow64 system32  #what should $(runtime.system32) be here, maybe syswow64???????????
 
 
 
