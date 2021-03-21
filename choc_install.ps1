@@ -639,7 +639,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 #'psmodulediscoveryprovider.dll',`
 #'psmodulediscoveryprovider.mof',`
 #'register-cimprovider.exe',`
-#'pscustomsetupinstaller.exe'`
+'pscustomsetupinstaller.exe'`
 )
 
     $cab = "$env:TEMP\\Windows6.1-KB3191566-x64.cab"
