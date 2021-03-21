@@ -371,8 +371,8 @@ foreach ($key in $Xml.assembly.registryKeys.registryKey) {
     
     
         if($amd64_or_wow64 -ne 'amd64')
-                {$path = $path -replace 'HKEY_LOCAL_MACHINE\SOFTWARE','HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node'
-                 $path = $path -replace 'HKEY_CLASSES_ROOT','HKEY_CLASSES_ROOT\Wow6432Node'}
+                {$path = $path -replace 'HKEY_LOCAL_MACHINE\\SOFTWARE','HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node'
+                 $path = $path -replace 'HKEY_CLASSES_ROOT','HKEY_CLASSES_ROOT\\Wow6432Node'}
     
     if (-not (Test-Path -Path $path)) {
         New-Item -Path $path -ItemType Key -Force
