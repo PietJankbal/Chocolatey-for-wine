@@ -186,8 +186,8 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Remove-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.5' -Recurse
     Remove-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v4'  -Recurse  
 
-    Remove-Item -Path 'HKLM:\\Software\\ Wow6432Node\\Microsoft\\NET Framework Setup\\NDP\\v3.5' -Recurse
-    Remove-Item -Path 'HKLM:\\Software\\ Wow6432Node\\Microsoft\\NET Framework Setup\\NDP\\v4'  -Recurse  
+    Remove-Item -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\NET Framework Setup\\NDP\\v3.5' -Recurse
+    Remove-Item -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\NET Framework Setup\\NDP\\v4'  -Recurse  
 
     Remove-Item -Path "$env:SystemRoot\\SysWOW64\\mscoree.dll" -Force
     Remove-Item -Path "$env:SystemRoot\\System32\\mscoree.dll" -Force
@@ -371,8 +371,8 @@ foreach ($key in $Xml.assembly.registryKeys.registryKey) {
     
     
         if($amd64_or_wow64 -ne 'amd64')
-                {$path = $path -replace 'HKEY_LOCAL_MACHINE\\SOFTWARE','HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node'
-                 $path = $path -replace 'HKEY_CLASSES_ROOT','HKEY_CLASSES_ROOT\\Wow6432Node'}
+                {$path = $path -replace 'HKEY_LOCAL_MACHINE\\SOFTWARE','HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node'
+                 $path = $path -replace 'HKEY_CLASSES_ROOT','HKEY_CLASSES_ROOT\Wow6432Node'}
     
     if (-not (Test-Path -Path $path)) {
         New-Item -Path $path -ItemType Key -Force
