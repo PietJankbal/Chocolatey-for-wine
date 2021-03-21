@@ -350,7 +350,10 @@ if(Test-Path 'env:SCOOP_INSTALL'){
      Write-Host Abspath is $absPath.Path
      Write-Host finalpath is $finalpath
      
-    Copy-Item -Path $absPath.Path -Destination $finalpath -Force
+    if ($absPath.Path){
+        Copy-Item -Path $absPath.Path -Destination $finalpath -Force}
+    else
+        Write-Host 'Empty Path for $manifest'
 #    Copy-Item -Path "$env:TEMP\\wow64_*\\$filename" -Destination "$finalpath\\$filename"
 
     
