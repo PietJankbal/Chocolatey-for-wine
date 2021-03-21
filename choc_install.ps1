@@ -323,7 +323,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     #Write-Output "$Name's Average = $Avg, $Runs, $Outs"
 
     #$relativePath = Get-Item $amd64_or_wow64_*\$filetoget | Resolve-Path -Relative
-    $relativePath = Resolve-Path  ($amd64_or_wow64 + "_*\$filetoget") -Relative; $relativePath ;
+    $relativePath = Resolve-Path  ($amd64_or_wow64 + "_*\$filetoget") -Relative; if (-not ($relativePath)) {Write-Host "empty path for $amd64_or_wow64 $filetoget"; return}
     $manifest = $relativePath.split('\')[1] + ".manifest"
     Start-Process expand.exe -ArgumentList $cab,"-F:$manifest","$env:SystemRoot\\$sys32_or_syswow64\\"
     $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
@@ -350,10 +350,9 @@ if(Test-Path 'env:SCOOP_INSTALL'){
      Write-Host Abspath is $absPath.Path
      Write-Host finalpath is $finalpath
      
-    if ($absPath.Path){
-        Copy-Item -Path $absPath.Path -Destination $finalpath -Force}
-    else{
-        Write-Host 'Empty Path for $manifest'}
+
+        Copy-Item -Path $absPath.Path -Destination $finalpath -Force
+
 #    Copy-Item -Path "$env:TEMP\\wow64_*\\$filename" -Destination "$finalpath\\$filename"
 
     
@@ -372,8 +371,8 @@ foreach ($key in $Xml.assembly.registryKeys.registryKey) {
     
     
         if($amd64_or_wow64 -ne 'amd64')
-                {$path = $path -replace 'HKEY_LOCAL_MACHINE\\SOFTWARE\\','HKEY_LOCAL_MACHINE\\SOFTWARE\\Wow6432Node\\'
-                 $path = $path -replace 'HKEY_CLASSES_ROOT\\','HKEY_CLASSES_ROOT\\Wow6432Node\\'}
+                {$path = $path -replace 'HKEY_LOCAL_MACHINE\SOFTWARE','HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node'
+                 $path = $path -replace 'HKEY_CLASSES_ROOT','HKEY_CLASSES_ROOT\Wow6432Node'}
     
     if (-not (Test-Path -Path $path)) {
         New-Item -Path $path -ItemType Key -Force
