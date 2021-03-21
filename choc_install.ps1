@@ -677,7 +677,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
     $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\$sys32_or_syswow64"
     if($amd64_or_wow64 -ne 'amd64'){$finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramFiles"}
-    else{$finalpath = $finalpath -replace ([Regex]::Escape('$(programFiles)')),"$env:ProgramW6432"}
+    else{$finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramW6432"}
     #$(runtime.programFiles) $(runtime.windows) $(runtime.wbem)
     #$filename
     if (-not (Test-Path -Path $finalpath )) {
