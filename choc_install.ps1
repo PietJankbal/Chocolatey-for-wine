@@ -639,7 +639,57 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 'psmodulediscoveryprovider.dll',`
 'psmodulediscoveryprovider.mof',`
 'register-cimprovider.exe',`
-'pscustomsetupinstaller.exe'`
+'pscustomsetupinstaller.exe'`,`
+#msil manifest
+'microsoft.data.edm.powershell.dll',`
+'microsoft.data.odata.powershell.dll',`
+'microsoft.data.services.powershell.dll',`
+'microsoft.data.services.client.powershell.dll',`
+'microsoft.management.infrastructure.dll',`
+'microsoft.management.odata.dll',`
+'microsoft.management.infrastructure.cimcmdlets.dll',`
+'dscfiledownloadmanager.psd1',`
+'microsoft.powershell.dsc.filedownloadmanager.dll',`
+'microsoft.powershell.diagnostics.activities.dll',`
+'microsoft.powershell.activities.dll',`
+'microsoft.powershell.cmdletization.odata.dll',`
+'microsoft.powershell.commands.management.dll',`
+'microsoft.powershell.commands.utility.dll',`
+'microsoft.powershell.consolehost.dll',`
+'microsoft.powershell.core.activities.dll',`
+'microsoft.powershell.editor.dll',`
+'microsoft.powershell.gpowershell.dll',`
+'microsoft.powershell.graphicalhost.dll',`
+'microsoft.powershell.isecommon.dll',`
+'localaccounts.format.ps1xml',`
+'microsoft.powershell.localaccounts.dll',`
+'microsoft.powershell.localaccounts.psd1',`
+'microsoft.powershell.scheduledjob.dll',`
+'microsoft.powershell.security.dll',`
+'microsoft.powershell.security.activities.dll',`
+'microsoft.powershell.utility.activities.dll',`
+'microsoft.powershell.management.activities.dll',`
+'microsoft.powershell.commands.diagnostics.dll',`
+'microsoft.powershell.workflow.servicecore.dll',`
+'psdsccomplianceserver.mfl',`
+'psdscpullserver.mfl',`
+'psdscserverevents.dll.mui',`
+'microsoft.windows.dsc.coreconfproviders.dll',`
+'microsoft.wsman.management.dll',`
+'microsoft.wsman.management.activities.dll',`
+'microsoft.wsman.runtime.dll',`
+'policy.1.0.microsoft.powershell.commands.management.config',`
+'policy.1.0.microsoft.powershell.commands.management.dll',`
+'policy.1.0.microsoft.powershell.consolehost.config',`
+'policy.1.0.microsoft.powershell.consolehost.dll',`
+'policy.1.0.microsoft.powershell.commands.utility.config',`
+'policy.1.0.microsoft.powershell.commands.utility.dll',`
+'policy.1.0.microsoft.powershell.security.config',`
+'policy.1.0.microsoft.powershell.security.dll',`
+'policy.1.0.system.management.automation.config',`
+'policy.1.0.system.management.automation.dll',`
+'system.management.automation.dll',`
+'system.spatial.powershell.dll'`
 )
 
     $cab = "$env:TEMP\\Windows6.1-KB3191566-x64.cab"
@@ -672,7 +722,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
     # $Xml.assembly.file | Where-Object -Property name -eq -Value "profile.ps1"
       $select= $Xml.assembly.file | Where-Object -Property name -eq -Value $filetoget
-      $destpath = $select.destinationpath
+      $destpath = $select.destinationpath;  if (-not ($destpath)){Write-Host 'possible error! destpath is null for $manifest' }
       $filename = $select.name
 
     $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\$sys32_or_syswow64"
@@ -745,7 +795,7 @@ foreach ($key in $Xml.assembly.registryKeys.registryKey) {
      #Param ($filetoget $amd64_or_wow64, $sys32_or_syswow64, $runtime_system32)
      write_keys_from_manifest $i amd64 system32 system32   
      write_keys_from_manifest $i wow64 syswow64 system32  #what should $(runtime.system32) be here, maybe syswow64???????????
-
+     write_keys_from_manifest $i msil system32 system32  #????what should $(runtime.system32) be here, if any
 
 
 
