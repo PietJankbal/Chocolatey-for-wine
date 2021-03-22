@@ -639,8 +639,8 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 'psmodulediscoveryprovider.dll',`
 'psmodulediscoveryprovider.mof',`
 'register-cimprovider.exe',`
-'pscustomsetupinstaller.exe'`,`#now follows msil manifests
-'microsoft.data.edm.powershell.dll',`
+'pscustomsetupinstaller.exe'`,`
+<# now follows msil manifests #>'microsoft.data.edm.powershell.dll',`
 'microsoft.data.odata.powershell.dll',`
 'microsoft.data.services.powershell.dll',`
 'microsoft.data.services.client.powershell.dll',`
