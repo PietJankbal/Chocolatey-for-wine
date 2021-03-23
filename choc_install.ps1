@@ -693,9 +693,11 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
     $cab = "$env:TEMP\\Windows6.1-KB3191566-x64.cab"
 
-    foreach ($i in $dll_or_exe) {
-    Start-Process expand.exe -ArgumentList $cab,"-F:$i","$env:TEMP"
+    Start-Process expand.exe -ArgumentList $cab,"-F:*","$env:TEMP"
     $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
+
+    foreach ($i in $dll_or_exe) {
+
 #    Copy-Item -Path "$env:TEMP\\amd64_*\\$i" -Destination "$env:SystemRoot\\system32\\$i"
 #    Copy-Item -Path "$env:TEMP\\wow64_*\\$i" -Destination "$env:SystemRoot\\syswow64\\$i"
     #also extract manifest
@@ -709,11 +711,9 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     #$relativePath = Get-Item $amd64_or_wow64_*\$filetoget | Resolve-Path -Relative
     $relativePath = Resolve-Path  ($amd64_or_wow64 + "_*\$filetoget") -Relative; if (-not ($relativePath)) {Write-Host "empty path for $amd64_or_wow64 $filetoget"; return}
     $manifest = $relativePath.split('\')[1] + ".manifest"
-    Start-Process expand.exe -ArgumentList $cab,"-F:$manifest","$env:SystemRoot\\$sys32_or_syswow64\\"
-    $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
+  
     
-    
-    $Xml = [xml](Get-Content -Path "$env:SystemRoot\\$sys32_or_syswow64\\$manifest")
+    $Xml = [xml](Get-Content -Path "$env:TEMP\$manifest")
     #copy files from manifest
 #    foreach ($file in  $Xml.assembly.file) {
 #    $destpath = '{0}' -f $file.destinationpath
