@@ -721,7 +721,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
     # $Xml.assembly.file | Where-Object -Property name -eq -Value "profile.ps1"
       $select= $Xml.assembly.file | Where-Object -Property name -eq -Value $filetoget
-      $destpath = $select.destinationpath;  if (-not ($destpath)){Write-Host 'possible error! destpath is null for $manifest' }
+      $destpath = $select.destinationpath;  if (-not ($destpath)){Write-Host "possible error! destpath is null for $manifest"; $destpath = "c:\\" }
       $filename = $select.name
 
     $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\$sys32_or_syswow64"
