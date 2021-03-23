@@ -709,7 +709,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     #Write-Output "$Name's Average = $Avg, $Runs, $Outs"
 
     #$relativePath = Get-Item $amd64_or_wow64_*\$filetoget | Resolve-Path -Relative
-    $relativePath = Resolve-Path  ($amd64_or_wow64 + "_*\$filetoget") -Relative; if (-not ($relativePath)) {Write-Host "empty path for $amd64_or_wow64 $filetoget"; return}
+    $relativePath = Resolve-Path  ($amd64_or_wow64 + "_*\$filetoget") -Relative; if (-not ($relativePath)) {Write-Host "empty path for $amd64_or_wow64 $filetoget"; continue}
     $manifest = $relativePath.split('\')[1] + ".manifest"
   
     
