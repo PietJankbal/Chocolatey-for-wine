@@ -1080,7 +1080,7 @@ $msil_files = (`
    #Write the regkeys from manifest file
    #thanks some guy from freenode webchat channel powershell who wrote skeleton of this in 4 minutes...
 #if(0)
-{   foreach ($key in $Xml.assembly.registryKeys.registryKey) {
+   foreach ($key in $Xml.assembly.registryKeys.registryKey) {
     $path = 'Registry::{0}' -f $key.keyName
     
     
@@ -1113,7 +1113,7 @@ $msil_files = (`
         $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\$runtime_system32" #????syswow64??
 
         New-ItemProperty -Path $path -Name $Regname -Value $value.Value -PropertyType $propertyType -Force}
-} #end if(0)
+ #end if(0)
 
 }
 }
