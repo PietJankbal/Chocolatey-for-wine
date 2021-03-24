@@ -724,6 +724,18 @@ if(Test-Path 'env:SCOOP_INSTALL'){
       $destpath = $select.destinationpath;  if (-not ($destpath)){Write-Host "possible error! destpath is null for $manifest"; $destpath = "c:\\" }
       $filename = $select.name
 
+
+    #$a.SubString(0,140)
+#$day = 3
+
+#    switch ( $day )
+ #   {
+#       0 { $result = 'Sunday'    }
+ #       1 { $result = 'Monday'    }
+
+#    }
+
+
     $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\$sys32_or_syswow64"
     if($amd64_or_wow64 -ne 'amd64'){$finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramFiles"}
     else{$finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramW6432"}
