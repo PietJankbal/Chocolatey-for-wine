@@ -639,7 +639,10 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 'psmodulediscoveryprovider.dll',`
 'psmodulediscoveryprovider.mof',`
 'register-cimprovider.exe',`
-'pscustomsetupinstaller.exe',`
+'pscustomsetupinstaller.exe'`
+)
+
+$msil_files = (`
 <# now follows msil manifests #>'microsoft.data.edm.powershell.dll',`
 'microsoft.data.odata.powershell.dll',`
 'microsoft.data.services.powershell.dll',`
@@ -696,7 +699,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Start-Process expand.exe -ArgumentList $cab,"-F:*","$env:TEMP"
     $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
 
-    foreach ($i in $dll_or_exe) {
+
 
 #    Copy-Item -Path "$env:TEMP\\amd64_*\\$i" -Destination "$env:SystemRoot\\system32\\$i"
 #    Copy-Item -Path "$env:TEMP\\wow64_*\\$i" -Destination "$env:SystemRoot\\syswow64\\$i"
@@ -724,21 +727,18 @@ if(Test-Path 'env:SCOOP_INSTALL'){
       $destpath = $select.destinationpath;  if (-not ($destpath)){Write-Host "possible error! destpath is null for $manifest"; $destpath = "c:\\" }
       $filename = $select.name
 
+    
 
-    #$a.SubString(0,140)
-#$day = 3
+     switch ( $manifest.SubString(0,2) )
+    {
+         'amd' { $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\system32"
+	         $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramFiles"   }
+         'wow' { $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\syswow64"
+	         $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramW6432" }
+	 'msi' { $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\system32"  }#????
+    }
 
-#    switch ( $day )
- #   {
-#       0 { $result = 'Sunday'    }
- #       1 { $result = 'Monday'    }
 
-#    }
-
-
-    $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\$sys32_or_syswow64"
-    if($amd64_or_wow64 -ne 'amd64'){$finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramFiles"}
-    else{$finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramW6432"}
     #$(runtime.programFiles) $(runtime.windows) $(runtime.wbem)
     #$filename
     if (-not (Test-Path -Path $finalpath )) {
@@ -754,11 +754,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
 #    Copy-Item -Path "$env:TEMP\\wow64_*\\$filename" -Destination "$finalpath\\$filename"
 
-    
-    
-    
-    
-    
+        
     
     
         #try write regkeys from manifest file
@@ -802,28 +798,18 @@ foreach ($key in $Xml.assembly.registryKeys.registryKey) {
 }
 
 }  
-    
+
+
+    foreach ($i in $dll_or_exe) {
      #Param ($filetoget $amd64_or_wow64, $sys32_or_syswow64, $runtime_system32)
      write_keys_from_manifest $i amd64 system32 system32   
      write_keys_from_manifest $i wow64 syswow64 system32  #what should $(runtime.system32) be here, maybe syswow64???????????
-    # write_keys_from_manifest $i msil system32 system32  #????what should $(runtime.system32) be here, if any
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+     }
     
-    }
+     foreach ($i in $msil_files) {
+     #Param ($filetoget $amd64_or_wow64, $sys32_or_syswow64, $runtime_system32)
+     write_keys_from_manifest $i msil system32 system32  #????what should $(runtime.system32) be here, if any
+    }   
 
    # New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure'
    # New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols'
