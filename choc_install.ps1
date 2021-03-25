@@ -516,7 +516,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 'amd64_microsoft-windows-powershell-adm_31bf3856ad364e35_7.3.7601.16384_none_48d50221e17a9af6/powershellexecutionpolicy.admx',`
 'amd64_microsoft.windows.powershell.dsc.events_31bf3856ad364e35_7.3.7601.16384_none_f8ae867317563762/dsccorer.dll',`
 'amd64_microsoft-windows-powershell-events_31bf3856ad364e35_7.3.7601.16384_none_b87aa2f9825e90a3/psevents.dll',`
-'amd64_microsoft-windows-powershell-exe_31bf3856ad364e35_7.3.7601.16384_none_48be7e79e188387e/powershell.exe',`
+<#'amd64_microsoft-windows-powershell-exe_31bf3856ad364e35_7.3.7601.16384_none_48be7e79e188387e/powershell.exe',#>`
 'amd64_microsoft-windows-powershell-message_31bf3856ad364e35_7.3.7601.16384_none_0ced77cc17ba7907/pwrshmsg.dll',`
 'amd64_microsoft-windows-powershell-sip_31bf3856ad364e35_7.3.7601.16384_none_481720a3e2085d7e/pwrshsip.dll',`
 'amd64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_77331ae862faf7ef/baseconditional.xsd',`
@@ -837,7 +837,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 'wow64_microsoft-windows-gpowershell-exe_31bf3856ad364e35_7.3.7601.16384_none_228e49bab56b74ea/powershell_ise.exe',`
 'wow64_microsoft-windows-gpowershell-exe_31bf3856ad364e35_7.3.7601.16384_none_228e49bab56b74ea/powershell_ise.exe.config',`
 'wow64_microsoft-windows-powershell-events_31bf3856ad364e35_7.3.7601.16384_none_c2cf4d4bb6bf529e/psevents.dll',`
-'wow64_microsoft-windows-powershell-exe_31bf3856ad364e35_7.3.7601.16384_none_531328cc15e8fa79/powershell.exe',`
+<#'wow64_microsoft-windows-powershell-exe_31bf3856ad364e35_7.3.7601.16384_none_531328cc15e8fa79/powershell.exe',#>`
 'wow64_microsoft-windows-powershell-message_31bf3856ad364e35_7.3.7601.16384_none_1742221e4c1b3b02/pwrshmsg.dll',`
 'wow64_microsoft-windows-powershell-sip_31bf3856ad364e35_7.3.7601.16384_none_526bcaf616691f79/pwrshsip.dll',`
 'wow64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_8187c53a975bb9ea/baseconditional.xsd',`
