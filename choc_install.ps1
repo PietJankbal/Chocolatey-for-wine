@@ -1014,7 +1014,8 @@ $msil_files = (`
 
     $cab = "$env:TEMP\\Windows6.1-KB3191566-x64.cab"
 
-    Start-Process expand.exe -ArgumentList $cab,"-F:*","$env:TEMP"
+    #Start-Process expand.exe -ArgumentList $cab,"-F:*","$env:TEMP"
+    expand.exe $cab -F:* $env:TEMP
     $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
 
 
@@ -1087,7 +1088,7 @@ $msil_files = (`
     $path = 'Registry::{0}' -f $key.keyName
     
     
-        if($manifest.SubString(0,3) -eq 'wow')
+        if($manifest.SubString(0,3) -ne 'amd')
                 {$path = $path -replace 'HKEY_LOCAL_MACHINE\\SOFTWARE','HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node'
                  $path = $path -replace 'HKEY_CLASSES_ROOT','HKEY_CLASSES_ROOT\Wow6432Node'}
     
