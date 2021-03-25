@@ -1049,7 +1049,7 @@ $msil_files = (`
 #$filename = $select.name
 
     
-     $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.windows)')),"$env:systemroot"
+
      switch ( $manifest.SubString(0,3) )
     {
          'amd' { $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\system32"
@@ -1058,7 +1058,7 @@ $msil_files = (`
 	         $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramW6432" }
 	 'msi' { $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\system32"  }#????
     }
-
+     $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.windows)')),"$env:systemroot"
 
     #$(runtime.programFiles)  $(runtime.wbem)
     #$filename
@@ -1082,7 +1082,7 @@ $msil_files = (`
 
    #Write the regkeys from manifest file
    #thanks some guy from freenode webchat channel powershell who wrote skeleton of this in 4 minutes...
-#if($manifest.SubString(0,3) -ne 'msi') {
+if($manifest.SubString(0,3) -ne 'msi') {
    foreach ($key in $Xml.assembly.registryKeys.registryKey) {
     $path = 'Registry::{0}' -f $key.keyName
     
@@ -1116,7 +1116,7 @@ $msil_files = (`
         $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\$runtime_system32" #????syswow64??
 
         New-ItemProperty -Path $path -Name $Regname -Value $value.Value -PropertyType $propertyType -Force}
- #}#end if($manifest.SubString(0,3) -ne 'msi')
+ }#end if($manifest.SubString(0,3) -ne 'msi')
 }
 }
 
