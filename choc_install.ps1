@@ -1042,8 +1042,12 @@ $msil_files = (`
 
     # $Xml.assembly.file | Where-Object -Property name -eq -Value "profile.ps1"
       $select= $Xml.assembly.file | Where-Object -Property name -eq -Value $file_name
-      $destpath = $select.destinationpath;  if (-not ($destpath)){Write-Host "possible error! destpath is null for $manifest"; $destpath = "c:\\" }
-      $filename = $select.name
+      $destpath = $select.destinationpath  
+      #HACKKKK
+      if (-not ($destpath)){Write-Host "possible error! destpath is null for $manifest"
+           if($file_name.SubString(0,3) -eq 'sys') {$destpath = "$env:systemroot\\syswow64\\WindowsPowershell\\v1.0" } else  {$destpath = "c:\\" }
+      }
+#$filename = $select.name
 
     
      $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.windows)')),"$env:systemroot"
