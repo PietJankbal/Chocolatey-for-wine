@@ -1079,12 +1079,12 @@ $msil_files = (`
 
    #Write the regkeys from manifest file
    #thanks some guy from freenode webchat channel powershell who wrote skeleton of this in 4 minutes...
-if($manifest.SubString(0,3) -ne 'msi') {
+#if($manifest.SubString(0,3) -ne 'msi') {
    foreach ($key in $Xml.assembly.registryKeys.registryKey) {
     $path = 'Registry::{0}' -f $key.keyName
     
     
-        if($amd64_or_wow64 -ne 'amd64')
+        if($manifest.SubString(0,3) -eq 'wow')
                 {$path = $path -replace 'HKEY_LOCAL_MACHINE\\SOFTWARE','HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node'
                  $path = $path -replace 'HKEY_CLASSES_ROOT','HKEY_CLASSES_ROOT\Wow6432Node'}
     
@@ -1113,7 +1113,7 @@ if($manifest.SubString(0,3) -ne 'msi') {
         $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\$runtime_system32" #????syswow64??
 
         New-ItemProperty -Path $path -Name $Regname -Value $value.Value -PropertyType $propertyType -Force}
- }#end if($manifest.SubString(0,3) -ne 'msi')
+ #}#end if($manifest.SubString(0,3) -ne 'msi')
 }
 }
 
