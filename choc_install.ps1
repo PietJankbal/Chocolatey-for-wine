@@ -57,10 +57,10 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     #Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "rn","$env:TEMP\\winpe32.wim","Windows/System32","Windows/syswow64"
     #Get-Process 7z | Foreach-Object { $_.WaitForExit() }
 #    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","-r","$env:TEMP\\winpe32.wim","-aou","-o$env:SystemDrive","Windows"
-    ([Regex]::Escape('${env:ProgramFiles}\\7-zip\\7z.exe x -r '$env:TEMP\\winpe32.wim' -aou '-o$env:SystemDrive Windows''))  
+    ([Regex]::Escape('${env:ProgramFiles}\\7-zip\\7z.exe x -r $env:TEMP\\winpe32.wim -aou -o$env:SystemDrive Windows'))  
     Get-Process 7z | Foreach-Object { $_.WaitForExit() }
 #    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","-r","$env:TEMP\\winpe64.wim","-aou","-o$env:SystemDrive","Windows"
-    ([Regex]::Escape('${env:ProgramFiles}\\7-zip\\7z.exe  x -r '$env:TEMP\\winpe64.wim' -aou '-o$env:SystemDrive Windows'')) 
+    ([Regex]::Escape('${env:ProgramFiles}\\7-zip\\7z.exe  x -r $env:TEMP\\winpe64.wim -aou -o$env:SystemDrive Windows')) 
     Get-Process 7z | Foreach-Object { $_.WaitForExit() }
     #$7zid = (Get-Process 7z).id; Wait-Process -Id $7zid;
 
