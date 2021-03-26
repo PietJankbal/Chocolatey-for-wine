@@ -1118,7 +1118,24 @@ $msil_files = (`
         #https://stackoverflow.com/questions/54543075/how-to-convert-a-hash-string-to-byte-array-in-powershell
         If ($propertyType -eq "Binary") {$hashByteArray = [byte[]] ($value.Value -replace '..', '0x$&,' -split ',' -ne '');New-ItemProperty -Path $path -Name $Regname -Value $hashByteArray  -PropertyType $propertyType -Force}
         else{
-        $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\$runtime_system32" #????syswow64??
+	
+	
+	   switch ( $manifest.SubString(0,3) )
+           {
+               'amd' {  $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\system32"  }
+               'wow' {  $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\syswow64" }
+
+           }
+	
+	
+	
+	
+	
+	
+	
+	
+	
+        #$value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\$runtime_system32" #????syswow64??
 
         New-ItemProperty -Path $path -Name $Regname -Value $value.Value -PropertyType $propertyType -Force}
 # }#end if($manifest.SubString(0,3) -ne 'msi')
@@ -1131,7 +1148,7 @@ $msil_files = (`
     foreach ($i in $dll_or_exe) {
      #Param ($filetoget $amd64_or_wow64, $sys32_or_syswow64, $runtime_system32)
      write_keys_from_manifest $i amd64 system32 system32   
-     write_keys_from_manifest $i wow64 syswow64 system32  #what should $(runtime.system32) be here, maybe syswow64???????????
+     #write_keys_from_manifest $i wow64 syswow64 system32  #what should $(runtime.system32) be here, maybe syswow64???????????
      }
     
      foreach ($i in $msil_files) {
