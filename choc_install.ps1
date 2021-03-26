@@ -1018,8 +1018,8 @@ $msil_files = (`
 
     $cab = "$env:TEMP\\Windows6.1-KB3191566-x64.cab"
 
-    #Start-Process expand.exe -ArgumentList $cab,"-F:*","$env:TEMP"
-    expand.exe $cab -F:* $env:TEMP
+    Start-Process expand.exe -ArgumentList $cab,"-F:*","$env:TEMP"
+    #expand.exe $cab -F:* $env:TEMP
     $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
 
 
