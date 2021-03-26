@@ -54,15 +54,14 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
     Get-Process 7z | Foreach-Object { $_.WaitForExit() }
 
-    #Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "rn","$env:TEMP\\winpe32.wim","Windows/System32","Windows/syswow64"
-     & "${env:ProgramFiles}\\7-zip\\7z.exe" rn "$env:TEMP\\winpe32.wim"  "Windows/System32" "Windows/syswow64"
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "rn","$env:TEMP\\winpe32.wim","Windows/System32","Windows/syswow64"
+    # & "${env:ProgramFiles}\\7-zip\\7z.exe" rn "$env:TEMP\\winpe32.wim"  "Windows/System32" "Windows/syswow64"
      Get-Process 7z | Foreach-Object { $_.WaitForExit() }
-#    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","-r","$env:TEMP\\winpe32.wim","-aou","-o$env:SystemDrive","Windows"
-     & "${env:ProgramFiles}\\7-zip\\7z.exe" x -r "$env:TEMP\winpe32.wim" -aou "-o$env:SystemDrive" Windows
-
+     Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","-r","$env:TEMP\\winpe32.wim","-aou","-o$env:SystemDrive","Windows"
+    # & "${env:ProgramFiles}\\7-zip\\7z.exe" x -r "$env:TEMP\winpe32.wim" -aou "-o$env:SystemDrive" Windows
     Get-Process 7z | Foreach-Object { $_.WaitForExit() }
-#    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","-r","$env:TEMP\\winpe64.wim","-aou","-o$env:SystemDrive","Windows"
-     & "${env:ProgramFiles}\\7-zip\\7z.exe" x -r "$env:TEMP\winpe64.wim" -aou "-o$env:SystemDrive" Windows
+    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","-r","$env:TEMP\\winpe64.wim","-aou","-o$env:SystemDrive","Windows"
+  #   & "${env:ProgramFiles}\\7-zip\\7z.exe" x -r "$env:TEMP\winpe64.wim" -aou "-o$env:SystemDrive" Windows
     Get-Process 7z | Foreach-Object { $_.WaitForExit() }
     #$7zid = (Get-Process 7z).id; Wait-Process -Id $7zid;
 
@@ -186,6 +185,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 #FIXME!! Needs to be updated when Mono updates; Find better solution...........
     uninstaller --remove '{0A7C8977-1185-5C3F-A4E7-7A90611227C3}'
     uninstaller --remove '{05C9CD26-9144-58FC-8A6E-B4DE47B661EC}'
+     Get-Process uninstaller | Foreach-Object { $_.WaitForExit() }
 
     Remove-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.5' -Recurse
     Remove-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v4'  -Recurse  
