@@ -1088,7 +1088,7 @@ $msil_files = (`
     $path = 'Registry::{0}' -f $key.keyName
     
     
-        if($manifest.SubString(0,3) -ne 'amd')
+        if($manifest.SubString(0,3) -eq 'wow')
                 {$path = $path -replace 'HKEY_LOCAL_MACHINE\\SOFTWARE','HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node'
                  $path = $path -replace 'HKEY_CLASSES_ROOT','HKEY_CLASSES_ROOT\Wow6432Node'}
     
