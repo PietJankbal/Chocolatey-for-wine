@@ -184,8 +184,8 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     #/* remove_mono */
 
 #FIXME!! Needs to be updated when Mono updates; Find better solution...........
-    uninstaller --remove {0A7C8977-1185-5C3F-A4E7-7A90611227C3}
-    uninstaller --remove {05C9CD26-9144-58FC-8A6E-B4DE47B661EC}
+    uninstaller --remove '{0A7C8977-1185-5C3F-A4E7-7A90611227C3}'
+    uninstaller --remove '{05C9CD26-9144-58FC-8A6E-B4DE47B661EC}'
 
     Remove-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.5' -Recurse
     Remove-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v4'  -Recurse  
