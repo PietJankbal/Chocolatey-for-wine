@@ -1148,6 +1148,9 @@ $msil_files = (`
      foreach ($i in $msil_files) {
          write_keys_from_manifest $i
     }   
+    #HACK For bug in wintrust's WinVerifyTrust (???)
+    #pwrshsip
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'pwrshsip' -Value 'disabled' -PropertyType 'String' 
 
    # New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure'
    # New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols'
