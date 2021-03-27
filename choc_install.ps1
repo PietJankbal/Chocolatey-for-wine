@@ -228,8 +228,8 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscorwks' -Value 'native' -PropertyType 'String'
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'native' -PropertyType 'String'
 
-    Remove-Item -Path "$env:SystemRoot\\SysWOW64\\mscoree.dll" -Force
-    Remove-Item -Path "$env:SystemRoot\\System32\\mscoree.dll" -Force
+    Remove-Item -Path "$env:SystemRoot\\SysWOW64\\mscoree.dll" #-Force
+    Remove-Item -Path "$env:SystemRoot\\System32\\mscoree.dll" #-Force
 
 
     Start-Process winecfg.exe  -Wait -ArgumentList "/v win7" 
@@ -297,8 +297,17 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Start-Process -FilePath ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\Win7AndW2K8R2-KB3191566-x64.msu","-o$env:TEMP","Windows6.1-KB3191566-x64.cab"
     $7zid = (Get-Process 7z).id; Wait-Process -Id $7zid;
 
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String' 
+
+  #  New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides\\AppDefaults' -force
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'native' -PropertyType 'String' 
+
+    New-Item -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe' -force
+    New-Item -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe\\DllOverrides' -force  
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String'
+
+
+#    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String' 
+#    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'native' -PropertyType 'String' 
 
     #FIXME try get regkeys from manifest 
     # $Xml = [xml](Get-Content -Path '.\x86_microsoft-windows-msmpeg2vdec_31f3856ad364e35_6.1.7601.23403_none_9391e9c22f5ac446.manifest')
@@ -1030,9 +1039,7 @@ $msil_files = (`
 
 
     Function write_keys_from_manifest{
-    Param ($filetoget, $amd64_or_wow64, $sys32_or_syswow64, $runtime_system32)
-
-    #Write-Output "$Name's Average = $Avg, $Runs, $Outs"
+    Param ($filetoget)
 
     #$relativePath = Get-Item $amd64_or_wow64_*\$filetoget | Resolve-Path -Relative
     $relativePath = $filetoget #Resolve-Path  ($amd64_or_wow64 + "_*\$filetoget") -Relative #; if (-not ($relativePath)) {Write-Host "empty path for $amd64_or_wow64 $filetoget"; continue}
@@ -1048,46 +1055,33 @@ $msil_files = (`
     # $Xml.assembly.file | Where-Object -Property name -eq -Value "profile.ps1"
       $select= $Xml.assembly.file | Where-Object -Property name -eq -Value $file_name
       $destpath = $select.destinationpath  
-      #HACKKKK
-      if (-not ($destpath)) {Write-Host "possible error! destpath is null for $manifest";  $destpath = "c:\\" } 
-      
-#$filename = $select.name
+      #HACKKKK         #$filename = $select.name
+      if ($destpath) {
+          switch ( $manifest.SubString(0,3) )
+          {
+              'amd' { $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\system32"
+	              $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramFiles"   }
+              'wow' { $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\syswow64"
+	              $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramW6432" }
+	      'msi' { $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\system32"  }#????
+          }
+          #$finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.windows)')),"$env:systemroot"
+          #$(runtime.programFiles)  $(runtime.wbem)
 
+          if (-not (Test-Path -Path $finalpath )) {
+              New-Item -Path $finalpath -ItemType directory -Force}
+              Write-Host finalpath is $finalpath
+              Copy-Item -Path $filetoget -Destination $finalpath -Force
+          }
+      else {
+           Write-Host "possible error! destpath is null for $manifest"
+	   Copy-Item -Path $filetoget -Destination "$env:systemdrive\\ConEmu" -Force #to track
+	   Copy-Item -Path $filetoget -Destination "$env:systemroot\\syswow64\\WindowsPowerShell\\v1.0" -Force	   
+	   Copy-Item -Path $filetoget -Destination "$env:systemroot\\system32\\WindowsPowerShell\\v1.0" -Force
+      }
     
-
-     switch ( $manifest.SubString(0,3) )
-    {
-         'amd' { $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\system32"
-	         $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramFiles"   }
-         'wow' { $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\syswow64"
-	         $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramW6432" }
-	 'msi' { $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\system32"  }#????
-    }
-     #$finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.windows)')),"$env:systemroot"
-
-    #$(runtime.programFiles)  $(runtime.wbem)
-    #$filename
-    if (-not (Test-Path -Path $finalpath )) {
-        New-Item -Path $finalpath -ItemType directory -Force}
-
-
-   # $absPath =  Resolve-Path  ($amd64_or_wow64 + "_*\$filetoget") #$amd64_or_wow64_*\$filetoget
-   #  Write-Host Abspath is $absPath.Path
-     Write-Host finalpath is $finalpath
-     
-
-        Copy-Item -Path $filetoget -Destination $finalpath -Force
-
-#    Copy-Item -Path "$env:TEMP\\wow64_*\\$filename" -Destination "$finalpath\\$filename"
-
-        
-    
-    
-        #try write regkeys from manifest file
-
-   #Write the regkeys from manifest file
+      #try write regkeys from manifest file
    #thanks some guy from freenode webchat channel powershell who wrote skeleton of this in 4 minutes...
-#if($manifest.SubString(0,3) -ne 'msi') {
    foreach ($key in $Xml.assembly.registryKeys.registryKey) {
     $path = 'Registry::{0}' -f $key.keyName
     
@@ -1118,7 +1112,16 @@ $msil_files = (`
         #https://stackoverflow.com/questions/54543075/how-to-convert-a-hash-string-to-byte-array-in-powershell
         If ($propertyType -eq "Binary") {$hashByteArray = [byte[]] ($value.Value -replace '..', '0x$&,' -split ',' -ne '');New-ItemProperty -Path $path -Name $Regname -Value $hashByteArray  -PropertyType $propertyType -Force}
         else{
-        $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\$runtime_system32" #????syswow64??
+	
+	
+	   switch ( $manifest.SubString(0,3) )
+           {
+               'amd' {  $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\system32"  }
+               'wow' {  $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\syswow64" }
+
+           }
+	
+        #$value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\$runtime_system32" #????syswow64??
 
         New-ItemProperty -Path $path -Name $Regname -Value $value.Value -PropertyType $propertyType -Force}
 # }#end if($manifest.SubString(0,3) -ne 'msi')
@@ -1129,14 +1132,11 @@ $msil_files = (`
 
 
     foreach ($i in $dll_or_exe) {
-     #Param ($filetoget $amd64_or_wow64, $sys32_or_syswow64, $runtime_system32)
-     write_keys_from_manifest $i amd64 system32 system32   
-     write_keys_from_manifest $i wow64 syswow64 system32  #what should $(runtime.system32) be here, maybe syswow64???????????
-     }
+        write_keys_from_manifest $i
+    }
     
      foreach ($i in $msil_files) {
-     #Param ($filetoget $amd64_or_wow64, $sys32_or_syswow64, $runtime_system32)
-     write_keys_from_manifest $i msil system32 system32  #????what should $(runtime.system32) be here, if any
+         write_keys_from_manifest $i
     }   
 
    # New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure'
