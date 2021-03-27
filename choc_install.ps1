@@ -297,8 +297,15 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Start-Process -FilePath ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\Win7AndW2K8R2-KB3191566-x64.msu","-o$env:TEMP","Windows6.1-KB3191566-x64.cab"
     $7zid = (Get-Process 7z).id; Wait-Process -Id $7zid;
 
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String' 
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'native' -PropertyType 'String' 
+
+  #  New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides\\AppDefaults' -force
+    New-Item -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe' -force
+    New-Item -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe\\DllOverrides' -force  
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String'
+
+
+#    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String' 
+#    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'native' -PropertyType 'String' 
 
     #FIXME try get regkeys from manifest 
     # $Xml = [xml](Get-Content -Path '.\x86_microsoft-windows-msmpeg2vdec_31f3856ad364e35_6.1.7601.23403_none_9391e9c22f5ac446.manifest')
@@ -1066,9 +1073,9 @@ $msil_files = (`
           }
       else {
            Write-Host "possible error! destpath is null for $manifest"
-	   Copy-Item -Path $filetoget -Destination $env:systemdrive -Force #to track
-	   Copy-Item -Path $filetoget -Destination $env:systemroot\\syswow64\\WindowsPowerShell\\v1.0 -Force	   
-	   Copy-Item -Path $filetoget -Destination $env:systemroot\\system32\\WindowsPowerShell\\v1.0 -Force
+	   Copy-Item -Path $filetoget -Destination "$env:systemdrive" -Force #to track
+	   Copy-Item -Path $filetoget -Destination "$env:systemroot\\syswow64\\WindowsPowerShell\\v1.0" -Force	   
+	   Copy-Item -Path $filetoget -Destination "$env:systemroot\\system32\\WindowsPowerShell\\v1.0" -Force
       }
     
       #try write regkeys from manifest file
