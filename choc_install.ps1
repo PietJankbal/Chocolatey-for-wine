@@ -100,6 +100,15 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
     Start-Sleep -Second 10
 
+
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'native' -PropertyType 'String' 
+
+    New-Item -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe' -force
+    New-Item -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe\\DllOverrides' -force  
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String'
+
+
+
     Start-Process  "pwsh.exe" -Wait -ArgumentList "-c iwr -useb get.scoop.sh | iex"
 
     Start-Process  "pwsh.exe" -Wait -ArgumentList "-c scoop config MSIEXTRACT_USE_LESSMSI true"
@@ -299,11 +308,11 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
 
   #  New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides\\AppDefaults' -force
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'native' -PropertyType 'String' 
+    #New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'native' -PropertyType 'String' 
 
-    New-Item -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe' -force
-    New-Item -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe\\DllOverrides' -force  
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String'
+    #New-Item -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe' -force
+    #New-Item -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe\\DllOverrides' -force  
+    #New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String'
 
 
 #    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String' 
@@ -1057,8 +1066,7 @@ $msil_files = (`
       $destpath = $select.destinationpath  
       #HACKKKK         #$filename = $select.name
       if ($destpath) {
-          switch ( $manifest.SubString(0,3) )
-          {
+          switch ( $manifest.SubString(0,3) ) {
               'amd' { $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\system32"
 	              $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramFiles"   }
               'wow' { $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\syswow64"
@@ -1069,10 +1077,11 @@ $msil_files = (`
           #$(runtime.programFiles)  $(runtime.wbem)
 
           if (-not (Test-Path -Path $finalpath )) {
-              New-Item -Path $finalpath -ItemType directory -Force}
-              Write-Host finalpath is $finalpath
-              Copy-Item -Path $filetoget -Destination $finalpath -Force
-          }
+              New-Item -Path $finalpath -ItemType directory -Force
+	  }
+          Write-Host finalpath is $finalpath
+          Copy-Item -Path $filetoget -Destination $finalpath -Force
+      }
       else {
            Write-Host "possible error! destpath is null for $manifest"
 	   Copy-Item -Path $filetoget -Destination "$env:systemdrive\\ConEmu" -Force #to track
