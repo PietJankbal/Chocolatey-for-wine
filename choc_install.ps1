@@ -1065,7 +1065,7 @@ $msil_files = (`
 	              $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramW6432" }
 	      'msi' { $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\system32"  }#????
           }
-          $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.windows)')),"$env:systemroot"
+          #$finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.windows)')),"$env:systemroot"
           #$(runtime.programFiles)  $(runtime.wbem)
 
           if (-not (Test-Path -Path $finalpath )) {
@@ -1075,7 +1075,7 @@ $msil_files = (`
           }
       else {
            Write-Host "possible error! destpath is null for $manifest"
-	   Copy-Item -Path $filetoget -Destination "$env:systemdrive" -Force #to track
+	   Copy-Item -Path $filetoget -Destination "$env:systemdrive\\ConEmu" -Force #to track
 	   Copy-Item -Path $filetoget -Destination "$env:systemroot\\syswow64\\WindowsPowerShell\\v1.0" -Force	   
 	   Copy-Item -Path $filetoget -Destination "$env:systemroot\\system32\\WindowsPowerShell\\v1.0" -Force
       }
