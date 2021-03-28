@@ -1068,11 +1068,11 @@ $msil_files = (`
       #HACKKKK         #$filename = $select.name
       if ($destpath) {
           switch ( $manifest.SubString(0,3) ) {
-              'amd' { $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\system32"
-	              $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramFiles"   }
-              'wow' { $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\syswow64"
-	              $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramW6432" }
-	      'msi' { $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\system32"  }#????
+              'amd'                  { $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\system32"
+	                               $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramFiles"   }
+              {$_ -in 'wow', 'x86'}  { $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\syswow64"
+	                               $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramW6432" }
+	      'msi'                  { $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\system32"  }#????
           }
           #$finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.windows)')),"$env:systemroot"
           #$(runtime.programFiles)  $(runtime.wbem)
@@ -1096,7 +1096,7 @@ $msil_files = (`
     $path = 'Registry::{0}' -f $key.keyName
     
     
-        if($manifest.SubString(0,3) -eq 'wow')
+        if($manifest.SubString(0,3) -eq 'wow' -Or $manifest.SubString(0,3) -eq 'x86')
                 {$path = $path -replace 'HKEY_LOCAL_MACHINE\\SOFTWARE','HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node'
                  $path = $path -replace 'HKEY_CLASSES_ROOT','HKEY_CLASSES_ROOT\Wow6432Node'}
     
@@ -1127,7 +1127,7 @@ $msil_files = (`
 	   switch ( $manifest.SubString(0,3) )
            {
                'amd' {  $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\system32"  }
-               'wow' {  $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\syswow64" }
+               {$_ -in 'wow', 'x86'} {  $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\syswow64" }
 
            }
 	
