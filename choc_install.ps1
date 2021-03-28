@@ -1096,9 +1096,16 @@ $msil_files = (`
     $path = 'Registry::{0}' -f $key.keyName
     
     
-        if($manifest.SubString(0,3) -eq 'wow' -Or $manifest.SubString(0,3) -eq 'x86')
-                {$path = $path -replace 'HKEY_LOCAL_MACHINE\\SOFTWARE','HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node'
+   #     if($manifest.SubString(0,3) -eq 'wow' -Or $manifest.SubString(0,3) -eq 'x86')
+    #            {$path = $path -replace 'HKEY_LOCAL_MACHINE\\SOFTWARE','HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node'
+     #            $path = $path -replace 'HKEY_CLASSES_ROOT','HKEY_CLASSES_ROOT\Wow6432Node'}
+		 
+		 
+		 switch ( $manifest.SubString(0,3) ) {
+              {$_ -in 'wow', 'x86'} {$path = $path -replace 'HKEY_LOCAL_MACHINE\\SOFTWARE','HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node'
                  $path = $path -replace 'HKEY_CLASSES_ROOT','HKEY_CLASSES_ROOT\Wow6432Node'}
+	      default                   {  }
+              }
     
     if (-not (Test-Path -Path $path)) {
         New-Item -Path $path -ItemType Key -Force
@@ -1150,7 +1157,7 @@ $msil_files = (`
     }   
     #HACK For bug in wintrust's WinVerifyTrust (???)
     #pwrshsip
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'pwrshsip' -Value 'disabled' -PropertyType 'String' 
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'pwrshsip' -Value 'disable' -PropertyType 'String' 
 
    # New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure'
    # New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Management Infrastructure\\protocols'
@@ -1179,33 +1186,77 @@ $msil_files = (`
     #https://download.microsoft.com/download/E/7/F/E7F5E0D8-F9DE-4195-9627-A7F884B61686/IE10-Windows6.1-KB2859903-x64.msu 
     # has more recent mshtml etc. but currently only gives black screen (with coreldrawdemo installer). Fall back to ancient ie8 dlls..
 
-    [System.IO.Directory]::SetCurrentDirectory("$env:TEMP")
+   [System.IO.Directory]::SetCurrentDirectory("$env:TEMP")
 
-    (New-Object System.Net.WebClient).DownloadFile("http://download.microsoft.com/download/7/5/4/754D6601-662D-4E39-9788-6F90D8E5C097/IE8-WindowsServer2003-x64-ENU.exe", "$env:TEMP\\IE8-WindowsServer2003-x64-ENU.exe")
+    (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/E/7/F/E7F5E0D8-F9DE-4195-9627-A7F884B61686/IE10-Windows6.1-KB2859903-x64.msu", "$env:TEMP\\IE10-Windows6.1-KB2859903-x64.msu")
 
-    Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\IE8-WindowsServer2003-x64-ENU.exe","-y"
-    Get-Process 7z | Foreach-Object { $_.WaitForExit() }
+    Start-Process -FilePath ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\IE10-Windows6.1-KB2859903-x64.msu","-o$env:TEMP","IE10-Windows6.1-KB2859903-x64.cab"
+    $7zid = (Get-Process 7z).id; Wait-Process -Id $7zid;
+
+    $cab = "$env:TEMP\\IE10-Windows6.1-KB2859903-x64.cab"
+
+    Start-Process expand.exe -ArgumentList $cab,"-F:*","$env:TEMP"
+    #expand.exe $cab -F:* $env:TEMP
+    $expandid = (Get-Process expand).id; Wait-Process -Id $expandid;
 
 
-    $iedlls = @('ieframe','urlmon','mshtml','iertutil','jscript')
 
-    foreach ($i in $iedlls) {
 
-                              $wsrc = ("w"+"$i"+".dll")
-                              $dlls = ("$i"+".dll")
+    $ie10dlls = @(`
+    'amd64_microsoft-windows-ieframe_31bf3856ad364e35_10.2.9200.20723_none_cb989230384a71e5/ieframe.dll',`
+'amd64_microsoft-windows-ieframe_31bf3856ad364e35_10.2.9200.20723_none_cb989230384a71e5/ieframe.ptxml',`
+'amd64_microsoft-windows-ieframe_31bf3856ad364e35_10.2.9200.20723_none_cb989230384a71e5/ieui.dll',`
+'amd64_microsoft-windows-ie-htmlrendering_31bf3856ad364e35_10.2.9200.20723_none_7a39382cac54e3b8/microsoft-windows-ie-htmlrendering.ptxml',`
+'amd64_microsoft-windows-ie-htmlrendering_31bf3856ad364e35_10.2.9200.20723_none_7a39382cac54e3b8/mshtml.dll',`
+'amd64_microsoft-windows-ie-htmlrendering_31bf3856ad364e35_10.2.9200.20723_none_7a39382cac54e3b8/mshtml.tlb',`
+'amd64_microsoft-windows-i..ersandsecurityzones_31bf3856ad364e35_10.2.9200.20723_none_1bd93d6c60f553ef/urlmon.dll',`
+'amd64_microsoft-windows-ie-runtimeutilities_31bf3856ad364e35_10.2.9200.20723_none_ae99cfea16af98df/iertutil.dll',`
+'amd64_microsoft-windows-ie-runtimeutilities_31bf3856ad364e35_10.2.9200.20723_none_ae99cfea16af98df/sqmapi.dll',`
+'wow64_microsoft-windows-ieframe_31bf3856ad364e35_10.2.9200.20723_none_d5ed3c826cab33e0/ie9props.propdesc',`
+'wow64_microsoft-windows-ieframe_31bf3856ad364e35_10.2.9200.20723_none_d5ed3c826cab33e0/ieframe.dll',`
+'wow64_microsoft-windows-ieframe_31bf3856ad364e35_10.2.9200.20723_none_d5ed3c826cab33e0/ieui.dll',`
+'wow64_microsoft-windows-ieframe_31bf3856ad364e35_10.2.9200.20723_none_d5ed3c826cab33e0/wow64_ieframe.ptxml',`
+'wow64_microsoft-windows-ie-htmlrendering_31bf3856ad364e35_10.2.9200.20723_none_848de27ee0b5a5b3/mshtml.dll',`
+'wow64_microsoft-windows-ie-htmlrendering_31bf3856ad364e35_10.2.9200.20723_none_848de27ee0b5a5b3/mshtml.tlb',`
+'wow64_microsoft-windows-ie-htmlrendering_31bf3856ad364e35_10.2.9200.20723_none_848de27ee0b5a5b3/wow64_microsoft-windows-ie-htmlrendering.ptxml',`
+'x86_microsoft-windows-i..ersandsecurityzones_31bf3856ad364e35_10.2.9200.20723_none_bfbaa1e8a897e2b9/urlmon.dll',`
+'x86_microsoft-windows-ie-runtimeutilities_31bf3856ad364e35_10.2.9200.20723_none_527b34665e5227a9/iertutil.dll',`
+'x86_microsoft-windows-ie-runtimeutilities_31bf3856ad364e35_10.2.9200.20723_none_527b34665e5227a9/sqmapi.dll'`
+)
+    
+
+   foreach ($i in $ie10dlls) {
+        write_keys_from_manifest $i
+    }
+
+
+    #[System.IO.Directory]::SetCurrentDirectory("$env:TEMP")
+
+    #(New-Object System.Net.WebClient).DownloadFile("http://download.microsoft.com/download/7/5/4/754D6601-662D-4E39-9788-6F90D8E5C097/IE8-WindowsServer2003-x64-ENU.exe", "$env:TEMP\\IE8-WindowsServer2003-x64-ENU.exe")
+
+    #Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","$env:TEMP\\IE8-WindowsServer2003-x64-ENU.exe","-y"
+    #Get-Process 7z | Foreach-Object { $_.WaitForExit() }
+
+
+    #$iedlls = @('ieframe','urlmon','mshtml','iertutil','jscript')
+
+    #foreach ($i in $iedlls) {
+
+     #                         $wsrc = ("w"+"$i"+".dll")
+     #                         $dlls = ("$i"+".dll")
                            
-                              Copy-Item -Path "$env:TEMP\\$dlls" -Destination "$env:winsysdir\\$dlls"
-                              Copy-Item -Path "$env:TEMP\\wow\\$wsrc" -Destination "$env:windir\\SysWOW64\\$dlls"
+      #                        Copy-Item -Path "$env:TEMP\\$dlls" -Destination "$env:winsysdir\\$dlls"
+      #                        Copy-Item -Path "$env:TEMP\\wow\\$wsrc" -Destination "$env:windir\\SysWOW64\\$dlls"
                               
-                              New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name $i -Value 'native,builtin' -PropertyType 'String'
+      #                        New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name $i -Value 'native,builtin' -PropertyType 'String'
 
-                              }
+      #                        }
 
-    New-Item -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Lockdown_Zones'
-    New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Lockdown_Zones'
+    #New-Item -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Lockdown_Zones'
+   # New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Lockdown_Zones'
 
-    New-Item -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Lockdown_Zones\\0'
-    New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Lockdown_Zones\\0'
+    #New-Item -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Lockdown_Zones\\0'
+    #New-Item -Path 'HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Lockdown_Zones\\0'
 }
 
 #KB2454826 KB2519277 KB2533552 KB2533623 KB2534366 KB2670838 kb2701373-v2-64bit KB2842230 KB2919442 KB2999226 KB3063858
