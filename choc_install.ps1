@@ -980,7 +980,19 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 'wow64_microsoft-windows-w..scoveryprovider-dll_31bf3856ad364e35_7.3.7601.16384_none_5da6d3546351c130/psmodulediscoveryprovider.dll',`
 'wow64_microsoft-windows-w..ter-cimprovider-exe_31bf3856ad364e35_7.3.7601.16384_none_4d46c821ffac67c0/register-cimprovider.exe',`
 'wow64_microsoft-windows-w..vider-dll.resources_31bf3856ad364e35_7.3.7601.16384_sr-..-rs_d2fe971eb814fe8e/psmodulediscoveryprovider.dll.mui',`
-'wow64_powershell-gac-tool_exe_31bf3856ad364e35_7.3.7601.16384_none_a2fe651767a6bf07/pscustomsetupinstaller.exe'`
+'wow64_powershell-gac-tool_exe_31bf3856ad364e35_7.3.7601.16384_none_a2fe651767a6bf07/pscustomsetupinstaller.exe',`
+'x86_microsoft.managemen..frastructure.native_31bf3856ad364e35_7.3.7601.16384_none_d262ac3e9809d109/microsoft.management.infrastructure.native.dll',`
+'x86_microsoft-windows-eventlog-forwardplugin_31bf3856ad364e35_7.3.7601.16384_none_f8f40d9d14d20c75/wevtfwd.dll',`
+'x86_microsoft-windows-powershell-adm_31bf3856ad364e35_7.3.7601.16384_none_ecb6669e291d29c0/powershellexecutionpolicy.admx',`
+'x86_microsoft-windows-winrsplugins_31bf3856ad364e35_7.3.7601.16384_none_99c05aa9589f7373/winrscmd.dll',`
+'x86_microsoft-windows-winrsplugins_31bf3856ad364e35_7.3.7601.16384_none_99c05aa9589f7373/winrs.exe',`
+'x86_microsoft-windows-winrsplugins_31bf3856ad364e35_7.3.7601.16384_none_99c05aa9589f7373/winrshost.exe',`
+'x86_microsoft-windows-winrsplugins_31bf3856ad364e35_7.3.7601.16384_none_99c05aa9589f7373/winrsmgr.dll',`
+'x86_microsoft-windows-winrsplugins_31bf3856ad364e35_7.3.7601.16384_none_99c05aa9589f7373/winrssrv.dll',`
+'x86_microsoft-windows-wmi-stdprov-provider_31bf3856ad364e35_7.3.7601.16384_none_c2184362ed877964/regevent.mof',`
+'x86_microsoft-windows-wmi-stdprov-provider_31bf3856ad364e35_7.3.7601.16384_none_c2184362ed877964/stdprov.dll',`
+'x86_microsoft-windows-wmi-text-encoding_31bf3856ad364e35_7.3.7601.16384_none_3d0b4b4f6308bbf9/wmi2xml.dll',`
+'x86_microsoft-windows-w..-provider.resources_31bf3856ad364e35_7.3.7601.16384_sr-..-rs_e07de78e9fb866d2/regevent.mfl'`
 )
 
 $msil_files = (`
