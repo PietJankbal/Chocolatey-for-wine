@@ -1145,10 +1145,10 @@ $msil_files = (`
            {
 	             'amd' { $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\system32"
 	              $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramFiles" 
-		      $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.wbem)')),"$env:systemroot\\system32\\wbem"}
+		      #$value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.wbem)')),"$env:systemroot\\system32\\wbem"}
                {$_ -in 'wow', 'x86'} { $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\syswow64"
-	              $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramW6432" 
-		      $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.wbem)')),"$env:systemroot\\syswow64\\wbem"}
+	              $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.programFiles)')),([Regex]::Escape('ProgramFiles(x86)')) 
+		      #$value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.wbem)')),"$env:systemroot\\syswow64\\wbem"}
 	   
            #    'amd' {  $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\system32"  }
            #     {$_ -in 'wow', 'x86'} {  $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\syswow64" }
