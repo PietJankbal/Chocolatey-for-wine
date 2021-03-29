@@ -1083,7 +1083,7 @@ $msil_files = (`
           Write-Host finalpath is $finalpath
           Copy-Item -Path $filetoget -Destination $finalpath -Force
       }
-      else {
+      else {  #HACK where should these files go to??
            Write-Host "possible error! destpath is null for $manifest"
 	   Copy-Item -Path $filetoget -Destination "$env:systemdrive\\ConEmu" -Force #to track
 	   Copy-Item -Path $filetoget -Destination "$env:systemroot\\syswow64\\WindowsPowerShell\\v1.0" -Force	   
@@ -1096,10 +1096,13 @@ $msil_files = (`
     $path = 'Registry::{0}' -f $key.keyName
     
     
-        if($manifest.SubString(0,3) -eq 'wow')
-                {$path = $path -replace 'HKEY_LOCAL_MACHINE\\SOFTWARE','HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node'
-                 $path = $path -replace 'HKEY_CLASSES_ROOT','HKEY_CLASSES_ROOT\Wow6432Node'}
-    
+        #if($manifest.SubString(0,3) -eq 'wow')
+	 switch ( $manifest.SubString(0,3) ) {
+	 {$_ -in 'wow', 'x86'}  {$path = $path -replace 'HKEY_LOCAL_MACHINE\\SOFTWARE','HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node'
+                                 $path = $path -replace 'HKEY_CLASSES_ROOT','HKEY_CLASSES_ROOT\Wow6432Node'}
+	 default                {}			 
+         }
+	 
     if (-not (Test-Path -Path $path)) {
         New-Item -Path $path -ItemType Key -Force
     }
