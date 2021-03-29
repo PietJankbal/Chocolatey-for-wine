@@ -1081,12 +1081,14 @@ $msil_files = (`
       if ($destpath) {
           switch ( $manifest.SubString(0,3) ) {
               'amd' { $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\system32"
-	              $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramFiles"   }
+	              $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramFiles" 
+		      $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.wbem)')),"$env:systemroot\\system32\\wbem"}
                {$_ -in 'wow', 'x86'} { $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\syswow64"
-	              $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramW6432" }
+	              $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramW6432" 
+		      $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.wbem)')),"$env:systemroot\\syswow64\\wbem"}
 	      'msi' { $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\system32"  }#????
           }
-          #$finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.windows)')),"$env:systemroot"
+          $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.windows)')),"$env:systemroot"
           #$(runtime.programFiles)  $(runtime.wbem)
 
           if (-not (Test-Path -Path $finalpath )) {
