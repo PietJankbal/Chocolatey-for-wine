@@ -1154,7 +1154,7 @@ $msil_files = (`
            #     {$_ -in 'wow', 'x86'} {  $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\syswow64" }
 
            }
-	
+	   $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.windows)')),"$env:systemroot"
         #$value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\$runtime_system32" #????syswow64??
 
         New-ItemProperty -Path $path -Name $Regname -Value $value.Value -PropertyType $propertyType -Force}
