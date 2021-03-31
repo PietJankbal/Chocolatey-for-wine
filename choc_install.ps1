@@ -305,12 +305,14 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     $7zid = (Get-Process 7z).id; Wait-Process -Id $7zid;
 
 
-  #  New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides\\AppDefaults' -force
-    #New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'native' -PropertyType 'String' 
+    New-Item -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe' -force
+    New-Item -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe\\DllOverrides' -force
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe\\DllOverrides' -force -Name 'expand.exe' -Value 'native' -PropertyType 'String' 
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String' 
 
 
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'native' -PropertyType 'String' 
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String' 
+#    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'native' -PropertyType 'String' 
+#    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String' 
 
 
 #    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String' 
