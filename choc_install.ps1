@@ -308,11 +308,6 @@ if(Test-Path 'env:SCOOP_INSTALL'){
   #  New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides\\AppDefaults' -force
     #New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'native' -PropertyType 'String' 
 
-    New-Item -Path 'HKCU:\\Software\\Wine\\AppDefaults\\extract.exe' -force
-    New-Item -Path 'HKCU:\\Software\\Wine\\AppDefaults\\extract.exe\\DllOverrides' -force  
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\extract.exe\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String'
-    Copy-Item -Path "$env:windir\\SysWOW64\\expand.exe" -Destination "$env:windir\\SysWOW64\\extract.exe" -Force
-    Copy-Item -Path "$env:winsysdir\\expand.exe" -Destination "$env:winsysdir\\extract.exe" -Force
 
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'native' -PropertyType 'String' 
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String' 
