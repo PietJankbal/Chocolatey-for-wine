@@ -308,9 +308,11 @@ if(Test-Path 'env:SCOOP_INSTALL'){
   #  New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides\\AppDefaults' -force
     #New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'native' -PropertyType 'String' 
 
-    #New-Item -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe' -force
-    #New-Item -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe\\DllOverrides' -force  
-    #New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String'
+    New-Item -Path 'HKCU:\\Software\\Wine\\AppDefaults\\extract.exe' -force
+    New-Item -Path 'HKCU:\\Software\\Wine\\AppDefaults\\extract.exe\\DllOverrides' -force  
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\extract.exe\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String'
+    Copy-Item -Path "$env:windir\\SysWOW64\\expand.exe" -Destination "$env:windir\\SysWOW64\\extract.exe" -Force
+    Copy-Item -Path "$env:winsysdir\\expand.exe" -Destination "$env:winsysdir\\extract.exe" -Force
 
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'native' -PropertyType 'String' 
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String' 
@@ -1452,6 +1454,10 @@ $msil_files = (`
     Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\wusa.exe" -Force
 #    Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\wusadummy.exe" -Force
 #    Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\wusadummy.exe" -Force
+
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'builtin' -PropertyType 'String' 
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'builtin' -PropertyType 'String' 
+
 
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'wusa.exe' -Value 'native' -PropertyType 'String'
     #Start-Process  "winecfg.exe" -Wait -ArgumentList "/v win81"
