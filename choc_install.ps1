@@ -214,7 +214,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/6/A/E/6AEA92B0-A412-4622-983E-5B305D2EBE56/adk/adksetup.exe", "$env:TEMP\\adksetup.exe")
     (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/6/F/5/6F5FF66C-6775-42B0-86C4-47D41F2DA187/Win7AndW2K8R2-KB3191566-x64.zip", "$env:TEMP\\Win7AndW2K8R2-KB3191566-x64.zip")
 
-
+    if (-not (Test-Path -Path "$env:systemroot\assembly" )) { New-Item -Path "$env:systemroot\assembly"  -ItemType directory -Force}
 
     New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides'
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscorwks' -Value 'native' -PropertyType 'String'
@@ -1314,6 +1314,18 @@ $msil_files = (`
 	   Copy-Item -Path $filetoget -Destination "$env:systemdrive\\ConEmu" -Force #to track
 	   Copy-Item -Path $filetoget -Destination "$env:systemroot\\syswow64\\WindowsPowerShell\\v1.0" -Force	   
 	   Copy-Item -Path $filetoget -Destination "$env:systemroot\\system32\\WindowsPowerShell\\v1.0" -Force
+	   
+	   $MSILTOKEN=$Xml.assembly.assemblyIdentity.publicKeyToken #  = 31bf3856ad364e35 | Where-Object -Property name -eq -Value $file_name
+
+           $DIRNAME=$Xml.assembly.assemblyIdentity.name #System.Managment.Automation
+          #C:\windows\assembly\GAC_MSIL\System.Management.Automation\1.0.0.0__31bf3856ad364e35"C:\windows\assembly\GAC_MSIL\System.Manageent.Automation\1.0.0.0__31bf3856ad364e35
+           $ABS_PATH="$env:systemroot\assembly\GAC_MSIL\" + "$DIRNAME\1.0.0.0__" + "$MSILTOKEN"
+
+          if (-not (Test-Path -Path $ABSPATH )) { New-Item -Path $ABSPATH -ItemType directory -Force}
+	  
+	   Copy-Item -Path $filetoget -Destination "$ABSPATH" -Force
+	      
+	   
       }
     
       #try write regkeys from manifest file
