@@ -1316,8 +1316,9 @@ $msil_files = (`
 	   Copy-Item -Path $filetoget -Destination "$env:systemroot\\system32\\WindowsPowerShell\\v1.0" -Force
 	   
 	   $MSILTOKEN=$Xml.assembly.assemblyIdentity.publicKeyToken #  = 31bf3856ad364e35 | Where-Object -Property name -eq -Value $file_name
-
+           Write-Host "msiltoken is $MSILTOKEN" 
            $DIRNAME=$Xml.assembly.assemblyIdentity.name #System.Managment.Automation
+	    Write-Host "dirname is $DIRNAME" 
           #C:\windows\assembly\GAC_MSIL\System.Management.Automation\1.0.0.0__31bf3856ad364e35"C:\windows\assembly\GAC_MSIL\System.Manageent.Automation\1.0.0.0__31bf3856ad364e35
            $ABS_PATH="$env:systemroot\assembly\GAC_MSIL\" + "$DIRNAME\1.0.0.0__" + "$MSILTOKEN"
            Write-Host ABSPATH is "$ABSPATH"
