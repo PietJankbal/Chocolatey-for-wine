@@ -190,13 +190,13 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     #/* remove_mono */
 
 #FIXME!! Needs to be updated when Mono updates; Find better solution...........
-#$f = uninstaller --list  | Select-String 'Mono'
-#$g = $f -split "\|" |Select-string "{"
-#Uninstaller --remove $g[0]
-#Uninstaller --remove $g[1]
+$f = uninstaller --list  | Select-String 'Mono'
+$g = $f -split "\|" |Select-string "{"
+Uninstaller --remove $g[0]
+Uninstaller --remove $g[1]
 
-    Start-Process uninstaller -Wait -ArgumentList  "--remove", "{0A7C8977-1185-5C3F-A4E7-7A90611227C3}"
-    Start-Process uninstaller -Wait -ArgumentList "--remove", "{05C9CD26-9144-58FC-8A6E-B4DE47B661EC}"
+   # Start-Process uninstaller -Wait -ArgumentList  "--remove", "{0A7C8977-1185-5C3F-A4E7-7A90611227C3}"
+   # Start-Process uninstaller -Wait -ArgumentList "--remove", "{05C9CD26-9144-58FC-8A6E-B4DE47B661EC}"
      Get-Process uninstaller | Foreach-Object { $_.WaitForExit() }
 
     Remove-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.5' -Recurse
