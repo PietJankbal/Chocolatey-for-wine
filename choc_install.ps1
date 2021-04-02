@@ -63,7 +63,29 @@ if(Test-Path 'env:SCOOP_INSTALL'){
     Start-Process ${env:ProgramFiles}\\7-zip\\7z.exe  -ArgumentList "x","-r","$env:TEMP\\winpe64.wim","-aou","-o$env:SystemDrive","Windows"
   #   & "${env:ProgramFiles}\\7-zip\\7z.exe" x -r "$env:TEMP\winpe64.wim" -aou "-o$env:SystemDrive" Windows
     Get-Process 7z | Foreach-Object { $_.WaitForExit() }
-    #$7zid = (Get-Process 7z).id; Wait-Process -Id $7zid;
+
+
+#$MethodDefinition = @’
+
+#[DllImport(“kernel32.dll”, CharSet = CharSet.Unicode)]
+
+#public static extern bool CopyFile(string lpExistingFileName, string lpNewFileName, bool bFailIfExists);
+
+#‘@
+
+#$Kernel32 = Add-Type -MemberDefinition $MethodDefinition -Name ‘Kernel32’ -Namespace ‘Win32’ -PassThru
+
+# You may now call the CopyFile function
+
+# Copy calc.exe to the user’s desktop
+
+# $Kernel32::CopyFile(“$($Env:SystemRoot)\System32\calc.exe”, “$($Env:USERPROFILE)\Desktop\calc.exe”, $False) 
+
+
+
+
+
+     #$7zid = (Get-Process 7z).id; Wait-Process -Id $7zid;
 
 #    Rename-Item "$env:TEMP\\pe32\\Windows\System32" "$env:TEMP\\pe32\\Windows\syswow64"
     
@@ -72,6 +94,9 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
 #    Rename-Item "$env:SystemDrive\\winbak.ini" "$env:SystemDrive\\win.ini" -Force 
   #   Get-Process 7z | Foreach-Object { $_.WaitForExit() }
+
+
+
 
 
 #    Copy-Item -Path "$env:TEMP\\expand.exe" -Destination "$env:SystemRoot\\syswow64\\expand.exe"
