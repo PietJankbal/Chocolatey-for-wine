@@ -1320,7 +1320,7 @@ $msil_files = (`
            $DIRNAME=$Xml.assembly.assemblyIdentity.name #System.Managment.Automation
 	    Write-Host dirname is "$DIRNAME" 
           #C:\windows\assembly\GAC_MSIL\System.Management.Automation\1.0.0.0__31bf3856ad364e35"C:\windows\assembly\GAC_MSIL\System.Manageent.Automation\1.0.0.0__31bf3856ad364e35
-           $ABSPATH= "$env:systemroot\assembly\GAC_MSIL\" + "$DIRNAME\1.0.00_" +"$MSILTOKEN"
+           $ABSPATH= "$env:systemroot\assembly\GAC_MSIL\" + "$DIRNAME\1.0.0.0__" +"$MSILTOKEN"
            Write-Host ABSPATH is "$ABSPATH"
           if (-not (Test-Path -Path "$ABSPATH" )) { New-Item -Path "$ABSPATH" -ItemType directory -Force}
 	  
