@@ -1317,15 +1317,15 @@ $msil_files = (`
       else {  #HACK where should these files go to??
            Write-Host "possible error! destpath is null for $manifest"
 	   Copy-Item -Path $filetoget -Destination "$env:systemdrive\\ConEmu" -Force #to track
-	   #Copy-Item -Path $filetoget -Destination "$env:systemroot\\syswow64\\WindowsPowerShell\\v1.0" -Force	   
-	   #Copy-Item -Path $filetoget -Destination "$env:systemroot\\system32\\WindowsPowerShell\\v1.0" -Force
+	   Copy-Item -Path $filetoget -Destination "$env:systemroot\\syswow64\\WindowsPowerShell\\v1.0" -Force	   
+	   Copy-Item -Path $filetoget -Destination "$env:systemroot\\system32\\WindowsPowerShell\\v1.0" -Force
 	   
 	   $MSILTOKEN=$Xml.assembly.assemblyIdentity.publicKeyToken #  = 31bf3856ad364e35 | Where-Object -Property name -eq -Value $file_name
            Write-Host msiltoken is "$MSILTOKEN" 
            $DIRNAME=$Xml.assembly.assemblyIdentity.name #System.Managment.Automation
 	    Write-Host dirname is "$DIRNAME" 
           #C:\windows\assembly\GAC_MSIL\System.Management.Automation\1.0.0.0__31bf3856ad364e35"C:\windows\assembly\GAC_MSIL\System.Manageent.Automation\1.0.0.0__31bf3856ad364e35
-           $ABSPATH= "$env:systemroot\Microsoft.NET\assembly\GAC_MSIL\" + "$DIRNAME\1.0.0.0__" +"$MSILTOKEN"
+           $ABSPATH= "$env:systemroot\assembly\GAC_MSIL\" + "$DIRNAME\1.0.0.0__" +"$MSILTOKEN"
            Write-Host ABSPATH is "$ABSPATH"
           if (-not (Test-Path -Path "$ABSPATH" )) { New-Item -Path "$ABSPATH" -ItemType directory -Force}
 	  
