@@ -1317,8 +1317,8 @@ $msil_files = (`
       else {  #HACK where should these files go to??
            Write-Host "possible error! destpath is null for $manifest"
 	   Copy-Item -Path $filetoget -Destination "$env:systemdrive\\ConEmu" -Force #to track
-	   Copy-Item -Path $filetoget -Destination "$env:systemroot\\syswow64\\WindowsPowerShell\\v1.0" -Force	   
-	   Copy-Item -Path $filetoget -Destination "$env:systemroot\\system32\\WindowsPowerShell\\v1.0" -Force
+	   #Copy-Item -Path $filetoget -Destination "$env:systemroot\\syswow64\\WindowsPowerShell\\v1.0" -Force	   
+	   #Copy-Item -Path $filetoget -Destination "$env:systemroot\\system32\\WindowsPowerShell\\v1.0" -Force
 	   
 	   $MSILTOKEN=$Xml.assembly.assemblyIdentity.publicKeyToken #  = 31bf3856ad364e35 | Where-Object -Property name -eq -Value $file_name
            Write-Host msiltoken is "$MSILTOKEN" 
