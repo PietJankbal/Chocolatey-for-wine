@@ -144,7 +144,7 @@ if(Test-Path 'env:SCOOP_INSTALL'){
 
 }
 
-if(Test-Path 'env:ROTZOOI'){
+#if(Test-Path 'env:ROTZOOI'){
 
     Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell_orig.exe"
     Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell_orig.exe"
@@ -210,7 +210,7 @@ if(Test-Path 'env:ROTZOOI'){
     Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')) 
 
 
-}
+#}end ROTZOOI
 
 
     #/* Install dotnet48 otherwise choco fails to install packages; procedure copied from winetricks */
