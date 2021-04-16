@@ -10,7 +10,7 @@ Install (assuming ~/.wine is where your wineprefix is):
 
 Optional:
 - Backup the now created prefix, so you can just copy it back, instead of going through the (>5 min) timeconsuming installation of chocolatey again in case you removed your prefix
-- Check if things went well: "wine choco install firefox -y"
+- Check if things went well: "choco install firefox -y"
 
 Notes:
 
