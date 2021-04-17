@@ -141,26 +141,65 @@ Uninstaller --remove $g[1]
     New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\.NETFramework' -Name 'OnlyUseLatestCLR' -Value '0001' -PropertyType 'DWord'
     New-ItemProperty -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\.NETFramework' -Name 'OnlyUseLatestCLR' -Value '0001' -PropertyType 'DWord'
 
-    New-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0'
-    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0' -Name 'Install' -Value '1' -PropertyType 'DWord'
-    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0' -Name 'SP' -Value '2' -PropertyType 'DWord'
-    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0' -Name 'Version' -Value '3.2.30729' -PropertyType 'String'
 
 
-    New-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0\\Setup'
-    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0\\Setup' -Name 'InstallSuccess' -Value '1' -PropertyType 'DWord'
-    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0\\Setup' -Name 'Version' -Value '3.2.30729' -PropertyType 'String'
+function set_HKLM_SM_key()
+{
+ Param ($path, $name, $val, $prop) 
+ $HKLM_SM = 'HKLM:\\Software\\Microsoft\\'
+  $HKLM_SM_WOW = 'HKLM:\\Software\\Wow6432Node\\Microsoft\\'
+ New-ItemProperty -Path "$(Join-Path $HKLM_SM $path)" -Name  $name -Value $val -PropertyType $prop
+ New-ItemProperty -Path "$(Join-Path $HKLM_SM_WOW $path)" -Name  $name -Value $val -PropertyType $prop
+}
 
 
-    New-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.5'
-    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0' -Name 'Install' -Value '1' -PropertyType 'DWord'
-    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0' -Name 'SP' -Value '2' -PropertyType 'DWord'
-    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0' -Name 'Version' -Value '3.5.30729.4926' -PropertyType 'String'
+function new_HKLM_SM_key()
+{
+ Param ($path) 
+ $HKLM_SM = 'HKLM:\\Software\\Microsoft\\'
+  $HKLM_SM_WOW = 'HKLM:\\Software\\Wow6432Node\\Microsoft\\'
+ New-Item -Path "$(Join-Path $HKLM_SM $path)" 
+ New-Item -Path "$(Join-Path $HKLM_SM_WOW $path)"
+}
+
+#    New-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0'
+#    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0' -Name 'Install' -Value '1' -PropertyType 'DWord'
+##    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0' -Name 'SP' -Value '2' -PropertyType 'DWord'
+#    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0' -Name 'Version' -Value '3.2.30729' -PropertyType 'String'
+    new_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.0'
+    set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.0' 'Install' '1' 'dword'
+    set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.0' 'SP' '2' 'dword'
+    set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.0' 'Version' '3.2.30729' 'string'
+
+#    New-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0\\Setup'
+#    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0\\Setup' -Name 'InstallSuccess' -Value '1' -PropertyType 'DWord'
+#    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0\\Setup' -Name 'Version' -Value '3.2.30729' -PropertyType 'String'
+    new_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.0\\Setup'
+    set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.0\\Setup' 'InstallSuccess' '1' 'dword'
+    set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.0\\Setup' 'Version' '3.2.30729' 'string'
 
 
-    New-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.5\\1033'
-    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.5\\1033' -Name 'Install' -Value '1' -PropertyType 'DWord'
+#    New-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.5'
+#    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.5' -Name 'Install' -Value '1' -PropertyType 'DWord'
+#    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.5' -Name 'SP' -Value '2' -PropertyType 'DWord'
+#    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.5' -Name 'Version' -Value '3.5.30729.4926' -PropertyType 'String'
 
+    new_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.5'
+    set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.5' 'Install' '1' 'dword'
+    set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.5' 'SP' '2' 'dword'
+    set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.0' 'Version' '3.5.30729.4926' 'string'
+
+
+    #New-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.5\\1033'
+    #New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.5\\1033' -Name 'Install' -Value '1' -PropertyType 'DWord'
+    new_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.5\\1033'
+    set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.5\\1033' 'Install' '1' 'dword'
+
+##[HKEY_CURRENT_USER\Software\Wine\Fonts\Replacements]
+#"Lucida Console"="Tahoma"
+
+    New-Item -Path 'HKCU:\\Software\\Wine\\Fonts\\Replacements'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\Fonts\\Replacements' -Name 'Lucida Console' -Value 'Tahoma' -PropertyType 'String'
 
 
 
