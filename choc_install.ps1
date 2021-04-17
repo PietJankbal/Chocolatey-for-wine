@@ -44,9 +44,9 @@ function set_HKLM_SM_key()
  Param ($path, $name, $val, $prop) 
  $HKLM_SM = 'HKLM:\\Software\\Microsoft\\'
   $HKLM_SM_WOW = 'HKLM:\\Software\\Wow6432Node\\Microsoft\\'
- New-ItemProperty -Path "$(Join-Path $HKLM_SM $path)" -Name  $name -Value $val -PropertyType $prop
+ New-ItemProperty -Path "$(Join-Path $HKLM_SM $path)" -Name  $name -Value $val -PropertyType $prop -force
    $newpath = "$(Join-Path $HKLM_SM_WOW $path)" -replace 'system32','syswow64'
- New-ItemProperty -Path "$newpath" -Name  $name -Value $val -PropertyType $prop
+ New-ItemProperty -Path "$newpath" -Name  $name -Value $val -PropertyType $prop -force
 }
 
 
