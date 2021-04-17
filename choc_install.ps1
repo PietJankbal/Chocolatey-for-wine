@@ -157,7 +157,12 @@ Uninstaller --remove $g[1]
 #"Version"="3.2.30729"
 
 
-
+#[HKEY_LOCAL_MACHINE\Software\Microsoft\NET Framework Setup\NDP\v3.5]
+#"Install"=dword:00000001
+#"InstallPath"="C:\\windows\\Microsoft.NET\\Framework64\\v3.5\\"
+#"MSI"=dword:00000001
+#"SP"=dword:00000001
+#"Version"="3.5.30729.01"
 
 
 
