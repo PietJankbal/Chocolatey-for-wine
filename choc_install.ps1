@@ -201,9 +201,9 @@ function new_HKLM_SM_key()
     New-Item -Path 'HKCU:\\Software\\Wine\\Fonts\\Replacements'
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\Fonts\\Replacements' -Name 'Lucida Console' -Value 'Tahoma' -PropertyType 'String'
 
-    New-Item -Path 'HKCU:\\Software\\Wine\\AppDefaults\\powershell_ise' -force
-    New-Item -Path 'HKCU:\\Software\\Wine\\AppDefaults\\powershell_ise\\DllOverrides' -force  
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\powershell_ise\\DllOverrides' -force -Name 'd3d9' -Value 'disable' -PropertyType 'String'
+    New-Item -Path 'HKCU:\\Software\\Wine\\AppDefaults\\powershell_ise.exe' -force
+    New-Item -Path 'HKCU:\\Software\\Wine\\AppDefaults\\powershell_ise.exe\\DllOverrides' -force  
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\powershell_ise.exe\\DllOverrides' -force -Name 'd3d9' -Value 'disable' -PropertyType 'String'
 
 #[HKEY_LOCAL_MACHINE\Software\Microsoft\NET Framework Setup\NDP\v3.0]
 #"Increment"="01"
