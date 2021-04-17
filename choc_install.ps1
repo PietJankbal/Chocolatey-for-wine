@@ -55,8 +55,10 @@ function new_HKLM_SM_key()
  Param ($path) 
  $HKLM_SM = 'HKLM:\\Software\\Microsoft\\'
   $HKLM_SM_WOW = 'HKLM:\\Software\\Wow6432Node\\Microsoft\\'
-  $newpath = "$(Join-Path $HKLM_SM_WOW $path)" -replace 'system32','syswow64'
- New-Item -Path "$newpath" 
+
+  $newpath = "$(Join-Path $HKLM_SM $path)" 
+  $newpath = "$(Join-Path $HKLM_SM_WOW $path)" 
+
  #New-Item -Path "$(Join-Path $HKLM_SM_WOW $path) -replace 'system32','syswow64'"
 }
 
