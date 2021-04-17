@@ -107,11 +107,11 @@ Uninstaller --remove $g[1]
    # Start-Process uninstaller -Wait -ArgumentList "--remove", "{05C9CD26-9144-58FC-8A6E-B4DE47B661EC}"
      Get-Process uninstaller | Foreach-Object { $_.WaitForExit() }
 
-    Remove-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.5' -Recurse
-    Remove-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v4'  -Recurse  
+   # Remove-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.5' -Recurse
+  #  Remove-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v4'  -Recurse  
 
-    Remove-Item -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\NET Framework Setup\\NDP\\v3.5' -Recurse
-    Remove-Item -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\NET Framework Setup\\NDP\\v4'  -Recurse  
+  #  Remove-Item -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\NET Framework Setup\\NDP\\v3.5' -Recurse
+  #  Remove-Item -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\NET Framework Setup\\NDP\\v4'  -Recurse  
 
     Remove-Item -Path "$env:SystemRoot\\SysWOW64\\mscoree.dll" -Force
     Remove-Item -Path "$env:SystemRoot\\System32\\mscoree.dll" -Force
