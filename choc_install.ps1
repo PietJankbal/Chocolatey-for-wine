@@ -56,8 +56,8 @@ function new_HKLM_SM_key()
  $HKLM_SM = 'HKLM:\\Software\\Microsoft\\'
   $HKLM_SM_WOW = 'HKLM:\\Software\\Wow6432Node\\Microsoft\\'
 
- New-Item -Path "$(Join-Path $HKLM_SM $path)
- New-Item -Path "$(Join-Path $HKLM_SM_WOW $path)
+ New-Item -Path "$(Join-Path $HKLM_SM $path)"
+ New-Item -Path "$(Join-Path $HKLM_SM_WOW $path)"
 }
 
     #Try fix wrong registrykeys due to bug https://bugs.winehq.org/show_bug.cgi?id=25740
