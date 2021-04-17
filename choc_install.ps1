@@ -53,9 +53,9 @@ function new_HKLM_SM_key()
  Param ($path) 
  $HKLM_SM = 'HKLM:\\Software\\Microsoft\\'
   $HKLM_SM_WOW = 'HKLM:\\Software\\Wow6432Node\\Microsoft\\'
-  
- New-Item -Path "$(Join-Path $HKLM_SM $path)" 
- New-Item -Path "$(Join-Path $HKLM_SM_WOW $path) -replace 'system32','syswow64'"
+  $newpath = "$(Join-Path $HKLM_SM_WOW $path)" -replace 'system32','syswow64'
+ New-Item -Path "$newpath" 
+ #New-Item -Path "$(Join-Path $HKLM_SM_WOW $path) -replace 'system32','syswow64'"
 }
 
     #Try fix wrong registrykeys due to bug https://bugs.winehq.org/show_bug.cgi?id=25740
