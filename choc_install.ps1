@@ -142,16 +142,26 @@ Uninstaller --remove $g[1]
     New-ItemProperty -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\.NETFramework' -Name 'OnlyUseLatestCLR' -Value '0001' -PropertyType 'DWord'
 
     New-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0'
-    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0' -Name 'Increment' -Value '0001' -PropertyType 'String'
-    New-ItemProperty -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\.NETFramework' -Name 'Install' -Value '1' -PropertyType 'DWord'
-    New-ItemProperty -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\.NETFramework' -Name 'MSI' -Value '1' -PropertyType 'DWord'
-    New-ItemProperty -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\.NETFramework' -Name 'SP' -Value '2' -PropertyType 'DWord'
+    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0' -Name 'Install' -Value '1' -PropertyType 'DWord'
+    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0' -Name 'SP' -Value '2' -PropertyType 'DWord'
     New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0' -Name 'Version' -Value '3.2.30729' -PropertyType 'String'
 
 
     New-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0\\Setup'
     New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0\\Setup' -Name 'InstallSuccess' -Value '1' -PropertyType 'DWord'
     New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0\\Setup' -Name 'Version' -Value '3.2.30729' -PropertyType 'String'
+
+
+    New-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.5'
+    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0' -Name 'Install' -Value '1' -PropertyType 'DWord'
+    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0' -Name 'SP' -Value '2' -PropertyType 'DWord'
+    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0' -Name 'Version' -Value '3.5.30729.4926' -PropertyType 'String'
+
+
+    New-Item -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.5\\1033'
+    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.5\\1033' -Name 'Install' -Value '1' -PropertyType 'DWord'
+
+
 
 
 #[HKEY_LOCAL_MACHINE\Software\Microsoft\NET Framework Setup\NDP\v3.0]
