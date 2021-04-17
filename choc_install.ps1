@@ -141,6 +141,31 @@ Uninstaller --remove $g[1]
     New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\.NETFramework' -Name 'OnlyUseLatestCLR' -Value '0001' -PropertyType 'DWord'
     New-ItemProperty -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\.NETFramework' -Name 'OnlyUseLatestCLR' -Value '0001' -PropertyType 'DWord'
 
+    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0' -Name 'Increment' -Value '0001' -PropertyType 'String'
+    New-ItemProperty -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\.NETFramework' -Name 'Install' -Value '1' -PropertyType 'DWord'
+    New-ItemProperty -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\.NETFramework' -Name 'MSI' -Value '1' -PropertyType 'DWord'
+    New-ItemProperty -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\.NETFramework' -Name 'SP' -Value '2' -PropertyType 'DWord'
+    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\NET Framework Setup\\NDP\\v3.0' -Name 'Version' -Value '3.2.30729' -PropertyType 'String'
+
+
+
+#[HKEY_LOCAL_MACHINE\Software\Microsoft\NET Framework Setup\NDP\v3.0]
+#"Increment"="01"
+#"Install"=dword:00000001
+#"MSI"=dword:00000001
+#"SP"=dword:00000002
+#"Version"="3.2.30729"
+
+
+
+
+
+
+
+
+
+
+
 
 
     Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\wusa.exe" -Force
