@@ -124,12 +124,12 @@ function new_HKLM_SM_key()
 
 
 
-    New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides'
+    #New-Item -Path 'HKCU:\\Software\\Wine\\DllOverrides'
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscorwks' -Value 'native' -PropertyType 'String'
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'native' -PropertyType 'String'
 
-    Remove-Item -Path "$env:SystemRoot\\SysWOW64\\mscoree.dll" #-Force
-    Remove-Item -Path "$env:SystemRoot\\System32\\mscoree.dll" #-Force
+    #Remove-Item -Path "$env:SystemRoot\\SysWOW64\\mscoree.dll" #-Force
+    #Remove-Item -Path "$env:SystemRoot\\System32\\mscoree.dll" #-Force
 
 
     Start-Process winecfg.exe  -Wait -ArgumentList "/v win7" 
