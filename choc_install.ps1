@@ -1514,6 +1514,8 @@ $msil_files = (`
     #Import-Module -Name C:\Windows\System32\WindowsPowerShell\v1.0\Modules\NetTCPIP -Verbose
 
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'wusa.exe' -Value 'native' -PropertyType 'String'
-    #Start-Process  "winecfg.exe" -Wait -ArgumentList "/v win81"
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'd3dcompiler_47' -Value 'native,builtin' -PropertyType 'String'
+
+    Start-Process  "winecfg.exe" -Wait -ArgumentList "/v win81"
     Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
     powershell.exe
