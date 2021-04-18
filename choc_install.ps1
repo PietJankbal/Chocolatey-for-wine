@@ -31,9 +31,9 @@
     {
         Param ($path, $name, $val, $prop) 
         $HKLM_SM = 'HKLM:\\Software\\Microsoft'; $HKLM_SM_WOW = 'HKLM:\\Software\\Wow6432Node\\Microsoft'
-        New-ItemProperty -Path "$(Join-Path $HKLM_SM $path)" -Name  $name -Value $val -PropertyType $prop -force
+        New-ItemProperty -Path "$(Join-Path $HKLM_SM $path)" -Name  $name -Value $val -PropertyType $prop -force -erroraction 'silentlycontinue'
         $newpath = "$(Join-Path $HKLM_SM_WOW $path)" -replace 'system32','syswow64'
-        New-ItemProperty -Path "$newpath" -Name  $name -Value $val -PropertyType $prop -force
+        New-ItemProperty -Path "$newpath" -Name  $name -Value $val -PropertyType $prop -force -erroraction 'silentlycontinue'
     }
 
     function new_HKLM_SM_key()  <# creates key under HKLM:\\Software\\Microsoft #>
