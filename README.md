@@ -23,3 +23,8 @@ Notes:
     i686-w64-mingw32-gcc -municode -mconsole mainv1.c -lurlmon -s -o powershell32.exe
 
     x86_64-w64-mingw32-gcc -municode -mconsole mainv1.c -lurlmon -s -o powershell64.exe
+
+Bonus:
+
+  - As a bonus you get on top of powershell core, also powershell 2.0 that you can start with 'powershell_ise',
+    or just 'powershell20'
