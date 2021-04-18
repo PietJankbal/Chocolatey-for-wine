@@ -1,12 +1,9 @@
 # Chocolatey-for-wine
 Chocolatey packagemanager automatic installer in wine, handy to install quickly programs in wine
 
-Install (assuming ~/.wine is where your wineprefix is):
-- wget https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/powershell64.exe && cp -rf ./powershell64.exe ~/.wine/drive_c/windows/system32/WindowsPowerShell/v1.0/powershell.exe
-
-- wget https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/powershell32.exe && cp -rf ./powershell32.exe ~/.wine/drive_c/windows/syswow64/WindowsPowerShell/v1.0/powershell.exe
-
-- Then do "wine powershell" once and let it install (hopefully) needed stuff (takes >5 minutes....).
+Install :
+- wget https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/chocinstaller.exe
+- wine chocinstaller.exe
 
 Optional:
 - Backup the now created prefix, so you can just copy it back, instead of going through the (>5 min) timeconsuming installation of chocolatey again in case you removed your prefix
