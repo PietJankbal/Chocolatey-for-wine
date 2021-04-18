@@ -56,8 +56,8 @@ function new_HKLM_SM_key()
  $HKLM_SM = 'HKLM:\\Software\\Microsoft\\'
   $HKLM_SM_WOW = 'HKLM:\\Software\\Wow6432Node\\Microsoft\\'
 
- New-Item -Path "$(Join-Path $HKLM_SM $path)"
- New-Item -Path "$(Join-Path $HKLM_SM_WOW $path)"
+ New-Item -Path "$(Join-Path $HKLM_SM $path)" -force
+ New-Item -Path "$(Join-Path $HKLM_SM_WOW $path)" -force
 }
 
     #Try fix wrong registrykeys due to bug https://bugs.winehq.org/show_bug.cgi?id=25740
@@ -88,7 +88,7 @@ function new_HKLM_SM_key()
     set_HKLM_SM_key 'Windows\\CurrentVersion\\WSMAN\\Plugin\\Event' 'Forwarding Plugin ConfigXML' '<PlugInConfiguration xmlns=\"http://schemas.microsoft.com/wbem/wsman/1/config/PluginConfiguration\" Name=\"Event Forwarding Plugin\" Filename=\"c:\\windows\\system32\\wevtfwd.dll\" SDKVersion=\"1\" XmlRenderingType=\"text\" ><Resources><Resource ResourceUri=\"http://schemas.microsoft.com/wbem/wsman/1/windows/EventLog\" SupportsOptions=\"true\" ><Security Uri=\"\" ExactMatch=\"false\" Sddl=\"O:NSG:BAD:P(A;;GA;;;BA)S:P(AU;FA;GA;;;WD)(AU;SA;GWGX;;;WD)\" /><Capability Type=\"Subscribe\" SupportsFiltering=\"true\" /></Resource></Resources></PlugInConfiguration>' 'String'
     set_HKLM_SM_key 'Windows\\CurrentVersion\\WSMAN\\Plugin\\SEL Plugin' 'ConfigXML' '<PlugInConfiguration xmlns=\"http://schemas.microsoft.com/wbem/wsman/1/config/PluginConfiguration\" Name=\"SEL Plugin\" Filename=\"c:\\windows\\system32\\wsmselpl.dll\" SDKVersion=\"1\" XmlRenderingType=\"text\" ><Resources><Resource ResourceUri=\"http://schemas.microsoft.com/wbem/wsman/1/logrecord/sel\" SupportsOptions=\"true\" ><Security Uri=\"\" ExactMatch=\"false\" Sddl=\"O:NSG:BAD:P(A;;GA;;;BA)(A;;GA;;;NS)S:P(AU;FA;GA;;;WD)(AU;SA;GXGW;;;WD)\" /><Capability Type=\"Subscribe\" /></Resource></Resources></PlugInConfiguration>' 'String'
     set_HKLM_SM_key 'Windows\\CurrentVersion\\WSMAN\\Plugin\\WMI' 'Provider ConfigXML' '<PlugInConfiguration xmlns=\"http://schemas.microsoft.com/wbem/wsman/1/config/PluginConfiguration\" Name=\"WMI Provider\" Filename=\"c:\\windows\\system32\\WsmWmiPl.dll\" SDKVersion=\"1\" XmlRenderingType=\"text\" ><Resources><Resource ResourceUri=\"http://schemas.microsoft.com/wbem/wsman/1/wmi\" SupportsOptions=\"true\" ><Capability Type=\"Get\" SupportsFragment=\"true\" /><Capability Type=\"Put\" SupportsFragment=\"true\" /><Capability Type=\"Invoke\" /><Capability Type=\"Enumerate\" SupportsFiltering=\"true\"/></Resource><Resource ResourceUri=\"http://schemas.dmtf.org/wbem/wscim/1/cim-schema\" SupportsOptions=\"true\" ><Capability Type=\"Get\" SupportsFragment=\"true\" /><Capability Type=\"Put\" SupportsFragment=\"true\" /><Capability Type=\"Invoke\" /><Capability Type=\"Enumerate\" /></Resource><Resource ResourceUri=\"http://schemas.dmtf.org/wbem/wscim/1/*\" SupportsOptions=\"true\" ExactMatch=\"true\" ><Capability Type=\"Enumerate\" SupportsFiltering=\"true\"/></Resource></Resources></PlugInConfiguration>' 'String'
-    New-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Services\\WinRM' 'ImagePath' 'c:\\windows\\system32\\svchost.exe -k WINRM' 'String'
+    set_HKLM_SM_key 'HKLM:\\System\\CurrentControlSet\\Services\\WinRM' 'ImagePath' 'c:\\windows\\system32\\svchost.exe -k WINRM' 'String'
     #Install choco
     Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')) 
 
