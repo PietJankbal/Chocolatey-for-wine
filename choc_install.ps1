@@ -27,7 +27,7 @@
     Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell_orig.exe" -Destination "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe"
     Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell_orig.exe" -Destination "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe"
 
-    function set_HKLM_SM_key() <# sets key under HKLM:\\Software\\Microsoft #>
+    function set_HKLM_SM_key() <# sets key for HKLM:\\Software\\Microsoft #>
     {
         Param ($path, $name, $val, $prop) 
         $HKLM_SM = 'HKLM:\\Software\\Microsoft'; $HKLM_SM_WOW = 'HKLM:\\Software\\Wow6432Node\\Microsoft'
@@ -36,7 +36,7 @@
         New-ItemProperty -Path "$newpath" -Name  $name -Value $val -PropertyType $prop -force -erroraction 'silentlycontinue'
     }
 
-    function new_HKLM_SM_key()  <# creates key under HKLM:\\Software\\Microsoft #>
+    function new_HKLM_SM_key()  <# creates key for HKLM:\\Software\\Microsoft #>
     {
          Param ($path) 
          $HKLM_SM = 'HKLM:\\Software\\Microsoft'; $HKLM_SM_WOW = 'HKLM:\\Software\\Wow6432Node\\Microsoft'
@@ -105,7 +105,7 @@
 
     New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\.NETFramework' -Name 'OnlyUseLatestCLR' -Value '0001' -PropertyType 'DWord'
     New-ItemProperty -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\.NETFramework' -Name 'OnlyUseLatestCLR' -Value '0001' -PropertyType 'DWord'
-
+    <# workarounds for powershell_ise #>
     new_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.0'
     set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.0' 'Install' '1' 'dword'
     set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.0' 'SP' '2' 'dword'
@@ -122,7 +122,7 @@
 
     new_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.5\\1033'
     set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.5\\1033' 'Install' '1' 'dword'
-    <# workarounds for powershell_ise #>
+
     New-Item -Path 'HKCU:\\Software\\Wine\\Fonts\\Replacements'
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\Fonts\\Replacements' -Name 'Lucida Console' -Value 'Tahoma' -PropertyType 'String'
     New-Item -Path 'HKCU:\\Software\\Microsoft\\Avalon.Graphics' -force
