@@ -3,7 +3,7 @@ Chocolatey packagemanager automatic installer in wine, handy to install quickly 
 
 Install :
 - wget https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/chocinstaller.exe
-- wine chocinstaller.exe
+- wine chocinstaller.exe (takes > 5 min. to complete...)
 
 Optional:
 - Backup the now created prefix, so you can just copy it back, instead of going through the (>5 min) timeconsuming installation of chocolatey again in case you removed your prefix
