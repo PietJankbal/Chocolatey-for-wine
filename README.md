@@ -26,5 +26,6 @@ Notes:
 
     x86_64-w64-mingw32-gcc -municode -mconsole mainv1.c -lurlmon -s -o powershell64.exe
     
-    Then copy  - powershell32.exe to ~/.wine/drive_c/windows/syswow64/WindowsPowerShell/v1.0/powershell.exe
-               - powershell64.exe to ~/.wine/drive_c/windows/system32/WindowsPowerShell/v1.0/powershell.exe
+    Then copy 
+    - powershell32.exe to ~/.wine/drive_c/windows/syswow64/WindowsPowerShell/v1.0/powershell.exe
+    - powershell64.exe to ~/.wine/drive_c/windows/system32/WindowsPowerShell/v1.0/powershell.exe
