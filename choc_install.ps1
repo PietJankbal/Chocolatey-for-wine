@@ -141,6 +141,9 @@
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'd3dcompiler_47' -Value 'native' -PropertyType 'String'
     #Start-Process  "winecfg.exe" -Wait -ArgumentList "/v win81"
     cd c:\
+    Start-Process choco.exe -Wait -ArgumentList  "install", "git","-y"
+    $env:Path += ";${env:ProgramFiles}\\Git\\usr\\bin" 
+    
     Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
     
     powershell.exe
