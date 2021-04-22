@@ -128,6 +128,11 @@
     New-Item -Path 'HKCU:\\Software\\Microsoft\\Avalon.Graphics' -force
     New-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Avalon.Graphics' -Name 'DisableHWAcceleration' -Value '1' -PropertyType 'dword'  
     <# END workarounds for powershell_ise #>
+    
+    (New-Object System.Net.WebClient).DownloadFile("https://mirrors.kernel.org/gentoo/distfiles/arial32.exe", "$env:TEMP\\arial32.exe")
+    Start-Process -FilePath "$env:TEMP\\arial32.exe" -Wait -ArgumentList  "-q"
+    (New-Object System.Net.WebClient).DownloadFile("https://mirrors.kernel.org/gentoo/distfiles/arialb32.exe", "$env:TEMP\\arialb32.exe")
+    Start-Process -FilePath "$env:TEMP\\arialb32.exe" -Wait -ArgumentList  "-q"
 
     Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\wusa.exe" -Force
     Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\wusa.exe" -Force
