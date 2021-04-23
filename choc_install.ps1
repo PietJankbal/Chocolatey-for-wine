@@ -145,7 +145,7 @@
    # $newPath=$oldPath+";${env:systemdrive\\tools\\git\\usr\\bin"
    # Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH –Value $newPath
 
-    #Start-Process choco.exe -Wait -ArgumentList  "install", "git.portable","-y"
+    Start-Process choco.exe -Wait -ArgumentList  "install", "git.portable","-y"
    #$chocoid = (Get-Process choco).id; Wait-Process -Id $winecfgid
 
     Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
