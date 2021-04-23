@@ -141,9 +141,9 @@
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'd3dcompiler_47' -Value 'native' -PropertyType 'String'
     #Start-Process  "winecfg.exe" -Wait -ArgumentList "/v win81"
     cd c:\
-    #$oldPath=(Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH).Path
-   # $newPath=$oldPath+";${env:systemdrive\\tools\\git\\usr\\bin"
-   # Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH –Value $newPath
+    $oldPath=(Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH).Path
+    $newPath=$oldPath+";${env:systemdrive\\tools\\git\\usr\\bin"
+    Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' -Name PATH –Value $newPath
 
     Start-Process choco.exe -Wait -ArgumentList  "install", "git.portable","-y"
    #$chocoid = (Get-Process choco).id; Wait-Process -Id $winecfgid
