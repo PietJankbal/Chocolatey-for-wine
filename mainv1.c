@@ -118,13 +118,21 @@ int __cdecl wmain(int argc, WCHAR *argv[])
     fprintf(stderr, "Files Successfully Downloaded \n");
 
     GetTempPathW(MAX_PATH, tmp); SetCurrentDirectoryW(tmp);
-    system("start /WAIT msiexec.exe /i PowerShell-7.0.3-win-x64.msi /*INSTALLFOLDER=\"C:\\Windows\\Powershell6\\\"*/ /q");
-
+//    system("start /WAIT msiexec.exe /i PowerShell-7.0.3-win-x64.msi /*INSTALLFOLDER=\"C:\\Windows\\Powershell6\\\"*/ /q");
+        
     STARTUPINFOW startup_info;
     PROCESS_INFORMATION process_info;
     memset(&startup_info, 0, sizeof(STARTUPINFO));
     startup_info.cb = sizeof(STARTUPINFO);
     memset(&process_info, 0, sizeof(PROCESS_INFORMATION));
+    
+    WCHAR argsW[MAX_PATH] = L" /i "; WCHAR msiexecW[MAX_PATH]; 
+    if(!ExpandEnvironmentStringsW(L"%winsysdir%", msiexecW, MAX_PATH+1)) goto failed;
+
+    CreateProcessW(lstrcatW(msiexecW,L"\\msiexec.exe"), lstrcatW(  lstrcatW(argsW,L"PowerShell-7.0.3-win-x64.msi"),L" /q")     ,0,0,0,0,0,0,&startup_info,&process_info); SetCurrentDirectoryW(cur_dirW);
+    WaitForSingleObject( process_info.hProcess, INFINITE ); //Wait for it to finish.
+    // Get the exit code : result = GetExitCodeProcess(processInformation.hProcess, &exitCode);
+    CloseHandle( process_info.hProcess ); CloseHandle( process_info.hThread );   
 
     CreateProcessW(pwsh_pathW,L" -file install2.ps1",0,0,0,0,0,0,&startup_info,&process_info); Sleep(10000);
     CreateProcessW(pwsh_pathW,L" -file choc_install.ps1",0,0,0,0,0,0,&startup_info,&process_info);
