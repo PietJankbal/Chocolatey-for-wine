@@ -29,3 +29,5 @@ Notes:
     Then copy 
     - powershell32.exe to ~/.wine/drive_c/windows/syswow64/WindowsPowerShell/v1.0/powershell.exe
     - powershell64.exe to ~/.wine/drive_c/windows/system32/WindowsPowerShell/v1.0/powershell.exe
+
+    and do "wine powershell"
