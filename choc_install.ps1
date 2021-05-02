@@ -125,8 +125,8 @@
 
     New-Item -Path 'HKCU:\\Software\\Wine\\Fonts\\Replacements'
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\Fonts\\Replacements' -Name 'Lucida Console' -Value 'Tahoma' -PropertyType 'String'
-    #New-Item -Path 'HKCU:\\Software\\Microsoft\\Avalon.Graphics' -force
-    #New-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Avalon.Graphics' -Name 'DisableHWAcceleration' -Value '1' -PropertyType 'dword'  
+    New-Item -Path 'HKCU:\\Software\\Microsoft\\Avalon.Graphics' -force
+    New-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Avalon.Graphics' -Name 'DisableHWAcceleration' -Value '0' -PropertyType 'dword'  
     <# END workarounds for powershell_ise #>
     
     (New-Object System.Net.WebClient).DownloadFile("https://mirrors.kernel.org/gentoo/distfiles/arial32.exe", "$env:TEMP\\arial32.exe")
