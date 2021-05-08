@@ -143,7 +143,7 @@
     Start-Process -FilePath ${env:ProgramFiles}\\7-zip\\7z.exe -Wait -ArgumentList  "x $env:TEMP\\Firefox64.exe core/d3dcompiler_47.dll -o$env:TEMP\\core64"
     $7zid = (Get-Process 7z).id; Wait-Process -Id $7zid
     Copy-Item -Path "$env:TEMP\\core64\\core\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_47.dll" -Force
-    Start-Process  "winecfg.exe" -Wait -ArgumentList "/v winxp"
+    Start-Process  "winecfg.exe" -Wait -ArgumentList "/v winxp64"
     (New-Object System.Net.WebClient).DownloadFile("http://download.windowsupdate.com/msdownload/update/software/crup/2009/11/msxml6-kb973686-enu-amd64_bb420ff844af4603437396d775fa34a47d0718a5.exe", "$env:TEMP\\msxml6-kb973686-enu-amd64_bb420ff844af4603437396d775fa34a47d0718a5.exe")
     Start-Process -FilePath "$env:TEMP\\msxml6-kb973686-enu-amd64_bb420ff844af4603437396d775fa34a47d0718a5.exe" -Wait -ArgumentList  "-q"
 
