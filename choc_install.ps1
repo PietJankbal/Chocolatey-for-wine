@@ -147,6 +147,7 @@
     Start-Process  "winecfg.exe" -Wait -ArgumentList "/v winxp64"
     $winecfgid = (Get-Process winecfg).id; Wait-Process -Id $winecfgid
     Start-Process -FilePath "$env:TEMP\\msxml6-kb973686-enu-amd64_bb420ff844af4603437396d775fa34a47d0718a5.exe" -Wait -ArgumentList  "-q"
+    $xml6id = (Get-Process msxml6-kb973686-enu-amd64_bb420ff844af4603437396d775fa34a47d0718a5).id; Wait-Process -Id $xml6id
     Start-Process  "winecfg.exe" -Wait -ArgumentList "/v win7";     $winecfgid = (Get-Process winecfg).id; Wait-Process -Id $winecfgid
 
     Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\wusa.exe" -Force
