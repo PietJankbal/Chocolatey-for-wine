@@ -146,6 +146,8 @@
     (New-Object System.Net.WebClient).DownloadFile("http://download.windowsupdate.com/msdownload/update/software/crup/2009/11/msxml6-kb973686-enu-amd64_bb420ff844af4603437396d775fa34a47d0718a5.exe", "$env:TEMP\\msxml6-kb973686-enu-amd64_bb420ff844af4603437396d775fa34a47d0718a5.exe")
     Start-Process  "winecfg.exe" -Wait -ArgumentList "/v winxp64"
     $winecfgid = (Get-Process winecfg).id; Wait-Process -Id $winecfgid
+    Remove-Item -Path "$env:SystemRoot\\SysWOW64\\msxml6.dll" -Force
+    Remove-Item -Path "$env:SystemRoot\\System32\\msxml6.dll" -Force
     Start-Process -FilePath "$env:TEMP\\msxml6-kb973686-enu-amd64_bb420ff844af4603437396d775fa34a47d0718a5.exe" -Wait -ArgumentList  "-q"
     $xml6id = (Get-Process msxml6-kb973686-enu-amd64_bb420ff844af4603437396d775fa34a47d0718a5).id; Wait-Process -Id $xml6id
     Start-Process  "winecfg.exe" -Wait -ArgumentList "/v win7";     $winecfgid = (Get-Process winecfg).id; Wait-Process -Id $winecfgid
