@@ -179,8 +179,8 @@
    # $chocoid = (Get-Process choco).id; Wait-Process -Id $winecfgid
    # refreshenv
 
-    Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList  "x $env:TEMP\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe wow64/powershell.exe"
-    Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList "x $env:TEMP\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe powershell.exe"
+    Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList  "x $env:TEMP\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe wow64/powershell.exe -o$env:TEMP\\"
+    Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList "x $env:TEMP\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe powershell.exe -o$env:TEMP\\"
 
     #Copy-Item -Path "$env:TEMP\\wow64\\powershell.exe" -Destination "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell20l.exe"
     #Copy-Item -Path "$env:TEMP\\powershell.exe" -Destination "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell20l.exe"
