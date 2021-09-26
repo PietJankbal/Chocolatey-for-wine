@@ -193,7 +193,7 @@ already_installed:
                                         L"Get-WmiObject",                            L"Get-CimInstance"
                                       };
 
-    fwprintf(stderr, L"\033[1;35m"); fwprintf(stderr, L"\nold command line is %ls \n", cmdlineW); fwprintf(stderr, L"\033[0m\n");
+    //fwprintf(stderr, L"\033[1;35m"); fwprintf(stderr, L"\nold command line is %ls \n", cmdlineW); fwprintf(stderr, L"\033[0m\n");
 
     if(cmd_idx)
     {
@@ -207,7 +207,7 @@ already_installed:
         lstrcpyW( cmdlineW, bufW ); HeapFree(GetProcessHeap(), 0, bufW);
     }
 
-    fwprintf(stderr, L"\033[1;93m"); fwprintf(stderr, L"\nnew command line is %ls \n", cmdlineW); fwprintf(stderr, L"\033[0m\n");
+    //fwprintf(stderr, L"\033[1;93m"); fwprintf(stderr, L"\nnew command line is %ls \n", cmdlineW); fwprintf(stderr, L"\033[0m\n");
 
     if (GetEnvironmentVariable(L"WINEPWSH", envvar, MAX_PATH+1)  && !_wcsicmp(L"PWSH20", envvar) ) use_pwsh20 = TRUE;
 
@@ -225,11 +225,16 @@ already_installed:
          return 0;
     }
 
-    _wspawnv(2/*_P_OVERLAY*/, !use_pwsh20 ? pwsh_pathW : pwsh20_pathW, new_args);
-    return 0;
+ //   _wspawnv(2/*_P_OVERLAY*/, !use_pwsh20 ? pwsh_pathW : pwsh20_pathW, new_args);
+    memset(&startup_info, 0, sizeof(STARTUPINFO)); memset(&process_info, 0, sizeof(PROCESS_INFORMATION));
+    argsW[0] = 0;
+    CreateProcessW(!use_pwsh20 ? pwsh_pathW : pwsh20_pathW, cmdlineW,0,0,0,0,0,0,&startup_info,&process_info);
+    WaitForSingleObject( process_info.hProcess, INFINITE ); //Wait for it to finish.
+    CloseHandle( process_info.hProcess ); CloseHandle( process_info.hThread );    
+
+   return 0;
 
 failed:
     fprintf(stderr, "Something went wrong :( (32-bit?, winversion <win7?, failing download? ....  \n");
     return 0; /* fake success anyway */
 }
-
