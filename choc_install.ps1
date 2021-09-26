@@ -171,5 +171,8 @@
    # refreshenv
 
     Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
-    
+    # choco feature disable --name='powershellHost'
+    #Start-Process choco.exe -Wait -ArgumentList  "feature", "disable","--name='powershellHost'","-NoNewWindow"
+    #$chocoid = (Get-Process choco).id; Wait-Process -Id $chocoid
+    'c:\\ProgramData\\chocolatey\\choco.exe feature disable --name=powershellHost'
     powershell.exe
