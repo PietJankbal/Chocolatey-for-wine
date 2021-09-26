@@ -71,7 +71,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
 
     WCHAR tmp[MAX_PATH];
     const WCHAR pwsh_exeW[] = L"pwsh.exe"; const WCHAR pwsh20_exeW[] = L"powershell20l.exe";
-    WCHAR start_conemuW[MAX_PATH] = L"%SystemDrive%\\ConEmu\\ConEmu.exe";
+    WCHAR start_conemuW[MAX_PATH];
     WCHAR cur_dirW[MAX_PATH];
     WCHAR cmdlineW [MAX_PATH]=L"";
     WCHAR cmdW[MAX_PATH] = L"-c ";
@@ -85,7 +85,9 @@ int __cdecl wmain(int argc, WCHAR *argv[])
 
     if(!ExpandEnvironmentStringsW(L"%ProgramW6432%", pwsh_pathW, MAX_PATH+1)) goto failed; /* win32 only apparently, not supported... */
     if(!ExpandEnvironmentStringsW(L"%SystemRoot%", pwsh20_pathW, MAX_PATH+1)) goto failed; /* win32 only apparently, not supported... */
+    if(!ExpandEnvironmentStringsW(L"%SystemDrive%", start_conemuW, MAX_PATH+1)) goto failed; /* win32 only apparently, not supported... */
 
+    lstrcatW(start_conemuW, L"\\ConEmu\\ConEmu.exe");
     lstrcatW(pwsh_pathW, L"\\Powershell\\7\\pwsh.exe"); lstrcatW(pwsh20_pathW, L"\\system32\\WindowsPowerShell\\v1.0\\powershell20l.exe");
     /* I can also act as a dummy program as long as my exe-name doesn`t end with the letter "l" .... */
     if ( wcsncmp  (  &argv[0][lstrlenW(argv[0]) - 5 ]  , L"l" , 1 ) )
@@ -211,23 +213,34 @@ already_installed:
 
     if (GetEnvironmentVariable(L"WINEPWSH", envvar, MAX_PATH+1)  && !_wcsicmp(L"PWSH20", envvar) ) use_pwsh20 = TRUE;
 
-    new_args[0] = !use_pwsh20 ? pwsh_exeW : pwsh20_exeW;
-    new_args[1] = cmdlineW;
-    new_args[2] = NULL;
+//  new_args[0] = !use_pwsh20 ? pwsh_exeW : pwsh20_exeW;
+//  new_args[1] = cmdlineW;
+//  new_args[2] = NULL;
 
     /* HACK  It crashes with Invalid Handle if -noexit is present or just e.g. "powershell -nologo"; if powershellconsole is started it doesn`t crash... */
     if(!cmd_idx || contains_noexit)
     {
+        memset(&startup_info, 0, sizeof(STARTUPINFO)); memset(&process_info, 0, sizeof(PROCESS_INFORMATION));
+        argsW[0] = 0;
         if(!use_pwsh20)
-             _wsystem(lstrcatW(lstrcatW(start_conemuW, L" -resetdefault -Title \"This is Powershell Core (pwsh.exe), not (!) powershell.exe\" -run pwsh.exe "), cmdlineW));
+        {
+            CreateProcessW(start_conemuW, lstrcatW(lstrcatW(argsW, L" -resetdefault -Title \"This is Powershell Core (pwsh.exe), not (!) powershell.exe\" -run pwsh.exe "),cmdlineW),0,0,0,0,0,0,&startup_info,&process_info);
+            WaitForSingleObject( process_info.hProcess, INFINITE ); //Wait for it to finish.
+            CloseHandle( process_info.hProcess ); CloseHandle( process_info.hThread );
+        }// _wsystem(lstrcatW(lstrcatW(start_conemuW, L" -resetdefault -Title \"This is Powershell Core (pwsh.exe), not (!) powershell.exe\" -run pwsh.exe "), cmdlineW));
         else
-             _wsystem(lstrcatW(lstrcatW(start_conemuW, L" -resetdefault -run powershell20l.exe "), cmdlineW));
+        {
+            CreateProcessW(start_conemuW, lstrcatW(lstrcatW(argsW, L" -resetdefault -run powershell20l.exe "),cmdlineW),0,0,0,0,0,0,&startup_info,&process_info);
+            WaitForSingleObject( process_info.hProcess, INFINITE ); //Wait for it to finish.
+            CloseHandle( process_info.hProcess ); CloseHandle( process_info.hThread ); 
+        }// _wsystem(lstrcatW(lstrcatW(start_conemuW, L" -resetdefault -run powershell20l.exe "), cmdlineW));
+    
          return 0;
     }
 
- //   _wspawnv(2/*_P_OVERLAY*/, !use_pwsh20 ? pwsh_pathW : pwsh20_pathW, new_args);
+    //   _wspawnv(2/*_P_OVERLAY*/, !use_pwsh20 ? pwsh_pathW : pwsh20_pathW, new_args);
     memset(&startup_info, 0, sizeof(STARTUPINFO)); memset(&process_info, 0, sizeof(PROCESS_INFORMATION));
-    argsW[0] = 0;
+    //argsW[0] = 0;
     CreateProcessW(!use_pwsh20 ? pwsh_pathW : pwsh20_pathW, cmdlineW,0,0,0,0,0,0,&startup_info,&process_info);
     WaitForSingleObject( process_info.hProcess, INFINITE ); //Wait for it to finish.
     CloseHandle( process_info.hProcess ); CloseHandle( process_info.hThread );    
