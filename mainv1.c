@@ -70,7 +70,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
     int i, cmd_idx = 0;
 
     WCHAR tmp[MAX_PATH];
-    const WCHAR pwsh_exeW[] = L"pwsh.exe"; const WCHAR pwsh20_exeW[] = L"powershell20.exe";
+    const WCHAR pwsh_exeW[] = L"pwsh.exe"; const WCHAR pwsh20_exeW[] = L"powershell20l.exe";
     WCHAR start_conemuW[MAX_PATH] = L"%SystemDrive%\\ConEmu\\ConEmu.exe";
     WCHAR cur_dirW[MAX_PATH];
     WCHAR cmdlineW [MAX_PATH]=L"";
@@ -86,7 +86,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
     if(!ExpandEnvironmentStringsW(L"%ProgramW6432%", pwsh_pathW, MAX_PATH+1)) goto failed; /* win32 only apparently, not supported... */
     if(!ExpandEnvironmentStringsW(L"%SystemRoot%", pwsh20_pathW, MAX_PATH+1)) goto failed; /* win32 only apparently, not supported... */
 
-    lstrcatW(pwsh_pathW, L"\\Powershell\\7\\pwsh.exe"); lstrcatW(pwsh20_pathW, L"\\system32\\WindowsPowerShell\\v1.0\\powershell20.exe");
+    lstrcatW(pwsh_pathW, L"\\Powershell\\7\\pwsh.exe"); lstrcatW(pwsh20_pathW, L"\\system32\\WindowsPowerShell\\v1.0\\powershell20l.exe");
     /* I can also act as a dummy program as long as my exe-name doesn`t end with the letter "l" .... */
     if ( wcsncmp  (  &argv[0][lstrlenW(argv[0]) - 5 ]  , L"l" , 1 ) )
         {fprintf(stderr, "This is wusa-dummy, installing nothing... \n"); return 0;}
@@ -221,7 +221,7 @@ already_installed:
         if(!use_pwsh20)
              _wsystem(lstrcatW(lstrcatW(start_conemuW, L" -resetdefault -Title \"This is Powershell Core (pwsh.exe), not (!) powershell.exe\" -run pwsh.exe "), cmdlineW));
         else
-             _wsystem(lstrcatW(lstrcatW(start_conemuW, L" -resetdefault -run powershell20.exe "), cmdlineW));
+             _wsystem(lstrcatW(lstrcatW(start_conemuW, L" -resetdefault -run powershell20l.exe "), cmdlineW));
          return 0;
     }
 
