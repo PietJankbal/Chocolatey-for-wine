@@ -176,8 +176,16 @@
     Copy-Item -Path "$env:TEMP\\wow64\\powershell.exe" -Destination "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell20l.exe"
     Copy-Item -Path "$env:TEMP\\powershell.exe" -Destination "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell20l.exe"
 
+    (New-Object System.Net.WebClient).DownloadFile("https://github.com/PietJankbal/xtricks/raw/main/cabextract32.exe", "$env:windir\\SysWOW64\\cabextract.exe")
+    (New-Object System.Net.WebClient).DownloadFile("https://github.com/PietJankbal/xtricks/raw/main/cabextract64.exe", "$env:winsysdir\\cabextract.exe")
+    
+    Start-Process cabextract -argumentlist "-F", "powershell.exe" ,"windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe"
+    Get-Process cabextract | Foreach-Object { $_.WaitForExit() }
+    Start-Process cabextract -argumentlist "-F", "wow64/powershell.exe" ,"windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe"
+    Get-Process cabextract | Foreach-Object { $_.WaitForExit() }
 
-
+    Copy-Item -Path "$env:TEMP\\wow64\\powershell.exe" -Destination "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell20l.exe"
+    Copy-Item -Path "$env:TEMP\\powershell.exe" -Destination "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell20l.exe"
 
 
     Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
