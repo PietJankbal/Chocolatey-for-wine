@@ -4,10 +4,10 @@
     (New-Object System.Net.WebClient).DownloadFile("http://download.windowsupdate.com/msdownload/update/software/updt/2009/11/windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe", "$env:TEMP\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe")
     (New-Object System.Net.WebClient).DownloadFile("https://download.microsoft.com/download/9/5/A/95A9616B-7A37-4AF6-BC36-D6EA96C8DAAE/dotNetFx40_Full_x86_x64.exe", "$env:TEMP\\dotNetFx40_Full_x86_x64.exe")
     (New-Object System.Net.WebClient).DownloadFile("https://download.visualstudio.microsoft.com/download/pr/7afca223-55d2-470a-8edc-6a1739ae3252/abd170b4b0ec15ad0222a809b761a036/ndp48-x86-x64-allos-enu.exe", "$env:TEMP\\ndp48-x86-x64-allos-enu.exe")
-    (New-Object System.Net.WebClient).DownloadFile("https://github.com/PietJankbal/xtricks/raw/main/cabextract32.exe", "$env:windir\\SysWOW64\\cabextract.exe")
-    (New-Object System.Net.WebClient).DownloadFile("https://github.com/PietJankbal/xtricks/raw/main/cabextract64.exe", "$env:winsysdir\\cabextract.exe")
+    #(New-Object System.Net.WebClient).DownloadFile("https://github.com/PietJankbal/xtricks/raw/main/cabextract32.exe", "$env:windir\\SysWOW64\\cabextract.exe")
+    #(New-Object System.Net.WebClient).DownloadFile("https://github.com/PietJankbal/xtricks/raw/main/cabextract64.exe", "$env:winsysdir\\cabextract.exe")
 
-    Start-Process -FilePath 7z1900-x64.exe -Wait -ArgumentList "/S"
+    #Start-Process -FilePath 7z1900-x64.exe -Wait -ArgumentList "/S"
 
 #if(Test-Path 'env:ROTZOOI'){
     Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell_orig.exe"
@@ -20,8 +20,8 @@
     Start-Process  "winecfg.exe" -Wait -ArgumentList "/v win7"
     $winecfgid = (Get-Process winecfg).id; Wait-Process -Id $winecfgid
 
-    #Start-Process -FilePath ${env:ProgramFiles}\\7-zip\\7z.exe -Wait -ArgumentList  "x windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe wow64/powershell.exe"
-    #Start-Process -FilePath ${env:ProgramFiles}\\7-zip\\7z.exe -Wait -ArgumentList "x windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe powershell.exe"
+    #Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList  "x windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe wow64/powershell.exe"
+    #Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList "x windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe powershell.exe"
 
     #Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell20l.exe"
     #Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell20l.exe"
@@ -137,7 +137,7 @@
     Start-Process -FilePath "$env:TEMP\\arialb32.exe" -Wait -ArgumentList  "-q"
 
     (New-Object System.Net.WebClient).DownloadFile("https://download-installer.cdn.mozilla.net/pub/firefox/releases/62.0.3/win32/ach/Firefox%20Setup%2062.0.3.exe", "$env:TEMP\\Firefox32.exe")
-    Start-Process -FilePath ${env:ProgramFiles}\\7-zip\\7z.exe -Wait -ArgumentList  "x $env:TEMP\\Firefox32.exe core/d3dcompiler_47.dll -o$env:TEMP\\core32"
+    Start-Process -FilePath ${env:ProgramFiles}\\7-zip\\7z.exe$env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList  "x $env:TEMP\\Firefox32.exe core/d3dcompiler_47.dll -o$env:TEMP\\core32"
     $7zid = (Get-Process 7z).id; Wait-Process -Id $7zid
    
     #Start-Process cabextract -argumentlist "-F", "core/d3dcompiler_47.dll" ,"-d","$env:TEMP", "$env:TEMP\\Firefox32.exe"
@@ -145,7 +145,7 @@
     Copy-Item -Path "$env:TEMP\\core32\\core\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_47.dll" -Force
 
     (New-Object System.Net.WebClient).DownloadFile("https://download-installer.cdn.mozilla.net/pub/firefox/releases/62.0.3/win64/ach/Firefox%20Setup%2062.0.3.exe", "$env:TEMP\\Firefox64.exe")
-    Start-Process -FilePath ${env:ProgramFiles}\\7-zip\\7z.exe -Wait -ArgumentList  "x $env:TEMP\\Firefox64.exe core/d3dcompiler_47.dll -o$env:TEMP\\core64"
+    Start-Process -FilePath ${env:ProgramFiles}\\7-zip\\7z.exe$env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList  "x $env:TEMP\\Firefox64.exe core/d3dcompiler_47.dll -o$env:TEMP\\core64"
     $7zid = (Get-Process 7z).id; Wait-Process -Id $7zid
     #Start-Process cabextract -argumentlist "-F", "core/d3dcompiler_47.dll" ,"-d","$env:TEMP\\core64", "$env:TEMP\\Firefox64.exe"
     #Get-Process cabextract | Foreach-Object { $_.WaitForExit() }
@@ -179,17 +179,17 @@
    # $chocoid = (Get-Process choco).id; Wait-Process -Id $winecfgid
    # refreshenv
 
-    #Start-Process -FilePath ${env:ProgramFiles}\\7-zip\\7z.exe -Wait -ArgumentList  "x windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe wow64/powershell.exe"
-   # Start-Process -FilePath ${env:ProgramFiles}\\7-zip\\7z.exe -Wait -ArgumentList "x windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe powershell.exe"
+    Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList  "x windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe wow64/powershell.exe"
+    Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList "x windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe powershell.exe"
 
     #Copy-Item -Path "$env:TEMP\\wow64\\powershell.exe" -Destination "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell20l.exe"
     #Copy-Item -Path "$env:TEMP\\powershell.exe" -Destination "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell20l.exe"
 
     
-    Start-Process cabextract -argumentlist "-F", "powershell.exe" ,"-d","$env:TEMP", "$env:TEMP\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe"
-    Get-Process cabextract | Foreach-Object { $_.WaitForExit() }
-    Start-Process cabextract -argumentlist "-F", "wow64/powershell.exe" ,"-d","$env:TEMP", "$env:TEMP\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe"
-    Get-Process cabextract | Foreach-Object { $_.WaitForExit() }
+    #Start-Process cabextract -argumentlist "-F", "powershell.exe" ,"-d","$env:TEMP", "$env:TEMP\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe"
+    #Get-Process cabextract | Foreach-Object { $_.WaitForExit() }
+    #Start-Process cabextract -argumentlist "-F", "wow64/powershell.exe" ,"-d","$env:TEMP", "$env:TEMP\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe"
+    #Get-Process cabextract | Foreach-Object { $_.WaitForExit() }
 
     Copy-Item -Path "$env:TEMP\\wow64\\powershell.exe" -Destination "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell20l.exe"
     Copy-Item -Path "$env:TEMP\\powershell.exe" -Destination "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell20l.exe"
