@@ -29,6 +29,11 @@
     Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell_orig.exe" -Destination "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe"
     Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell_orig.exe" -Destination "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe"
 
+
+    Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList  "x $env:TEMP\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe wow64/powershell.exe -o$env:TEMP\\"
+    Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList "x $env:TEMP\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe powershell.exe -o$env:TEMP\\"
+    Get-Process 7za | Foreach-Object { $_.WaitForExit() }
+
     function set_HKLM_SM_key() <# sets key for HKLM:\\Software\\Microsoft #>
     {
         Param ($path, $name, $val, $prop) 
@@ -178,9 +183,6 @@
    # Start-Process choco.exe -Wait -ArgumentList  "install", "git.portable","-y"
    # $chocoid = (Get-Process choco).id; Wait-Process -Id $winecfgid
    # refreshenv
-
-    Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList  "x $env:TEMP\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe wow64/powershell.exe -o$env:TEMP\\"
-    Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList "x $env:TEMP\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe powershell.exe -o$env:TEMP\\"
 
     #Copy-Item -Path "$env:TEMP\\wow64\\powershell.exe" -Destination "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell20l.exe"
     #Copy-Item -Path "$env:TEMP\\powershell.exe" -Destination "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell20l.exe"
