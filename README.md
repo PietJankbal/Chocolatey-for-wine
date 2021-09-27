@@ -12,7 +12,7 @@ Optional:
 Bonus:
 
   - As a bonus you get on top of powershell core, also powershell 2.0 that you can start with 'powershell_ise',
-    or just 'powershell20'
+    or 'powershell20l.exe'
 
 Notes:
 
