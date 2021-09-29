@@ -12,6 +12,9 @@
     (New-Object System.Net.WebClient).DownloadFile("https://download-installer.cdn.mozilla.net/pub/firefox/releases/62.0.3/win32/ach/Firefox%20Setup%2062.0.3.exe", "$env:TEMP\\Firefox32.exe")
     (New-Object System.Net.WebClient).DownloadFile("https://download-installer.cdn.mozilla.net/pub/firefox/releases/62.0.3/win64/ach/Firefox%20Setup%2062.0.3.exe", "$env:TEMP\\Firefox64.exe")
 
+    (New-Object System.Net.WebClient).DownloadFile("https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/profile.ps1", "$env:ProgramFiles\\PowerShell\\7\\")
+
+
     #Start-Process -FilePath 7z1900-x64.exe -Wait -ArgumentList "/S"
 
 #if(Test-Path 'env:ROTZOOI'){
