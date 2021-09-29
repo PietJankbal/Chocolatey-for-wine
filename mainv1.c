@@ -81,7 +81,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
     const WCHAR *new_args[3];
     WCHAR pwsh_pathW[MAX_PATH]; WCHAR pwsh20_pathW[MAX_PATH];
     WCHAR *bufW = NULL;
-
+    DWORD exitcode;
 
     if(!ExpandEnvironmentStringsW(L"%ProgramW6432%", pwsh_pathW, MAX_PATH+1)) goto failed; /* win32 only apparently, not supported... */
     if(!ExpandEnvironmentStringsW(L"%SystemRoot%", pwsh20_pathW, MAX_PATH+1)) goto failed; /* win32 only apparently, not supported... */
@@ -154,6 +154,8 @@ already_installed:
 
         if(!argv[i]) break;
 
+        if (!_wcsicmp(L"Install-WindowsUpdate.ps1", argv[i])) return 0;
+
         lstrcatW(cmdlineW, L" "); lstrcatW(cmdlineW, argv[i]); 
 
         if (!_wcsnicmp(L"-noe", argv[i],4)) contains_noexit++;   /* -NoExit */
@@ -192,7 +194,7 @@ already_installed:
     /* feed it the desired output like below ....                                                                                            */
     /* put replacements here....        from                                         to                                                      */
     const WCHAR from_to[][MAX_PATH] = { L"[System.Math]::sqrt(64)",                  L"Write-Host 8",  /* just an example, not necassary.... */
-                                        L"Get-WmiObject",                            L"Get-CimInstance"
+                                        L"KB2882822",                                L"grep"
                                       };
     if (GetEnvironmentVariable(L"PWSHVERBOSE", envvar, MAX_PATH+1)) 
         {fwprintf(stderr, L"\033[1;35m"); fwprintf(stderr, L"\nold command line is %ls \n", cmdlineW); fwprintf(stderr, L"\033[0m\n");}
@@ -244,9 +246,10 @@ already_installed:
     //argsW[0] = 0;
     CreateProcessW(!use_pwsh20 ? pwsh_pathW : pwsh20_pathW, cmdlineW,0,0,0,0,0,0,&startup_info,&process_info);
     WaitForSingleObject( process_info.hProcess, INFINITE ); //Wait for it to finish.
+    if(!GetExitCodeProcess(process_info.hProcess, &exitcode)) goto failed;
     CloseHandle( process_info.hProcess ); CloseHandle( process_info.hThread );    
 
-   return 0;
+    return exitcode;
 
 failed:
     fprintf(stderr, "Something went wrong :( (32-bit?, winversion <win7?, failing download? ....  \n");
