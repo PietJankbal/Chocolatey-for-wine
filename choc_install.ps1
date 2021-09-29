@@ -36,8 +36,8 @@
     Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell_orig.exe" -Destination "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe"
 
 
-    Start-Process -FilePath -NoNewWindow $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList  "x $env:TEMP\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe wow64/powershell.exe -o$env:TEMP\\"
-    Start-Process -FilePath -NoNewWindow $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList "x $env:TEMP\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe powershell.exe -o$env:TEMP\\"
+    Start-Process -FilePath  $env:TEMP\\ConEmuDownloads\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe wow64/powershell.exe -o$env:TEMP\\"
+    Start-Process -FilePath  $env:TEMP\\ConEmuDownloads\\7za.exe -NoNewWindow -Wait -ArgumentList "x $env:TEMP\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe powershell.exe -o$env:TEMP\\"
     Get-Process 7za -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
 
     function set_HKLM_SM_key() <# sets key for HKLM:\\Software\\Microsoft #>
@@ -145,14 +145,14 @@
     Start-Process -FilePath "$env:TEMP\\arial32.exe" -Wait -ArgumentList  "-q"
     Start-Process -FilePath "$env:TEMP\\arialb32.exe" -Wait -ArgumentList  "-q"
 
-    Start-Process -FilePath -NoNewWindow $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList  "x $env:TEMP\\Firefox32.exe  -o$env:TEMP\\core32 core/d3dcompiler_47.dll"
+    Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\Firefox32.exe  -o$env:TEMP\\core32 core/d3dcompiler_47.dll"
     Get-Process 7za -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
    
     #Start-Process cabextract -argumentlist "-F", "core/d3dcompiler_47.dll" ,"-d","$env:TEMP", "$env:TEMP\\Firefox32.exe"
     #Get-Process cabextract | Foreach-Object { $_.WaitForExit() }
     Copy-Item -Path "$env:TEMP\\core32\\core\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_47.dll" -Force
 
-    Start-Process -FilePath -NoNewWindow $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList  "x $env:TEMP\\Firefox64.exe  -o$env:TEMP\\core64 core/d3dcompiler_47.dll"
+    Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\Firefox64.exe  -o$env:TEMP\\core64 core/d3dcompiler_47.dll"
     Get-Process 7za -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
     #Start-Process cabextract -argumentlist "-F", "core/d3dcompiler_47.dll" ,"-d","$env:TEMP\\core64", "$env:TEMP\\Firefox64.exe"
     #Get-Process cabextract | Foreach-Object { $_.WaitForExit() }
