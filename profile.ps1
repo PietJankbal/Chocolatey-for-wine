@@ -20,7 +20,7 @@ class bios
 function Get-WmiObject
 {
 
-    $class = $args[0]
+    $class = $args[1]
     
   
     #wmic puts out utf-16 :(
