@@ -1,5 +1,7 @@
 New-Alias Goto Set-Location
 
+New-Alias Get-CimInstance Get-WmiObject
+
 class os
 {
     # Optionally, add attributes to prevent invalid values
@@ -9,12 +11,21 @@ class os
     [ValidateNotNullOrEmpty()][uint32]$ProductType
 }
 
+class bios
+{
+    # Optionally, add attributes to prevent invalid values
+    [ValidateNotNullOrEmpty()][string]$Manufacturer
+}
+
 function Get-WmiObject
 {
 
+    $class = $args[0]
+    
+  
     #wmic puts out utf-16 :(
     #https://lazywinadmin.com/2015/08/powershell-remove-special-characters.html helps a bit
-   
+ 
    $os = [os]@{
    Version = $(wmic path win32_operatingsystem get Version) -replace '[^\x20-\x7E]+', '' |Select -Index 2
    ServicePackMajorVersion = $(wmic path win32_operatingsystem get ServicePackMajorVersion) -replace '[^\x20-\x7E]+', '' |Select -Index 2
@@ -22,6 +33,16 @@ function Get-WmiObject
    ProductType = $(wmic path win32_operatingsystem get ProductType) -replace '[^\x20-\x7E]+', '' |Select -Index 2
    }
 
-   $os
+   $bios = [bios]@{
+   Manufacturer = $(wmic path win32_bios get Manufacturer) -replace '[^\x20-\x7E]+', '' |Select -Index 2
+   }
+
+    switch ($class)
+    {
+    win32_operatingsystem {$os}
+    win32_bios {$bios}
+    }
+
+
 }
 
