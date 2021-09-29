@@ -12,14 +12,14 @@ class os
 function Get-WmiObject
 {
 
-    #$Inputstring =Write-Output $(wmic path Win32_OperatingSystem get Version) 
-
-
+    #wmic puts out utf-16 :(
+    #https://lazywinadmin.com/2015/08/powershell-remove-special-characters.html helps a bit
+   
    $os = [os]@{
-   Version = '6.1.7601'
-   ServicePackMajorVersion = '1'
-   Caption = 'Microsoft Windows 7 Professional'
-   ProductType = '1'
+   Version = $(wmic path win32_operatingsystem get Version) -replace '[^\x20-\x7E]+', '' |Select -Index 2
+   ServicePackMajorVersion = $(wmic path win32_operatingsystem get ServicePackMajorVersion) -replace '[^\x20-\x7E]+', '' |Select -Index 2
+   Caption = Version = $(wmic path win32_operatingsystem get Caption) -replace '[^\x20-\x7E]+', '' |Select -Index 2
+   ProductType = Version = $(wmic path win32_operatingsystem get ProductType) -replace '[^\x20-\x7E]+', '' |Select -Index 2
    }
 
    $os
