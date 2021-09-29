@@ -194,7 +194,7 @@ already_installed:
     /* feed it the desired output like below ....                                                                                            */
     /* put replacements here....        from                                         to                                                      */
     const WCHAR from_to[][MAX_PATH] = { L"[System.Math]::sqrt(64)",                  L"Write-Host 8",  /* just an example, not necassary.... */
-                                        L"KB2882822",                                L"grep"
+                                        L"Get-WmiObject",                            L"gcim"
                                       };
     if (GetEnvironmentVariable(L"PWSHVERBOSE", envvar, MAX_PATH+1)) 
         {fwprintf(stderr, L"\033[1;35m"); fwprintf(stderr, L"\nold command line is %ls \n", cmdlineW); fwprintf(stderr, L"\033[0m\n");}
