@@ -6,6 +6,7 @@ class os
     [ValidateNotNullOrEmpty()][string]$Version
     [ValidateNotNullOrEmpty()][uint16]$ServicePackMajorVersion
     [ValidateNotNullOrEmpty()][string]$Caption
+    [ValidateNotNullOrEmpty()][uint32]$ProductType
 }
 
 function Get-WmiObject
@@ -18,6 +19,7 @@ function Get-WmiObject
    Version = '6.1.7601'
    ServicePackMajorVersion = '1'
    Caption = 'Microsoft Windows 7 Professional'
+   ProductType = '1'
    }
 
    $os
