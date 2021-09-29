@@ -5,6 +5,7 @@ class os
     # Optionally, add attributes to prevent invalid values
     [ValidateNotNullOrEmpty()][string]$Version
     [ValidateNotNullOrEmpty()][uint16]$ServicePackMajorVersion
+    [ValidateNotNullOrEmpty()][string]$Caption
 }
 
 function Get-WmiObject
@@ -16,6 +17,7 @@ function Get-WmiObject
    $os = [os]@{
    Version = '6.1.7601'
    ServicePackMajorVersion = '1'
+   Caption = 'Microsoft Windows 7 Professional'
    }
 
    $os
