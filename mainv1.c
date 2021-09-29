@@ -153,6 +153,10 @@ already_installed:
         if (!_wcsnicmp(L"-ve", argv[i],3)) i +=2;    /* -Version, just skip*/
 
         if(!argv[i]) break;
+        
+        if (!_wcsnicmp(L"-nop", argv[i],3)) i +=2;    /* -NoProfile, just skip*/
+
+        if(!argv[i]) break;
 
         if (!_wcsicmp(L"Install-WindowsUpdate.ps1", argv[i])) return 0;
 
@@ -194,7 +198,7 @@ already_installed:
     /* feed it the desired output like below ....                                                                                            */
     /* put replacements here....        from                                         to                                                      */
     const WCHAR from_to[][MAX_PATH] = { L"[System.Math]::sqrt(64)",                  L"Write-Host 8",  /* just an example, not necassary.... */
-                                        L"Get-WmiObject",                            L"gcim"
+                                        L"notdeeded",                                L"probably"
                                       };
     if (GetEnvironmentVariable(L"PWSHVERBOSE", envvar, MAX_PATH+1)) 
         {fwprintf(stderr, L"\033[1;35m"); fwprintf(stderr, L"\nold command line is %ls \n", cmdlineW); fwprintf(stderr, L"\033[0m\n");}
