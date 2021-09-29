@@ -194,8 +194,8 @@ already_installed:
     const WCHAR from_to[][MAX_PATH] = { L"[System.Math]::sqrt(64)",                  L"Write-Host 8",  /* just an example, not necassary.... */
                                         L"Get-WmiObject",                            L"Get-CimInstance"
                                       };
-
-    //fwprintf(stderr, L"\033[1;35m"); fwprintf(stderr, L"\nold command line is %ls \n", cmdlineW); fwprintf(stderr, L"\033[0m\n");
+    if (GetEnvironmentVariable(L"PWSHVERBOSE", envvar, MAX_PATH+1)) 
+        {fwprintf(stderr, L"\033[1;35m"); fwprintf(stderr, L"\nold command line is %ls \n", cmdlineW); fwprintf(stderr, L"\033[0m\n");}
 
     if(cmd_idx)
     {
@@ -209,7 +209,8 @@ already_installed:
         lstrcpyW( cmdlineW, bufW ); HeapFree(GetProcessHeap(), 0, bufW);
     }
 
-    //fwprintf(stderr, L"\033[1;93m"); fwprintf(stderr, L"\nnew command line is %ls \n", cmdlineW); fwprintf(stderr, L"\033[0m\n");
+    if (GetEnvironmentVariable(L"PWSHVERBOSE", envvar, MAX_PATH+1))
+        {fwprintf(stderr, L"\033[1;93m"); fwprintf(stderr, L"\nnew command line is %ls \n", cmdlineW); fwprintf(stderr, L"\033[0m\n");}
 
     if (GetEnvironmentVariable(L"WINEPWSH", envvar, MAX_PATH+1)  && !_wcsicmp(L"PWSH20", envvar) ) use_pwsh20 = TRUE;
 
