@@ -21,9 +21,10 @@
     Start-Process  "winecfg.exe" -Wait -ArgumentList "/v win2003"
 
     Start-Process  "windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe" -Wait -ArgumentList "/q /passive /nobackup"
-    $w2003id = (Get-Process windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c).id; Wait-Process -Id $w2003id
+    #$w2003id = (Get-Process windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c).id; Wait-Process -Id $w2003id
+    Get-Process windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
     Start-Process  "winecfg.exe" -Wait -ArgumentList "/v win7"
-    $winecfgid = (Get-Process winecfg).id; Wait-Process -Id $winecfgid
+    #$winecfgid = (Get-Process winecfg).id; Wait-Process -Id $winecfgid
 
     #Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList  "x windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe wow64/powershell.exe"
     #Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList "x windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe powershell.exe"
@@ -35,9 +36,9 @@
     Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell_orig.exe" -Destination "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe"
 
 
-    Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList  "x $env:TEMP\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe wow64/powershell.exe -o$env:TEMP\\"
-    Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList "x $env:TEMP\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe powershell.exe -o$env:TEMP\\"
-    Get-Process 7za | Foreach-Object { $_.WaitForExit() }
+    Start-Process -FilePath -NoNewWindow $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList  "x $env:TEMP\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe wow64/powershell.exe -o$env:TEMP\\"
+    Start-Process -FilePath -NoNewWindow $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList "x $env:TEMP\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe powershell.exe -o$env:TEMP\\"
+    Get-Process 7za -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
 
     function set_HKLM_SM_key() <# sets key for HKLM:\\Software\\Microsoft #>
     {
@@ -105,7 +106,7 @@
 
     Start-Process winecfg.exe  -Wait -ArgumentList "/v winxp64"
     Start-Process dotNetFx40_Full_x86_x64.exe  -Wait -ArgumentList "/q /c:install.exe /q"
-    $dotnet40id = (Get-Process dotNetFx40_Full_x86_x64).id; Wait-Process -Id $dotnet40id
+    Get-Process dotNetFx40_Full_x86_x64.exe -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
 
     Start-Process winecfg.exe  -Wait -ArgumentList "/v win7" 
     Remove-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -Name 'fusion'
@@ -113,7 +114,7 @@
     #system(" start /WAIT %SystemDrive%\\windows\\Microsoft.NET\\Framework\\v4.0.30319\\ngen.exe executequeueditems "
 
     Start-Process ndp48-x86-x64-allos-enu.exe  -Wait -ArgumentList "sfxlang:1027 /q /norestart"
-    $dotnet48id = (Get-Process ndp48-x86-x64-allos-enu).id; Wait-Process -Id $dotnet48id
+    Get-Process ndp48-x86-x64-allos-enu.exe -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
 
     New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\.NETFramework' -Name 'OnlyUseLatestCLR' -Value '0001' -PropertyType 'DWord'
     New-ItemProperty -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\.NETFramework' -Name 'OnlyUseLatestCLR' -Value '0001' -PropertyType 'DWord'
@@ -144,15 +145,15 @@
     Start-Process -FilePath "$env:TEMP\\arial32.exe" -Wait -ArgumentList  "-q"
     Start-Process -FilePath "$env:TEMP\\arialb32.exe" -Wait -ArgumentList  "-q"
 
-    Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList  "x $env:TEMP\\Firefox32.exe  -o$env:TEMP\\core32 core/d3dcompiler_47.dll"
-    $7zid = (Get-Process 7za).id; Wait-Process -Id $7zid
+    Start-Process -FilePath -NoNewWindow $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList  "x $env:TEMP\\Firefox32.exe  -o$env:TEMP\\core32 core/d3dcompiler_47.dll"
+    Get-Process 7za -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
    
     #Start-Process cabextract -argumentlist "-F", "core/d3dcompiler_47.dll" ,"-d","$env:TEMP", "$env:TEMP\\Firefox32.exe"
     #Get-Process cabextract | Foreach-Object { $_.WaitForExit() }
     Copy-Item -Path "$env:TEMP\\core32\\core\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_47.dll" -Force
 
-    Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList  "x $env:TEMP\\Firefox64.exe  -o$env:TEMP\\core64 core/d3dcompiler_47.dll"
-    $7zid = (Get-Process 7za).id; Wait-Process -Id $7zid
+    Start-Process -FilePath -NoNewWindow $env:TEMP\\ConEmuDownloads\\7za.exe -Wait -ArgumentList  "x $env:TEMP\\Firefox64.exe  -o$env:TEMP\\core64 core/d3dcompiler_47.dll"
+    Get-Process 7za -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
     #Start-Process cabextract -argumentlist "-F", "core/d3dcompiler_47.dll" ,"-d","$env:TEMP\\core64", "$env:TEMP\\Firefox64.exe"
     #Get-Process cabextract | Foreach-Object { $_.WaitForExit() }
     Copy-Item -Path "$env:TEMP\\core64\\core\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_47.dll" -Force
@@ -161,11 +162,11 @@
     Remove-Item -Path "$env:SystemRoot\\SysWOW64\\msxml6.dll" -Force
     Remove-Item -Path "$env:SystemRoot\\System32\\msxml6.dll" -Force
     Start-Process  "winecfg.exe" -Wait -ArgumentList "/v winxp64"
-    $winecfgid = (Get-Process winecfg).id; Wait-Process -Id $winecfgid
+    Get-Process winecfg -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
 
     Start-Process -FilePath "$env:TEMP\\msxml6-kb973686-enu-amd64_bb420ff844af4603437396d775fa34a47d0718a5.exe" -Wait -ArgumentList  "-q"
-    $xml6id = (Get-Process msxml6-kb973686-enu-amd64_bb420ff844af4603437396d775fa34a47d0718a5).id; Wait-Process -Id $xml6id
-    Start-Process  "winecfg.exe" -Wait -ArgumentList "/v win7";     $winecfgid = (Get-Process winecfg).id; Wait-Process -Id $winecfgid
+    Get-Process msxml6-kb973686-enu-amd64_bb420ff844af4603437396d775fa34a47d0718a5.exe -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
+    Start-Process  "winecfg.exe" -Wait -ArgumentList "/v win7";   Get-Process winecfg -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
 
     Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\wusa.exe" -Force
     Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\wusa.exe" -Force
