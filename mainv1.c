@@ -154,11 +154,11 @@ already_installed:
 
         if(!argv[i]) break;
         
-        if (!_wcsnicmp(L"-nop", argv[i],3)) i +=2;    /* -NoProfile, just skip*/
+        if (!_wcsnicmp(L"-nop", argv[i],3)) i +=1;    /* -NoProfile, just skip*/
 
         if(!argv[i]) break;
 
-        if (!_wcsicmp(L"Install-WindowsUpdate.ps1", argv[i])) return 0;
+        //if (!_wcsicmp(L"Install-WindowsUpdate.ps1", argv[i])) return 0;
 
         lstrcatW(cmdlineW, L" "); lstrcatW(cmdlineW, argv[i]); 
 
