@@ -154,7 +154,7 @@ already_installed:
 
         if(!argv[i]) break;
         
-        if (!_wcsnicmp(L"-nop", argv[i],3)) i +=1;    /* -NoProfile, just skip*/
+        if (!_wcsnicmp(L"-nop", argv[i],4)) i +=1;    /* -NoProfile, just skip*/
 
         if(!argv[i]) break;
 
