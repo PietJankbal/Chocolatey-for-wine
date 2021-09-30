@@ -158,7 +158,7 @@ already_installed:
 
         if(!argv[i]) break;
 
-        if (!_wcsicmp(L"Install-WindowsUpdate.ps1", argv[i])) return 0;
+        //if (!_wcsicmp(L"Install-WindowsUpdate.ps1", argv[i])) return 0;
 
         lstrcatW(cmdlineW, L" "); lstrcatW(cmdlineW, argv[i]); 
 
