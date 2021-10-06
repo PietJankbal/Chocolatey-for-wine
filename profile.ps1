@@ -1,5 +1,11 @@
 New-Alias Goto Set-Location
 
+if(Test-Path 'env:PSREFLECT'){
+set-PSRepository psgallery -InstallationPolicy trusted
+
+Install-Module PSReflect-Functions -RequiredVersion 1.1 -SkipPublisherCheck
+Import-Module PSReflect-Functions
+}
 
 #Remove-Item alias:Install-Module -force
 
