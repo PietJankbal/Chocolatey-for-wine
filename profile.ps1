@@ -1,5 +1,10 @@
 New-Alias Goto Set-Location
 
+
+Remove-Item alias:Install-Module -force
+
+Set-Alias Install-Module "Install-Module -SkipPublisherCheck"
+
 New-Alias Get-CimInstance Get-WmiObject
 
 class os
