@@ -5,6 +5,10 @@ set-PSRepository psgallery -InstallationPolicy trusted
 
 Install-Module PSReflect-Functions -RequiredVersion 1.1 -SkipPublisherCheck
 Import-Module PSReflect-Functions
+
+# vervang: $AssemblyBuilder = $Domain.DefineDynamicAssembly($DynAssembly, 'Run')
+#met : $AssemblyBuilder = [System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly($DynAssembly, 'Run')
+
 }
 
 #Remove-Item alias:Install-Module -force
