@@ -20,6 +20,8 @@ class bios
 function Get-WmiObject
 {
 
+    Write-Warning "Using hacks to work around missing Get-WmiObject; Hopefully it`ll work....."
+
     $class = $args[1]
     
   
