@@ -8,6 +8,12 @@ Import-Module PSReflect-Functions
 
 # vervang: $AssemblyBuilder = $Domain.DefineDynamicAssembly($DynAssembly, 'Run')
 #met : $AssemblyBuilder = [System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly($DynAssembly, 'Run')
+ $env:PSModulePath=Join-Path -Path $env:ProgramFiles -ChildPath 'Powershell\7\Modules'
+ 
+((Get-Content -path $env:PSModulePath/PSReflect-Functions/1.1/PSReflect.ps1 -Raw) -replace `
+'$AssemblyBuilder = $Domain.DefineDynamicAssembly($DynAssembly, 'Run')', `
+'$AssemblyBuilder = [System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly($DynAssembly, 'Run')') `
+| Set-Content -Path $env:PSModulePath/PSReflect-Functions/1.1/PSReflect.ps1
 
 }
 
