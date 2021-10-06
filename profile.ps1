@@ -3,17 +3,22 @@ New-Alias Goto Set-Location
 if(Test-Path 'env:PSREFLECT'){
 set-PSRepository psgallery -InstallationPolicy trusted
 
-Install-Module PSReflect-Functions -RequiredVersion 1.1 -SkipPublisherCheck
-Import-Module PSReflect-Functions
 
 # vervang: $AssemblyBuilder = $Domain.DefineDynamicAssembly($DynAssembly, 'Run')
 #met : $AssemblyBuilder = [System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly($DynAssembly, 'Run')
  $env:PSModulePath=Join-Path -Path $env:ProgramFiles -ChildPath 'Powershell\7\Modules'
  
+ 
+Install-Module PSReflect-Functions -RequiredVersion 1.1 -SkipPublisherCheck
+
+ 
 ((Get-Content -path $env:PSModulePath/PSReflect-Functions/1.1/PSReflect.ps1 -Raw) -replace `
 "$AssemblyBuilder = $Domain.DefineDynamicAssembly($DynAssembly, 'Run')", `
 "$AssemblyBuilder = [System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly($DynAssembly, 'Run')" `
 | Set-Content -Path $env:PSModulePath/PSReflect-Functions/1.1/PSReflect.ps1)
+
+
+Import-Module PSReflect-Functions
 
 }
 
