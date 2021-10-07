@@ -3,7 +3,7 @@ New-Alias Goto Set-Location
  
  
  $path = $env:PSModulePath -split ';'
- $env:PSModulePath = $path[1]
+ $env:PSModulePath -= $path[0]
 
 Set-Alias -name Domain.DefineDynamicAssembly  [System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly
 
