@@ -1,7 +1,11 @@
 New-Alias Goto Set-Location
- $env:PSModulePath=Join-Path -Path $env:ProgramFiles -ChildPath 'Powershell\7\Modules'
+ #$env:PSModulePath=Join-Path -Path $env:ProgramFiles -ChildPath 'Powershell\7\Modules'
+ 
+ 
+ $path = $env:PSModulePath -split ';'
+ $env:PSModulePath = $path[1]
 
-
+Set-Alias -name Domain.DefineDynamicAssembly  [System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly
 
 #Remove-Item alias:Install-Module -force
 
@@ -68,11 +72,11 @@ set-PSRepository psgallery -InstallationPolicy trusted
  
 Install-Module PSReflect-Functions -RequiredVersion 1.1 -SkipPublisherCheck
 
-function Domain.DefineDynamicAssembly($assemblyName, $Run)
-{
+#function Domain.DefineDynamicAssembly($assemblyName, $Run)
+#{
 
- [System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly($assemblyName, $Run)
- }
+# [System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly($assemblyName, $Run)
+# }
  
 #((Get-Content -path $env:PSModulePath/PSReflect-Functions/1.1/PSReflect.ps1 -Raw) -replace `
 #"$AssemblyBuilder = $Domain.DefineDynamicAssembly($DynAssembly, 'Run')", `
