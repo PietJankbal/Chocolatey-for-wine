@@ -68,11 +68,16 @@ set-PSRepository psgallery -InstallationPolicy trusted
  
 Install-Module PSReflect-Functions -RequiredVersion 1.1 -SkipPublisherCheck
 
+function Domain.DefineDynamicAssembly($assemblyName, $Run)
+{
+
+ [System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly($assemblyName, $Run)
+ }
  
-((Get-Content -path $env:PSModulePath/PSReflect-Functions/1.1/PSReflect.ps1 -Raw) -replace `
-"$AssemblyBuilder = $Domain.DefineDynamicAssembly($DynAssembly, 'Run')", `
-"$AssemblyBuilder = [System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly($DynAssembly, 'Run')" `
-| Set-Content -Path $env:PSModulePath/PSReflect-Functions/1.1/PSReflect.ps1)
+#((Get-Content -path $env:PSModulePath/PSReflect-Functions/1.1/PSReflect.ps1 -Raw) -replace `
+#"$AssemblyBuilder = $Domain.DefineDynamicAssembly($DynAssembly, 'Run')", `
+#"$AssemblyBuilder = [System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly($DynAssembly, 'Run')" `
+#| Set-Content -Path $env:PSModulePath/PSReflect-Functions/1.1/PSReflect.ps1)
 
 
 Import-Module PSReflect-Functions -SkipPublisherCheck
