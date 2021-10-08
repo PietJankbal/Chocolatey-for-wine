@@ -1,4 +1,4 @@
-if (0){
+
 New-Alias Goto Set-Location
  #$env:PSModulePath=Join-Path -Path $env:ProgramFiles -ChildPath 'Powershell\7\Modules'
  
@@ -89,4 +89,4 @@ Import-Module -FullyQualifiedName 'c:\psreflect-functions'
 
 
 }
-}
+
