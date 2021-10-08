@@ -71,24 +71,19 @@ set-PSRepository psgallery -InstallationPolicy trusted
  
 Find-Module -Name 'psreflect-functions' -Repository 'PSGallery' | Save-Module -Path 'c:\'
 
-#Install-Module PSReflect-Functions -RequiredVersion 1.1 -SkipPublisherCheck
-
 #function Domain.DefineDynamicAssembly($assemblyName, $Run)
 #{
 
 # [System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly($assemblyName, $Run)
 # }
  
+
+set-alias "\`$Domain.DefineDynamicAssembly" "[System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly"
+
 #((Get-Content -path c:\PSReflect-Functions/2.0.0/PSReflect.ps1 -Raw) -replace `
-#"\$Domain.DefineDynamicAssembly($DynAssembly, 'Run')", `
-#"[System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly($DynAssembly, 'Run')" `
-#| Set-Content -Path c:\PSReflect-Functions/2.0.0/PSReflect.ps1)
-
-
-((Get-Content -path c:\PSReflect-Functions/2.0.0/PSReflect.ps1 -Raw) -replace `
- "\`$Domain.DefineDynamicAssembly", `
- "[System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly" `
- | Set-Content -Path c:\PSReflect-Functions/2.0.0/PSReflect.ps1)
+# "\`$Domain.DefineDynamicAssembly", `
+# "[System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly" `
+# | Set-Content -Path c:\PSReflect-Functions/2.0.0/PSReflect.ps1)
 
 Import-Module -FullyQualifiedName 'c:\psreflect-functions'
 
