@@ -80,10 +80,10 @@ Find-Module -Name 'psreflect-functions' -Repository 'PSGallery' | Save-Module -P
 
 set-alias "\`$Domain.DefineDynamicAssembly" "[System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly"
 
-#((Get-Content -path c:\PSReflect-Functions/2.0.0/PSReflect.ps1 -Raw) -replace `
-# "\`$Domain.DefineDynamicAssembly", `
-# "[System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly" `
-# | Set-Content -Path c:\PSReflect-Functions/2.0.0/PSReflect.ps1)
+((Get-Content -path c:\PSReflect-Functions/2.0.0/PSReflect.ps1 -Raw) -replace `
+ "\`$Domain.DefineDynamicAssembly", `
+ "[System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly" `
+ | Set-Content -Path c:\PSReflect-Functions/2.0.0/PSReflect.ps1)
 
 Import-Module -FullyQualifiedName 'c:\psreflect-functions'
 
