@@ -53,22 +53,3 @@ function Get-WmiObject
 
 }
 
-
- 
-if(Test-Path 'env:PSREFLECT'){
-set-PSRepository psgallery -InstallationPolicy trusted
-
-
-
- 
-Find-Module -Name 'psreflect-functions' -Repository 'PSGallery' | Save-Module -Path 'c:\'
-
-
-((Get-Content -path c:\PSReflect-Functions/2.0.0/PSReflect.ps1 -Raw) -replace `
- "\`$Domain.DefineDynamicAssembly", `
- "[System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly" `
- | Set-Content -Path c:\PSReflect-Functions/2.0.0/PSReflect.ps1)
-
-Import-Module -FullyQualifiedName 'c:\psreflect-functions'
-
-}
