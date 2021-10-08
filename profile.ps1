@@ -1,15 +1,12 @@
 
 New-Alias Goto Set-Location
- #$env:PSModulePath=Join-Path -Path $env:ProgramFiles -ChildPath 'Powershell\7\Modules'
+
  
  
- $path = $env:PSModulePath -split ';'
- $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -join ';'
+ $psp = $env:PSModulePath -split ';'
+ $env:PSModulePath  = ( $psp | Select-Object -Skip 1 | Sort-Object -Unique) -join ';'
 
 
-#Remove-Item alias:Install-Module -force
-
-#Set-Alias Install-Module "Install-Module -SkipPublisherCheck"
 
 New-Alias Get-CimInstance Get-WmiObject
 
@@ -35,10 +32,7 @@ function Get-WmiObject
 
     $class = $args[1]
     
-  
-    #wmic puts out utf-16 :(
-    #https://lazywinadmin.com/2015/08/powershell-remove-special-characters.html helps a bit
- 
+
    $os = [os]@{
    Version = $(wmic path win32_operatingsystem get Version) -replace '[^\x20-\x7E]+', '' |Select -Index 2
    ServicePackMajorVersion = $(wmic path win32_operatingsystem get ServicePackMajorVersion) -replace '[^\x20-\x7E]+', '' |Select -Index 2
@@ -65,20 +59,10 @@ if(Test-Path 'env:PSREFLECT'){
 set-PSRepository psgallery -InstallationPolicy trusted
 
 
-# vervang: $AssemblyBuilder = $Domain.DefineDynamicAssembly($DynAssembly, 'Run')
-#met : $AssemblyBuilder = [System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly($DynAssembly, 'Run')
 
  
 Find-Module -Name 'psreflect-functions' -Repository 'PSGallery' | Save-Module -Path 'c:\'
 
-#function Domain.DefineDynamicAssembly($assemblyName, $Run)
-#{
-
-# [System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly($assemblyName, $Run)
-# }
- 
-
-set-alias "\`$Domain.DefineDynamicAssembly" "[System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly"
 
 ((Get-Content -path c:\PSReflect-Functions/2.0.0/PSReflect.ps1 -Raw) -replace `
  "\`$Domain.DefineDynamicAssembly", `
@@ -87,6 +71,4 @@ set-alias "\`$Domain.DefineDynamicAssembly" "[System.Reflection.Emit.AssemblyBui
 
 Import-Module -FullyQualifiedName 'c:\psreflect-functions'
 
-
 }
-
