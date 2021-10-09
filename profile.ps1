@@ -7,6 +7,12 @@ New-Alias Goto Set-Location
  $env:PSModulePath  = ( $psp | Select-Object -Skip 1 | Sort-Object -Unique) -join ';'
 
 
+# Chocolatey profile
+ $ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+ if (Test-Path($ChocolateyProfile)) {
+  Import-Module "$ChocolateyProfile"
+ }
+
 
 New-Alias Get-CimInstance Get-WmiObject
 
