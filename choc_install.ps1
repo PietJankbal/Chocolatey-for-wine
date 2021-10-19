@@ -96,7 +96,7 @@
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'd3dcompiler_47' -Value 'native' -PropertyType 'String'
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'd3dcompiler_43' -Value 'native' -PropertyType 'String'
     <# do not use chocolatey's builtin powershell host #>
-    cd c:\; c:\\ProgramData\\chocolatey\\choco.exe feature disable --name=powershellHost
+    cd c:\; c:\\ProgramData\\chocolatey\\choco.exe feature disable --name=powershellHost; winecfg /v win81
 
     Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
     
