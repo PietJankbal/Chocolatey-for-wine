@@ -4,7 +4,7 @@ Chocolatey packagemanager automatic installer in wine, handy to install quickly 
 This is the old, deprecated, version
 
 Install :
-- wget https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/deprecated/chocinstaller.exe
+- wget https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/deprecated/chocdeprecatedinstaller.exe
 - wine chocinstaller.exe (takes > 5 min. to complete...)
 
 Optional:
