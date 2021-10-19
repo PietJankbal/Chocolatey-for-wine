@@ -4,7 +4,7 @@ Chocolatey packagemanager automatic installer in wine, handy to install quickly 
 Install :
 - wget https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/chocinstaller.exe
 - wine chocinstaller.exe
-Update: Now chocolateys builtin powershell-host is disabled in the installscript, so we don`t have to install
+- Update: Now chocolateys builtin powershell-host is disabled in the installscript, so we don`t have to install
         powershell2.0, and added an experimental dotnet48 installation that is much quicker than the plain old recipe.
         This way install time went down from 5 minutes to about 2 minutes. The old installer can still be found in
         the folder 'deprecated' 
