@@ -1,3 +1,4 @@
+
     function set_HKLM_SM_key() <# sets key for HKLM:\\Software\\Microsoft #>
     {
         Param ($path, $name, $val, $prop) 
@@ -19,7 +20,7 @@
          Get-Process $process -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
     }
 
-    $url = @($url = @('http://download.windowsupdate.com/msdownload/update/software/crup/2010/06/windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', `
+    $url = @('http://download.windowsupdate.com/msdownload/update/software/crup/2010/06/windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', `
              'https://download.visualstudio.microsoft.com/download/pr/7afca223-55d2-470a-8edc-6a1739ae3252/abd170b4b0ec15ad0222a809b761a036/ndp48-x86-x64-allos-enu.exe', `
              'https://mirrors.kernel.org/gentoo/distfiles/arial32.exe', `
              'https://mirrors.kernel.org/gentoo/distfiles/arialb32.exe', `
