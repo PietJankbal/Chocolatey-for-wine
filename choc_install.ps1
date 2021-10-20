@@ -46,7 +46,7 @@
     reg.exe  IMPORT  $env:TEMP\\amd.reg /reg:64; quit?('reg')
     reg.exe  IMPORT  $env:TEMP\\x86.reg /reg:32; quit?('reg')
     <# dotnet48: Install from extracted msi file, seems faster as well. #>
-    Start-Process -FilePath msiexec.exe -ArgumentList "/i $env:TEMP\\netfx_Full_x64.msi EXTUI=1 /sfxlang:1033 /q /norestart"; quit?('msiexec')
+    Start-Process -FilePath msiexec.exe -ArgumentList "/i $env:TEMP\\netfx_Full_x64.msi EXTUI=1 /ChainingPackage FullX64Bootstrapper /sfxlang:1033 /q /norestart"; quit?('msiexec')
     <# use further the winetricks recipe for some essential registry keys #>
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscorwks' -Value 'native' -PropertyType 'String'
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'native' -PropertyType 'String'
