@@ -1,3 +1,4 @@
+
     function set_HKLM_SM_key() <# sets key for HKLM:\\Software\\Microsoft #>
     {
         Param ($path, $name, $val, $prop) 
@@ -19,12 +20,12 @@
          Get-Process $process -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
     }
 
-    $url = @('https://download.microsoft.com/download/9/5/A/95A9616B-7A37-4AF6-BC36-D6EA96C8DAAE/dotNetFx40_Full_x86_x64.exe', `
+    $url = @($url = @('http://download.windowsupdate.com/msdownload/update/software/crup/2010/06/windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', `
              'https://download.visualstudio.microsoft.com/download/pr/7afca223-55d2-470a-8edc-6a1739ae3252/abd170b4b0ec15ad0222a809b761a036/ndp48-x86-x64-allos-enu.exe', `
              'https://mirrors.kernel.org/gentoo/distfiles/arial32.exe', `
              'https://mirrors.kernel.org/gentoo/distfiles/arialb32.exe', `
-             'https://download-installer.cdn.mozilla.net/pub/firefox/releases/62.0.3/win32/ach/Firefox%20Setup%2062.0.3.exe', `
-             'https://download-installer.cdn.mozilla.net/pub/firefox/releases/62.0.2/win64/ach/Firefox%20Setup%2062.0.2.exe', `
+             'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47.dll', `
+             'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47_32.dll', `
              'https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/x86.reg', `
              'https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/amd.reg')
     <# Download stuff #>
@@ -32,9 +33,8 @@
     <# Install choco #>
     Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')) 
     <# Extract stuff we need for quick dotnet48 install #>
-    Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\dotNetFx40_Full_x86_x64.exe -o$env:TEMP\\dotnet40 Windows6.1-KB958488-v6001-x64.msu"; quit?('7za')
-    Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\dotNet40\\Windows6.1-KB958488-v6001-x64.msu -o$env:TEMP\\dotnet40 Windows6.1-KB958488-x64.cab"; quit?('7za')
-    Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\ndp48-x86-x64-allos-enu.exe -o$env:TEMP"; quit?('7za')
+    Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu -o$env:TEMP\\dotnet40 Windows6.1-KB958488-x64.cab"; quit?('7za')
+    Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -NoNewWindow -Wait -ArgumentList  "x -x!*.cab $env:TEMP\\ndp48-x86-x64-allos-enu.exe -o$env:TEMP" ; quit?('7za')
     Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\dotnet40\\Windows6.1-KB958488-x64.cab -o$env:TEMP\\dotnet40 x86_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_7daed23956119a9f/mscoree.dll"; quit?('7za')
     Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\dotnet40\\Windows6.1-KB958488-x64.cab -o$env:TEMP\\dotnet40 amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5/mscoree.dll"; quit?('7za')
     <# remove mono #>    
@@ -81,13 +81,11 @@
     <# Many programs need arial and native d3dcompiler_47, so install it #>
     Start-Process -FilePath "$env:TEMP\\arial32.exe" -Wait -ArgumentList  "-q"
     Start-Process -FilePath "$env:TEMP\\arialb32.exe" -Wait -ArgumentList  "-q"
-    Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\Firefox%20Setup%2062.0.3.exe  -o$env:TEMP\\core32 core/d3dcompiler_47.dll"; quit?('7za')
-    Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\Firefox%20Setup%2062.0.2.exe -o$env:TEMP\\core64 core/d3dcompiler_47.dll"; quit?('7za')
    
-    Copy-Item -Path "$env:TEMP\\core32\\core\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_47.dll" -Force
-    Copy-Item -Path "$env:TEMP\\core32\\core\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_43.dll" -Force
-    Copy-Item -Path "$env:TEMP\\core64\\core\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_47.dll" -Force
-    Copy-Item -Path "$env:TEMP\\core64\\core\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_43.dll" -Force
+    Copy-Item -Path "$env:TEMP\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_47.dll" -Force
+    Copy-Item -Path "$env:TEMP\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_43.dll" -Force
+    Copy-Item -Path "$env:TEMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_47.dll" -Force
+    Copy-Item -Path "$env:TEMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_43.dll" -Force
     <# Make wusa a dummy program, we don`t want windows updates and it doesn`t work anyway #>
     Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\wusa.exe" -Force
     Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\wusa.exe" -Force
