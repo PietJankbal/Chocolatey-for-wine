@@ -38,7 +38,7 @@
     Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\dotnet40\\Windows6.1-KB958488-x64.cab -o$env:TEMP\\dotnet40 x86_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_7daed23956119a9f/mscoree.dll"; quit?('7za')
     Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\dotnet40\\Windows6.1-KB958488-x64.cab -o$env:TEMP\\dotnet40 amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5/mscoree.dll"; quit?('7za')
     <# remove mono #>    
-    $f = uninstaller --list  | Select-String 'Mono'; $g = $f -split "\|" |Select-string "{"; uninstaller --remove $g[0]; uninstaller --remove $g[1]
+    #$f = uninstaller --list  | Select-String 'Mono'; $g = $f -split "\|" |Select-string "{"; uninstaller --remove $g[0]; uninstaller --remove $g[1]
     Start-Process -FilePath msiexec.exe -ArgumentList "/i $env:TEMP\\netfx_Full_x64.msi EXTUI=1 /ChainingPackage FullX64Bootstrapper /sfxlang:1033 /q /norestart"; quit?('msiexec')
 
     <# Experimental dotnet48 installation; this is much faster then 'winetricks dotnet48', hopefully doesn`t cause issues... #>
