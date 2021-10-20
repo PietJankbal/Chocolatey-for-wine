@@ -1,4 +1,3 @@
-
     function set_HKLM_SM_key() <# sets key for HKLM:\\Software\\Microsoft #>
     {
         Param ($path, $name, $val, $prop) 
