@@ -39,16 +39,13 @@
     Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\dotnet40\\Windows6.1-KB958488-x64.cab -o$env:TEMP\\dotnet40 amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5/mscoree.dll"; quit?('7za')
     <# remove mono #>    
     #$f = uninstaller --list  | Select-String 'Mono'; $g = $f -split "\|" |Select-string "{"; uninstaller --remove $g[0]; uninstaller --remove $g[1]
-    Start-Process -FilePath msiexec.exe -ArgumentList "/i $env:TEMP\\netfx_Full_x64.msi EXTUI=1 /ChainingPackage FullX64Bootstrapper /sfxlang:1033 /q /norestart"; quit?('msiexec')
-
-    <# Experimental dotnet48 installation; this is much faster then 'winetricks dotnet48', hopefully doesn`t cause issues... #>
+    <# dotnet48: Install from extracted msi file;  Experimental dotnet48 installation; this is faster then 'winetricks dotnet48', hopefully doesn`t cause issues... #>
+    Start-Process -FilePath msiexec.exe -ArgumentList "/i $env:TEMP\\netfx_Full_x64.msi EXTUI=1 /sfxlang:1033 /q /norestart"; quit?('msiexec')
     <# dotnet40: we (probably) only need mscoree.dll from winetricks dotnet40 recipe, so just extract it and write registry values from it`s manifest file. This saves quite some time!#>
     Copy-Item -Path "$env:TEMP\\dotnet40\\x86_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_7daed23956119a9f/mscoree.dll" -Destination "$env:systemroot\\syswow64\\" -Force
     Copy-Item -Path "$env:TEMP\\dotnet40\\amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5/mscoree.dll" -Destination "$env:systemroot\\system32\\" -Force
     reg.exe  IMPORT  $env:TEMP\\amd.reg /reg:64; quit?('reg')
     reg.exe  IMPORT  $env:TEMP\\x86.reg /reg:32; quit?('reg')
-    <# dotnet48: Install from extracted msi file, seems faster as well. #>
-    #Start-Process -FilePath msiexec.exe -ArgumentList "/i $env:TEMP\\netfx_Full_x64.msi EXTUI=1 /ChainingPackage FullX64Bootstrapper /sfxlang:1033 /q /norestart"; quit?('msiexec')
     <# use further the winetricks recipe for some essential registry keys #>
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscorwks' -Value 'native' -PropertyType 'String'
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'native' -PropertyType 'String'
