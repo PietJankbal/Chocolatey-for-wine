@@ -67,7 +67,7 @@
 
     new_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.5'
     set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.5' 'Install' '1' 'dword'
-    set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.5' 'SP' '2' 'dword'
+    set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.5' 'SP' '1' 'dword'
     set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.5' 'Version' '3.5.30729.4926' 'string'
 
     new_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.5\\1033'
