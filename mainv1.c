@@ -88,7 +88,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
     BOOL is_single_or_last_option (WCHAR *opt)
     {
         return ( ( ( !_wcsnicmp( opt, L"-c", 2 ) && _wcsnicmp( opt, L"-config", 7 ) ) || !_wcsnicmp( opt, L"-n", 2 ) || \
-                     !_wcsnicmp( opt, L"-m", 2 ) || !_wcsnicmp( opt, L"-s", 2 )  || !_wcsicmp( opt, L"-" )) ? TRUE : FALSE );
+                     !_wcsnicmp( opt, L"-m", 2 ) || !_wcsnicmp( opt, L"-s", 2 )  || !_wcsicmp( opt, L"-" ) || !_wcsnicmp( opt, L"-f", 2 ) ) ? TRUE : FALSE );
     }
     /* pwsh requires a command option "-c" , powershell doesn`t, so we have to insert it somewhere e.g. 'powershell -nologo 2+1' should go into 'powershell -nologo -c 2+1'*/ 
     while ( !_wcsnicmp(L"-", argv[i], 1 ) ) /* Search for 1st argument after options */
@@ -109,7 +109,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         done: j++;
     }
     /* now insert a '-c' (if necessary) */
-    if ( argv[i] && _wcsnicmp( argv[i-1], L"-c", 2 ) && _wcsicmp( argv[i-1], L"-" ) )
+    if ( argv[i] && _wcsnicmp( argv[i-1], L"-c", 2 ) && _wcsicmp( argv[i-1], L"-" ) && _wcsnicmp( argv[i-1], L"-f", 2 ) )
         lstrcatW( lstrcatW( cmdlineW, L" " ), L"-c " );
 
     while( i  < argc ) /* concatenate the rest of the arguments into the new cmdline */
