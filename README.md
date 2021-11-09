@@ -11,6 +11,10 @@ Install :
 
 Optional:
 - Check if things went well: "choco install chromium -y"
+  "start chrome.exe"
+  
+  Or if you like to install via GUI: "choco install ChocolateyGUI"
+  "start chocolateygui.exe"
 
 Notes:
 
