@@ -44,6 +44,8 @@ Function Get-WmiObject([parameter(mandatory)] [string]$class, [string[]]$propert
     return $searcher.get()
 }
 
+ Set-Alias Get-CIMInstance Get-WMIObject
+
 #Note: Following obviously overrides wine (-staging)`s tasklist(.exe) so just remove stuff below if you don`t want that 
 New-Alias tasklist.exe tasklist
 
