@@ -10,11 +10,9 @@ Install :
         the folder 'deprecated' 
 
 Optional:
-- Check if things went well: "choco install chromium -y"
-  "start chrome.exe"
+- Check if things went well: "choco install chromium -y" and  "start chrome.exe"
   
-  Or if you like to install via GUI: "choco install ChocolateyGUI"
-  "start chocolateygui.exe"
+  Or if you like to install via GUI: "choco install ChocolateyGUI" and "start chocolateygui.exe"
 
 Notes:
 
