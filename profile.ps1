@@ -51,7 +51,7 @@ Function Get-WmiObject([parameter(mandatory)] [string]$class, [string[]]$propert
 Function Set-WmiInstance( [string]$class, [hashtable]$arguments, [string]$computername = "localhost", `
                           [string]$namespace = "root\cimv2" <#, [string]$path #>)
 {
-    $obj = Get-WmiObject -class $class #win32_operatingsystem
+    $obj = Get-WmiObject -class $class
 
     foreach ($h in $arguments.GetEnumerator()) {
         $obj.$($h.Name) = $($h.Value)
