@@ -51,16 +51,15 @@ Function Get-WmiObject([parameter(mandatory)] [string]$class, [string[]]$propert
 Function Set-WmiInstance( [string]$class, [hashtable]$arguments, [string]$computername = "localhost", `
                           [string]$namespace = "root\cimv2" <#, [string]$path #>)
 {
-    #$obj = Get-WmiObject -class $class -namespace $namespace
     $assembledpath = "\\" + $computername + "\" + $namespace + ":" + $class
     $obj = ([wmiclass]"$assembledpath").CreateInstance()
 
     foreach ($h in $arguments.GetEnumerator()) {
         $obj.$($h.Name) = $($h.Value)
     }
-    $obj.put()
+    $result = $obj.put()
 
-    return $obj
+    return $result.Path
 }
 
 #Note: Following obviously overrides wine (-staging)`s tasklist(.exe) so just remove stuff below if you don`t want that 
