@@ -27,7 +27,7 @@ function Register-WMIEvent
 #$(Get-WmiObject win32_videocontroller).name
 Function Get-WmiObject([parameter(mandatory)] [string]$class, [string[]]$property="*", `
                        [string]$computername = "localhost", [string]$namespace = "root\cimv2", `
-                       [string]$filter<#not used yet, but otherwise chocolatey starts complaining#>)
+                       [string]$filter)
 {
     $ConnectionOptions = new-object System.Management.ConnectionOptions
     $assembledpath = "\\" + $computername + "\" + $namespace
@@ -41,7 +41,13 @@ Function Get-WmiObject([parameter(mandatory)] [string]$class, [string[]]$propert
     $searcher.Query = $querystring
     $searcher.Scope = $Scope 
     
-    return $searcher.get()
+    if (!$filter) {
+        return $searcher.get() 
+    }
+    else {
+        $hashtable = ConvertFrom-StringData -StringData $filter
+        return $searcher.get() | where $hashtable.Keys -eq $hashtable.Values
+    }
 }
 
  Set-Alias Get-CIMInstance Get-WMIObject
