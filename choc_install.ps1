@@ -30,8 +30,6 @@
                  'https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/amd.reg')
         <# Download stuff #>
         $url | ForEach-Object { Write-Host -ForeGroundColor Yellow "Downloading $PSItem" && (New-Object System.Net.WebClient).DownloadFile($PSItem, $(Join-Path "$env:TEMP" ($PSItem  -split '/' | Select-Object -Last 1)))}
-        <# Install choco #>
-        Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')) 
         <# Extract stuff we need for quick dotnet48 install #>
         Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu -o$env:TEMP\\dotnet40 Windows6.1-KB958488-x64.cab"; quit?('7za')
         Start-Process -FilePath $env:TEMP\\ConEmuDownloads\\7za.exe -NoNewWindow -Wait -ArgumentList  "x -x!*.cab -ms190M $env:TEMP\\ndp48-x86-x64-allos-enu.exe -o$env:TEMP" ; quit?('7za')
@@ -42,8 +40,8 @@
     else {
         $C_TMP = "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4)
     }
-    <# remove mono #>    
-    #$f = uninstaller --list  | Select-String 'Mono'; $g = $f -split "\|" |Select-string "{"; uninstaller --remove $g[0]; uninstaller --remove $g[1]
+    <# Install choco #>
+    Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1')) 
     <# dotnet48: Install from extracted msi file;  Experimental dotnet48 installation; this is faster then 'winetricks dotnet48', hopefully doesn`t cause issues... #>
     Start-Process -FilePath msiexec.exe -ArgumentList "/i $C_TMP\\netfx_Full_x64.msi EXTUI=1 /sfxlang:1033 /q /norestart"; quit?('msiexec')
     <# dotnet40: we (probably) only need mscoree.dll from winetricks dotnet40 recipe, so just extract it and write registry values from it`s manifest file. This saves quite some time!#>
