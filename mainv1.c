@@ -43,16 +43,20 @@ int __cdecl wmain(int argc, WCHAR *argv[])
     
     if ( GetFileAttributesW( pwsh_pathW ) == INVALID_FILE_ATTRIBUTES ) /* Download and install*/
     {
-        WCHAR tmpW[MAX_PATH], profile_pathW[MAX_PATH], msiexecW[MAX_PATH];
+        WCHAR tmpW[MAX_PATH], profile_pathW[MAX_PATH], msiexecW[MAX_PATH], cacheW[MAX_PATH];
 
         if( !ExpandEnvironmentStringsW( L"%ProgramW6432%", profile_pathW, MAX_PATH + 1 ) ) goto failed; /* win32 only apparently, not supported... */
         if( !ExpandEnvironmentStringsW( L"%winsysdir%", msiexecW, MAX_PATH + 1 ) ) goto failed; 
-        
-        GetTempPathW( MAX_PATH, tmpW );
-        fwprintf( stderr, L"\033[1;93m" ); fwprintf( stderr, L"\nDownloading %ls \n", L"PowerShell-7.0.3-win-x64.msi" ); fwprintf( stderr, L"\033[0m\n" );
-        if( URLDownloadToFileW( NULL, L"https://github.com/PowerShell/PowerShell/releases/download/v7.0.3/PowerShell-7.0.3-win-x64.msi", lstrcatW( tmpW, L"PowerShell-7.0.3-win-x64.msi"), 0, NULL ) != S_OK )
-            goto failed;
-   
+        if(!ExpandEnvironmentStringsW(L"%WINEHOMEDIR%", cacheW, MAX_PATH+1)) goto failed; 
+       
+        GetTempPathW( MAX_PATH, tmpW ); lstrcatW(cacheW, L"\\.cache\\choc_install_files\\PowerShell-7.0.3-win-x64.msi");
+        if( !CopyFileW( cacheW , lstrcatW( tmpW, L"PowerShell-7.0.3-win-x64.msi" ), FALSE ) )
+        {
+            fwprintf( stderr, L"\033[1;93m" ); fwprintf( stderr, L"\nDownloading %ls \n", L"PowerShell-7.0.3-win-x64.msi" ); fwprintf( stderr, L"\033[0m\n" );
+            if( URLDownloadToFileW( NULL, L"https://github.com/PowerShell/PowerShell/releases/download/v7.0.3/PowerShell-7.0.3-win-x64.msi", tmpW, 0, NULL ) != S_OK )
+                goto failed;
+        }
+
         GetTempPathW( MAX_PATH,tmpW );
         fwprintf( stderr, L"\033[1;93m" ); fwprintf( stderr, L"\nDownloading %ls \n", L"install2.ps1" ); fwprintf( stderr, L"\033[0m\n" );
         if( URLDownloadToFileW( NULL, L"https://conemu.github.io/install2.ps1", lstrcatW( tmpW, L"install2.ps1" ), 0, NULL ) != S_OK )
