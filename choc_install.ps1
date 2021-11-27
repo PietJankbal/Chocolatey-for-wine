@@ -77,8 +77,8 @@
     new_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.5\\1033'
     set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.5\\1033' 'Install' '1' 'dword'
     
-    #New-Item -Path 'HKCU:\\Software\\Microsoft\\Avalon.Graphics' -force
-    #New-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Avalon.Graphics' -Name 'DisableHWAcceleration' -Value '0' -PropertyType 'dword'  
+    New-Item -Path 'HKCU:\\Software\\Microsoft\\Avalon.Graphics' -force
+    New-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Avalon.Graphics' -Name 'DisableHWAcceleration' -Value '0' -PropertyType 'dword'  
 
     <# Many programs need arial and native d3dcompiler_47, so install it #>
     Start-Process -FilePath "$C_TMP\\arial32.exe" -Wait -ArgumentList  "-q"
