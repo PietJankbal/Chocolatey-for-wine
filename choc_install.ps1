@@ -106,4 +106,6 @@
         New-Item -Path "$env:WINEHOMEDIR\.cache\".substring(4) -Name "choc_install_files" -ItemType "directory" -ErrorAction SilentlyContinue
         Move-Item -Path $env:TEMP\\* -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4)  -force
     } 
+    
+    #choco install tccle -y; C:\\Program Files\\JPSoft\\TCCLE14x64\\tcc.exe C:\\Program Files\\JPSoft\\TCCLE14x64\\tccbatch.btm;
     powershell.exe
