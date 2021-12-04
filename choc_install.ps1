@@ -107,5 +107,5 @@
         Move-Item -Path $env:TEMP\\* -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4)  -force
     } 
     
-    #choco install tccle -y; C:\\Program Files\\JPSoft\\TCCLE14x64\\tcc.exe C:\\Program Files\\JPSoft\\TCCLE14x64\\tccbatch.btm;
+    # choco install tccle -y; & "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tcc.exe" "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tccbatch.btm";
     powershell.exe
