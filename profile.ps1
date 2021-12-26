@@ -76,7 +76,6 @@ function tasklist
      Get-WmiObject win32_process "processid,name" | Format-Table -Property Name, processid -autosize
 }
 
-
 #function winetricks
 #{
 #     if(!([System.IO.File]::Exists($env:systemdrive\\winetricks.ps1))){
