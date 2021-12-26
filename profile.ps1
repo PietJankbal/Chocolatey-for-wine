@@ -77,10 +77,10 @@ function tasklist
 }
 
 
-function winetricks
-{
-     if(!([System.IO.File]::Exists($env:systemdrive\\winetricks.ps1))){
-         (New-Object System.Net.WebClient).DownloadFile('https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/winetricks.ps1', "$env:systemdrive\\winetricks.ps1")
-     }
-     $env:\\systemdrive\\winetricks.ps1 @args
-}
+#function winetricks
+#{
+#     if(!([System.IO.File]::Exists($env:systemdrive\\winetricks.ps1))){
+#         (New-Object System.Net.WebClient).DownloadFile('https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/winetricks.ps1', "$env:systemdrive\\winetricks.ps1")
+#     }
+#     $env:\\systemdrive\\winetricks.ps1 @args
+#}
