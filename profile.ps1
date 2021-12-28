@@ -78,8 +78,6 @@ function tasklist
 
 function winetricks
 {
-     [CmdletBinding()]param($args)
-
      if (!([System.IO.File]::Exists("$env:systemdrive\\winetricks.ps1"))){
          (New-Object System.Net.WebClient).DownloadFile('https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/winetricks.ps1', "$env:systemdrive\\winetricks.ps1")
      }
