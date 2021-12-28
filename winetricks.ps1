@@ -41,14 +41,14 @@ function w_download_to
 Param ($dldir, $w_url, $w_file)
 $path = "$env:WINEHOMEDIR" + "\\.cache\\winetrickxs\\$dldir"
 
-    Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('First time usage of this custom `
-    winetricks takes VERY long time and eats up gigs of disk space,due to huge download and decompressing things. Loads of gigabytes `
-    will be squashed into directory ~/.cache/winetrickxs ','Warning','ok','exclamation')
-
 if (![System.IO.Directory]::Exists($path.substring(4))){ [System.IO.Directory]::CreateDirectory($path.substring(4))}
 
 $f = $path.substring(4) + "\\$w_file"
 if (-not(Test-Path $f -PathType Leaf)){
+    Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('First time usage of this custom `
+    winetricks takes VERY long time and eats up gigs of disk space,due to huge download and decompressing things. Loads of gigabytes `
+    will be squashed into directory ~/.cache/winetrickxs ','Warning','ok','exclamation')
+
 (New-Object System.Net.WebClient).DownloadFile($w_url, $f)}
 }
 
