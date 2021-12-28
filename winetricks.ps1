@@ -56,6 +56,10 @@ $url = "https://download.microsoft.com/download/8/E/9/8E9BBC64-E6F8-457C-9B8D-F6
 w_download_to $dldir $url $cab
 
 if ( -not(Test-Path $cachedir\\$dldir\\WinPE.cab -PathType Leaf) ){
+    Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('First time usage of this custom `
+    winetricks takes VERY long time and eats up gigs of disk space,due to huge download and decompressing things. Loads of gigabytes `
+    will be squashed into directory ~/.cache/winetrickxs ','Warning','ok','exclamation')
+    
     Start-Process <#-Windowstyle hidden#> 7z -Wait -ArgumentList "x",$cachedir\\$dldir\\$cab,"-o$cachedir\\$dldir","-y"; quit?('7z')
    } 
 
