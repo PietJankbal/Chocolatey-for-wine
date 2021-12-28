@@ -76,17 +76,12 @@ function tasklist
      Get-WmiObject win32_process "processid,name" | Format-Table -Property Name, processid -autosize
 }
 
-#function winetricks
-#{
-#     #param(@args)
-#     [CmdletBinding()]param($args)
-#param(
-#    [Parameter(Mandatory=$false)]
-#    [ValidateSet("IPAddress","Timezone","Cluster")]
-#    [String[]]$args
-#)
-#     if (!([System.IO.File]::Exists("$env:systemdrive\\winetricks.ps1"))){
-#         (New-Object System.Net.WebClient).DownloadFile('https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/winetricks.ps1', "$env:systemdrive\\winetricks.ps1")
-#     }
-#     pwsh -f  $( Join-Path ${env:\\systemdrive} "winetricks.ps1")   $args
-#}
+function winetricks
+{
+     [CmdletBinding()]param($args)
+
+     if (!([System.IO.File]::Exists("$env:systemdrive\\winetricks.ps1"))){
+         (New-Object System.Net.WebClient).DownloadFile('https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/winetricks.ps1', "$env:systemdrive\\winetricks.ps1")
+     }
+     pwsh -f  $( Join-Path ${env:\\systemdrive} "winetricks.ps1")   $args
+}
