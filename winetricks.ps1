@@ -9,7 +9,7 @@ function validate_param
 [CmdletBinding()]
  Param(
         [Parameter(Mandatory=$false)]
-        [ValidateSet('msxml3', 'msxml6','gdiplus', 'robocopy')]
+        [ValidateSet('msxml3', 'msxml6','gdiplus', 'robocopy', 'msado15')]
         [string[]]$verb
       )
 }
@@ -22,7 +22,8 @@ $custom_array = @() # Creating an empty array to populate data in
 [array]$Qenu = "gdiplus","GDI+, todo: check if this version works",`
                "msxml3","msxml3+msxml3r",`
 	       "msxml6","msxml6+msxml6r",`
-               "robocopy","robocopy.exe + mfc42(u)"
+               "robocopy","robocopy.exe + mfc42(u)",`
+	       "msado15","some minimal mdac dlls"
 
 for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) { 
     $custom_array += New-Object PSObject -Property @{ # Setting up custom array utilizing a PSObject
@@ -128,6 +129,37 @@ function func_gdiplus
     Get-Process 7z -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'gdiplus' -Value 'native' -PropertyType 'String'
 }
+
+function func_msado15
+{
+    validate_cab_existence; $dldir = "aik70"
+
+    $adodlls = @( 'amd64_microsoft-windows-m..ents-mdac-ado15-dll_31bf3856ad364e35_6.1.7600.16385_none_6825d42d8a57b77d/msado15.dll', `
+                  'x86_microsoft-windows-m..ents-mdac-ado15-dll_31bf3856ad364e35_6.1.7600.16385_none_0c0738a9d1fa4647/msado15.dll' )
+
+    foreach ($i in $adodlls) {
+        switch ( $i.SubString(0,3) ) { 
+            'amd'    {Start-Process 7z -ArgumentList "e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB `"-o$env:CommonProgramFiles\\System\\ADO`" $i -y"}
+            'x86'    {Start-Process 7z  -ArgumentList "e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB `"-o${env:CommonProgramFiles`(x86`)}\\System\\ADO`" $i -y"}
+        }
+    } quit?('7z')
+
+    $dlls = @( 'amd64_microsoft-windows-m..ponents-mdac-msdart_31bf3856ad364e35_6.1.7600.16385_none_42074b3f2553d5bd/msdart.dll', `
+               'x86_microsoft-windows-m..ponents-mdac-msdart_31bf3856ad364e35_6.1.7600.16385_none_e5e8afbb6cf66487/msdart.dll' )
+		 
+    foreach ($i in $dlls) {
+        switch ( $i.SubString(0,3) ) {
+            'amd'    {Start-Process 7z  -ArgumentList "e",$cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB,"-o$env:systemroot\\system32",$i,"-y"}
+            'x86'    {Start-Process  7z  -ArgumentList "e",$cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB,"-o$env:systemroot\\syswow64",$i,"-y"}
+        }
+    } quit?('7z')
+
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'msado15' -Value 'native' -PropertyType 'String'
+
+    & "$env:systemroot\\system32\\regsvr32" "$env:CommonProgramFiles\\System\\ADO\\msado15.dll"
+    & "$env:systemroot\\syswow64\\regsvr32"  "${env:CommonProgramFiles`(x86`)}\\System\\ADO\\msado15.dll"
+}
+
 # Main
 if(!$args.count){
     $Result = $custom_array  | select name,description | Out-GridView  -PassThru  -Title 'Make a  selection' 
