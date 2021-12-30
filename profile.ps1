@@ -75,6 +75,18 @@ function tasklist
 {
      Get-WmiObject win32_process "processid,name" | Format-Table -Property Name, processid -autosize
 }
+<# A few Unix commands I find handy, just remove stuff below if you don`t want it #>
+function du
+{
+if (!([System.IO.File]::Exists("$env:systemdrive\\ProgramData\\chocolatey\\bin\\busybox64.exe "))){ choco install Busybox -y}
+Busybox64.exe du $args
+}
+
+function df
+{
+if (!([System.IO.File]::Exists("$env:systemdrive\\ProgramData\\chocolatey\\bin\\busybox64.exe "))){ choco install Busybox -y}
+Busybox64.exe df $args
+}
 
 function winetricks
 {
