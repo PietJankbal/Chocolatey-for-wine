@@ -88,6 +88,18 @@ if (!([System.IO.File]::Exists("$env:systemdrive\\ProgramData\\chocolatey\\bin\\
 Busybox64.exe df $args
 }
 
+function wget
+{
+if (!([System.IO.File]::Exists("$env:systemdrive\\ProgramData\\chocolatey\\bin\\busybox64.exe "))){ choco install Busybox -y}
+Busybox64.exe wget $args
+}
+
+function grep
+{
+if (!([System.IO.File]::Exists("$env:systemdrive\\ProgramData\\chocolatey\\bin\\busybox64.exe "))){ choco install Busybox -y}
+Busybox64.exe grep $args
+}
+
 function winetricks
 {
      if (!([System.IO.File]::Exists("$env:systemdrive\\winetricks.ps1"))){
