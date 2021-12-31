@@ -83,11 +83,9 @@ function func_msxml3
     $dlls = @('msxml3.dll','msxml3r.dll'); $dldir = "aik70"
 
     foreach ($i in $dlls) {
-        Start-Process <#-Windowstyle hidden#> 7z  -ArgumentList "e",$cachedir\\$dldir\\F3_WINPE.WIM,"-o$env:systemroot\\system32",Windows/System32/$i,"-y"
-        Start-Process <#-Windowstyle hidden#> 7z  -ArgumentList "e",$cachedir\\$dldir\\F1_WINPE.WIM,"-o$env:systemroot\\syswow64",Windows/System32/$i,"-y"
-    }
-    Get-Process 7z -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
-   New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'msxml3' -Value 'native' -PropertyType 'String'
+        7z e $cachedir\\$dldir\\F3_WINPE.WIM -o$env:systemroot\\system32 Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
+        7z e $cachedir\\$dldir\\F1_WINPE.WIM -o$env:systemroot\\syswow64 Windows/System32/$i -y| Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'msxml3' -Value 'native' -PropertyType 'String'
 }
 
 function func_msxml6
@@ -96,10 +94,8 @@ function func_msxml6
     $dlls = @('msxml6.dll', 'msxml6r.dll'); $dldir = "aik70"
 
     foreach ($i in $dlls) {
-        Start-Process <#-Windowstyle hidden#> 7z  -ArgumentList "e",$cachedir\\$dldir\\F3_WINPE.WIM,"-o$env:systemroot\\system32",Windows/System32/$i,"-y"
-        Start-Process <#-Windowstyle hidden#> 7z  -ArgumentList "e",$cachedir\\$dldir\\F1_WINPE.WIM,"-o$env:systemroot\\syswow64",Windows/System32/$i,"-y"
-    }
-    Get-Process 7z -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
+        7z e $cachedir\\$dldir\\F3_WINPE.WIM -o$env:systemroot\\system32 Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
+        7z e $cachedir\\$dldir\\F1_WINPE.WIM -o$env:systemroot\\syswow64 Windows/System32/$i -y| Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'msxml6' -Value 'native' -PropertyType 'String'
 }
 
@@ -109,10 +105,8 @@ function func_robocopy
     $dlls = @('robocopy.exe', 'mfc42.dll', 'mfc42u.dll'); $dldir = "aik70"
 
     foreach ($i in $dlls) {
-        Start-Process <#-Windowstyle hidden#> 7z  -ArgumentList "e",$cachedir\\$dldir\\F3_WINPE.WIM,"-o$env:systemroot\\system32",Windows/System32/$i,"-y"
-        Start-Process <#-Windowstyle hidden#> 7z  -ArgumentList "e",$cachedir\\$dldir\\F1_WINPE.WIM,"-o$env:systemroot\\syswow64",Windows/System32/$i,"-y"
-    }
-    Get-Process 7z -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
+        7z e $cachedir\\$dldir\\F3_WINPE.WIM -o$env:systemroot\\system32 Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
+        7z e $cachedir\\$dldir\\F1_WINPE.WIM -o$env:systemroot\\syswow64 Windows/System32/$i -y| Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'robocopy.exe' -Value 'native' -PropertyType 'String'
 }
 
