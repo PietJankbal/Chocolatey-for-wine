@@ -74,7 +74,6 @@ if ( -not(Test-Path $cachedir\\$dldir\\F1_WINPE.WIM -PathType Leaf) ){ #fragile 
 if ( -not(Test-Path $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB -PathType Leaf) ){ #fragile test...
     Start-Process <#-Windowstyle hidden#> 7z -Wait -ArgumentList "x",$cachedir\\$dldir\\Neutral.cab,"-o$cachedir\\$dldir\\","-y"; quit?('7z')
    }
-
 }
 
 function func_msxml3
@@ -118,11 +117,8 @@ function func_gdiplus
 		  
     foreach ($i in $sxsdlls) {
         switch ( $i.SubString(0,3) ) {
-            'amd'    {Start-Process <#-Windowstyle hidden#> 7z  -ArgumentList "e",$cachedir\\$dldir\\F3_WINPE.WIM,"-o$env:systemroot\\system32",Windows/winsxs/$i,"-y"}
-            'x86'    {Start-Process <#-Windowstyle hidden#> 7z  -ArgumentList "e",$cachedir\\$dldir\\F1_WINPE.WIM,"-o$env:systemroot\\syswow64",Windows/winsxs/$i,"-y"}
-        }
-    }
-    Get-Process 7z -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
+            'amd' {7z e $cachedir\\$dldir\\F3_WINPE.WIM -o$env:systemroot\\system32 Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
+            'x86' {7z e $cachedir\\$dldir\\F1_WINPE.WIM -o$env:systemroot\\syswow64 Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])}}} quit?('7z')
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'gdiplus' -Value 'native' -PropertyType 'String'
 }
 
@@ -170,10 +166,8 @@ function func_expand
 		  
     foreach ($i in $expdlls) {
         switch ( $i.SubString(0,3) ) {
-            'amd'    {Start-Process <#-Windowstyle hidden#> 7z  -ArgumentList "e",$cachedir\\$dldir\\F3_WINPE.WIM,"-o$env:systemroot\\system32",Windows/winsxs/$i,"-y"}
-            'x86'    {Start-Process <#-Windowstyle hidden#> 7z  -ArgumentList "e",$cachedir\\$dldir\\F1_WINPE.WIM,"-o$env:systemroot\\syswow64",Windows/winsxs/$i,"-y"}
-        }
-    } quit?('7z')
+            'amd' {7z e $cachedir\\$dldir\\F3_WINPE.WIM -o$env:systemroot\\system32 Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
+            'x86' {7z e $cachedir\\$dldir\\F1_WINPE.WIM -o$env:systemroot\\syswow64 Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])}}} quit?('7z')
 }
 
 function func_wmp <# This makes e-Sword start #>
