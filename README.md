@@ -14,7 +14,7 @@ Optional:
   
   Or if you like to install via GUI: "choco install ChocolateyGUI" and "start chocolateygui.exe"
 
--Update 2: Added a custom (ps-)winetricks script to keep myself busy during lockdown, and to get some progams 
+- Update 2: Added a custom (ps-)winetricks script to keep myself busy during lockdown, and to get some progams 
            (hopefully) better running. All experimental, use at your own risk...
            Drawback: eats whopping gigs of diskspace. Pro/goal: hopefully more 64-bit compatibility...
            If you don't want this ps-winetricks, just don't call it, or remove it from c:\\Program Files\\Powershell                    \\7\\profile.ps1
