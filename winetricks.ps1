@@ -166,8 +166,8 @@ function func_expand
 		  
     foreach ($i in $expdlls) {
         switch ( $i.SubString(0,3) ) {
-            'amd' {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32 Windows/winsxs/$i" -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
-            'x86' {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64 Windows/winsxs/$i" -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])}}} quit?('7z')
+            'amd' {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
+            'x86' {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])}}} quit?('7z')
 }
 
 function func_wmp <# This makes e-Sword start #>
