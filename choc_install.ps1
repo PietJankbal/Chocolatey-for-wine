@@ -59,6 +59,7 @@
     Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework\\v4.0.30319\\RegAsm.exe -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\RegAsm.exe  
 
     new_HKLM_SM_key '.NETFramework\\Policy\\v2.0'
+    set_HKLM_SM_key '.NETFramework\\Policy\\v2.0' '50727' '50727-50727' 'string'
 
     new_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.0'
     set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.0' 'Install' '1' 'dword'
