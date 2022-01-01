@@ -131,20 +131,16 @@ function func_msado15
 
     foreach ($i in $adodlls) {
         switch ( $i.SubString(0,3) ) { 
-            'amd'    {Start-Process 7z -ArgumentList "e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB `"-o$env:CommonProgramFiles\\System\\ADO`" $i -y"}
-            'x86'    {Start-Process 7z  -ArgumentList "e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB `"-o${env:CommonProgramFiles`(x86`)}\\System\\ADO`" $i -y"}
-        }
-    } quit?('7z')
+            'amd'    {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB "-o$env:CommonProgramFiles\\System\\ADO" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
+            'x86'    {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB "-o${env:CommonProgramFiles`(x86`)}\\System\\ADO" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}}} quit?('7z')
 
     $dlls = @( 'amd64_microsoft-windows-m..ponents-mdac-msdart_31bf3856ad364e35_6.1.7600.16385_none_42074b3f2553d5bd/msdart.dll', `
                'x86_microsoft-windows-m..ponents-mdac-msdart_31bf3856ad364e35_6.1.7600.16385_none_e5e8afbb6cf66487/msdart.dll' )
 		 
     foreach ($i in $dlls) {
         switch ( $i.SubString(0,3) ) {
-            'amd'    {Start-Process 7z  -ArgumentList "e",$cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB,"-o$env:systemroot\\system32",$i,"-y"}
-            'x86'    {Start-Process  7z  -ArgumentList "e",$cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB,"-o$env:systemroot\\syswow64",$i,"-y"}
-        }
-    } quit?('7z')
+            'amd'    {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB "-o$env:systemroot\\system32" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
+            'x86'    {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB "-o$env:systemroot\\syswow64" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}}} quit?('7z')
 
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'msado15' -Value 'native' -PropertyType 'String'
 
