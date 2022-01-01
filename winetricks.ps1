@@ -57,23 +57,19 @@ if (-not(Test-Path $f -PathType Leaf)){
 
 function validate_cab_existence
 {
-$cab = "KB3AIK_EN.iso"
-$dldir = "aik70"
-$url = "https://download.microsoft.com/download/8/E/9/8E9BBC64-E6F8-457C-9B8D-F6C9A16E6D6A/$cab"
-w_download_to $dldir $url $cab
+    $cab = "KB3AIK_EN.iso"
+    $dldir = "aik70"
+    $url = "https://download.microsoft.com/download/8/E/9/8E9BBC64-E6F8-457C-9B8D-F6C9A16E6D6A/$cab"
+    w_download_to $dldir $url $cab
 
-if ( -not(Test-Path $cachedir\\$dldir\\WinPE.cab -PathType Leaf) ){
-    Start-Process <#-Windowstyle hidden#> 7z -Wait -ArgumentList "x",$cachedir\\$dldir\\$cab,"-o$cachedir\\$dldir","-y"; quit?('7z')
-   } 
+    if ( -not(Test-Path $cachedir\\$dldir\\WinPE.cab -PathType Leaf) -or -not(Test-Path $cachedir\\$dldir\\Neutral.cab -PathType Leaf)){
+        7z x $cachedir\\$dldir\\$cab "-o$cachedir\\$dldir" -y; quit?('7z')} 
 
-if ( -not(Test-Path $cachedir\\$dldir\\F1_WINPE.WIM -PathType Leaf) ){ #fragile test...
-    Start-Process <#-Windowstyle hidden#> 7z -Wait -ArgumentList "x",$cachedir\\$dldir\\WinPE.cab,"-o$cachedir\\$dldir","-y"; quit?('7z')
-   }
+    if ( -not(Test-Path $cachedir\\$dldir\\F1_WINPE.WIM -PathType Leaf) ){ #fragile test...
+        7z x $cachedir\\$dldir\\WinPE.cab "-o$cachedir\\$dldir" -y; quit?('7z')}
 
-
-if ( -not(Test-Path $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB -PathType Leaf) ){ #fragile test...
-    Start-Process <#-Windowstyle hidden#> 7z -Wait -ArgumentList "x",$cachedir\\$dldir\\Neutral.cab,"-o$cachedir\\$dldir\\","-y"; quit?('7z')
-   }
+    if ( -not(Test-Path $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB -PathType Leaf) ){ #fragile test...
+        7z x $cachedir\\$dldir\\Neutral.cab "-o$cachedir\\$dldir\\" -y; quit?('7z')}
 }
 
 function func_msxml3
