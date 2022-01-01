@@ -166,7 +166,6 @@ function func_wmp <# This makes e-Sword start #>
 {   
     $url = "https://download.microsoft.com/download/7/A/D/7AD12930-3AA6-4040-81CF-350BF1E99076/Windows6.2-KB2703761-x64.msu"
     $cab = "Windows6.2-KB2703761-x64.cab"
-
     $sourcefile = @(`
     'x86_microsoft-windows-mediaplayer-wmasf_31bf3856ad364e35_6.2.9200.16384_none_a460fc8111ced20d/wmasf.dll',`
     'amd64_microsoft-windows-mediaplayer-wmasf_31bf3856ad364e35_6.2.9200.16384_none_007f9804ca2c4343/wmasf.dll',`
@@ -192,24 +191,21 @@ function func_wmp <# This makes e-Sword start #>
     if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $cab) ) )
        {Write-Host file seems missing, re-extracting;7z e $cachedir\\$dldir\\$msu "-o$cachedir\\$dldir" -y; quit?('7z')}
        
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String'
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'native' -PropertyType 'String'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String' | Out-Null
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'native' -PropertyType 'String' | Out-Null
 
     foreach ($i in $sourcefile) {
               switch ( $i.SubString(0,3) ) {
-                  'amd'    {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $env:TEMP }
-                  {$_ -in 'wow', 'x86'}  {<# Nothing to do #>}
-             }
-    }
+                  {'amd'              }    {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $env:TEMP }
+                  {$_ -in 'wow', 'x86'}    {<# Nothing to do #>}                                                                          } }
 
     foreach ($i in $sourcefile) {
               switch ( $i.SubString(0,3) ) {
-                  'amd'    {Copy-Item -force $env:TEMP\\$i $env:systemroot\\system32\\$($i.split('/')[-1])}
-                  {$_ -in 'wow', 'x86'}  {Copy-Item -force $env:TEMP\\$i $env:systemroot\\syswow64\\$($i.split('/')[-1])}
-             }
-    }
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'builtin' -PropertyType 'String'
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'builtin' -PropertyType 'String'
+                  {'amd'              }    {Copy-Item -force $env:TEMP\\$i $env:systemroot\\system32\\$($i.split('/')[-1])}
+                  {$_ -in 'wow', 'x86'}    {Copy-Item -force $env:TEMP\\$i $env:systemroot\\syswow64\\$($i.split('/')[-1])} } }
+		  
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'builtin' -PropertyType 'String' | Out-Null
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'builtin' -PropertyType 'String' | Out-Null
 }
 
 # Main
