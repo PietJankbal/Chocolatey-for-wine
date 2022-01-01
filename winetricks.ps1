@@ -190,8 +190,8 @@ function func_wmp <# This makes e-Sword start #>
     w_download_to $dldir $url $msu
 
     if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $cab) ) )
-       {Write-Host extracting with 7z;Start-Process <#-Windowstyle hidden#> 7z  -ArgumentList "e",$cachedir\\$dldir\\$msu,"-o$cachedir\\$dldir","-y"; quit?('7z')}
-
+       {Write-Host file seems missing, re-extracting;7z e $cachedir\\$dldir\\$msu "-o$cachedir\\$dldir -y; quit?('7z')}
+       
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'native' -PropertyType 'String'
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'native' -PropertyType 'String'
 
