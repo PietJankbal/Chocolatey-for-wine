@@ -41,18 +41,18 @@ function quit?([string] $process)  <# wait for a process to quit #>
 
 function w_download_to
 {
-Param ($dldir, $w_url, $w_file)
-$path = "$env:WINEHOMEDIR" + "\\.cache\\winetrickxs\\$dldir"
+    Param ($dldir, $w_url, $w_file)
+    $path = "$env:WINEHOMEDIR" + "\\.cache\\winetrickxs\\$dldir"
 
-if (![System.IO.Directory]::Exists($path.substring(4))){ [System.IO.Directory]::CreateDirectory($path.substring(4))}
+    if (![System.IO.Directory]::Exists($path.substring(4))){ [System.IO.Directory]::CreateDirectory($path.substring(4))}
 
-$f = $path.substring(4) + "\\$w_file"
-if (-not(Test-Path $f -PathType Leaf)){
-    Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('First time usage of this custom `
-    winetricks takes VERY long time and eats up gigs of disk space,due to huge download and decompressing things. Loads of gigabytes `
-    will be squashed into directory ~/.cache/winetrickxs ','Warning','ok','exclamation')
+    $f = $path.substring(4) + "\\$w_file"
+    if (-not(Test-Path $f -PathType Leaf)){
+        Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('First time usage of this custom `
+        winetricks takes VERY long time and eats up gigs of disk space,due to huge download and decompressing things. Loads of gigabytes `
+        will be squashed into directory ~/.cache/winetrickxs ','Warning','ok','exclamation')
 
-(New-Object System.Net.WebClient).DownloadFile($w_url, $f)}
+        (New-Object System.Net.WebClient).DownloadFile($w_url, $f)}
 }
 
 function validate_cab_existence
@@ -208,7 +208,7 @@ function func_wmp <# This makes e-Sword start #>
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'expand.exe' -Value 'builtin' -PropertyType 'String' | Out-Null
 }
 
-# Main
+# Main function
 if(!$args.count){
     $Result = $custom_array  | select name,description | Out-GridView  -PassThru  -Title 'Make a  selection' 
 
