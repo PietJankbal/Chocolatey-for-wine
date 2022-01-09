@@ -25,7 +25,7 @@ $custom_array = @() # Creating an empty array to populate data in
                "robocopy","robocopy.exe + mfc42(u)",`
 	       "msado15","some minimal mdac dlls",`
 	       "expand", "native expand.exe",`
-               "wmp", "some wmp (windows media player) dlls"
+               "wmp", "some wmp (windows media player) dlls",`
 	       "ucrtbase", "ucrtbase from vcrun2015"
 
 for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) { 
