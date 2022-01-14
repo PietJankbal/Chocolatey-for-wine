@@ -9,7 +9,7 @@ function validate_param
 [CmdletBinding()]
  Param(
         [Parameter(Mandatory=$false)]
-        [ValidateSet('msxml3', 'msxml6','gdiplus', 'robocopy', 'msado15', 'expand', 'wmp', 'ucrtbase')]
+        [ValidateSet('msxml3', 'msxml6','gdiplus', 'robocopy', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019')]
         [string[]]$verb
       )
 }
@@ -26,7 +26,8 @@ $custom_array = @() # Creating an empty array to populate data in
 	       "msado15","some minimal mdac dlls",`
 	       "expand", "native expand.exe",`
                "wmp", "some wmp (windows media player) dlls",`
-	       "ucrtbase", "ucrtbase from vcrun2015"
+	       "ucrtbase", "ucrtbase from vcrun2015",`
+	       "vcrun2019", "vcredist2019"
 
 for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) { 
     $custom_array += New-Object PSObject -Property @{ # Setting up custom array utilizing a PSObject
@@ -133,6 +134,31 @@ function func_ucrtbase
         7z e $env:TEMP\\$dldir\\64\\a10 "-o$env:systemroot\system32" $i -aoa | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
         7z e $env:TEMP\\$dldir\\32\\a10 "-o$env:systemroot\syswow64" $i -aoa | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1]); quit?('7z') }
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'ucrtbase' -Value 'native' -PropertyType 'String'
+}
+
+function func_vcrun2019
+{
+    choco install vcredist140 -n
+    .   $env:ProgramData\\chocolatey\\lib\\vcredist140\\tools\\data.ps1  #source the file via dot operator
+    w_download_to "vcredist140\\64" $installData64.url64 "VC_redist.x64.exe"
+    w_download_to "vcredist140\\32" $installData32.url VC__redist.x86.exe
+    $dldir = "vcredist140"
+        
+    7z -t# x $cachedir\\$dldir\\64\\VC_redist.x64.exe "-o$env:TEMP\\$dldir\\64" 4.cab -y; quit?('7z')
+    7z -t# x $cachedir\\$dldir\\32\\VC__redist.x86.exe "-o$env:TEMP\\$dldir\\32" 4.cab -y; quit?('7z')
+    7z e $env:TEMP\\$dldir\\64\\4.cab "-o$env:TEMP\\$dldir\\64" a11 -y ;quit?('7z')
+    7z e $env:TEMP\\$dldir\\32\\4.cab "-o$env:TEMP\\$dldir\\32" a10 -y; quit?('7z')
+    7z e $env:TEMP\\$dldir\\32\\4.cab "-o$env:TEMP\\$dldir\\32" a11 -y; quit?('7z')
+    7z e $env:TEMP\\$dldir\\64\\a11 "-o$env:systemroot\\system32" -y;quit?('7z')
+    7z e $env:TEMP\\$dldir\\32\\a10 "-o$env:systemroot\\syswow64" -y; quit?('7z')
+    7z e $env:TEMP\\$dldir\\32\\a11 "-o$env:systemroot\\syswow64" -y; quit?('7z')
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'msxml3' -Value 'native' -PropertyType 'String'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'concrt140' -Value 'native' -PropertyType 'String'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'msvcp140' -Value 'native' -PropertyType 'String'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'msvcp140_1' -Value 'native' -PropertyType 'String'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'msvcp140_2' -Value 'native' -PropertyType 'String'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'vcruntime140' -Value 'native' -PropertyType 'String'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'vcruntime140_1' -Value 'native' -PropertyType 'String'
 }
 
 function func_msado15
