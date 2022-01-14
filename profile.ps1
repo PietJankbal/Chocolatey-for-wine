@@ -20,6 +20,7 @@ function Register-WMIEvent
 #See https://www.powershellgallery.com/packages/Traverse/0.6/Content/Private%5CGet-WMICustom.ps1
 #
 #Only works as of wine-6.20, see https://bugs.winehq.org/show_bug.cgi?id=51871
+#e.g. (new-object System.Management.ManagementObjectSearcher("SELECT * FROM Win32_Bios")).Get().manufacturer failed before
 #
 #Examples of usage:
 #
