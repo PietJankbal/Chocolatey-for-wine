@@ -149,7 +149,8 @@ function func_vcrun2019
     7z e $env:TEMP\\$dldir\\64\\4.cab "-o$env:TEMP\\$dldir\\64" a11 -y ;quit?('7z')
     7z e $env:TEMP\\$dldir\\32\\4.cab "-o$env:TEMP\\$dldir\\32" a10 -y; quit?('7z')
     7z e $env:TEMP\\$dldir\\32\\4.cab "-o$env:TEMP\\$dldir\\32" a11 -y; quit?('7z')
-    7z e $env:TEMP\\$dldir\\64\\a11 "-o$env:systemroot\\system32" -y;quit?('7z')
+    7z e $env:TEMP\\$dldir\\64\\a12 "-o$env:systemroot\\system32" -y; quit?('7z')
+    7z e $env:TEMP\\$dldir\\64\\a13 "-o$env:systemroot\\system32" -y; quit?('7z')
     7z e $env:TEMP\\$dldir\\32\\a10 "-o$env:systemroot\\syswow64" -y; quit?('7z')
     7z e $env:TEMP\\$dldir\\32\\a11 "-o$env:systemroot\\syswow64" -y; quit?('7z')
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'msxml3' -Value 'native' -PropertyType 'String'
