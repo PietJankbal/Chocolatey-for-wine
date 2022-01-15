@@ -138,6 +138,8 @@ function func_ucrtbase
 
 function func_vcrun2019
 {
+    func_ucrtbase
+    
     choco install vcredist140 -n
     .   $env:ProgramData\\chocolatey\\lib\\vcredist140\\tools\\data.ps1  #source the file via dot operator
     w_download_to "vcredist140\\64" $installData64.url64 "VC_redist.x64.exe"
