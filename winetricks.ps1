@@ -246,12 +246,12 @@ function func_wmp <# This makes e-Sword start #>
 
     foreach ($i in $sourcefile) {
               switch ( $i.SubString(0,3) ) {
-                  {'amd'              }    {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $env:TEMP }
+                  'amd'                    {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $env:TEMP }
                   {$_ -in 'wow', 'x86'}    {<# Nothing to do #>}                                                                          } }
 
     foreach ($i in $sourcefile) {
               switch ( $i.SubString(0,3) ) {
-                  {'amd'              }    {Copy-Item -force $env:TEMP\\$i $env:systemroot\\system32\\$($i.split('/')[-1])}
+                  'amd'                    {Copy-Item -force $env:TEMP\\$i $env:systemroot\\system32\\$($i.split('/')[-1])}
                   {$_ -in 'wow', 'x86'}    {Copy-Item -force $env:TEMP\\$i $env:systemroot\\syswow64\\$($i.split('/')[-1])} } }
 		  
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'cabinet' -Value 'builtin' -PropertyType 'String' | Out-Null
