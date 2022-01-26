@@ -238,7 +238,11 @@ function func_wmp <# This makes e-Sword start #>
     'x86_microsoft-windows-msmpeg2adec_31bf3856ad364e35_6.2.9200.16384_none_8e855f0288be81c1/msmpeg2adec.dll',`
     'amd64_microsoft-windows-msmpeg2adec_31bf3856ad364e35_6.2.9200.16384_none_eaa3fa86411bf2f7/msmpeg2adec.dll',`
     'x86_microsoft-windows-msmpeg2vdec_31bf3856ad364e35_6.2.9200.16384_none_8da250a68968cc86/msmpeg2vdec.dll',`
-    'amd64_microsoft-windows-msmpeg2vdec_31bf3856ad364e35_6.2.9200.16384_none_e9c0ec2a41c63dbc/msmpeg2vdec.dll'` 
+    'amd64_microsoft-windows-msmpeg2vdec_31bf3856ad364e35_6.2.9200.16384_none_e9c0ec2a41c63dbc/msmpeg2vdec.dll',`
+    'wow64_microsoft-windows-mfnetcore_31bf3856ad364e35_6.2.9200.16384_none_f1f2450aab394253/mfnetcore.dll',`
+    'amd64_microsoft-windows-mfnetcore_31bf3856ad364e35_6.2.9200.16384_none_e79d9ab876d88058/mfnetcore.dll',`
+    'wow64_microsoft-windows-mfcore_31bf3856ad364e35_6.2.9200.16384_none_53f6f7ec15569064/mfcore.dll',`
+    'amd64_microsoft-windows-mfcore_31bf3856ad364e35_6.2.9200.16384_none_49a24d99e0f5ce69/mfcore.dll'`
     )
 
     $msu = $url.split('/')[-1]; <# -1 is last array element... #> $dldir = $($url.split('/')[-1]) -replace '.msu',''
