@@ -9,7 +9,7 @@ function validate_param
 [CmdletBinding()]
  Param(
         [Parameter(Mandatory=$false)]
-        [ValidateSet('msxml3', 'msxml6','gdiplus', 'robocopy', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019')]
+        [ValidateSet('msxml3', 'msxml6','gdiplus', 'robocopy', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml')]
         [string[]]$verb
       )
 }
@@ -27,7 +27,8 @@ $custom_array = @() # Creating an empty array to populate data in
 	       "expand", "native expand.exe",`
                "wmp", "some wmp (windows media player) dlls",`
 	       "ucrtbase", "ucrtbase from vcrun2015",`
-	       "vcrun2019", "vcredist2019"
+	       "vcrun2019", "vcredist2019",`
+	       "mshtml", "native mshtml, experimental"
 
 for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) { 
     $custom_array += New-Object PSObject -Property @{ # Setting up custom array utilizing a PSObject
@@ -210,6 +211,104 @@ function func_expand
         switch ( $i.SubString(0,3) ) {
             'amd' {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
             'x86' {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])}}} quit?('7z')
+}
+
+function func_mshtml
+{
+    validate_cab_existence; $dldir = "aik70"
+
+    $iedlls = @( 'amd64_microsoft-windows-ie-htmlrendering_31bf3856ad364e35_8.0.7600.16385_none_89f24b7ab2dc7a40/mshtml.dll', `
+                 'x86_microsoft-windows-ie-htmlrendering_31bf3856ad364e35_8.0.7600.16385_none_2dd3aff6fa7f090a/mshtml.dll', ` 
+		 'x86_microsoft-windows-ieframe_31bf3856ad364e35_8.0.7600.16385_none_7f3309fa86749737/ieframe.dll', `
+                 'amd64_microsoft-windows-ieframe_31bf3856ad364e35_8.0.7600.16385_none_db51a57e3ed2086d/ieframe.dll')
+
+    foreach ($i in $iedlls) {
+        switch ( $i.SubString(0,3) ) {
+            'amd'    {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_HTA.CAB "-o$env:systemroot\\system32" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
+            'x86'    {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_HTA.CAB "-o$env:systemroot\\syswow64" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}}} quit?('7z')
+
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mshtml' -Value 'native' -PropertyType 'String'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'ieframe' -Value 'native' -PropertyType 'String'
+
+    $sxsdlls = @( 'amd64_microsoft-windows-msls31_31bf3856ad364e35_6.1.7600.16385_none_27f4c55dbc24c492/msls31.dll', `
+                  'x86_microsoft-windows-msls31_31bf3856ad364e35_6.1.7600.16385_none_cbd629da03c7535c/msls31.dll' )
+		  
+    foreach ($i in $sxsdlls) {
+        switch ( $i.SubString(0,3) ) {
+            'amd' {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
+            'x86' {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])}}} quit?('7z')
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'ieframe' -Value 'native' -PropertyType 'String'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'msimtf' -Value 'builtin' -PropertyType 'String'
+
+    $scrdlls = @( 'amd64_microsoft-windows-scripting-jscript_31bf3856ad364e35_8.0.7600.16385_none_f98f217587d75631/jscript.dll',`
+                  'x86_microsoft-windows-scripting-jscript_31bf3856ad364e35_8.0.7600.16385_none_9d7085f1cf79e4fb/jscript.dll')
+
+    foreach ($i in $scrdlls) {
+        switch ( $i.SubString(0,3) ) {
+            'amd'    {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_SCRIPTING.CAB "-o$env:systemroot\\system32" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
+            'x86'    {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_SCRIPTING.CAB "-o$env:systemroot\\syswow64" $i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])}}} quit?('7z')
+
+    $dlls = @('urlmon.dll','iertutil.dll')
+
+    foreach ($i in $dlls) {
+        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
+        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\syswow64" Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'urlmon' -Value 'native' -PropertyType 'String'
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'jscript' -Value 'native' -PropertyType 'String'
+
+$regkey = @"
+REGEDIT4
+
+[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Internet Settings\Lockdown_Zones]
+
+[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Internet Settings\Lockdown_Zones\0]
+
+[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Internet Settings\Zones\3]
+@=""
+"1206"=dword:00000003
+"1207"=dword:00000003
+"1208"=dword:00000003
+"1209"=dword:00000003
+"120A"=dword:00000003
+"120B"=dword:00000003
+"1408"=dword:00000003
+"1409"=dword:00000000
+"160A"=dword:00000003
+"1806"=dword:00000001
+"1807"=dword:00000001
+"1808"=dword:00000000
+"1809"=dword:00000000
+"180A"=dword:00000003
+"180C"=dword:00000003
+"180D"=dword:00000001
+"2000"=dword:00000000
+"2005"=dword:00000003
+"2100"=dword:00000000
+"2101"=dword:00000000
+"2102"=dword:00000003
+"2103"=dword:00000003
+"2104"=dword:00000003
+"2105"=dword:00000003
+"2106"=dword:00000000
+"2200"=dword:00000003
+"2201"=dword:00000003
+"2300"=dword:00000001
+"2301"=dword:00000000
+"2400"=dword:00000000
+"2401"=dword:00000000
+"2402"=dword:00000000
+"2500"=dword:00000000
+"2600"=dword:00000000
+"2700"=dword:00000000
+"Icon"="inetcpl.cpl#001313"
+"LowIcon"="inetcpl.cpl#005425"
+"PMDisplayName"="Internet [Protected Mode]"
+"RecommendedLevel"=dword:00011500
+"@
+
+     $regkey | Out-File -FilePath $env:TEMP\\regkey.reg
+     reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:64; quit?('reg')
+     reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:32; quit?('reg')
 }
 
 function func_wmp <# This makes e-Sword start #>
