@@ -76,30 +76,18 @@ function tasklist
 {
      Get-WmiObject win32_process "processid,name" | Format-Table -Property Name, processid -autosize
 }
+
+function check_busybox
+{
+if (!([System.IO.File]::Exists("$env:systemdrive\\ProgramData\\chocolatey\\bin\\busybox64.exe "))){ choco install Busybox -y}
+}
+
 <# A few Unix commands I find handy, just remove stuff below if you don`t want it #>
-function du
-{
-if (!([System.IO.File]::Exists("$env:systemdrive\\ProgramData\\chocolatey\\bin\\busybox64.exe "))){ choco install Busybox -y}
-Busybox64.exe du $args
-}
-
-function df
-{
-if (!([System.IO.File]::Exists("$env:systemdrive\\ProgramData\\chocolatey\\bin\\busybox64.exe "))){ choco install Busybox -y}
-Busybox64.exe df $args
-}
-
-function wget
-{
-if (!([System.IO.File]::Exists("$env:systemdrive\\ProgramData\\chocolatey\\bin\\busybox64.exe "))){ choco install Busybox -y}
-Busybox64.exe wget $args
-}
-
-function grep
-{
-if (!([System.IO.File]::Exists("$env:systemdrive\\ProgramData\\chocolatey\\bin\\busybox64.exe "))){ choco install Busybox -y}
-Busybox64.exe grep $args
-}
+function du   { check_busybox; Busybox64.exe du $args}
+function df   { check_busybox; Busybox64.exe df $args}
+function wget { check_busybox; Busybox64.exe wget $args}
+function grep { check_busybox; Busybox64.exe grep $args}
+function bash { check_busybox; Busybox64.exe bash $args}
 
 function winetricks
 {
