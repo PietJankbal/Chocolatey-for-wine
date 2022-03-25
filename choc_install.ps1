@@ -129,7 +129,7 @@ Add-Type @"
 "@
 
 # get the applications with the specified title
-$p = Get-Process | Where-Object { $_.MainWindowTitle -Match "fast configuration" }
+$p = Get-Process | Where-Object { $_.MainWindowTitle -Match "ConEmu" }
 while(!$p) {Sleep 1}
 
 # get the window handle of the first application
