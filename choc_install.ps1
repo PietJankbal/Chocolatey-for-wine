@@ -110,8 +110,8 @@
     } 
     
     # choco install tccle -y; & "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tcc.exe" "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tccbatch.btm";
-    powershell.exe
-    Sleep 5
+    Start-Process -NoNewWindow powershell.exe <#code below does not work without Start-Process...#>
+
     # following code is only to dismiss ConEmu`s annoying fast configuration window, by sending "enter" keystroke to it
 
 # add a C# class to access the WIN32 API SetForegroundWindow
