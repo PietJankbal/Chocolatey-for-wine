@@ -110,9 +110,7 @@
     } 
     
     # choco install tccle -y; & "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tcc.exe" "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tccbatch.btm";
-    Start-Process -NoNewWindow powershell.exe <#code below does not work without Start-Process...#>
-    Sleep 5
-    # following code is only to dismiss ConEmu`s annoying fast configuration window, by sending "enter" keystroke to it
+Start-Process "powershell" -NoNewWindow
 
 # add a C# class to access the WIN32 API SetForegroundWindow
 Add-Type @"
@@ -129,9 +127,9 @@ Add-Type @"
 "@
 
 # get the applications with the specified title
-$p = Get-Process | Where-Object { $_.MainWindowTitle -Match "ConEmu" }
+$p = Get-Process | Where-Object { $_.MainWindowTitle -Match "Conemu" }
 while(!$p) {Sleep 1}
-$p
+
 # get the window handle of the first application
 $h = $p[0].MainWindowHandle
 
@@ -143,7 +141,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
-public static class Keystroke_Synthesizer {    
+public static class KBEmulator {    
     public enum InputType : uint {
         INPUT_MOUSE = 0,
         INPUT_KEYBOARD = 1,
@@ -241,6 +239,7 @@ public static class Keystroke_Synthesizer {
         public static extern short VkKeyScan(char ch);
     }
 
+
     internal static uint SendInput(uint cInputs, lpInput[] inputs, int cbSize) {
         return unmanaged.SendInput(cInputs, inputs, cbSize);
     }
@@ -254,10 +253,12 @@ public static class Keystroke_Synthesizer {
         KeyInput.Data.ki.time = 0;
         KeyInput.Data.ki.dwExtraInfo = UIntPtr.Zero;
 
+        // Push the correct key
         KeyInput.Data.ki.wVk = 13; //Enter
         KeyInput.Data.ki.dwFlags = KEYEVENTF.KEYDOWN;
         KeyInputs[0] = KeyInput;
 
+        // Release the key
         KeyInput.Data.ki.wVk = 13;
         KeyInput.Data.ki.dwFlags = KEYEVENTF.KEYUP;
         KeyInputs[1] = KeyInput;
@@ -269,6 +270,4 @@ public static class Keystroke_Synthesizer {
 }
 "@
 
-     [Keystroke_Synthesizer]::SendKeyStroke()
-
-    
+     [KBEmulator]::SendKeyStroke()
