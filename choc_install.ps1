@@ -1,20 +1,4 @@
-    function set_HKLM_SM_key() <# sets key for HKLM:\\Software\\Microsoft #>
-    {
-        Param ($path, $name, $val, $prop) 
-        $HKLM_SM = 'HKLM:\\Software\\Microsoft'; $HKLM_SM_WOW = 'HKLM:\\Software\\Wow6432Node\\Microsoft'
-        New-ItemProperty -Path "$(Join-Path $HKLM_SM $path)" -Name  $name -Value $val -PropertyType $prop -force -erroraction 'silentlycontinue'
-        $newpath = "$(Join-Path $HKLM_SM_WOW $path)" -replace 'system32','syswow64'
-        New-ItemProperty -Path "$newpath" -Name  $name -Value $val -PropertyType $prop -force -erroraction 'silentlycontinue'
-    }
-
-    function new_HKLM_SM_key()  <# creates key for HKLM:\\Software\\Microsoft #>
-    {
-         Param ($path) 
-         $HKLM_SM = 'HKLM:\\Software\\Microsoft'; $HKLM_SM_WOW = 'HKLM:\\Software\\Wow6432Node\\Microsoft'
-         New-Item -Path "$(Join-Path $HKLM_SM $path)" -force;  New-Item -Path "$(Join-Path $HKLM_SM_WOW $path)" -force
-    }
-    
-        function quit?([string] $process)  <# wait for a process to quit #>
+    function quit?([string] $process)  <# wait for a process to quit #>
     {
          Get-Process $process -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
     }
@@ -27,6 +11,7 @@
                  'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47.dll', `
                  'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47_32.dll', `
                  'https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/x86.reg', `
+                 'https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/misc.reg', `
                  'https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/amd.reg')
         <# Download stuff #>
         $url | ForEach-Object { Write-Host -ForeGroundColor Yellow "Downloading $PSItem" && (New-Object System.Net.WebClient).DownloadFile($PSItem, $(Join-Path "$env:TEMP" ($PSItem  -split '/' | Select-Object -Last 1)))}
@@ -49,42 +34,11 @@
     Copy-Item -Path "$C_TMP\\dotnet40\\amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5/mscoree.dll" -Destination "$env:systemroot\\system32\\" -Force
     reg.exe  IMPORT  $C_TMP\\amd.reg /reg:64; quit?('reg')
     reg.exe  IMPORT  $C_TMP\\x86.reg /reg:32; quit?('reg')
-    <# use further the winetricks recipe for some essential registry keys #>
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscorwks' -Value 'native' -PropertyType 'String'
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'mscoree' -Value 'native' -PropertyType 'String'
-    New-ItemProperty -Path 'HKLM:\\Software\\Microsoft\\.NETFramework' -Name 'OnlyUseLatestCLR' -Value '0001' -PropertyType 'DWord'
-    New-ItemProperty -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\.NETFramework' -Name 'OnlyUseLatestCLR' -Value '0001' -PropertyType 'DWord'
-    <# Tweaks to advertise compability with lower .Net versions #>
     <# This makes Astro Photography Tool happy #>
     Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework\\v4.0.30319\\RegAsm.exe -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\RegAsm.exe  
-
-    new_HKLM_SM_key '.NETFramework\\Policy\\v2.0'
-    set_HKLM_SM_key '.NETFramework\\Policy\\v2.0' '50727' '50727-50727' 'string'
-
-    new_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.0'
-    set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.0' 'Install' '1' 'dword'
-    set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.0' 'SP' '2' 'dword'
-    set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.0' 'Version' '3.2.30729' 'string'
-
-    new_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.0\\Setup'
-    set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.0\\Setup' 'InstallSuccess' '1' 'dword'
-    set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.0\\Setup' 'Version' '3.2.30729' 'string'
-
-    new_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.5'
-    set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.5' 'Install' '1' 'dword'
-    set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.5' 'SP' '1' 'dword'
-    set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.5' 'Version' '3.5.30729.4926' 'string'
-
-    new_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.5\\1033'
-    set_HKLM_SM_key 'NET Framework Setup\\NDP\\v3.5\\1033' 'Install' '1' 'dword'
-    
-    New-Item -Path 'HKCU:\\Software\\Microsoft\\Avalon.Graphics' -force
-    New-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Avalon.Graphics' -Name 'DisableHWAcceleration' -Value '0' -PropertyType 'dword'  
-
     <# Many programs need arial and native d3dcompiler_47, so install it #>
     Start-Process -FilePath "$C_TMP\\arial32.exe" -Wait -ArgumentList  "-q"
     Start-Process -FilePath "$C_TMP\\arialb32.exe" -Wait -ArgumentList  "-q"
-   
     Copy-Item -Path "$C_TMP\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_47.dll" -Force
     Copy-Item -Path "$C_TMP\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_43.dll" -Force
     Copy-Item -Path "$C_TMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_47.dll" -Force
@@ -92,12 +46,9 @@
     <# Make wusa a dummy program, we don`t want windows updates and it doesn`t work anyway #>
     Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\wusa.exe" -Force
     Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\wusa.exe" -Force
-
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'wusa.exe' -Value 'native' -PropertyType 'String'
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'd3dcompiler_47' -Value 'native' -PropertyType 'String'
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'd3dcompiler_43' -Value 'native' -PropertyType 'String'
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name 'amsi' -Value 'disabled' -PropertyType 'String'
-
+    <# Import reg keys: tweaks to advertise compability with lower .Net versions, and setting some native dlls #>
+    reg.exe  IMPORT  $C_TMP\\misc.reg /reg:64; quit?('reg')
+    reg.exe  IMPORT  $C_TMP\\misc.reg /reg:32; quit?('reg')
     <# do not use chocolatey's builtin powershell host #>
     cd c:\; c:\\ProgramData\\chocolatey\\choco.exe feature disable --name=powershellHost; winecfg /v win10
     c:\\ProgramData\\chocolatey\\choco.exe feature enable -n allowGlobalConfirmation <# to confirm automatically (no -y needed) #>
