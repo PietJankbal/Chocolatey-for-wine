@@ -61,11 +61,14 @@
     } 
     
     # choco install tccle -y; & "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tcc.exe" "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tccbatch.btm";
-Start-Process "powershell" -NoNewWindow
+    Start-Process "powershell" -NoNewWindow
+##################################################################################################################
+#  All code below is only for sending a single keystroke (ENTER) to ConEmu's annoying
+#  fast configuration window to dismiss it...............
+##################################################################################################################
 
 # add a C# class to access the WIN32 API SetForegroundWindow
 Add-Type @"
-
  using System;
  using System.Runtime.InteropServices;
 
@@ -74,7 +77,6 @@ Add-Type @"
  [return: MarshalAs(UnmanagedType.Bool)]
  public static extern bool SetForegroundWindow(IntPtr hWnd);
  }
-
 "@
 
 # get the applications with the specified title
@@ -91,7 +93,7 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
-public static class KBEmulator {    
+public static class Synthesize_Keystrokes {    
     public enum InputType : uint {
         INPUT_MOUSE = 0,
         INPUT_KEYBOARD = 1,
@@ -220,4 +222,4 @@ public static class KBEmulator {
 }
 "@
 
-     [KBEmulator]::SendKeyStroke()
+     [Synthesize_Keystrokes]::SendKeyStroke()
