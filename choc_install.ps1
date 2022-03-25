@@ -127,9 +127,8 @@ Add-Type @"
 "@
 
 # get the applications with the specified title
-$p = Get-Process | Where-Object { $_.MainWindowTitle -Match "Conemu" }
-while(!$p) {Sleep 1}
-
+while(!$p) {$p = Get-Process | Where-Object { $_.MainWindowTitle -Match "Conemu" }; Sleep 1}
+ 
 # get the window handle of the first application
 $h = $p[0].MainWindowHandle
 
