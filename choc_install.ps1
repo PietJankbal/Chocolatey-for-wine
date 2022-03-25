@@ -110,7 +110,7 @@
     } 
     
     # choco install tccle -y; & "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tcc.exe" "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tccbatch.btm";
-    powershell.exe
+    Start-Job powershell.exe
     
     # following code is only to dismiss ConEmu`s annoying fast configuration window, by sending "enter" keystroke to it
 
