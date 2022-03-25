@@ -131,7 +131,7 @@ Add-Type @"
 # get the applications with the specified title
 $p = Get-Process | Where-Object { $_.MainWindowTitle -Match "ConEmu" }
 while(!$p) {Sleep 1}
-
+$p
 # get the window handle of the first application
 $h = $p[0].MainWindowHandle
 
