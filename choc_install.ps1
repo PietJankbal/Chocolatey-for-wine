@@ -110,7 +110,7 @@
     } 
     
     # choco install tccle -y; & "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tcc.exe" "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tccbatch.btm";
-    Start-Job powershell.exe
+    powershell.exe
     
     # following code is only to dismiss ConEmu`s annoying fast configuration window, by sending "enter" keystroke to it
 
@@ -129,7 +129,7 @@ Add-Type @"
 "@
 
 # get the applications with the specified title
-$p = Get-Process | Where-Object { $_.MainWindowTitle -Match "ConEmu" }
+$p = Get-Process | Where-Object { $_.MainWindowTitle -Match "PowerShell" }
 while(!$p) {Sleep 1}
 $p
 # get the window handle of the first application
