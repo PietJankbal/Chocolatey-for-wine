@@ -1,0 +1,33 @@
+REGEDIT4
+[HKEY_CURRENT_USER\Software\Wine\DllOverrides]
+"mscorwks"="native"
+"mscoree"="native"
+"d3dcompiler_47"="native"
+"d3dcompiler_43"="native"
+"wusa.exe"="native"
+
+[HKEY_LOCAL_MACHINE\Software\Microsoft\.NETFramework]
+"OnlyUseLatestCLR"=dword:00000001
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\.NETFramework\Policy\v2.0]
+"50727"="50727-50727"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\NET Framework Setup\NDP\v3.0]
+"Install"=dword:0x00000001
+"SP"=dword:0x00000002
+"Version"="3.2.30729"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\NET Framework Setup\NDP\v3.0\Setup]
+"InstallSuccess"=dword:0x00000001
+"Version"="3.2.30729"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\NET Framework Setup\NDP\v3.5]
+"Install"=dword:0x00000001
+"SP"=dword:0x00000001
+"Version"="3.5.30729.4926"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\NET Framework Setup\NDP\v3.5\1033]
+"Install"=dword:0x00000001
+
+[HKEY_CURRENT_USER\Software\Microsoft\Avalon.Graphics]
+"DisableHWAcceleration"=dword:00000000
