@@ -2,6 +2,7 @@
     {
          Get-Process $process -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
     }
+    
     <# fragile test... If install files already present skip downloads. Run choc_installer once with 'SAVEINSTALLFILES=1' to cache downloads #>
     if (!(Test-Path -Path "$env:WINEHOMEDIR\.cache\choc_install_files\netfx_Full_x64.msi".substring(4) -PathType Leaf)) {
         $url = @('http://download.windowsupdate.com/msdownload/update/software/crup/2010/06/windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', `
@@ -60,11 +61,11 @@
     
     # choco install tccle -y; & "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tcc.exe" "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tccbatch.btm";
     Start-Process "powershell" -NoNewWindow
-##################################################################################################################
-#  All code below is only for sending a single keystroke (ENTER) to ConEmu's annoying
-#  fast configuration window to dismiss it...............
-##################################################################################################################
-
+################################################################################################################### 
+#  All code below is only for sending a single keystroke (ENTER) to ConEmu's annoying                             #
+#  fast configuration window to dismiss it...............                                                         #
+#  Could be replaced with [System.Windows.Forms.SendKeys]::SendWait("^{ENTER}") if that one day works in wine...  #
+###################################################################################################################
     <# add a C# class to access the WIN32 API SetForegroundWindow #>
     Add-Type @"
     using System;
@@ -76,7 +77,6 @@
     public static extern bool SetForegroundWindow(IntPtr hWnd);
     }
 "@
-    
     <# get the application and window handle and set it to foreground #>
     while(!$p) {$p = Get-Process | Where-Object { $_.MainWindowTitle -Match "Conemu" }; Start-Sleep -Milliseconds 200}
     $h = $p[0].MainWindowHandle
