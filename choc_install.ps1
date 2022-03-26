@@ -75,7 +75,8 @@
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool SetForegroundWindow(IntPtr hWnd);
     }
-    "@
+"@
+    
     <# get the application and window handle and set it to foreground #>
     while(!$p) {$p = Get-Process | Where-Object { $_.MainWindowTitle -Match "Conemu" }; Start-Sleep -Milliseconds 200}
     $h = $p[0].MainWindowHandle
@@ -205,6 +206,6 @@
             return;
             }
     }
-    "@
-    /* Dismiss ConEmu's fast configuration window by hitting enter */
+"@
+    <# Dismiss ConEmu's fast configuration window by hitting enter #>
     [Synthesize_Keystrokes]::SendKeyStroke()
