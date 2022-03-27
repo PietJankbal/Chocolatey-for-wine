@@ -10,7 +10,7 @@ Install :
         the folder 'deprecated' 
 
 Optional:
-- Check if things went well: "choco install chromium -y" and  "start chrome.exe"
+- Check if things went well: "choco install chromium -y" and  "start chrome.exe --no-sandbox"
   
   Or if you like to install via GUI: "choco install ChocolateyGUI" and "start chocolateygui.exe"
 
@@ -24,7 +24,7 @@ Notes:
   - Only works on recent wine-versions (>5.18 probably); Will fail for sure in wine-stable 5.0....
   - Do NOT use on existing wineprefix, only on fresh new created prefix! The installation just stupidly installs dotnet48 itsself and messes with registrykeys.
     If you have any dotnet version already installed with winetricks, it will likely fail, and even if it succeeds, you'll likely end up with a broken prefix.
-    If you need to install stuff via winetricks for programs, do not use any of the dotnet* verbs. 
+    If you need to install stuff via winetricks for programs, do NOT use any of the dotnet* verbs. 
     BTW 'Arial' and 'd3dcompiler_47' verbs are already installed by default.
   - WINEARCH=win32 is _not_ supported!
   - If you want to compile yourself instead of downloading binaries:
