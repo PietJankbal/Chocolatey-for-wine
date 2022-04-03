@@ -78,6 +78,15 @@ function c:\windows\system32\tasklisq.exe
      Get-WmiObject win32_process "processid,name" | Format-Table -Property Name, processid -autosize
 }
 
+# Replace wusa.exe with dummy 
+Set-Alias wusq.exe c:\windows\system32\wusq.exe
+
+function c:\windows\system32\wusq.exe
+{
+     Write-Host "This is dummy wusa, going nothing..."
+     return 0
+}
+
 function check_busybox
 {
 if (!([System.IO.File]::Exists("$env:systemdrive\\ProgramData\\chocolatey\\bin\\busybox64.exe "))){ choco install Busybox -y}
