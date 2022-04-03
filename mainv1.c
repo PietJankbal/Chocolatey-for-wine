@@ -37,9 +37,6 @@ int __cdecl wmain(int argc, WCHAR *argv[])
 
     lstrcatW(conemu_pathW, L"\\ConEmu\\ConEmu.exe");
     lstrcatW(pwsh_pathW, L"\\Powershell\\7\\pwsh.exe");
-    /* I can also act as a dummy program as long as my exe-name doesn`t end with the letter "l" .... */
-    if ( wcsncmp  (  &argv[0][lstrlenW(argv[0]) - 5 ]  , L"l" , 1 ) )
-        {fprintf(stderr, "This is wusa-dummy, installing nothing... \n"); return 0;}
     
     if ( GetFileAttributesW( pwsh_pathW ) == INVALID_FILE_ATTRIBUTES ) /* Download and install*/
     {
@@ -89,6 +86,27 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         return 0;        
     } /* End download and install */
 
+    /* I can also act as a dummy program as long as my exe-name doesn`t end with the letters "ll" .... */
+    if ( wcsncmp  (  &argv[0][lstrlenW(argv[0]) - 5 ]  , L"l" , 1 ) && wcsncmp  (  &argv[0][lstrlenW(argv[0]) - 6 ]  , L"l" , 1 ) )
+    {    /* Hack: allows to replace a system executable (like wusa.exe)  (or any exe really) by function in profile.ps1 */
+        WCHAR bufferW[MAX_PATH] = L"";
+        lstrcatW( lstrcatW( cmdlineW, L" " ), L" -c " );
+        lstrcpyW( bufferW, argv[0] );
+        bufferW[lstrlenW(bufferW)-5] = 'q'; /* see for example how wusa.exe is replaced by a function in profile.ps1 */
+        lstrcatW(  cmdlineW, bufferW );
+
+        while( i  < argc ) /* concatenate the rest of the arguments into the new cmdline */
+        {
+            lstrcatW( lstrcatW( cmdlineW, L" " ), argv[i] );
+            i++;
+        }
+
+        memset( &si, 0, sizeof( STARTUPINFO )); si.cb = sizeof( STARTUPINFO ); memset( &pi, 0, sizeof( PROCESS_INFORMATION ) );
+        CreateProcessW( pwsh_pathW, cmdlineW , 0, 0, 0, 0, 0, 0, &si, &pi );
+        WaitForSingleObject( pi.hProcess, INFINITE ); GetExitCodeProcess( pi.hProcess, &exitcode ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );    
+        return ( GetEnvironmentVariable( L"FAKESUCCESS", bufW, MAX_PATH + 1 ) ? 0 : exitcode );
+    }
+    
     BOOL is_single_or_last_option (WCHAR *opt)
     {
         return ( ( ( !_wcsnicmp( opt, L"-c", 2 ) && _wcsnicmp( opt, L"-config", 7 ) ) || !_wcsnicmp( opt, L"-n", 2 ) || \
