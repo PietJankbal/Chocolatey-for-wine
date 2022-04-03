@@ -5,6 +5,7 @@ REGEDIT4
 "d3dcompiler_47"="native"
 "d3dcompiler_43"="native"
 "wusa.exe"="native"
+"tasklist.exe"="native"
 
 [HKEY_LOCAL_MACHINE\Software\Microsoft\.NETFramework]
 "OnlyUseLatestCLR"=dword:00000001
