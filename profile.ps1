@@ -70,10 +70,11 @@ Function Set-WmiInstance( [string]$class, [hashtable]$arguments, [string]$comput
 }
 
 #Note: Following obviously overrides wine (-staging)`s tasklist(.exe) so just remove stuff below if you don`t want that 
-New-Alias tasklist.exe tasklist
+Set-Alias  tasklisq.exe c:\windows\system32\tasklisq.exe
 
-function tasklist
+function c:\windows\system32\tasklisq.exe
 {
+     Write-Host "some of $args"
      Get-WmiObject win32_process "processid,name" | Format-Table -Property Name, processid -autosize
 }
 
