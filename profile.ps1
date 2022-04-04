@@ -90,19 +90,19 @@ function winetricks
 }
 
 # Replace wusa.exe with dummy 
-Set-Alias  _qfe_wusa.exe _qfe_c:\windows\system32\wusa.exe
-Set-Alias  _qfe_wusa _qfe_c:\windows\system32\wusa.exe
+Set-Alias  _qff_wusa.exe _qff_c:\windows\system32\wusa.exe
+Set-Alias  _qff_wusa _qff_c:\windows\system32\wusa.exe
 
-function _qfe_c:\windows\system32\wusa.exe
+function _qff_c:\windows\system32\wusa.exe
 {
      Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation');Write-Host "This is wusa dummy doing nothing..."
      return 0;
 }
 # Note: Following overrides wine(-staging)`s tasklist so remove stuff below if you don`t want that, and remove native override in winecfg 
-Set-Alias  _qfe_tasklist.exe _qfe_c:\windows\system32\tasklist.exe
-Set-Alias  _qfe_tasklist _qfe_c:\windows\system32\tasklist.exe
+Set-Alias  _qff_tasklist.exe _qff_c:\windows\system32\tasklist.exe
+Set-Alias  _qff_tasklist _qff_c:\windows\system32\tasklist.exe
 
-function _qfe_c:\windows\system32\tasklist.exe
+function _qff_c:\windows\system32\tasklist.exe
 {
      Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation');Write-Host "some of $args"
      Get-WmiObject win32_process "processid,name" | Format-Table -Property Name, processid -autosize
