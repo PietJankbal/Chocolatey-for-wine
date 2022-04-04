@@ -69,27 +69,9 @@ Function Set-WmiInstance( [string]$class, [hashtable]$arguments, [string]$comput
     return $result.Path
 }
 
-#Note: Following obviously overrides wine (-staging)`s tasklist(.exe) so just remove stuff below if you don`t want that 
-Set-Alias  tasklisq.exe c:\windows\system32\tasklisq.exe
-
-function c:\windows\system32\tasklisq.exe
-{
-     Write-Host "some of $args"
-     Get-WmiObject win32_process "processid,name" | Format-Table -Property Name, processid -autosize
-}
-
-# Replace wusa.exe with dummy 
-Set-Alias wusq.exe c:\windows\system32\wusq.exe
-
-function c:\windows\system32\wusq.exe
-{
-     Write-Host "This is dummy wusa, going nothing..."
-     return 0
-}
-
 function check_busybox
 {
-if (!([System.IO.File]::Exists("$env:systemdrive\\ProgramData\\chocolatey\\bin\\busybox64.exe "))){ choco install Busybox -y}
+    if (!([System.IO.File]::Exists("$env:systemdrive\\ProgramData\\chocolatey\\bin\\busybox64.exe "))){ choco install Busybox -y}
 }
 
 <# A few Unix commands I find handy, just remove stuff below if you don`t want it #>
@@ -105,4 +87,23 @@ function winetricks
          (New-Object System.Net.WebClient).DownloadFile('https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/winetricks.ps1', "$env:systemdrive\\winetricks.ps1")
      }
      pwsh -f  $( Join-Path ${env:\\systemdrive} "winetricks.ps1")   $args
+}
+
+# Replace wusa.exe with dummy 
+Set-Alias  _qfe_wusa.exe _qfe_c:\windows\system32\wusa.exe
+Set-Alias  _qfe_wusa _qfe_c:\windows\system32\wusa.exe
+
+function _qfe_c:\windows\system32\wusa.exe
+{
+     Write-Host "This is wusa dummy doing nothing..."
+     return 0;
+}
+# Note: Following overrides wine(-staging)`s tasklist so remove stuff below if you don`t want that, and remove native override in winecfg 
+Set-Alias  _qfe_tasklist.exe _qfe_c:\windows\system32\tasklist.exe
+Set-Alias  _qfe_tasklist _qfe_c:\windows\system32\tasklist.exe
+
+function _qfe_c:\windows\system32\tasklist.exe
+{
+     Write-Host "some of $args"
+     Get-WmiObject win32_process "processid,name" | Format-Table -Property Name, processid -autosize
 }
