@@ -86,14 +86,14 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         return 0;        
     } /* End download and install */
 
-    /* I can also act as a dummy program as long as my exe-name doesn`t end with the letters "ll" .... */
-    if ( wcsncmp  (  &argv[0][lstrlenW(argv[0]) - 5 ]  , L"l" , 1 ) && wcsncmp  (  &argv[0][lstrlenW(argv[0]) - 6 ]  , L"l" , 1 ) )
+    /* I can also act as a dummy program if my exe-name is not powershell.... */
+    if ( wcscmp ( argv[0] , L"powershell" ) && wcscmp ( argv[0] , L"powershell.exe" ) )
     {    /* Hack: allows to replace a system executable (like wusa.exe)  (or any exe really) by function in profile.ps1 */
-        WCHAR bufferW[MAX_PATH] = L"";
+        WCHAR bufferW[MAX_PATH] = L"_qfe_";
         lstrcatW( lstrcatW( cmdlineW, L" " ), L" -c " );
-        lstrcpyW( bufferW, argv[0] );
-        bufferW[lstrlenW(bufferW)-5] = 'q'; /* see for example how wusa.exe is replaced by a function in profile.ps1 */
-        lstrcatW(  cmdlineW, bufferW );
+        lstrcatW( cmdlineW, lstrcatW( bufferW, argv[0] ) ) ;
+        //bufferW[lstrlenW(bufferW)-5] = 'q'; /* see for example how wusa.exe is replaced by a function in profile.ps1 */
+        //lstrcatW(  cmdlineW, bufferW );
 
         while( i  < argc ) /* concatenate the rest of the arguments into the new cmdline */
         {
