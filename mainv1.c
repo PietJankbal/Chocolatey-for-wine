@@ -89,11 +89,9 @@ int __cdecl wmain(int argc, WCHAR *argv[])
     /* I can also act as a dummy program if my exe-name is not powershell.... */
     if ( wcsncmp ( &argv[0][lstrlenW(argv[0]) - 14 ] , L"powershell.exe" , 14 ) && wcsncmp ( &argv[0][lstrlenW(argv[0]) - 10 ] , L"powershell" , 10 ) )
     {    /* Hack: allows to replace a system executable (like wusa.exe)  (or any exe really) by function in profile.ps1 */
-        WCHAR bufferW[MAX_PATH] = L"_qfe_";
+        WCHAR bufferW[MAX_PATH] = L"_qff_"; /* prefix executables to be able to query fake functions (in profile.ps1) */
         lstrcatW( lstrcatW( cmdlineW, L" " ), L" -c " );
         lstrcatW( cmdlineW, lstrcatW( bufferW, argv[0] ) ) ;
-        //bufferW[lstrlenW(bufferW)-5] = 'q'; /* see for example how wusa.exe is replaced by a function in profile.ps1 */
-        //lstrcatW(  cmdlineW, bufferW );
 
         while( i  < argc ) /* concatenate the rest of the arguments into the new cmdline */
         {
