@@ -7,8 +7,7 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
 # Chocolatey profile
  $ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
  if (Test-Path($ChocolateyProfile)) {
-  Import-Module "$ChocolateyProfile"
- }
+     Import-Module "$ChocolateyProfile"}
 
 #Register-WMIEvent not available in PS Core, so for now just change into noop
 function Register-WMIEvent
@@ -89,14 +88,14 @@ function winetricks
      pwsh -f  $( Join-Path ${env:\\systemdrive} "winetricks.ps1")   $args
 }
 
-# Replace wusa.exe with dummy 
+# Query fake function for wusa.exe
 Set-Alias  _qff_wusa.exe _qff_c:\windows\system32\wusa.exe
 Set-Alias  _qff_wusa _qff_c:\windows\system32\wusa.exe
 
 function _qff_c:\windows\system32\wusa.exe
 {
-     Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation');Write-Host "This is wusa dummy doing nothing..."
-     return 0;
+     Write-Host "This is wusa dummy doing nothing..."
+     exit 0;
 }
 # Note: Following overrides wine(-staging)`s tasklist so remove stuff below if you don`t want that, and remove native override in winecfg 
 Set-Alias  _qff_tasklist.exe _qff_c:\windows\system32\tasklist.exe
@@ -104,6 +103,5 @@ Set-Alias  _qff_tasklist _qff_c:\windows\system32\tasklist.exe
 
 function _qff_c:\windows\system32\tasklist.exe
 {
-     Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation');Write-Host "some of $args"
      Get-WmiObject win32_process "processid,name" | Format-Table -Property Name, processid -autosize
 }
