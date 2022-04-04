@@ -87,7 +87,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
     } /* End download and install */
 
     /* I can also act as a dummy program if my exe-name is not powershell.... */
-    if ( wcscmp ( argv[0] , L"powershell" ) && wcscmp ( argv[0] , L"powershell.exe" ) )
+    if ( wcsncmp ( &argv[0][lstrlenW(argv[0]) - 14 ] , L"powershell.exe" , 14 ) && wcsncmp ( &argv[0][lstrlenW(argv[0]) - 10 ] , L"powershell" , 10 ) )
     {    /* Hack: allows to replace a system executable (like wusa.exe)  (or any exe really) by function in profile.ps1 */
         WCHAR bufferW[MAX_PATH] = L"_qfe_";
         lstrcatW( lstrcatW( cmdlineW, L" " ), L" -c " );
