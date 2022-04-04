@@ -104,6 +104,6 @@ Set-Alias  _qfe_tasklist _qfe_c:\windows\system32\tasklist.exe
 
 function _qfe_c:\windows\system32\tasklist.exe
 {
-     Write-Host "some of $args"
+     Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation');Write-Host "some of $args"
      Get-WmiObject win32_process "processid,name" | Format-Table -Property Name, processid -autosize
 }
