@@ -95,7 +95,7 @@ Set-Alias  _qfe_wusa _qfe_c:\windows\system32\wusa.exe
 
 function _qfe_c:\windows\system32\wusa.exe
 {
-     Write-Host "This is wusa dummy doing nothing..."
+     Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation');Write-Host "This is wusa dummy doing nothing..."
      return 0;
 }
 # Note: Following overrides wine(-staging)`s tasklist so remove stuff below if you don`t want that, and remove native override in winecfg 
