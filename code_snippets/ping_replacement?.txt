@@ -1,3 +1,4 @@
  $i = New-Object Net.Sockets.TcpClient "www.google.nl", 80
  
  [System.Net.Dns]::GetHostEntry("www.google.hr").AddressList.IPAddressToString
+[System.Net.Dns]::GetHostEntry("winehq.org").AddressList.IPAddressToString[-1]
