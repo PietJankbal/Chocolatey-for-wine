@@ -101,5 +101,3 @@ function c:\windows\system32\tasklist.exe.QPR
 {    
     Get-WmiObject win32_process "processid,name" | Format-Table -Property Name, processid -autosize
 }
-
-remove-Alias start -force; new-Alias start powershell; new-Alias start.exe powershell
