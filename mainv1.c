@@ -1,5 +1,5 @@
 /*
- * Installs PowerShell Core, wraps powershell`s commandline into correct syntax for pwsh.exe, 
+ * Installs PowerShell Core + ConEmu, wraps powershell`s commandline into correct syntax for pwsh.exe, 
  * and some code that allows calls to an exe (like wusa.exe) to be replaced by a function in profile.ps1 
  *
  * This library is free software; you can redistribute it and/or
@@ -37,8 +37,8 @@ int __cdecl wmain(int argc, WCHAR *argv[])
 
     lstrcatW(conemu_pathW, L"\\ConEmu\\ConEmu.exe");
     lstrcatW(pwsh_pathW, L"\\Powershell\\7\\pwsh.exe");
-    
-    if ( GetFileAttributesW( pwsh_pathW ) == INVALID_FILE_ATTRIBUTES ) /* Download and install*/
+    /* Download and install*/
+    if ( GetFileAttributesW( pwsh_pathW ) == INVALID_FILE_ATTRIBUTES )
     {
         WCHAR tmpW[MAX_PATH], profile_pathW[MAX_PATH], msiexecW[MAX_PATH], cacheW[MAX_PATH];
 
@@ -114,10 +114,10 @@ int __cdecl wmain(int argc, WCHAR *argv[])
 
     while (j < i ) /* concatenate options into new cmdline, meanwhile working around some incompabilities */ 
     {   
-        if ( !_wcsnicmp( L"-noe", argv[j], 4 ) ) noexit = TRUE;    /* -NoExit, hack to start PSConsole in ConEmu later to work around bug https://bugs.winehq.org/show_bug.cgi?id=49780)*/
-        if ( !_wcsnicmp( L"-f", argv[j], 2 ) ) no_psconsole = TRUE;/* -File, do not start in PSConsole */
-        if ( !_wcsnicmp( L"-ve", argv[j], 3 ) ) {j++;  goto done;} /* -Version, exclude from new cmdline, incompatible... */
-        if ( !_wcsnicmp( L"-nop", argv[j], 4 ) ) goto done;        /* -NoProfile, also exclude to always enable profile.ps1 to work around possible incompatibilities */   
+        if ( !_wcsnicmp( L"-noe", argv[j], 4 ) ) noexit = TRUE;      /* -NoExit, hack to start PSConsole in ConEmu later to work around bug https://bugs.winehq.org/show_bug.cgi?id=49780)*/
+        if ( !_wcsnicmp( L"-f", argv[j], 2 ) ) no_psconsole = TRUE;  /* -File, do not start in PSConsole */
+        if ( !_wcsnicmp( L"-ve", argv[j], 3 ) ) {j++;  goto done;}   /* -Version, exclude from new cmdline, incompatible... */
+        if ( !_wcsnicmp( L"-nop", argv[j], 4 ) ) goto done;          /* -NoProfile, also exclude to always enable profile.ps1 to work around possible incompatibilities */   
         lstrcatW( lstrcatW( cmdlineW, L" " ), argv[j] );
         done: j++;
     }
