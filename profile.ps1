@@ -4,31 +4,24 @@
 $path = $env:PSModulePath -split ';'
 $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -join ';'
 
-# Chocolatey profile
+# Enable Chocolatey profile
  $ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
  if (Test-Path($ChocolateyProfile)) {
-     Import-Module "$ChocolateyProfile"}
+     Import-Module "$ChocolateyProfile"
+ }
 
 #Register-WMIEvent not available in PS Core, so for now just change into noop
-function Register-WMIEvent
-{
+function Register-WMIEvent {
     exit 0
 }
 
-#Based on Get-WmiCustom by Daniele Muscetta, so credits to aforementioned author;
-#See https://www.powershellgallery.com/packages/Traverse/0.6/Content/Private%5CGet-WMICustom.ps1
-#
-#Only works as of wine-6.20, see https://bugs.winehq.org/show_bug.cgi?id=51871
-#e.g. (new-object System.Management.ManagementObjectSearcher("SELECT * FROM Win32_Bios")).Get().manufacturer failed before
-#
-#Examples of usage:
-#
-#Get-WmiObject win32_operatingsystem version
-#$(Get-WmiObject win32_videocontroller).name
+#Based on Get-WmiCustom by Daniele Muscetta, so credits to aforementioned author (https://www.powershellgallery.com/packages/Traverse/0.6/Content/Private%5CGet-WMICustom.ps1)
+#Only works as of wine-6.20 ( https://bugs.winehq.org/show_bug.cgi?id=51871) e.g. (new-object System.Management.ManagementObjectSearcher("SELECT * FROM Win32_Bios")).Get().manufacturer failed before
+#Examples of usage: Get-WmiObject win32_operatingsystem version or $(Get-WmiObject win32_videocontroller).name etc.
 Function Get-WmiObject([parameter(mandatory)] [string]$class, [string[]]$property="*", `
                        [string]$computername = "localhost", [string]$namespace = "root\cimv2", `
                        [string]$filter)
-{
+{   <# Do not remove or change, it will break Chocolatey #>
     $ConnectionOptions = new-object System.Management.ConnectionOptions
     $assembledpath = "\\" + $computername + "\" + $namespace
     
@@ -68,8 +61,7 @@ Function Set-WmiInstance( [string]$class, [hashtable]$arguments, [string]$comput
     return $result.Path
 }
 
-function check_busybox
-{
+function check_busybox {
     if (!([System.IO.File]::Exists("$env:systemdrive\\ProgramData\\chocolatey\\bin\\busybox64.exe "))){ choco install Busybox -y}
 }
 
@@ -80,25 +72,22 @@ function wget { check_busybox; Busybox64.exe wget $args}
 function grep { check_busybox; Busybox64.exe grep $args}
 function bash { check_busybox; Busybox64.exe bash $args}
 
-function winetricks
-{
+function winetricks {
      if (!([System.IO.File]::Exists("$env:systemdrive\\winetricks.ps1"))){
          (New-Object System.Net.WebClient).DownloadFile('https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/winetricks.ps1', "$env:systemdrive\\winetricks.ps1")
      }
      pwsh -f  $( Join-Path ${env:\\systemdrive} "winetricks.ps1")   $args
 }
 
-# Query program replacement for wusa.exe
+# Query program replacement for wusa.exe; Do not remove or change, it will break Chocolatey
 Set-Alias wusa.exe.QPR c:\windows\system32\wusa.exe.QPR; Set-Alias wusa.QPR c:\windows\system32\wusa.exe.QPR
-function c:\windows\system32\wusa.exe.QPR
-{
+function c:\windows\system32\wusa.exe.QPR {
      Write-Host "This is wusa dummy doing nothing..."
      exit 0;
 }
 # Note: Following overrides wine(-staging)`s tasklist so remove stuff below if you don`t want that, and remove native override in winecfg 
 Set-Alias tasklist.exe.QPR c:\windows\system32\tasklist.exe.QPR; Set-Alias tasklist.QPR c:\windows\system32\tasklist.exe.QPR
-function c:\windows\system32\tasklist.exe.QPR
-{    
+function c:\windows\system32\tasklist.exe.QPR {    
     Get-WmiObject win32_process "processid,name" | Format-Table -Property Name, processid -autosize
 }
 # This is how to intercept any non-wine executable (here csc.exe)
@@ -111,8 +100,7 @@ function c:\windows\system32\tasklist.exe.QPR
 #     cp -rf ~/.wine/drive_c/windows/syswow64/WindowsPowerShell/v1.0/powershell.exe ./csc.exe
 # Now we can intercept the program like below; try 'wine csc.exe' or just 'csc' from powershell console
 Set-Alias csc.exe c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe.QPR; Set-Alias csc c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe.QPR
-function c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe.QPR
-{    
+function c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe.QPR {    
     Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Intercepted call!','Congrats','ok','exclamation')
     # Might manipulate commandline arguments here, or return whatever hack you want. For now just continue.
     Start-Process  -NoNewWindow -Wait c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe.QPR $args
