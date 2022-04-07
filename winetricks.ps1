@@ -1,8 +1,7 @@
 $cachedir = ("$env:WINEHOMEDIR" + "\.cache\winetrickxs").substring(4)
 
 if (!(Test-Path -Path "$env:ProgramW6432\7-Zip\7z.exe" -PathType Leaf)) {
-    choco install 7zip -y
-}
+    choco install 7zip -y }
 
 function validate_param
 {
