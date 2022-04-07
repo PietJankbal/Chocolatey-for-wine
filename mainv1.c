@@ -1,6 +1,6 @@
 /*
  * Installs PowerShell Core, wraps powershell`s commandline into correct syntax for pwsh.exe, 
- * and some code that allows calls to an executable (like wusa.exe) to be replaced by a function in profile.ps1 
+ * and some code that allows calls to an exe (like wusa.exe) to be replaced by a function in profile.ps1 
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -83,21 +83,21 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         CreateProcessW( pwsh_pathW, lstrcatW( lstrcatW( lstrcatW( bufW, L" -file " ), tmpW ), L"\\choc_install.ps1" ), 0, 0, 0, 0, 0, 0, &si, &pi);
         WaitForSingleObject( pi.hProcess, INFINITE ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );
         
-        return 0;        
-    } /* End download and install */
+        return 0;  /* End download and install */       
+    }
     /* I can also act as a dummy program if my exe-name is not powershell */ 
     /* Allows to replace a system executable (like wusa.exe, or any exe really) by a function in profile.ps1 */
     memset( &si, 0, sizeof( STARTUPINFO )); si.cb = sizeof( STARTUPINFO ); memset( &pi, 0, sizeof( PROCESS_INFORMATION ) );
     if ( wcsncmp ( &argv[0][lstrlenW(argv[0]) - 14 ] , L"powershell.exe" , 14 ) && wcsncmp ( &argv[0][lstrlenW(argv[0]) - 10 ] , L"powershell" , 10 ) )
-    {    /* suffix the exe so we can query program replacement (by a function in profile.ps1) */
+    {    /* suffix the exe-name so we can query for program replacement in profile.ps1) */
         lstrcatW ( lstrcatW( lstrcatW( lstrcatW( cmdlineW, L" " ), L" -c " ), argv[0] ) , L".QPR" );
         while( i  < argc ) {/* concatenate the rest of the arguments into the new cmdline */
             lstrcatW( lstrcatW( cmdlineW, L" " ), argv[i] ); i++;}
-        CreateProcessW( pwsh_pathW, cmdlineW , 0, 0, 0, 0, 0, 0, &si, &pi );
+        CreateProcessW( pwsh_pathW, cmdlineW , 0, 0, 0, 0, 0, 0, &si, &pi ); /* send the new commandline to pwsh.exe */
         WaitForSingleObject( pi.hProcess, INFINITE ); GetExitCodeProcess( pi.hProcess, &exitcode ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );    
         return ( GetEnvironmentVariable( L"FAKESUCCESS", bufW, MAX_PATH + 1 ) ? 0 : exitcode );
     }
-    /* main program: wrapping the original powershell-commandline into correct syntax, and send it to pwsh.exe */ 
+    /* main program: wrap the original powershell-commandline into correct syntax, and send it to pwsh.exe */ 
     BOOL is_single_or_last_option (WCHAR *opt)
     {
         return ( ( ( !_wcsnicmp( opt, L"-c", 2 ) && _wcsnicmp( opt, L"-config", 7 ) ) || !_wcsnicmp( opt, L"-n", 2 ) || \
