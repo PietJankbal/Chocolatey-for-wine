@@ -1,5 +1,6 @@
 /*
- * Installs chocolatey
+ * Installs PowerShell Core, wraps powershell`s commandline into correct syntax for pwsh.exe, 
+ * and some code that allows calls to an executable (like wusa.exe) to be replaced by a function in profile.ps1 
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -19,9 +20,9 @@
  * i686-w64-mingw32-gcc -municode  -mconsole mainv1.c -lurlmon -s -o powershell32.exe
  * x86_64-w64-mingw32-gcc -municode  -mconsole mainv1.c -lurlmon -s -o powershell64.exe
  */
-
 #include <windows.h>
 #include <stdio.h>
+
 int __cdecl wmain(int argc, WCHAR *argv[])
 {
     BOOL no_psconsole = TRUE, noexit = FALSE;
@@ -84,22 +85,19 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         
         return 0;        
     } /* End download and install */
-
+    /* I can also act as a dummy program if my exe-name is not powershell */ 
+    /* Allows to replace a system executable (like wusa.exe, or any exe really) by a function in profile.ps1 */
     memset( &si, 0, sizeof( STARTUPINFO )); si.cb = sizeof( STARTUPINFO ); memset( &pi, 0, sizeof( PROCESS_INFORMATION ) );
-    /* I can also act as a dummy program if my exe-name is not powershell.... */
     if ( wcsncmp ( &argv[0][lstrlenW(argv[0]) - 14 ] , L"powershell.exe" , 14 ) && wcsncmp ( &argv[0][lstrlenW(argv[0]) - 10 ] , L"powershell" , 10 ) )
-    {    /* Hack: allows to replace a system executable (like wusa.exe)  (or any exe really) by function in profile.ps1 */
-        WCHAR bufferW[MAX_PATH] = L".QPR"; /* suffix the exe so we can query program replacement (by function in profile.ps1) */
-        lstrcatW ( lstrcatW( lstrcatW( lstrcatW( cmdlineW, L" " ), L" -c " ), argv[0] ) , bufferW );
-
+    {    /* suffix the exe so we can query program replacement (by a function in profile.ps1) */
+        lstrcatW ( lstrcatW( lstrcatW( lstrcatW( cmdlineW, L" " ), L" -c " ), argv[0] ) , L".QPR" );
         while( i  < argc ) {/* concatenate the rest of the arguments into the new cmdline */
             lstrcatW( lstrcatW( cmdlineW, L" " ), argv[i] ); i++;}
-
         CreateProcessW( pwsh_pathW, cmdlineW , 0, 0, 0, 0, 0, 0, &si, &pi );
         WaitForSingleObject( pi.hProcess, INFINITE ); GetExitCodeProcess( pi.hProcess, &exitcode ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );    
         return ( GetEnvironmentVariable( L"FAKESUCCESS", bufW, MAX_PATH + 1 ) ? 0 : exitcode );
     }
-    
+    /* main program: wrapping the original powershell-commandline into correct syntax, and send it to pwsh.exe */ 
     BOOL is_single_or_last_option (WCHAR *opt)
     {
         return ( ( ( !_wcsnicmp( opt, L"-c", 2 ) && _wcsnicmp( opt, L"-config", 7 ) ) || !_wcsnicmp( opt, L"-n", 2 ) || \
