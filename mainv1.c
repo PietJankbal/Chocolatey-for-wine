@@ -89,7 +89,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
     /* Allows to replace a system executable (like wusa.exe, or any exe really) by a function in profile.ps1 */
     memset( &si, 0, sizeof( STARTUPINFO )); si.cb = sizeof( STARTUPINFO ); memset( &pi, 0, sizeof( PROCESS_INFORMATION ) );
     if ( wcsncmp ( &argv[0][lstrlenW(argv[0]) - 14 ] , L"powershell.exe" , 14 ) && wcsncmp ( &argv[0][lstrlenW(argv[0]) - 10 ] , L"powershell" , 10 ) )
-    {    /* suffix the exe-name so we can query for program replacement in profile.ps1) */
+    {    /* Rename the exe in the cmdline: add some suffix to it, so we can query for program replacement in profile.ps1) */
         lstrcatW ( lstrcatW( lstrcatW( lstrcatW( cmdlineW, L" " ), L" -c " ), argv[0] ) , L".QPR" );
         while( i  < argc ) {/* concatenate the rest of the arguments into the new cmdline */
             lstrcatW( lstrcatW( cmdlineW, L" " ), argv[i] ); i++;}
@@ -97,7 +97,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         WaitForSingleObject( pi.hProcess, INFINITE ); GetExitCodeProcess( pi.hProcess, &exitcode ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );    
         return ( GetEnvironmentVariable( L"FAKESUCCESS", bufW, MAX_PATH + 1 ) ? 0 : exitcode );
     }
-    /* main program: wrap the original powershell-commandline into correct syntax, and send it to pwsh.exe */ 
+    /* Main program: wrap the original powershell-commandline into correct syntax, and send it to pwsh.exe */ 
     BOOL is_single_or_last_option (WCHAR *opt)
     {
         return ( ( ( !_wcsnicmp( opt, L"-c", 2 ) && _wcsnicmp( opt, L"-config", 7 ) ) || !_wcsnicmp( opt, L"-n", 2 ) || \
