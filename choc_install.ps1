@@ -32,8 +32,8 @@
     <# dotnet40: we (probably) only need mscoree.dll from winetricks dotnet40 recipe, so just extract it and write registry values from it`s manifest file. This saves quite some time!#>
     Copy-Item -Path "$C_TMP\\dotnet40\\x86_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_7daed23956119a9f/mscoree.dll" -Destination "$env:systemroot\\syswow64\\" -Force
     Copy-Item -Path "$C_TMP\\dotnet40\\amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5/mscoree.dll" -Destination "$env:systemroot\\system32\\" -Force
-    reg.exe  IMPORT  $C_TMP\\amd.reg /reg:64; quit?('reg')
-    reg.exe  IMPORT  $C_TMP\\x86.reg /reg:32; quit?('reg')
+    #reg.exe  IMPORT  $C_TMP\\amd.reg /reg:64; quit?('reg')
+    #reg.exe  IMPORT  $C_TMP\\x86.reg /reg:32; quit?('reg')
     <# This makes Astro Photography Tool happy #>
     Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework\\v4.0.30319\\RegAsm.exe -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\RegAsm.exe  
     <# Many programs need arial and native d3dcompiler_47, so install it #>
