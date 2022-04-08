@@ -1,5 +1,4 @@
-cat oldreg newreg | sed '/^#/d' | sed '/^\[/ s/ \+[^ ]\+$//' |sed -ne '$!H;/^$/{x;s/\n/qazzaqqqq/g;G;p;d;}'| sort | uniq --unique | sort | sed '/Wow6432Node/d' | sed  's/qazzaqqqq/\n/g' |uniq | sed '/^\[/ s/\\\\/\\/'g | sed '/^\[/ s/\[/\[HKEY_LOCAL_MACHINE\\/' | head -n-6 | sed '1 i\REGEDIT 4' >dotnet48.reg
-
+cat oldreg newreg | sed '/^#/d' | sed '/^\[/ s/ \+[^ ]\+$//' |sed -ne '$!H;/^$/{x;s/\n/qazzaqqqq/g;G;p;d;}'| sort | uniq --unique | sort | sed '/Wow6432Node/d' | sed  's/qazzaqqqq/\n/g' |uniq | sed '/^\[/ s/\\\\/\\/'g | sed '/^\[/ s/\[/\[HKEY_LOCAL_MACHINE\\/' | head -n-6 | sed '1 i\REGEDIT4' >dotnet48.reg
 
 
 
