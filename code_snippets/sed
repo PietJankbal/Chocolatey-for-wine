@@ -3,3 +3,6 @@ sed -ne '$!H;/^$/{x;s/\n//g;G;p;d;}'   #merge all groups of lines into one line
 sed '/^#/d'   #delete all lines starting with #
 
 sed '/^\[/ s/ \+[^ ]\+$//'     #In every line starting  with [, remove last word
+
+put together in file 'samen'
+cat samen | sort | uniq -u           #remove all duplicate lines (don`t keep any occurrence
