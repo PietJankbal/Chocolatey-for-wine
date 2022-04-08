@@ -1,6 +1,6 @@
 cat oldreg newreg | sed '/^#/d' | sed '/^\[/ s/ \+[^ ]\+$//' |sed -ne '$!H;/^$/{x;s/\n/qazzaqqqq/g;G;p;d;}'| sort | uniq --unique | sort | sed '/Wow6432Node/d' | sed  's/qazzaqqqq/\n/g' |uniq | sed '/^\[/ s/\\\\/\\/'g | sed '/^\[/ s/\[/\[HKEY_LOCAL_MACHINE\\/' | head -n-6 | sed '1 i\REGEDIT4' >dotnet48.reg
 
-
+and remove PendingOperations!
 
 sed -ne '$!H;/^$/{x;s/\n//g;G;p;d;}'   #merge all groups of lines into one line
 
