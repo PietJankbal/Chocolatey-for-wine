@@ -10,9 +10,7 @@
                  'https://mirrors.kernel.org/gentoo/distfiles/arialb32.exe', `
                  'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47.dll', `
                  'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47_32.dll', `
-                 'https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/x86.reg', `
-                 'https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/misc.reg', `
-                 'https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/amd.reg')
+                 'https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/misc.reg')
         <# Download stuff #>
         $url | ForEach-Object { Write-Host -ForeGroundColor Yellow "Downloading $PSItem" && (New-Object System.Net.WebClient).DownloadFile($PSItem, $(Join-Path "$env:TEMP" ($PSItem  -split '/' | Select-Object -Last 1)))}
         <# Extract stuff we need for quick dotnet48 install #>
@@ -32,8 +30,6 @@
     <# dotnet40: we (probably) only need mscoree.dll from winetricks dotnet40 recipe, so just extract it and write registry values from it`s manifest file. This saves quite some time!#>
     Copy-Item -Path "$C_TMP\\dotnet40\\x86_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_7daed23956119a9f/mscoree.dll" -Destination "$env:systemroot\\syswow64\\" -Force
     Copy-Item -Path "$C_TMP\\dotnet40\\amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5/mscoree.dll" -Destination "$env:systemroot\\system32\\" -Force
-    #reg.exe  IMPORT  $C_TMP\\amd.reg /reg:64; quit?('reg')
-    #reg.exe  IMPORT  $C_TMP\\x86.reg /reg:32; quit?('reg')
     <# This makes Astro Photography Tool happy #>
     Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework\\v4.0.30319\\RegAsm.exe -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\RegAsm.exe  
     <# Many programs need arial and native d3dcompiler_47, so install it #>
@@ -47,7 +43,7 @@
     ForEach ($file in "wusa.exe","tasklist.exe") {
         Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\$file" -Force
         Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\$file" -Force}
-    <# Import reg keys: tweaks to advertise compability with lower .Net versions, and setting some native dlls #>
+    <# Import reg keys: keys from mscoree manifest files, tweaks to advertise compability with lower .Net versions, and set some native dlls#>
     reg.exe  IMPORT  $C_TMP\\misc.reg /reg:64; quit?('reg')
     reg.exe  IMPORT  $C_TMP\\misc.reg /reg:32; quit?('reg')
     <# do not use chocolatey's builtin powershell host #>
