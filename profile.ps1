@@ -108,7 +108,7 @@ Set-Alias iexplore.exe iex_path; Set-Alias iexplore iex_path
 Set-Alias  "c:\windows\system32\winebrowser.exe.QPR" iex_path
 Set-Alias winebrowser.exe iex_path; Set-Alias winebrowser iex_path
 function iex_path {    
-if (!([System.IO.File]::Exists("$env:ProgramFiles\Google\Chrome\Application\Chrome.exe"))){ choco install google-chrome}
+if (!([System.IO.File]::Exists("$env:ProgramFiles\Google\Chrome\Application\Chrome.exe"))){ choco install googlechrome}
     $newargs =  $args +'--no-sandbox' 
     Start-Process -NoNewWindow -Wait $env:ProgramFiles\Google\Chrome\Application\Chrome.exe $newargs
 }
