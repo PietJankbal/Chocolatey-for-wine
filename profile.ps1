@@ -95,7 +95,7 @@ Set-Alias  "$env:ProgramFiles\Internet Explorer\iexplore.exe.QPR" iex_path
 Set-Alias iexplore.exe iex_path; Set-Alias iexplore iex_path
 function iex_path {    
 if (!([System.IO.File]::Exists("$env:ProgramFiles\Google\Chrome\Application\Chrome.exe"))){ choco install googlechrome}
-    $newargs = '--no-sandbox' + $args
+    $newargs = $args + '--no-sandbox'
     Start-Process -NoNewWindow -Wait $env:ProgramFiles\Google\Chrome\Application\Chrome.exe $newargs
 }
 # This is how to intercept any non-wine executable (here csc.exe), at least if the exe is not smart enough to detect it
