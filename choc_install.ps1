@@ -34,7 +34,7 @@
     Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework\\v4.0.30319\\RegAsm.exe -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\RegAsm.exe  
     <# Many programs need arial and native d3dcompiler_47, so install it #>
     Start-Process -FilePath "$C_TMP\\arial32.exe" -Wait -ArgumentList  "-q"
-    Start-Process -FilePath "$C_TMP\\arialb32.exe" -Wait -ArgumentList  "-q"; winecfg /v win10
+    Start-Process -FilePath "$C_TMP\\arialb32.exe" -Wait -ArgumentList  "-q";
     Copy-Item -Path "$C_TMP\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_47.dll" -Force
     Copy-Item -Path "$C_TMP\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_43.dll" -Force
     Copy-Item -Path "$C_TMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_47.dll" -Force
@@ -47,7 +47,7 @@
     reg.exe  IMPORT  $C_TMP\\misc.reg /reg:64; quit?('reg')
     reg.exe  IMPORT  $C_TMP\\misc.reg /reg:32; quit?('reg')
     <# do not use chocolatey's builtin powershell host #>
-    cd c:\; c:\\ProgramData\\chocolatey\\choco.exe feature disable --name=powershellHost;
+    cd c:\; c:\\ProgramData\\chocolatey\\choco.exe feature disable --name=powershellHost; winecfg /v win10
     c:\\ProgramData\\chocolatey\\choco.exe feature enable -n allowGlobalConfirmation <# to confirm automatically (no -y needed) #>
     # Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
     if (Test-Path 'env:SAVEINSTALLFILES') { 
