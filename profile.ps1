@@ -94,7 +94,7 @@ function c:\windows\system32\tasklist.exe.QPR {
 Set-Alias  "$env:ProgramFiles\Internet Explorer\iexplore.exe.QPR" iex_path
 Set-Alias iexplore.exe iex_path; Set-Alias iexplore iex_path
 function iex_path {    
-if (!([System.IO.File]::Exists("$env:ProgramFiles\Google\Chrome\Application\Chrome.exe"))){ choco install google-chrome}
+if (!([System.IO.File]::Exists("$env:ProgramFiles\Google\Chrome\Application\Chrome.exe"))){ choco install googlechrome}
     $newargs = '--no-sandbox' + $args
     Start-Process -NoNewWindow -Wait $env:ProgramFiles\Google\Chrome\Application\Chrome.exe $newargs
 }
