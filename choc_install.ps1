@@ -2,6 +2,7 @@
     {
          Get-Process $process -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
     }
+    
     <# fragile test... If install files already present skip downloads. Run choc_installer once with 'SAVEINSTALLFILES=1' to cache downloads #>
     if (!(Test-Path -Path "$env:WINEHOMEDIR\.cache\choc_install_files\netfx_Full_x64.msi".substring(4) -PathType Leaf)) {
         $url = @('http://download.windowsupdate.com/msdownload/update/software/crup/2010/06/windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', `
@@ -40,7 +41,10 @@
     Copy-Item -Path "$C_TMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_47.dll" -Force
     Copy-Item -Path "$C_TMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_43.dll" -Force
     <# Make wusa a dummy program, we don`t want windows updates and it doesn`t work anyway #>
-    ForEach ($file in "wusa.exe","tasklist.exe","iexplore.exe") {
+    ForEach ($file in "winebroswer.exe") {
+        Copy-Item -Path "$env:windir\\SysWOW64\\$file" -Destination "$env:windir\\SysWOW64\\$file.QPR" -Force
+        Copy-Item -Path "$env:winsysdir\\$file" -Destination "$env:winsysdir\\$file.QPR" -Force}
+    ForEach ($file in "wusa.exe","tasklist.exe","iexplore.exe","winebrowser.exe") {
         Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\$file" -Force
         Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\$file" -Force}
     <# Import reg keys: keys from mscoree manifest files, tweaks to advertise compability with lower .Net versions, and set some native dlls#>
