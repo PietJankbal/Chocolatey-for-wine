@@ -90,6 +90,14 @@ Set-Alias tasklist.exe.QPR c:\windows\system32\tasklist.exe.QPR; Set-Alias taskl
 function c:\windows\system32\tasklist.exe.QPR {    
     Get-WmiObject win32_process "processid,name" | Format-Table -Property Name, processid -autosize
 }
+
+Set-Alias  "$env:ProgramFiles\Internet Explorer\iexplore.exe.QPR" iex_path
+Set-Alias iexplore.exe iex_path; Set-Alias iexplore iex_path
+function iex_path {    
+if (!([System.IO.File]::Exists("$env:ProgramFiles\Google\Chrome\Application\Chrome.exe"))){ choco install google-chrome}
+    $newargs = '--no-sandbox' + $args
+    Start-Process -NoNewWindow -Wait $env:ProgramFiles\Google\Chrome\Application\Chrome.exe $newargs
+}
 # This is how to intercept any non-wine executable (here csc.exe), at least if the exe is not smart enough to detect it
 # For csc.exe it would go like this:  cd ~/.wine/drive_c/windows/Microsoft.NET/Framework/v4.0.30319/
 # 1. Backup the real exe with right suffix:
