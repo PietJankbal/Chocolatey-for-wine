@@ -41,7 +41,7 @@
     Copy-Item -Path "$C_TMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_47.dll" -Force
     Copy-Item -Path "$C_TMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_43.dll" -Force
     <# Make wusa a dummy program, we don`t want windows updates and it doesn`t work anyway #>
-    ForEach ($file in "winebroswer.exe") {
+    ForEach ($file in "winebrowser.exe") {
         Copy-Item -Path "$env:windir\\SysWOW64\\$file" -Destination "$env:windir\\SysWOW64\\$file.QPR" -Force
         Copy-Item -Path "$env:winsysdir\\$file" -Destination "$env:winsysdir\\$file.QPR" -Force}
     ForEach ($file in "wusa.exe","tasklist.exe","iexplore.exe","winebrowser.exe") {
