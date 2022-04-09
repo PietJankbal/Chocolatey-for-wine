@@ -1,4 +1,5 @@
 REGEDIT4
+
 [HKEY_CURRENT_USER\Software\Wine\DllOverrides]
 "mscorwks"="native"
 "mscoree"="native"
@@ -32,6 +33,10 @@ REGEDIT4
 
 [HKEY_CURRENT_USER\Software\Microsoft\Avalon.Graphics]
 "DisableHWAcceleration"=dword:00000000
+
+[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion]
+"CurrentBuild"="19999"
+"CurrentBuildNumber"="19999"
 
 [HKEY_CLASSES_ROOT\CCWU.ComCallWrapper.1\CLSID]
 @="{3F281000-E95A-11d2-886B-00C04F869F04}"
