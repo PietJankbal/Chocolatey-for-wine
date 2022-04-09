@@ -93,12 +93,10 @@ function c:\windows\system32\tasklist.exe.QPR {
     Get-WmiObject win32_process "processid,name" | Format-Table -Property Name, processid -autosize
 }
 
-Set-Alias "$env:systemroot\system32\iexplore.exe.QPR" iex_path 
-Set-Alias iexplore.exe.QPR iex_path; Set-Alias iexplore.QPR iex_path
-Set-Alias  "$env:systemroot\system32\winebrowser.exe.QPR" iex_path
-Set-Alias winebrowser.exe.QPR iex_path; Set-Alias winebrowser.QPR iex_path
+Set-Alias "$env:systemroot\system32\iexplore.exe.QPR" iex_path; Set-Alias iexplore.exe.QPR iex_path; Set-Alias iexplore.QPR iex_path
+Set-Alias "$env:systemroot\system32\winebrowser.exe.QPR" iex_path; Set-Alias winebrowser.exe.QPR iex_path; Set-Alias winebrowser.QPR iex_path
 function iex_path {    
-if (!([System.IO.File]::Exists("$env:ProgramFiles\Google\Chrome\Application\Chrome.exe"))){ choco install googlechrome}
+    if (!([System.IO.File]::Exists("$env:ProgramFiles\Google\Chrome\Application\Chrome.exe"))){ choco install googlechrome}
     $newargs =  $args +'--no-sandbox' 
     Start-Process -NoNewWindow -Wait $env:ProgramFiles\Google\Chrome\Application\Chrome.exe $newargs
 }
