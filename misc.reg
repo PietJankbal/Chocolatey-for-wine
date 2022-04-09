@@ -31,10 +31,6 @@ REGEDIT4
 [HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\NET Framework Setup\NDP\v3.5\1033]
 "Install"=dword:0x00000001
 
-[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion]
-"CurrentBuild"="19999"
-"CurrentBuildNumber"="19999"
-
 [HKEY_CURRENT_USER\Software\Microsoft\Avalon.Graphics]
 "DisableHWAcceleration"=dword:00000000
 
