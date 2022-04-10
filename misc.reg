@@ -9,6 +9,7 @@ REGEDIT4
 "tasklist.exe"="native"
 "iexplore.exe"="native"
 "winebrowser.exe"="native"
+"schtasks.exe"="native"
 
 [HKEY_LOCAL_MACHINE\Software\Microsoft\.NETFramework]
 "OnlyUseLatestCLR"=dword:00000001
