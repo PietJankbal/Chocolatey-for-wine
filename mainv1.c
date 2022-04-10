@@ -122,7 +122,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         done: j++;
     }
     /* now insert a '-c' (if necessary) */
-    if ( argv[i] && _wcsnicmp( argv[i-1], L"-c", 2 ) && _wcsicmp( argv[i-1], L"-" ) && _wcsnicmp( argv[i-1], L"-f", 2 ) )
+    if ( argv[i] && _wcsnicmp( argv[i-1], L"-c", 2 ) && _wcsicmp( argv[i-1], L"-" ) && _wcsnicmp( argv[i-1], L"-f", 2 ) && _wcsnicmp( argv[i], L"/c", 2 ) )
         lstrcatW( lstrcatW( cmdlineW, L" " ), L"-c " );
 
     while( i  < argc ) /* concatenate the rest of the arguments into the new cmdline */
