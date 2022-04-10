@@ -105,7 +105,7 @@ Set-Alias "QPR.$env:systemroot\system32\schtasks.exe" QPR_stsk; Set-Alias QPR.sc
 function QPR_stsk {
     $spl = $args.Split(" ")
     if ($args | Select-string '/CREATE') { 
-        Start-Process -Wait  $spl[$spl.IndexOf("/TR") + 1] --no-sandbox}
+        Start-Process $spl[$spl.IndexOf("/TR") + 1] --no-sandbox}
     else {
         Start-Process -Wait -NoNewWindow QPR.schtasks.exe $args}
 }
