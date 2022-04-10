@@ -100,6 +100,14 @@ function QPR_iex {
     $newargs =  $args +'--no-sandbox' 
     Start-Process -NoNewWindow -Wait $env:ProgramFiles\Google\Chrome\Application\Chrome.exe $newargs
 }
+
+
+Set-Alias "QPR.$env:systemroot\system32\schtasks.exe" QPR_stsk; Set-Alias QPR.schtasks.exe QPR_stsk; Set-Alias QPR.schtasks QPR_stsk
+function QPR_stsk {
+    if (  ($args | Select-string "/CREATE") && !($args | Select-string "/RU") ){
+        $newargs = $args + '/RU'}
+    Start-Process -Wait $env:systemroot\system32\QPR.schtasks.exe $newargs
+}
 # This is how to intercept any non-wine executable (here csc.exe), at least if the exe is not smart enough to detect it
 # For csc.exe it would go like this:  cd ~/.wine/drive_c/windows/Microsoft.NET/Framework/v4.0.30319/
 # 1. Backup the real exe with right suffix:
