@@ -102,7 +102,7 @@ function QPR_iex {
     Start-Process -NoNewWindow -Wait $env:ProgramFiles\Google\Chrome\Application\Chrome.exe $newargs
 }
 
-#If passing back manipulated arguments back to the real program, make sure to backup a copy (here QPR.schtasks.exe, copied up during installation)
+#If passing back (manipulated) arguments back to the same program, make sure to backup a copy (here QPR.schtasks.exe, copied during installation)
 Set-Alias "QPR.$env:systemroot\system32\schtasks.exe" QPR_stsk; Set-Alias QPR.schtasks.exe QPR_stsk; Set-Alias QPR.schtasks QPR_stsk
 function QPR_stsk {
     $spl = $args.Split(" ")
