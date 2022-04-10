@@ -112,4 +112,4 @@ function QPR_stsk {
         Start-Process -Wait -NoNewWindow QPR.schtasks.exe $args}
 }
 #Easy access to the C# compiler
-Set-Alias csc.exe c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
+Set-Alias csc c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
