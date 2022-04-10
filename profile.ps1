@@ -83,20 +83,20 @@ function winetricks {
 
 # Query program replacement for wusa.exe; Do not remove or change, it will break Chocolatey
 Set-Alias "QPR.$env:systemroot\system32\wusa.exe" QPR_wusa; Set-Alias QPR.wusa.exe QPR_wusa; Set-Alias QPR.wusa QPR_wusa
-function QPR_wusa {
+function QPR_wusa { <# wusa.exe replacement #>
      Write-Host "This is wusa dummy doing nothing..."
      exit 0;
 }
 
 # Note: Following overrides wine(-staging)`s tasklist so remove stuff below if you don`t want that, and remove native override in winecfg 
 Set-Alias "QPR.$env:systemroot\system32\tasklist.exe" QPR_tl; Set-Alias QPR.tasklist.exe QPR_tl; Set-Alias QPR.tasklist QPR_tl
-function QPR_tl {    
+function QPR_tl { <# tasklist.exe replacement #>
     Get-WmiObject win32_process "processid,name" | Format-Table -Property Name, processid -autosize
 }
 
 Set-Alias "QPR.$env:systemroot\system32\iexplore.exe" QPR_iex; Set-Alias QPR.iexplore.exe QPR_iex; Set-Alias QPR.iexplore QPR_iex
 Set-Alias "QPR.$env:systemroot\system32\winebrowser.exe" QPR_iex; Set-Alias QPR.winebrowser.exe QPR_iex; Set-Alias QPR.winebrowser QPR_iex
-function QPR_iex {    
+function QPR_iex { <# iexplore.exe  and winebrowser replacement #>
     if (!([System.IO.File]::Exists("$env:ProgramFiles\Google\Chrome\Application\Chrome.exe"))){ choco install googlechrome}
     $newargs =  $args +'--no-sandbox' 
     Start-Process -NoNewWindow -Wait $env:ProgramFiles\Google\Chrome\Application\Chrome.exe $newargs
@@ -104,7 +104,7 @@ function QPR_iex {
 
 #If passing back (manipulated) arguments back to the same program, make sure to backup a copy (here QPR.schtasks.exe, copied during installation)
 Set-Alias "QPR.$env:systemroot\system32\schtasks.exe" QPR_stsk; Set-Alias QPR.schtasks.exe QPR_stsk; Set-Alias QPR.schtasks QPR_stsk
-function QPR_stsk {
+function QPR_stsk { <# schtasks.exe replacement #>
     $spl = $args.Split(" ")
     if ($args | Select-string '/CREATE') { 
         Start-Process $spl[$spl.IndexOf("/TR") + 1] --no-sandbox}
