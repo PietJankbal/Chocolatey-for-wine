@@ -87,6 +87,7 @@ function QPR_wusa {
      Write-Host "This is wusa dummy doing nothing..."
      exit 0;
 }
+
 # Note: Following overrides wine(-staging)`s tasklist so remove stuff below if you don`t want that, and remove native override in winecfg 
 Set-Alias "QPR.$env:systemroot\system32\tasklist.exe" QPR_tl; Set-Alias QPR.tasklist.exe QPR_tl; Set-Alias QPR.tasklist QPR_tl
 function QPR_tl {    
@@ -101,6 +102,7 @@ function QPR_iex {
     Start-Process -NoNewWindow -Wait $env:ProgramFiles\Google\Chrome\Application\Chrome.exe $newargs
 }
 
+#If passing back manipulated arguments back to the real program, make sure to backup a copy (here QPR.schtasks.exe, copied up during installation)
 Set-Alias "QPR.$env:systemroot\system32\schtasks.exe" QPR_stsk; Set-Alias QPR.schtasks.exe QPR_stsk; Set-Alias QPR.schtasks QPR_stsk
 function QPR_stsk {
     $spl = $args.Split(" ")
@@ -109,16 +111,5 @@ function QPR_stsk {
     else {
         Start-Process -Wait -NoNewWindow QPR.schtasks.exe $args}
 }
-# This is how to intercept any non-wine executable (here csc.exe), at least if the exe is not smart enough to detect it
-# For csc.exe it would go like this:  cd ~/.wine/drive_c/windows/Microsoft.NET/Framework/v4.0.30319/
-# 1. Backup the real exe with right suffix:
-#     cp -rf ./csc.exe ./csc.exe.QPR
-# 2. Copy dummy over the real exe (take care whether it`s 64 or 32-bit, here 32-bit exe is replaced):
-#     cp -rf ~/.wine/drive_c/windows/syswow64/WindowsPowerShell/v1.0/powershell.exe ./csc.exe 
-# Now we can intercept the program like below (for convenience the copying of fake csc.exe is already done during installation;)
-Set-Alias csc.exe c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe.QPR; Set-Alias csc c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe.QPR
-function c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe.QPR {    
-    Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Intercepted call!','Congrats','ok','exclamation')
-    # Might manipulate commandline arguments here, or return whatever hack you want. For now just continue.
-    Start-Process -NoNewWindow -Wait c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe.QPR $args
-} <# try 'wine csc.exe' or just 'csc' from powershell console to test #>
+#Easy access to the C# compiler
+Set-Alias csc.exe c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
