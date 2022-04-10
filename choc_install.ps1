@@ -42,8 +42,8 @@
     Copy-Item -Path "$C_TMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_43.dll" -Force
     <# Make wusa a dummy program, we don`t want windows updates and it doesn`t work anyway #>
     ForEach ($file in "winebrowser.exe") {
-        Copy-Item -Path "$env:windir\\SysWOW64\\$file" -Destination "$env:windir\\SysWOW64\\$file.QPR" -Force
-        Copy-Item -Path "$env:winsysdir\\$file" -Destination "$env:winsysdir\\$file.QPR" -Force}
+        Copy-Item -Path "$env:windir\\SysWOW64\\$file" -Destination "$env:windir\\SysWOW64\\QPR.$file" -Force
+        Copy-Item -Path "$env:winsysdir\\$file" -Destination "$env:winsysdir\\QPR.$file" -Force}
     ForEach ($file in "wusa.exe","tasklist.exe","iexplore.exe","winebrowser.exe") {
         Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\$file" -Force
         Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\$file" -Force}
@@ -211,5 +211,5 @@
     [Synthesize_Keystrokes]::SendKeyStroke()
     
     <# Lines below are only here to show how to intercept executables, see further profile.ps1#>
-    Copy-Item -Path "$env:windir\\\Microsoft.NET\Framework\v4.0.30319\\csc.exe" -Destination "$env:windir\\Microsoft.NET\\Framework\\v4.0.30319\\csc.exe.QPR" -Force
+    Copy-Item -Path "$env:windir\\\Microsoft.NET\Framework\v4.0.30319\\csc.exe" -Destination "$env:windir\\Microsoft.NET\\Framework\\v4.0.30319\\QPR.csc.exe" -Force
     Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\Microsoft.NET\\Framework\\v4.0.30319\\csc.exe" -Force
