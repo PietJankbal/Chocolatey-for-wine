@@ -76,7 +76,7 @@ function bash { check_busybox; Busybox64.exe bash $args}
 <# A few from NoPowerShell, Powershell Core does't have these #>
 function Resolve-DnsName    { NoPowerShell.exe Resolve-DnsName $args    }
 function Invoke-WmiMethod   { NoPowerShell.exe Invoke-WmiMethod $args   }
-function Get-NetIPAddress   { NoPowerShell.exe Get-NetIPAddresst $args  }
+function Get-NetIPAddress   { NoPowerShell.exe Get-NetIPAddress $args  }
 function Get-NetRoute       { NoPowerShell.exe Get-NetRoute $args       }
 function Test-NetConnection { NoPowerShell.exe Test-NetConnection $args }
 
