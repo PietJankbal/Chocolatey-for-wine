@@ -61,7 +61,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
                 
         GetTempPathW( MAX_PATH, tmpW );
         fwprintf(stderr, L"\033[1;93m"); fwprintf(stderr, L"\nDownloading %ls \n", L"choc_install.ps1"); fwprintf(stderr, L"\033[0m\n");
-        if( URLDownloadToFileW(NULL, L"https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/master/choc_install.ps1", lstrcatW( tmpW, L"choc_install.ps1"), 0, NULL) != S_OK )
+        if( URLDownloadToFileW(NULL, L"https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/deprecated_apr2022/choc_install.ps1", lstrcatW( tmpW, L"choc_install.ps1"), 0, NULL) != S_OK )
             goto failed;
 
         memset( &si, 0, sizeof( STARTUPINFO )); si.cb = sizeof( STARTUPINFO ); memset( &pi, 0, sizeof( PROCESS_INFORMATION ));
@@ -75,7 +75,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         WaitForSingleObject( pi.hProcess, INFINITE ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread ); 
       
         fwprintf(stderr, L"\033[1;93m"); fwprintf(stderr, L"\nDownloading %ls \n", L"profile.ps1"); fwprintf(stderr, L"\033[0m\n");
-        if( URLDownloadToFileW(NULL, L"https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/master/profile.ps1", lstrcatW( lstrcatW(profile_pathW, L"\\Powershell\\7\\"), L"profile.ps1"), 0, NULL) != S_OK )
+        if( URLDownloadToFileW(NULL, L"https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/deprecated_apr2022/profile.ps1", lstrcatW( lstrcatW(profile_pathW, L"\\Powershell\\7\\"), L"profile.ps1"), 0, NULL) != S_OK )
             goto failed;
            
         memset( &si, 0, sizeof( STARTUPINFO ) ); si.cb = sizeof( STARTUPINFO ); memset( &pi , 0, sizeof( PROCESS_INFORMATION ) );
