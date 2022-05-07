@@ -8,6 +8,21 @@ REGEDIT4
 "tasklist.exe"="native"
 "winebrowser.exe"="native"
 "schtasks.exe"="native"
+"robocopy.exe"="native"
+"systeminfo.exe"="native"
+"wmic.exe"="native"
+
+[HKEY_CURRENT_USER\Software\Wine\AppDefaults\conemu.exe]
+
+[HKEY_CURRENT_USER\Software\Wine\AppDefaults\conemu.exe\DllOverrides]
+"dwmapi"=""
+"user32"="builtin"
+
+[HKEY_CURRENT_USER\Software\Wine\AppDefaults\pwsh.exe]
+
+[HKEY_CURRENT_USER\Software\Wine\AppDefaults\pwsh.exe\DllOverrides]
+"amsi"=""
+
 
 [HKEY_LOCAL_MACHINE\Software\Microsoft\.NETFramework]
 "OnlyUseLatestCLR"=dword:00000001
