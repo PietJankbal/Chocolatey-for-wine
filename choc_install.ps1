@@ -1,9 +1,9 @@
     (New-Object System.Net.WebClient).DownloadFile('https://conemu.github.io/install2.ps1', $(Join-Path "$env:TEMP" 'install2.ps1') )
-    Invoke-Expression  $(cat $(Join-Path "$env:TEMP" 'install2.ps1') | Select-string 'url_7za =')
+    Invoke-Expression  $(cat $(Join-Path "$env:TEMP" 'install2.ps1') | Select-string 'url_7za =')  <# Get the 7za.exe downloadlink from install2.ps1 file #>
     (New-Object System.Net.WebClient).DownloadFile($url_7za, $(Join-Path "$env:TEMP" '7za.exe') )
 
     <# fragile test... If install files already present skip downloads. Run choc_installer once with 'SAVEINSTALLFILES=1' to cache downloads #>
-    if (!(Test-Path -Path "$env:WINEHOMEDIR\.cache\choc_install_files\netfx_Full_x64.msi".substring(4) -PathType Leaf)) {
+    if (!(Test-Path -Path "$env:WINEHOMEDIR\.cache\choc_install_files\netfx_Full_x64.msi".substring(4) -PathType Leaf)) { <# First download/extract/install dotnet48 as job, this takes most time #>
         (New-Object System.Net.WebClient).DownloadFile('https://download.visualstudio.microsoft.com/download/pr/7afca223-55d2-470a-8edc-6a1739ae3252/abd170b4b0ec15ad0222a809b761a036/ndp48-x86-x64-allos-enu.exe', $(Join-Path "$env:TEMP" 'ndp48-x86-x64-allos-enu.exe') )
         Start-Job -ScriptBlock {[System.Threading.Thread]::CurrentThread.Priority = 'RealTime'; Start-Process -FilePath $env:TEMP\\7za.exe -NoNewWindow -ArgumentList  "x -x!*.cab -ms190M $env:TEMP\\ndp48-x86-x64-allos-enu.exe -o$env:TEMP"}
         Start-Job -ScriptBlock {  while(!(Test-Path -Path "$env:TEMP\1025") ) {Sleep 0.25} ;[System.Threading.Thread]::CurrentThread.Priority = 'RealTime'; &{ c:\\windows\\system32\\msiexec.exe  /i $env:TEMP\\netfx_Full_x64.msi EXTUI=1 /sfxlang:1033 /q /norestart} }
@@ -16,24 +16,27 @@
                  )
        <# Download stuff #>
        $url | ForEach-Object { Write-Host -ForeGroundColor Yellow "Downloading $PSItem" && (New-Object System.Net.WebClient).DownloadFile($PSItem, $(Join-Path "$env:TEMP" ($PSItem  -split '/' | Select-Object -Last 1)))}
-       <# Extract stuff we need for quick dotnet48 install #>
+       <# Extract stuff we need for quick dotnet40 install, only mscoree (probably)#>
        Start-Process -FilePath $env:TEMP\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu -o$env:TEMP\\dotnet40 Windows6.1-KB958488-x64.cab";
        Start-Process -FilePath $env:TEMP\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\dotnet40\\Windows6.1-KB958488-x64.cab -o$env:TEMP\\dotnet40 x86_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_7daed23956119a9f/mscoree.dll";
        Start-Process -FilePath $env:TEMP\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\dotnet40\\Windows6.1-KB958488-x64.cab -o$env:TEMP\\dotnet40 amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5/mscoree.dll";
+       Start-Process -FilePath $env:TEMP\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $(Join-Path $args[0] 'EXTRAS\wine_robocopy.7z') -o$env:TEMP"
+       Start-Process -FilePath $env:TEMP\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $(Join-Path $args[0] 'EXTRAS\wine_user32_for_conemu_hack_for_wine7_8.7z') -o$env:TEMP"
        Get-Process '7za' -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
-       Start-Job -ScriptBlock { & $env:TEMP\\install2.ps1 }
+       Start-Job -ScriptBlock { & $env:TEMP\\install2.ps1 } <# ConEmu install #>
        $C_TMP = $env:TEMP
     }
     else {
         $C_TMP = "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4)
-        Start-Job -ScriptBlock { & $env:TEMP\\install2.ps1 }
+        Start-Job -ScriptBlock { & $env:TEMP\\install2.ps1 }  <# ConEmu install #>
         &{c:\\windows\\system32\\msiexec.exe  /i $C_TMP\\netfx_Full_x64.msi EXTUI=1 /sfxlang:1033 /q /norestart} ;Get-Process 'msiexec' -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit()}
     }
     
     Copy-Item $(Join-Path $args[0] "misc.reg") $env:TEMP
     Copy-Item $(Join-Path $args[0] "profile.ps1") $env:TEMP
-    Copy-Item $(Join-Path $args[0] "profile.ps1") $(Join-Path $(Split-Path -Path (Get-Process -Id $pid).Path) "profile.ps1")
-    <# Install choco #>
+    Copy-Item $(Join-Path $args[0] "profile.ps1") $(Join-Path $(Split-Path -Path (Get-Process -Id $pid).Path) "profile.ps1") <# Copy profile.ps1 to Powershell directory #>
+
+    <# Install Chocolatey #>
     Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
     <# This makes Astro Photography Tool happy #>  
     Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework\\v4.0.30319\\RegAsm.exe -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\RegAsm.exe  
@@ -44,24 +47,28 @@
     Copy-Item -Path "$C_TMP\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_43.dll" -Force
     Copy-Item -Path "$C_TMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_47.dll" -Force
     Copy-Item -Path "$C_TMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_43.dll" -Force
-    <# Make wusa a dummy program, we don`t want windows updates and it doesn`t work anyway #>
+    <# Replace some system programs by functions (in profile.ps1); This also makes wusa a dummy program: we don`t want windows updates and it doesn`t work anyway #>
     ForEach ($file in "schtasks.exe") {
         Copy-Item -Path "$env:windir\\SysWOW64\\$file" -Destination "$env:windir\\SysWOW64\\QPR.$file" -Force
         Copy-Item -Path "$env:winsysdir\\$file" -Destination "$env:winsysdir\\QPR.$file" -Force}
-    ForEach ($file in "wusa.exe","tasklist.exe","iexplore.exe","winebrowser.exe","schtasks.exe") {
+    ForEach ($file in "wusa.exe","tasklist.exe","winebrowser.exe","schtasks.exe","systeminfo.exe","wmic.exe") {
         Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\$file" -Force
         Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\$file" -Force}
-    <# dotnet40: we (probably) only need mscoree.dll from winetricks dotnet40 recipe, so just extract it and write registry values from it`s manifest file. This saves quite some time!#>
+    <# dotnet40: we (probably) only need mscoree.dll from winetricks dotnet40 recipe, so just copy it and write registry values from it`s manifest file. This saves quite some time!#>
     Copy-Item -Path "$C_TMP\\dotnet40\\x86_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_7daed23956119a9f/mscoree.dll" -Destination "$env:systemroot\\syswow64\\" -Force
     Copy-Item -Path "$C_TMP\\dotnet40\\amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5/mscoree.dll" -Destination "$env:systemroot\\system32\\" -Force
-    <# Import reg keys: keys from mscoree manifest files, tweaks to advertise compability with lower .Net versions, and set some native dlls#>
+    <# Import reg keys: keys from mscoree manifest files, tweaks to advertise compability with lower .Net versions, and set some native dlls #>
     reg.exe  IMPORT  $C_TMP\\misc.reg /reg:64
     reg.exe  IMPORT  $C_TMP\\misc.reg /reg:32      
+    <# wine robocopy and hack for ConEmu #>
+    Copy-Item -Path "$C_TMP\\robocopy64.exe" -Destination "$env:SystemRoot\\System32\\robocopy.exe" -Force
+    Copy-Item -Path "$C_TMP\\robocopy32.exe" -Destination "$env:SystemRoot\\syswow64\\robocopy.exe" -Force
+    Copy-Item -Path "$C_TMP\\user32_32.dll" -Destination "$env:SystemDrive\\ConEmu\\user32.dll" -Force
     <# do not use chocolatey's builtin powershell host #>
     cd c:\; c:\\ProgramData\\chocolatey\\choco.exe feature disable --name=powershellHost; winecfg /v win10
     c:\\ProgramData\\chocolatey\\choco.exe feature enable -n allowGlobalConfirmation <# to confirm automatically (no -y needed) #>
     # Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
-    # choco install tccle -y; & "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tcc.exe" "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tccbatch.btm";
+    # choco install tccle -y; & "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tcc.exe" "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tccbatch.btm"; <># cmd.exe replacement #
     Start-Process "powershell" -NoNewWindow
 ################################################################################################################### 
 #  All code below is only for sending a single keystroke (ENTER) to ConEmu's annoying                             #
@@ -213,16 +220,16 @@
     <# Dismiss ConEmu's fast configuration window by hitting enter #>
     [Synthesize_Keystrokes]::SendKeyStroke()
 
-    <# fragile test... #>
+    <# fragile test...; Download and 'install' NoPowerShell.exe which has some extra Powershell cmdlets #>
     if (!(Test-Path -Path "$env:WINEHOMEDIR\.cache\choc_install_files\netfx_Full_x64.msi".substring(4) -PathType Leaf)) {
         (New-Object System.Net.WebClient).DownloadFile('https://github.com/bitsadmin/nopowershell/releases/download/1.23/NoPowerShell_trunk.zip', $(Join-Path "$env:TEMP" 'NoPowerShell_trunk.zip') )
         Start-Process -FilePath $env:TEMP\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\NoPowerShell_trunk.zip Dotnet45/* -o$env:TEMP"}
-
     Copy-Item "$C_TMP\\DOTNET45\\*.*" "$env:SystemRoot\\system32\\WindowsPowershell\\v1.0\\"
-
-
-  if (Test-Path 'env:SAVEINSTALLFILES') { 
+    <# Backup files if wanted #>
+    if (Test-Path 'env:SAVEINSTALLFILES') { 
         New-Item -Path "$env:WINEHOMEDIR\.cache\".substring(4) -Name "choc_install_files" -ItemType "directory" -ErrorAction SilentlyContinue
         Copy-Item -Recurse -Path $env:TEMP\\* -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4)  -force
     }
-
+    <# NexusTK checks for this key #>
+    New-Item -Path "$env:SystemRoot\Microsoft.NET\Framework64" -Name "v3.5" -ItemType "directory" -ErrorAction SilentlyContinue <# for NexusTK #>
+    New-Item -Path "$env:SystemRoot\Microsoft.NET\Framework" -Name "v3.5" -ItemType "directory" -ErrorAction SilentlyContinue
