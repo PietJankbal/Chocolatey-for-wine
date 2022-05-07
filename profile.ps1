@@ -7,10 +7,10 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
 $profile = '$env:ProgramFiles\PowerShell\7\profile.ps1'
 
 # Enable Chocolatey profile
- $ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
- if (Test-Path($ChocolateyProfile)) {
-     Import-Module "$ChocolateyProfile"
- }
+$ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+if (Test-Path($ChocolateyProfile)) {
+    Import-Module "$ChocolateyProfile"
+}
 
 #Register-WMIEvent not available in PS Core, so for now just change into noop
 function Register-WMIEvent {
@@ -20,6 +20,7 @@ function Register-WMIEvent {
 #Based on Get-WmiCustom by Daniele Muscetta, so credits to aforementioned author (https://www.powershellgallery.com/packages/Traverse/0.6/Content/Private%5CGet-WMICustom.ps1)
 #Only works as of wine-6.20 ( https://bugs.winehq.org/show_bug.cgi?id=51871) e.g. (new-object System.Management.ManagementObjectSearcher("SELECT * FROM Win32_Bios")).Get().manufacturer failed before
 #Examples of usage: Get-WmiObject win32_operatingsystem version or $(Get-WmiObject win32_videocontroller).name etc.
+#TODO: very short: ([wmiclass]"\\.\root\cimv2:win32_bios").GetInstances()
 Function Get-WmiObject([parameter(mandatory)] [string]$class, [string[]]$property="*", `
                        [string]$computername = "localhost", [string]$namespace = "root\cimv2", `
                        [string]$filter)
@@ -35,13 +36,15 @@ Function Get-WmiObject([parameter(mandatory)] [string]$class, [string[]]$propert
     $searcher = new-object System.Management.ManagementObjectSearcher
     $searcher.Query = $querystring
     $searcher.Scope = $Scope 
-    
+
+    [System.Management.ManagementObjectCollection]$result = $searcher.get()
+
     if (!$filter) {
-        return $searcher.get() 
+        return $result 
     }
     else {
         $hashtable = ConvertFrom-StringData -StringData $filter
-        return $searcher.get() | where $hashtable.Keys -eq $hashtable.Values
+        return $result | where $hashtable.Keys -eq $hashtable.Values
     }
 }
 
@@ -64,7 +67,7 @@ Function Set-WmiInstance( [string]$class, [hashtable]$arguments, [string]$comput
 }
 
 function check_busybox {
-    if (!([System.IO.File]::Exists("$env:systemdrive\\ProgramData\\chocolatey\\bin\\busybox64.exe "))){ choco install Busybox -y}
+    if (!([System.IO.File]::Exists("$env:systemdrive\\ProgramData\\chocolatey\\bin\\busybox64.exe "))){ choco install Busybox -y }
 }
 
 <# A few Unix commands I find handy, just remove stuff below if you don`t want it #>
@@ -79,6 +82,7 @@ function Invoke-WmiMethod   { NoPowerShell.exe Invoke-WmiMethod $args   }
 function Get-NetIPAddress   { NoPowerShell.exe Get-NetIPAddress $args  }
 function Get-NetRoute       { NoPowerShell.exe Get-NetRoute $args       }
 function Test-NetConnection { NoPowerShell.exe Test-NetConnection $args }
+function Get-Computerinfo   { NoPowerShell.exe Get-Computerinfo $args }
 
 function winetricks {
      if (!([System.IO.File]::Exists("$env:systemdrive\\winetricks.ps1"))){
@@ -103,8 +107,13 @@ function QPR_tl { <# tasklist.exe replacement #>
 Set-Alias "QPR.$env:systemroot\system32\winebrowser.exe" QPR_iex; Set-Alias QPR.winebrowser.exe QPR_iex; Set-Alias QPR.winebrowser QPR_iex
 function QPR_iex { <# winebrowser replacement #>
     if (!([System.IO.File]::Exists("$env:ProgramFiles\Google\Chrome\Application\Chrome.exe"))){ choco install googlechrome}
-    $newargs =  $args +'--no-sandbox' 
+    $newargs =  $args # +'--no-sandbox', not needed anymore as of wine-7.8 
     Start-Process -NoNewWindow -Wait $env:ProgramFiles\Google\Chrome\Application\Chrome.exe $newargs
+}
+
+Set-Alias "QPR.$env:systemroot\system32\systeminfo.exe" QPR_si; Set-Alias QPR.systeminfo.exe QPR_si; Set-Alias QPR.systeminfo QPR_si
+function QPR_si { <# systeminfo replacement #>
+    NoPowerShell.exe systeminfo
 }
 
 #If passing back (manipulated) arguments back to the same program, make sure to backup a copy (here QPR.schtasks.exe, copied during installation)
@@ -112,10 +121,33 @@ Set-Alias "QPR.$env:systemroot\system32\schtasks.exe" QPR_stsk; Set-Alias QPR.sc
 function QPR_stsk { <# schtasks.exe replacement #>
     $spl = $args.Split(" ")
     if ($args | Select-string '/CREATE') { <# Just execute this stuff instantly #>
-        Start-Process $spl[$spl.IndexOf("/TR") + 1] --no-sandbox} <# hack for Spotify #>
+        Start-Process $spl[$spl.IndexOf("/TR") + 1] } <# hack for Spotify #>
     else {
-        Start-Process -Wait -NoNewWindow QPR.schtasks.exe $args}
+        Start-Process -Wait -NoNewWindow QPR.schtasks.exe $args }
 }
 
+Set-Alias "QPR.$env:systemroot\system32\wmic.exe" QPR_wmic; Set-Alias QPR.wmic.exe QPR_wmic; Set-Alias QPR.wmic QPR_wmic
+function QPR_wmic { <# wmic replacement #>
+    [CmdletBinding()]
+        Param([parameter(Position=0)][string]$alias,
+        [parameter(Position=1)][string]$option, <# only 'get' supported, param not used at all a.t.m. #>
+        [parameter(Position=2)][string[]]$property="*")
+
+    $hash = @{
+        'os' = "win32_operatingsystem"
+        'bios' = "win32_bios"
+        'logicaldisk' = "win32_logicaldisk"
+        'process' = "win32_process" } <# etc. etc. #>
+
+    foreach ($key in $hash.keys) {
+         if($alias -eq $key) {$class = $hash[$key];} }
+    <# Syntax example from NopowerShell: "gwmi "Select ProcessId,Name,CommandLine From Win32_Process" #>
+    $query = 'Select' + ' ' + ($property -join ',') + ' ' + 'From' + ' ' + $class
+
+    NoPowerShell.exe Get-WMIObject "$query" 
+} 
 #Easy access to the C# compiler
 Set-Alias csc c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
+
+function apply_conemu_hack { New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ConEmu.exe\\DllOverrides' -force -Name 'user32' -Value 'native' -PropertyType 'String' && Stop-Process -name conemu && Stop-Process -name conemuC64 && Start-Process "powershell" -NoNewWindow }
+function handy_apps { choco install explorersuite reactos-paint}
