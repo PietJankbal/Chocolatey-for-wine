@@ -297,7 +297,7 @@ REGEDIT4
      reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:32;
 } <# end mshtml #>
 
-function func_pwsh40 <# rudimentary powershell 4.0 #>
+function func_pwsh40 <# rudimentary powershell 4.0; do 'ps40 -h' for help #>
 {   
     $url = "http://download.windowsupdate.com/d/msdownload/update/software/updt/2016/05/windows6.1-kb3125574-v4-x64_2dafb1d203c8964239af3048b5dd4b1264cd93b9.msu"
     $cab = "Windows6.1-KB3125574-v4-x64.cab"
