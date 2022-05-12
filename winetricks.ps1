@@ -423,10 +423,10 @@ namespace Powershdll
         public void usage()
         {
             Console.WriteLine("Usage:");
-            Console.WriteLine("PowerShdll.exe <script>");
-            Console.WriteLine("PowerShdll.exe -h\t Display this messages");
-            Console.WriteLine("PowerShdll.exe -f <path>\t Run the script passed as argument");
-            Console.WriteLine("PowerShdll.exe -i\t Start an interactive console (Default)");
+            Console.WriteLine("ps40 <script>");
+            Console.WriteLine("ps40 -h\t Display this messages");
+            Console.WriteLine("ps40 -f <path>\t Run the script passed as argument");
+            Console.WriteLine("ps40 -i\t Start an interactive console (Default)");
         }
         public void start(string[] args)
         {
