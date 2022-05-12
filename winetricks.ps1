@@ -469,7 +469,6 @@ namespace Powershdll
             }
             return;
         }
-
     }
 
     public class PS
@@ -516,7 +515,6 @@ namespace Powershdll
     }
 }
 "@
-
     $ps40script | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\ps40.cs
     &$env:systemroot\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /r:$env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\system.management.automation.dll `
         /out:$env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\ps40.exe "$env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\ps40.cs"
@@ -527,9 +525,5 @@ namespace Powershdll
 <# Main function #>
 if(!$args.count){
     $Result = $custom_array  | select name,description | Out-GridView  -PassThru  -Title 'Make a  selection'
-
-    Foreach ($i in $Result){ $call = 'func_' +  $i.Name; & $call; }
-}
-else {
-    for ( $i = 0; $i -lt $args.count; $i++ ) { $call = 'func_' +  $args[$i]; & $call; }
-}
+    Foreach ($i in $Result){ $call = 'func_' +  $i.Name; & $call; } }
+else { for ( $i = 0; $i -lt $args.count; $i++ ) { $call = 'func_' +  $args[$i]; & $call; } }
