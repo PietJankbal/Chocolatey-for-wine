@@ -7,8 +7,10 @@ Install :
 
 - Update: Now chocolateys builtin powershell-host is disabled in the installscript, so we don't have to install
         powershell2.0, and added an experimental dotnet48 installation that is much quicker than the plain old recipe.
-        This way install time went down from 5 minutes to about 2 minutes. The old installer can still be found in
+        This way install time went down from 5 minutes to less then one minute. The old installer can still be found in
         the folder 'deprecated' 
+
+- Update 2: As I was bored during lock-down I wrote a custom winetricks(.ps1) with some verbs I find handy. If you don't call it, it won't get downloaded so no overhead there. It eats gigs of diskspace, and takes lots of time during 1st time usage. But after things are cached it goes quickly + hopefully some better support for 64-bit verbs + possibility to extract msu files + a rudimentary Powershell 4.0.  
 
 Optional:
 - Check if things went well: "choco install chromium -y" and  "start chrome.exe --no-sandbox"
