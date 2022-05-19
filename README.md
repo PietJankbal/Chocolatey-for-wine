@@ -12,7 +12,7 @@ Install :
 - Update 2: As I was bored during lock-down I wrote a custom winetricks(.ps1) with some verbs I find handy. If you don't call it, it won't get downloaded so no overhead there. It eats gigs of diskspace, and takes lots of time during 1st time usage. But after things are cached it goes quickly + hopefully some better 64-bit support for some verbs + possibility to extract msu files + a rudimentary Powershell 4.0.  
 
 Optional:
-- Check if things went well: "choco install chromium -y" and  "start chrome.exe --no-sandbox"
+- Check if things went well: "choco install chromium -y" and  "start chrome.exe"  (--no-sandbox not needed anymore since wine-7.8)
   
   Or if you like to install via GUI: "choco install ChocolateyGUI" and "start chocolateygui.exe"
 
