@@ -7,7 +7,7 @@ function validate_param
 [CmdletBinding()]
  Param(
         [Parameter(Mandatory=$false)]
-        [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'dxvk1101', 'pwsh40')]
+        [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'dxvk1101', 'pwsh40', 'crypt32')]
         [string[]]$verb
       )
 }
@@ -28,8 +28,9 @@ $custom_array = @() # Creating an empty array to populate data in
 	       "ucrtbase", "ucrtbase from vcrun2015",`
 	       "vcrun2019", "vcredist2019",`
 	       "mshtml", "native mshtml, experimental, dangerzone",`
-               "dxvk1101", "dxvk" ,`
-               "pwsh40", "rudimentary PowerShell 4.0 "
+               "dxvk1101", "dxvk",`
+               "crypt32", "crypt32 (and msasn1)",`
+               "pwsh40", "rudimentary PowerShell 4.0 (downloads yet another huge amount of Mb`s!) "
 
 for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) { 
     $custom_array += New-Object PSObject -Property @{ # Setting up custom array utilizing a PSObject
@@ -124,6 +125,17 @@ function func_riched20
         7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -y| Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
     foreach($i in 'riched20') { dlloverride 'native' $i }
 } <# end riched20 #>
+
+function func_crypt32
+{
+    validate_cab_existence
+    $dlls = @('crypt32.dll','msasn1.dll'); $dldir = "aik70"
+
+    foreach ($i in $dlls) {
+        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
+        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -y| Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
+        foreach($i in 'crypt32') { dlloverride 'native' $i }
+}
 
 function func_gdiplus
 {
