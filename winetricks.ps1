@@ -157,20 +157,18 @@ function func_gdiplus
     if (![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $dldir,  $cab) ) )
        {Write-Host file seems missing, re-extracting;7z e $cachedir\\$dldir\\$msu "-o$cachedir\\$dldir" -y; quit?('7z')}
 
-    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'native' $i }      
+    foreach ($i in 'cabinet', 'expand.exe') { dlloverride 'native' $i }      
 
     foreach ($i in $sourcefile) {
-              switch ( $i.SubString(0,3) ) {
-                  {'amd'              }    {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $env:TEMP }
-                  {$_ -in 'wow', 'x86'}    {<# Nothing to do #>}                                                                          } }
+        if( $i.SubString(0,3) -eq 'amd' ) {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $env:TEMP }
+        if( $i.SubString(0,3) -eq 'x86' ) {<# Nothing to do #>}                                                                          } 
 
     foreach ($i in $sourcefile) {
-              switch ( $i.SubString(0,3) ) {
-                  {'amd'              }    {Copy-Item -force $env:TEMP\\$i $env:systemroot\\system32\\$($i.split('/')[-1])}
-                  {$_ -in 'wow', 'x86'}    {Copy-Item -force $env:TEMP\\$i $env:systemroot\\syswow64\\$($i.split('/')[-1])} } }
+        if( $i.SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose "$env:TEMP\\$i" -destination $env:systemroot\\system32\\$($i.split('/')[-1]) }
+        if( $i.SubString(0,3) -eq 'x86' ) {Copy-Item -force -verbose "$env:TEMP\\$i" $env:systemroot\\syswow64\\$($i.split('/')[-1]) } } 
 		  
-   foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }
-   foreach($i in 'gdiplus') { dlloverride 'native' $i }  
+    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }
+    foreach($i in 'gdiplus') { dlloverride 'native' $i }  
 } <# end gdiplus #>
 
 function func_ucrtbase
