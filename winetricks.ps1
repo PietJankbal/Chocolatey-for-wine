@@ -7,7 +7,7 @@ function validate_param
 [CmdletBinding()]
  Param(
         [Parameter(Mandatory=$false)]
-        [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'dxvk1101', 'pwsh40', 'crypt32')]
+        [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'dxvk1101', 'pwsh40', 'crypt32', 'msvbvm60')]
         [string[]]$verb
       )
 }
@@ -30,7 +30,8 @@ $custom_array = @() # Creating an empty array to populate data in
 	       "mshtml", "native mshtml, experimental, dangerzone",`
                "dxvk1101", "dxvk",`
                "crypt32", "crypt32 (and msasn1)",`
-               "pwsh40", "rudimentary PowerShell 4.0 (downloads yet another huge amount of Mb`s!) "
+               "pwsh40", "rudimentary PowerShell 4.0 (downloads yet another huge amount of Mb`s!)",`
+               "msvbvm60", "msvbvm60"
 
 for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) { 
     $custom_array += New-Object PSObject -Property @{ # Setting up custom array utilizing a PSObject
@@ -118,7 +119,7 @@ function func_mfc42
 function func_riched20
 {
     validate_cab_existence
-    $dlls = @('riched20.dll'); $dldir = "aik70"
+    $dlls = @('riched20.dll','msls31.dll'); $dldir = "aik70"
 
     foreach ($i in $dlls) {
         7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
@@ -139,15 +140,37 @@ function func_crypt32
 
 function func_gdiplus
 {
-    validate_cab_existence; $dldir = "aik70"
-    $sxsdlls = @( 'amd64_microsoft.windows.gdiplus_6595b64144ccf1df_1.0.7600.16385_none_3bfdd703d890231d/gdiplus.dll', `
-                  'x86_microsoft.windows.gdiplus_6595b64144ccf1df_1.0.7600.16385_none_83ab0ddaed0c4c23/gdiplus.dll' )
+    $url = "https://download.microsoft.com/download/3/5/C/35C470D8-802B-457A-9890-F1AFC277C907/Windows6.1-KB2834886-x64.msu"
+    $cab = "Windows6.1-KB2834886-x64.cab"
+    $sourcefile = @(`
+    'amd64_microsoft.windows.gdiplus_6595b64144ccf1df_1.1.7601.22290_none_145f0c928b8d0397/gdiplus.dll',`
+    'x86_microsoft.windows.gdiplus_6595b64144ccf1df_1.1.7601.22290_none_5c0c4369a0092c9d/gdiplus.dll'`
+   )
+
+    $msu = $url.split('/')[-1]; <# -1 is last array element... #> $dldir = $($url.split('/')[-1]) -replace '.msu',''
+
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:systemroot, "system32", "dpx.dll")  ))
+       {Write-Host 'Extracting some files needed for expansion' ;func_expand;}
+
+    w_download_to $dldir $url $msu
+
+    if (![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $dldir,  $cab) ) )
+       {Write-Host file seems missing, re-extracting;7z e $cachedir\\$dldir\\$msu "-o$cachedir\\$dldir" -y; quit?('7z')}
+
+    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'native' $i }      
+
+    foreach ($i in $sourcefile) {
+              switch ( $i.SubString(0,3) ) {
+                  {'amd'              }    {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $env:TEMP }
+                  {$_ -in 'wow', 'x86'}    {<# Nothing to do #>}                                                                          } }
+
+    foreach ($i in $sourcefile) {
+              switch ( $i.SubString(0,3) ) {
+                  {'amd'              }    {Copy-Item -force $env:TEMP\\$i $env:systemroot\\system32\\$($i.split('/')[-1])}
+                  {$_ -in 'wow', 'x86'}    {Copy-Item -force $env:TEMP\\$i $env:systemroot\\syswow64\\$($i.split('/')[-1])} } }
 		  
-    foreach ($i in $sxsdlls) {
-        switch ( $i.SubString(0,3) ) {
-            'amd' {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
-            'x86' {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])}}} quit?('7z')
-    foreach($i in 'gdiplus') { dlloverride 'native' $i }
+   foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }
+   foreach($i in 'gdiplus') { dlloverride 'native' $i }  
 } <# end gdiplus #>
 
 function func_ucrtbase
@@ -533,6 +556,35 @@ namespace Powershdll
 
     foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }      
 } <# end pwsh40 #>
+
+
+function func_msvbvm60 <# msvbvm60 #>
+{   
+    $url = "http://download.windowsupdate.com/d/msdownload/update/software/updt/2016/05/windows6.1-kb3125574-v4-x64_2dafb1d203c8964239af3048b5dd4b1264cd93b9.msu"
+    $cab = "Windows6.1-KB3125574-v4-x64.cab"
+    $sourcefile = @(`
+    'x86_microsoft-windows-msvbvm60_31bf3856ad364e35_6.1.7601.23403_none_c51e69cfc91299fe/msvbvm60.dll'
+    )
+
+    $msu = $url.split('/')[-1]; <# -1 is last array element... #> $dldir = $($url.split('/')[-1]) -replace '.msu',''
+
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:systemroot, "system32", "dpx.dll")  ))
+       {Write-Host 'Extracting some files needed for expansion' ;func_expand;}
+
+    w_download_to $dldir $url $msu
+
+    if (![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $dldir,  $cab) ) )
+       {Write-Host file seems missing, re-extracting;7z e $cachedir\\$dldir\\$msu "-o$cachedir\\$dldir" -y; quit?('7z')}
+
+    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'native' $i }      
+
+    foreach ($i in $sourcefile) {
+        if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
+            expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) } 
+        Copy-Item -force "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\syswow64\\$($i.split('/')[-1])}
+
+    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }      
+} <# end msvbvm60 #>
 
 <# Main function #>
 if(!$args.count){
