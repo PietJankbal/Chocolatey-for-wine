@@ -233,3 +233,4 @@
     <# NexusTK checks for this key #>
     New-Item -Path "$env:SystemRoot\Microsoft.NET\Framework64" -Name "v3.5" -ItemType "directory" -ErrorAction SilentlyContinue <# for NexusTK #>
     New-Item -Path "$env:SystemRoot\Microsoft.NET\Framework" -Name "v3.5" -ItemType "directory" -ErrorAction SilentlyContinue
+    New-Item -Path "$env:LOCALAPPDATA" -Name "Temp" -ItemType "directory" -ErrorAction SilentlyContinue
