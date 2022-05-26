@@ -7,7 +7,8 @@ function validate_param
 [CmdletBinding()]
  Param(
         [Parameter(Mandatory=$false)]
-        [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'dxvk1101', 'pwsh40', 'crypt32', 'msvbvm60')]
+        [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', `
+                     'dxvk1101', 'pwsh40', 'crypt32', 'msvbvm60', 'xmllite')]
         [string[]]$verb
       )
 }
@@ -31,7 +32,8 @@ $custom_array = @() # Creating an empty array to populate data in
                "dxvk1101", "dxvk",`
                "crypt32", "crypt32 (and msasn1)",`
                "pwsh40", "rudimentary PowerShell 4.0 (downloads yet another huge amount of Mb`s!)",`
-               "msvbvm60", "msvbvm60"
+               "msvbvm60", "msvbvm60",`
+               "xmllite", "xmllite"
 
 for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) { 
     $custom_array += New-Object PSObject -Property @{ # Setting up custom array utilizing a PSObject
@@ -267,6 +269,19 @@ function func_expand
             'amd' {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
             'x86' {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])}}} quit?('7z')
 } <# end expand #>
+
+function func_xmllite
+{
+    validate_cab_existence; $dldir = "aik70"
+    $expdlls = @( 'amd64_microsoft-windows-servicingstack_31bf3856ad364e35_6.1.7600.16385_none_655452efe0fb810b/xmllite.dll', `
+                  'x86_microsoft-windows-servicingstack_31bf3856ad364e35_6.1.7600.16385_none_0935b76c289e0fd5/xmllite.dll' )
+		  
+    foreach ($i in $expdlls) {
+        if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
+        if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])}} quit?('7z')
+
+    foreach($i in 'xmllite') { dlloverride 'native' $i }
+} <# end xmllite #>
 
 function func_wmp{ Write-Host TODO, Nothing here yet ...}
 
