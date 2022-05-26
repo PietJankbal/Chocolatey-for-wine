@@ -35,7 +35,6 @@
     Copy-Item $(Join-Path $args[0] "misc.reg") $env:TEMP
     Copy-Item $(Join-Path $args[0] "profile.ps1") $env:TEMP
     Copy-Item $(Join-Path $args[0] "profile.ps1") $(Join-Path $(Split-Path -Path (Get-Process -Id $pid).Path) "profile.ps1") <# Copy profile.ps1 to Powershell directory #>
-
     <# Install Chocolatey #>
     Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
     <# This makes Astro Photography Tool happy #>  
