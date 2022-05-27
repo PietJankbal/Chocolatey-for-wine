@@ -143,7 +143,7 @@ function QPR_wmic { <# wmic replacement #>
          if($alias -eq $key) {$class = $hash[$key];} }
     <# Syntax example from NopowerShell: "gwmi "Select ProcessId,Name,CommandLine From Win32_Process" #>
     $query = 'Select' + ' ' + ($property -join ',') + ' ' + 'From' + ' ' + $class
-
+    #get-wmiobject win32_logicaldisk |where @"deviceid"='c:'" |select-object freespace
     NoPowerShell.exe Get-WMIObject "$query" 
 } 
 #Easy access to the C# compiler
