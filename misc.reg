@@ -22,7 +22,7 @@ REGEDIT4
 
 [HKEY_CURRENT_USER\Software\Wine\AppDefaults\pwsh.exe\DllOverrides]
 "amsi"=""
-
+"dwmapi"=""
 
 [HKEY_LOCAL_MACHINE\Software\Microsoft\.NETFramework]
 "OnlyUseLatestCLR"=dword:00000001
