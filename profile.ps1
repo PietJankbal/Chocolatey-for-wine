@@ -126,7 +126,7 @@ function QPR_stsk { <# schtasks.exe replacement #>
         Start-Process -Wait -NoNewWindow QPR.schtasks.exe $args }
 }
 
-Set-Alias "QPR.$env:systemroot\system32\wmic.exe" QPR_wmic; Set-Alias QPR.wmic.exe QPR_wmic; Set-Alias QPR.wmic QPR_wmic
+Set-Alias "QPR.$env:systemroot\system32\wbem\wmic.exe" QPR_wmic; Set-Alias QPR.wmic.exe QPR_wmic; Set-Alias QPR.wmic QPR_wmic
 function QPR_wmic { <# wmic replacement #>
     [CmdletBinding()]
         Param([parameter(Position=0)][string]$alias,
