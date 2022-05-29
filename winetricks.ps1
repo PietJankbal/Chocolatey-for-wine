@@ -332,7 +332,7 @@ function func_mshtml
         7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
         7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\syswow64" Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
 
-    foreach($i in 'mshtml', 'ieframe', 'urlmon', 'jscript', 'wininet', 'shlwapi') { dlloverride 'native' $i }
+    foreach($i in 'mshtml', 'ieframe', 'urlmon', 'jscript') { dlloverride 'native' $i }
     foreach($i in 'msimtf') { dlloverride 'builtin' $i }
 
 <# Note: the 'back-tick+n's below is line-break when we write below stuff to file, saves space  #>
