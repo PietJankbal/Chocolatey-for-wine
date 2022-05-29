@@ -422,16 +422,11 @@ function func_pwsh40 <# rudimentary powershell 4.0; do 'ps40 -h' for help #>
 
 $regkey40 = @"
 REGEDIT4
-
 [HKEY_LOCAL_MACHINE\Software\Microsoft\PowerShell]
-
 [HKEY_LOCAL_MACHINE\Software\Microsoft\PowerShell\1]
-
 [HKEY_LOCAL_MACHINE\Software\Microsoft\PowerShell\1\PowerShellEngine]
 "ApplicationBase"="C:\\Windows\\System32\\WindowsPowerShell\\v1.0"
-
 [HKEY_LOCAL_MACHINE\Software\Microsoft\PowerShell\3]
-
 [HKEY_LOCAL_MACHINE\Software\Microsoft\PowerShell\3\PowerShellEngine]
 "ApplicationBase"="c:\\windows\\system32\\WindowsPowerShell\\v1.0"
 "@
