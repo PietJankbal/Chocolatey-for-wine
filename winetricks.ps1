@@ -364,13 +364,13 @@ function func_mshtml
             'amd'    {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_SCRIPTING.CAB "-o$env:systemroot\\system32" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
             'x86'    {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_SCRIPTING.CAB "-o$env:systemroot\\syswow64" $i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])}}} quit?('7z')
 
-    $dlls = @('urlmon.dll','iertutil.dll')
+    $dlls = @('urlmon.dll' <# ,'iertutil.dll' #>)
 
     foreach ($i in $dlls) {
         7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
         7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\syswow64" Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
 
-    foreach($i in 'mshtml', 'ieframe', 'urlmon', 'jscript') { dlloverride 'native' $i }
+    foreach($i in 'mshtml', 'ieframe', 'urlmon', 'jscript', 'wininet', 'shlwapi') { dlloverride 'native' $i }
     foreach($i in 'msimtf') { dlloverride 'builtin' $i }
 
 <# Note: the 'back-tick+n's below is line-break when we write below stuff to file, saves space  #>
