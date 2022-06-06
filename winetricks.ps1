@@ -8,7 +8,7 @@ function validate_param
  Param(
         [Parameter(Mandatory=$false)]
         [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', `
-                     'dxvk1101', 'pwsh40', 'crypt32', 'msvbvm60', 'xmllite')]
+                     'dxvk1101', 'hnetcfg', 'pwsh40', 'crypt32', 'msvbvm60', 'xmllite', 'windows.ui.xaml')]
         [string[]]$verb
       )
 }
@@ -29,11 +29,13 @@ $custom_array = @() # Creating an empty array to populate data in
 	       "ucrtbase", "ucrtbase from vcrun2015",`
 	       "vcrun2019", "vcredist2019",`
 	       "mshtml", "native mshtml, experimental, dangerzone",`
+               "hnetcfg", "hnetcfg with fix for https://bugs.winehq.org/show_bug.cgi?id=45432",`
                "dxvk1101", "dxvk",`
                "crypt32", "crypt32 (and msasn1)",`
                "pwsh40", "rudimentary PowerShell 4.0 (downloads yet another huge amount of Mb`s!)",`
                "msvbvm60", "msvbvm60",`
-               "xmllite", "xmllite"
+               "xmllite", "xmllite",`
+               "windows.ui.xaml", "windows.ui.xaml, experimental..."
 
 for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) { 
     $custom_array += New-Object PSObject -Property @{ # Setting up custom array utilizing a PSObject
@@ -63,7 +65,24 @@ function w_download_to
         (New-Object System.Net.WebClient).DownloadFile($w_url, $f)}
 }
 
-function validate_cab_existence
+function check_msu_sanity <# some sanity checks before extracting from msu, like if cached files are present etc. #>
+{
+    Param ($url, $cab)
+
+    $msu = $url.split('/')[-1]; <# -1 is last array element... #> $dldir = $($url.split('/')[-1]) -replace '.msu',''
+    <# fragile test #>
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:systemroot, "system32", "dpx.dll")  ))
+       {Write-Host 'Extracting some files needed for expansion' ; func_expand;}
+
+    w_download_to $dldir $url $msu
+
+    if (![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $dldir,  $cab) ) )
+       {Write-Host file seems missing, re-extracting; 7z e $cachedir\\$dldir\\$msu "-o$cachedir\\$dldir" -y; quit?('7z')}
+
+    foreach ($i in 'cabinet', 'expand.exe') { dlloverride 'native' $i } 
+}
+
+function check_aik_sanity <# some sanity checks to see if cached files from windows kits 7 are present #>
 {
     $cab = "KB3AIK_EN.iso"
     $dldir = "aik70"
@@ -88,7 +107,7 @@ function dlloverride
 
 function func_msxml3
 {
-    validate_cab_existence
+    check_aik_sanity
     $dlls = @('msxml3.dll','msxml3r.dll'); $dldir = "aik70"
 
     foreach ($i in $dlls) {
@@ -99,7 +118,7 @@ function func_msxml3
 
 function func_msxml6
 {
-    validate_cab_existence
+    check_aik_sanity
     $dlls = @('msxml6.dll', 'msxml6r.dll'); $dldir = "aik70"
 
     foreach ($i in $dlls) {
@@ -110,7 +129,7 @@ function func_msxml6
 
 function func_mfc42
 {
-    validate_cab_existence
+    check_aik_sanity
     $dlls = @('mfc42.dll', 'mfc42u.dll'); $dldir = "aik70"
 
     foreach ($i in $dlls) {
@@ -120,7 +139,7 @@ function func_mfc42
 
 function func_riched20
 {
-    validate_cab_existence
+    check_aik_sanity
     $dlls = @('riched20.dll','msls31.dll'); $dldir = "aik70"
 
     foreach ($i in $dlls) {
@@ -131,7 +150,7 @@ function func_riched20
 
 function func_crypt32
 {
-    validate_cab_existence
+    check_aik_sanity
     $dlls = @('crypt32.dll','msasn1.dll'); $dldir = "aik70"
 
     foreach ($i in $dlls) {
@@ -149,17 +168,7 @@ function func_gdiplus
     'x86_microsoft.windows.gdiplus_6595b64144ccf1df_1.1.7601.22290_none_5c0c4369a0092c9d/gdiplus.dll'`
    )
 
-    $msu = $url.split('/')[-1]; <# -1 is last array element... #> $dldir = $($url.split('/')[-1]) -replace '.msu',''
-
-    if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:systemroot, "system32", "dpx.dll")  ))
-       {Write-Host 'Extracting some files needed for expansion' ;func_expand;}
-
-    w_download_to $dldir $url $msu
-
-    if (![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $dldir,  $cab) ) )
-       {Write-Host file seems missing, re-extracting;7z e $cachedir\\$dldir\\$msu "-o$cachedir\\$dldir" -y; quit?('7z')}
-
-    foreach ($i in 'cabinet', 'expand.exe') { dlloverride 'native' $i }      
+    check_msu_sanity $url $cab; $dldir = $($url.split('/')[-1]) -replace '.msu',''
 
     foreach ($i in $sourcefile) {
         if( $i.SubString(0,3) -eq 'amd' ) {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $env:TEMP }
@@ -172,6 +181,43 @@ function func_gdiplus
     foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }
     foreach($i in 'gdiplus') { dlloverride 'native' $i }  
 } <# end gdiplus #>
+
+function func_windows.ui.xaml <# experimental... #>
+{
+    $url = "http://download.windowsupdate.com/c/msdownload/update/software/updt/2016/11/windows10.0-kb3205436-x64_45c915e7a85a7cc7fc211022ecd38255297049c3.msu"
+    $cab = "Windows10.0-KB3205436-x64.cab"
+    $sourcefile = @(`
+        'wow64_microsoft-onecore-coremessaging_31bf3856ad364e35_10.0.10240.17146_none_59cb7df4b29f7881/coremessaging.dll', `
+        'amd64_microsoft-onecore-coremessaging_31bf3856ad364e35_10.0.10240.17146_none_4f76d3a27e3eb686/coremessaging.dll', `
+        'amd64_microsoft-windows-directui_31bf3856ad364e35_10.0.10240.17184_none_bee994db894d335a/windows.ui.xaml.dll', `
+        'wow64_microsoft-windows-directui_31bf3856ad364e35_10.0.10240.17184_none_c93e3f2dbdadf555/windows.ui.xaml.dll', `
+        'amd64_microsoft-windows-bcp47languages_31bf3856ad364e35_10.0.10240.17113_none_a25e8c81718a36ce/bcp47langs.dll', `
+        'wow64_microsoft-windows-bcp47languages_31bf3856ad364e35_10.0.10240.17113_none_acb336d3a5eaf8c9/bcp47langs.dll' `
+    )
+
+    check_msu_sanity $url $cab; $dldir = $($url.split('/')[-1]) -replace '.msu',''    
+
+    foreach ($i in $sourcefile) {
+        if( $i.SubString(0,3) -eq 'amd' ) {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $env:TEMP }
+        if( $i.SubString(0,3) -eq 'wow' ) {<# Nothing to do #>}                                                                          } 
+
+    foreach ($i in $sourcefile) {
+        if( $i.SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose "$env:TEMP\\$i" $env:systemroot\\system32\\$($i.split('/')[-1]) }
+        if( $i.SubString(0,3) -eq 'wow' ) {Copy-Item -force -verbose "$env:TEMP\\$i" $env:systemroot\\syswow64\\$($i.split('/')[-1]) } } 
+	
+$regkey = @"
+REGEDIT4
+[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion]
+"CurrentBuild"="17134"
+"CurrentBuildNumber"="17134"
+[HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsRuntime\ActivatableClassId\Windows.UI.Xaml.Application]
+"DllPath"="c:\\\\windows\\\\system32\\\\Windows.UI.Xaml.dll"
+"@
+
+     $regkey | Out-File -FilePath $env:TEMP\\xamlregkey.reg ; reg.exe IMPORT $env:TEMP\\xamlregkey.reg /reg:64; reg.exe IMPORT $env:TEMP\\xamlregkey.reg /reg:32;
+	  
+    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i } 
+} <# end windows.ui.xaml #>
 
 function func_ucrtbase
 {
@@ -188,6 +234,17 @@ function func_ucrtbase
         7z e $env:TEMP\\$dldir\\32\\a10 "-o$env:systemroot\syswow64" $i -aoa | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1]); quit?('7z') }
     foreach($i in 'ucrtbase') { dlloverride 'native' $i }
 } <# end ucrtbase #>
+
+function func_hnetcfg <# fix for https://bugs.winehq.org/show_bug.cgi?id=45432 #>
+{
+    $dldir = "hnetcfg"
+    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_hnetcfg.7z" "wine_hnetcfg.7z"
+
+    foreach ($i in 'hnetcfg.dll'){
+        7z e $cachedir\\$dldir\\wine_hnetcfg.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
+        7z e $cachedir\\\\$dldir\\wine_hnetcfg.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1]); quit?('7z') }
+    foreach($i in 'hnetcfg') { dlloverride 'native' $i }
+} <# end hnetcfg #>
 
 function func_vcrun2019
 {
@@ -225,7 +282,7 @@ function func_dxvk1101
 
 function func_msado15
 {
-    validate_cab_existence;
+    check_aik_sanity;
     $dldir = "jet40"
 
     w_download_to "$dldir" "https://web.archive.org/web/20210225171713if_/http://download.microsoft.com/download/4/3/9/4393c9ac-e69e-458d-9f6d-2fe191c51469/Jet40SP8_9xNT.exe" "Jet40SP8_9xNT.exe"
@@ -292,7 +349,7 @@ function func_msado15
 
 function func_expand
 {
-    validate_cab_existence; $dldir = "aik70"
+    check_aik_sanity; $dldir = "aik70"
     $expdlls = @( 'amd64_microsoft-windows-basic-misc-tools_31bf3856ad364e35_6.1.7600.16385_none_7351a917d91c961e/expand.exe', `
                   'x86_microsoft-windows-basic-misc-tools_31bf3856ad364e35_6.1.7600.16385_none_17330d9420bf24e8/expand.exe',
                   'amd64_microsoft-windows-deltapackageexpander_31bf3856ad364e35_6.1.7600.16385_none_c5d387d64eb8e1f2/dpx.dll',
@@ -310,7 +367,7 @@ function func_expand
 
 function func_xmllite
 {
-    validate_cab_existence; $dldir = "aik70"
+    check_aik_sanity; $dldir = "aik70"
     $expdlls = @( 'amd64_microsoft-windows-servicingstack_31bf3856ad364e35_6.1.7600.16385_none_655452efe0fb810b/xmllite.dll', `
                   'x86_microsoft-windows-servicingstack_31bf3856ad364e35_6.1.7600.16385_none_0935b76c289e0fd5/xmllite.dll' )
 		  
@@ -325,7 +382,7 @@ function func_wmp{ Write-Host TODO, Nothing here yet ...}
 
 function func_mshtml
 {
-    validate_cab_existence; $dldir = "aik70"
+    check_aik_sanity; $dldir = "aik70"
 
     $iedlls = @( 'amd64_microsoft-windows-ie-htmlrendering_31bf3856ad364e35_8.0.7600.16385_none_89f24b7ab2dc7a40/mshtml.dll', `
                  'x86_microsoft-windows-ie-htmlrendering_31bf3856ad364e35_8.0.7600.16385_none_2dd3aff6fa7f090a/mshtml.dll', ` 
@@ -441,17 +498,7 @@ function func_pwsh40 <# rudimentary powershell 4.0; do 'ps40 -h' for help #>
     'msil_microsoft.wsman.management_31bf3856ad364e35_7.2.7601.23403_none_5a6f52c634b84969/microsoft.wsman.management.dll'`
     )
 
-    $msu = $url.split('/')[-1]; <# -1 is last array element... #> $dldir = $($url.split('/')[-1]) -replace '.msu',''
-
-    if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:systemroot, "system32", "dpx.dll")  ))
-       {Write-Host 'Extracting some files needed for expansion' ;func_expand;}
-
-    w_download_to $dldir $url $msu
-
-    if (![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $dldir,  $cab) ) )
-       {Write-Host file seems missing, re-extracting;7z e $cachedir\\$dldir\\$msu "-o$cachedir\\$dldir" -y; quit?('7z')}
-
-    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'native' $i }      
+    check_msu_sanity $url $cab; $dldir = $($url.split('/')[-1]) -replace '.msu',''  
 
     foreach ($i in $sourcefile) {
         if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
@@ -645,7 +692,6 @@ namespace Powershdll
     foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }      
 } <# end pwsh40 #>
 
-
 function func_msvbvm60 <# msvbvm60 #>
 {   
     $url = "http://download.windowsupdate.com/d/msdownload/update/software/updt/2016/05/windows6.1-kb3125574-v4-x64_2dafb1d203c8964239af3048b5dd4b1264cd93b9.msu"
@@ -654,17 +700,7 @@ function func_msvbvm60 <# msvbvm60 #>
     'x86_microsoft-windows-msvbvm60_31bf3856ad364e35_6.1.7601.23403_none_c51e69cfc91299fe/msvbvm60.dll'
     )
 
-    $msu = $url.split('/')[-1]; <# -1 is last array element... #> $dldir = $($url.split('/')[-1]) -replace '.msu',''
-
-    if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:systemroot, "system32", "dpx.dll")  ))
-       {Write-Host 'Extracting some files needed for expansion' ;func_expand;}
-
-    w_download_to $dldir $url $msu
-
-    if (![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $dldir,  $cab) ) )
-       {Write-Host file seems missing, re-extracting;7z e $cachedir\\$dldir\\$msu "-o$cachedir\\$dldir" -y; quit?('7z')}
-
-    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'native' $i }      
+    check_msu_sanity $url $cab    
 
     foreach ($i in $sourcefile) {
         if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
