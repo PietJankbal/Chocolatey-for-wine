@@ -8,7 +8,7 @@ function validate_param
  Param(
         [Parameter(Mandatory=$false)]
         [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', `
-                     'dxvk1101', 'hnetcfg', 'pwsh40', 'crypt32', 'msvbvm60', 'xmllite', 'windows.ui.xaml')]
+                     'dxvk1101', 'hnetcfg', 'pwsh40', 'crypt32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs')]
         [string[]]$verb
       )
 }
@@ -35,6 +35,7 @@ $custom_array = @() # Creating an empty array to populate data in
                "pwsh40", "rudimentary PowerShell 4.0 (downloads yet another huge amount of Mb`s!)",`
                "msvbvm60", "msvbvm60",`
                "xmllite", "xmllite",`
+               "windowscodecs", "windowscodecs",`
                "windows.ui.xaml", "windows.ui.xaml, experimental..."
 
 for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) { 
@@ -105,10 +106,19 @@ function dlloverride
      New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name $dll -Value $value -PropertyType 'String'
 }
 
+function reg_edit
+{
+    param ($regvalues)
+
+    $regfile = $((Get-PSCallStack)[1].FunctionName).replace('func', 'reg') + '.reg'
+    $regvalues | Out-File -FilePath $env:TEMP\\$regfile
+    reg.exe IMPORT $env:TEMP\\$regfile /reg:64;
+    reg.exe IMPORT $env:TEMP\\$regfile /reg:32;
+}
+
 function func_msxml3
 {
-    check_aik_sanity
-    $dlls = @('msxml3.dll','msxml3r.dll'); $dldir = "aik70"
+    $dlls = @('msxml3.dll','msxml3r.dll'); check_aik_sanity; $dldir = "aik70"
 
     foreach ($i in $dlls) {
         7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
@@ -118,8 +128,7 @@ function func_msxml3
 
 function func_msxml6
 {
-    check_aik_sanity
-    $dlls = @('msxml6.dll', 'msxml6r.dll'); $dldir = "aik70"
+    $dlls = @('msxml6.dll', 'msxml6r.dll'); check_aik_sanity; $dldir = "aik70"
 
     foreach ($i in $dlls) {
         7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
@@ -129,8 +138,7 @@ function func_msxml6
 
 function func_mfc42
 {
-    check_aik_sanity
-    $dlls = @('mfc42.dll', 'mfc42u.dll'); $dldir = "aik70"
+    $dlls = @('mfc42.dll', 'mfc42u.dll'); check_aik_sanity; $dldir = "aik70"
 
     foreach ($i in $dlls) {
         7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
@@ -139,8 +147,7 @@ function func_mfc42
 
 function func_riched20
 {
-    check_aik_sanity
-    $dlls = @('riched20.dll','msls31.dll'); $dldir = "aik70"
+    $dlls = @('riched20.dll','msls31.dll'); check_aik_sanity; $dldir = "aik70"
 
     foreach ($i in $dlls) {
         7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
@@ -150,14 +157,23 @@ function func_riched20
 
 function func_crypt32
 {
-    check_aik_sanity
-    $dlls = @('crypt32.dll','msasn1.dll'); $dldir = "aik70"
+    $dlls = @('crypt32.dll','msasn1.dll'); check_aik_sanity; $dldir = "aik70"
 
     foreach ($i in $dlls) {
         7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
         7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -y| Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
-        foreach($i in 'crypt32') { dlloverride 'native' $i }
-}
+    foreach($i in 'crypt32') { dlloverride 'native' $i }
+}  <# end crypt32 #>
+
+function func_windowscodecs
+{
+    $dlls = @('windowscodecs.dll'); check_aik_sanity; $dldir = "aik70"
+
+    foreach ($i in $dlls) {
+        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -aoa; 
+        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -aoa } quit?('7z')
+    foreach($i in 'windowscodecs') { dlloverride 'native' $i }
+}  <# end windowscodecs #>
 
 function func_gdiplus
 {
@@ -214,7 +230,7 @@ REGEDIT4
 "DllPath"="c:\\\\windows\\\\system32\\\\Windows.UI.Xaml.dll"
 "@
 
-     $regkey | Out-File -FilePath $env:TEMP\\xamlregkey.reg ; reg.exe IMPORT $env:TEMP\\xamlregkey.reg /reg:64; reg.exe IMPORT $env:TEMP\\xamlregkey.reg /reg:32;
+    reg_edit $regkey
 	  
     foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i } 
 } <# end windows.ui.xaml #>
@@ -309,9 +325,8 @@ function func_msado15
                   'x86_microsoft-windows-m..ac-ado-ddl-security_31bf3856ad364e35_6.1.7600.16385_none_b204ecffa1b619ac/msadox.dll')
 
     foreach ($i in $adodlls) {
-        switch ( $i.SubString(0,3) ) { 
-            'amd'    {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB "-o$env:CommonProgramFiles\\System\\ADO" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
-            'x86'    {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB "-o${env:CommonProgramFiles`(x86`)}\\System\\ADO" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}}} quit?('7z')
+            if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB "-o$env:CommonProgramFiles\\System\\ADO" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
+            if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB "-o${env:CommonProgramFiles`(x86`)}\\System\\ADO" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}} quit?('7z')
 
     $oledlls = @( 'amd64_microsoft-windows-m..ents-mdac-oledb-dll_31bf3856ad364e35_6.1.7600.16385_none_4e1fa9e216eb782f/oledb32.dll', `
                   'x86_microsoft-windows-m..ents-mdac-oledb-dll_31bf3856ad364e35_6.1.7600.16385_none_f2010e5e5e8e06f9/oledb32.dll', `
@@ -319,9 +334,8 @@ function func_msado15
                   'x86_microsoft-windows-m..ents-mdac-oledb-rll_31bf3856ad364e35_6.1.7600.16385_none_f83672e25a90465b/oledb32r.dll' )
 
     foreach ($i in $oledlls) {
-        switch ( $i.SubString(0,3) ) { 
-            'amd'    {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB "-o$env:CommonProgramFiles\\System\\OLE DB" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
-            'x86'    {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB "-o${env:CommonProgramFiles`(x86`)}\\System\\OLE DB" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}}} quit?('7z')
+            if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB "-o$env:CommonProgramFiles\\System\\OLE DB" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
+            if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB "-o${env:CommonProgramFiles`(x86`)}\\System\\OLE DB" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}} quit?('7z')
 
 
     $dlls = @( 'amd64_microsoft-windows-m..ponents-mdac-msdart_31bf3856ad364e35_6.1.7600.16385_none_42074b3f2553d5bd/msdart.dll', `
@@ -331,9 +345,8 @@ function func_msado15
 		  'x86_microsoft-windows-m..-components-jetcore_31bf3856ad364e35_6.1.7600.16385_none_046511bf090691ab/msjet40.dll' )
 		 
     foreach ($i in $dlls) {
-        switch ( $i.SubString(0,3) ) {
-            'amd'    {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB "-o$env:systemroot\\system32" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
-            'x86'    {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB "-o$env:systemroot\\syswow64" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}}} quit?('7z')
+            if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB "-o$env:systemroot\\system32" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
+            if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB "-o$env:systemroot\\syswow64" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}} quit?('7z')
 
     foreach($i in 'msado15', 'oledb32') { dlloverride 'native' $i }
 
@@ -360,9 +373,8 @@ function func_expand
                   'x86_microsoft-windows-deltacompressionengine_31bf3856ad364e35_6.1.7600.16385_none_4002be3be712af33/msdelta.dll' )
 		  
     foreach ($i in $expdlls) {
-        switch ( $i.SubString(0,3) ) {
-            'amd' {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
-            'x86' {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])}}} quit?('7z')
+            if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
+            if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])}} quit?('7z')
 } <# end expand #>
 
 function func_xmllite
@@ -378,7 +390,7 @@ function func_xmllite
     foreach($i in 'xmllite') { dlloverride 'native' $i }
 } <# end xmllite #>
 
-function func_wmp{ Write-Host TODO, Nothing here yet ...}
+function func_wmp{ Write-Host $((Get-PSCallStack)[0].FunctionName.replace('func','regkey')) TODO, Nothing here yet ...}
 
 function func_mshtml
 {
@@ -395,9 +407,8 @@ function func_mshtml
                 )
 
     foreach ($i in $iedlls) {
-        switch ( $i.SubString(0,3) ) {
-            'amd'    {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_HTA.CAB "-o$env:systemroot\\system32" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
-            'x86'    {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_HTA.CAB "-o$env:systemroot\\syswow64" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}}} quit?('7z')
+            if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_HTA.CAB "-o$env:systemroot\\system32" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
+            if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_HTA.CAB "-o$env:systemroot\\syswow64" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}} quit?('7z')
 
     $sxsdlls = @( 'amd64_microsoft-windows-msls31_31bf3856ad364e35_6.1.7600.16385_none_27f4c55dbc24c492/msls31.dll', `
                   'x86_microsoft-windows-msls31_31bf3856ad364e35_6.1.7600.16385_none_cbd629da03c7535c/msls31.dll', `
@@ -409,17 +420,15 @@ function func_mshtml
                   'x86_microsoft-windows-shlwapi_31bf3856ad364e35_6.1.7600.16385_none_f9b00828060280bb/shlwapi.dll')
 
     foreach ($i in $sxsdlls) {
-        switch ( $i.SubString(0,3) ) {
-            'amd' {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
-            'x86' {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])}}} quit?('7z')
+            if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
+            if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])}} quit?('7z')
 
     $scrdlls = @( 'amd64_microsoft-windows-scripting-jscript_31bf3856ad364e35_8.0.7600.16385_none_f98f217587d75631/jscript.dll',`
                   'x86_microsoft-windows-scripting-jscript_31bf3856ad364e35_8.0.7600.16385_none_9d7085f1cf79e4fb/jscript.dll')
 
     foreach ($i in $scrdlls) {
-        switch ( $i.SubString(0,3) ) {
-            'amd'    {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_SCRIPTING.CAB "-o$env:systemroot\\system32" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
-            'x86'    {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_SCRIPTING.CAB "-o$env:systemroot\\syswow64" $i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])}}} quit?('7z')
+            if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_SCRIPTING.CAB "-o$env:systemroot\\system32" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
+            if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_SCRIPTING.CAB "-o$env:systemroot\\syswow64" $i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])}} quit?('7z')
 
     $dlls = @('urlmon.dll' <# ,'iertutil.dll' #>)
 
@@ -476,10 +485,7 @@ REGEDIT4
 "2401"=dword:00000000`n"2402"=dword:00000000`n"2500"=dword:00000000`n"2600"=dword:00000000`n"2700"=dword:00000000
 "Icon"="inetcpl.cpl#001313"`n"LowIcon"="inetcpl.cpl#005425"`n"PMDisplayName"="Internet [Protected Mode]"`n"RecommendedLevel"=dword:00011500
 "@
-
-     $regkey | Out-File -FilePath $env:TEMP\\regkey.reg
-     reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:64;
-     reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:32;
+    reg_edit $regkey
 } <# end mshtml #>
 
 function func_pwsh40 <# rudimentary powershell 4.0; do 'ps40 -h' for help #>
@@ -516,9 +522,7 @@ REGEDIT4
 "ApplicationBase"="c:\\windows\\system32\\WindowsPowerShell\\v1.0"
 "@
 
-    $regkey40 | Out-File -FilePath $env:TEMP\\regkey40.reg
-    reg.exe  IMPORT  $env:TEMP\\regkey40.reg /reg:64; quit?('reg')
-    reg.exe  IMPORT  $env:TEMP\\regkey40.reg /reg:32; quit?('reg')
+    reg_edit $regkey40
 		  
 <# Included license hereafter: code below is 99 % copy/paste from https://github.com/p3nt4/PowerShdll ( Program.cs and Common.cs ) #>
 $ps40script = @"
@@ -700,7 +704,7 @@ function func_msvbvm60 <# msvbvm60 #>
     'x86_microsoft-windows-msvbvm60_31bf3856ad364e35_6.1.7601.23403_none_c51e69cfc91299fe/msvbvm60.dll'
     )
 
-    check_msu_sanity $url $cab    
+    check_msu_sanity $url $cab; $dldir = $($url.split('/')[-1]) -replace '.msu',''
 
     foreach ($i in $sourcefile) {
         if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
