@@ -8,7 +8,7 @@ function validate_param
  Param(
         [Parameter(Mandatory=$false)]
         [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', `
-                     'dxvk1101', 'hnetcfg', 'pwsh40', 'crypt32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs')]
+                     'dxvk1101', 'hnetcfg', 'pwsh40', 'crypt32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'comctl32')]
         [string[]]$verb
       )
 }
@@ -28,7 +28,7 @@ $custom_array = @() # Creating an empty array to populate data in
                "wmp", "TODO, some wmp (windows media player) dlls",`
 	       "ucrtbase", "ucrtbase from vcrun2015",`
 	       "vcrun2019", "vcredist2019",`
-	       "mshtml", "native mshtml, experimental, dangerzone",`
+	       "mshtml", "experimental, dangerzone, might break things, only use on a per app base",`
                "hnetcfg", "hnetcfg with fix for https://bugs.winehq.org/show_bug.cgi?id=45432",`
                "dxvk1101", "dxvk",`
                "crypt32", "crypt32 (and msasn1)",`
@@ -36,6 +36,7 @@ $custom_array = @() # Creating an empty array to populate data in
                "msvbvm60", "msvbvm60",`
                "xmllite", "xmllite",`
                "windowscodecs", "windowscodecs",`
+               "comctl32", "dangerzone, only for testing, might break things, only use on a per app base",`
                "windows.ui.xaml", "windows.ui.xaml, experimental..."
 
 for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) { 
@@ -389,6 +390,33 @@ function func_xmllite
 
     foreach($i in 'xmllite') { dlloverride 'native' $i }
 } <# end xmllite #>
+
+function func_comctl32
+{
+    check_aik_sanity; $dldir = "aik70" <# There`s also other version 5.8 ?? #>
+    $60dlls = @( 'amd64_microsoft.windows.common-controls_6595b64144ccf1df_6.0.7600.16385_none_fa645303170382f6/comctl32.dll', `
+                 'x86_microsoft.windows.common-controls_6595b64144ccf1df_6.0.7600.16385_none_421189da2b7fabfc/comctl32.dll') ` 
+
+    foreach ($i in $60dlls) {
+        if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
+        if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])}} quit?('7z')
+
+$regkey = @"
+REGEDIT4
+[HKEY_CURRENT_USER\Software\Wine\AppDefaults\explorer.exe\DllOverrides]
+"comctl32"="builtin"
+[HKEY_CURRENT_USER\Software\Wine\AppDefaults\winecfg.exe\DllOverrides]
+"comctl32"="builtin"
+[HKEY_CURRENT_USER\Software\Wine\AppDefaults\regedit.exe\DllOverrides]
+"comctl32"="builtin"
+"@
+    reg_edit $regkey
+
+    Remove-Item -Force $env:systemroot\winsxs\manifests\amd64_microsoft.windows.common-controls_6595b64144ccf1df_6.0.2600.2982_none_deadbeef.manifest -ErrorAction SilentlyContinue
+    Remove-Item -Force $env:systemroot\winsxs\manifests\x86_microsoft.windows.common-controls_6595b64144ccf1df_6.0.2600.2982_none_deadbeef.manifest -ErrorAction SilentlyContinue
+
+    foreach($i in 'comctl32') { dlloverride 'native' $i }
+} <# end comctl32 #>
 
 function func_wmp{ Write-Host $((Get-PSCallStack)[0].FunctionName.replace('func','regkey')) TODO, Nothing here yet ...}
 
