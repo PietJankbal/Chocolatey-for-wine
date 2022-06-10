@@ -8,7 +8,7 @@ function validate_param
  Param(
         [Parameter(Mandatory=$false)]
         [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', `
-                     'dxvk1101', 'hnetcfg', 'pwsh40', 'crypt32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'comctl32')]
+                     'dxvk1101', 'hnetcfg', 'pwsh40', 'crypt32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'comctl32', 'wsh57')]
         [string[]]$verb
       )
 }
@@ -36,6 +36,7 @@ $custom_array = @() # Creating an empty array to populate data in
                "msvbvm60", "msvbvm60",`
                "xmllite", "xmllite",`
                "windowscodecs", "windowscodecs",`
+               "wsh57", "MS Windows Script Host",`
                "comctl32", "dangerzone, only for testing, might break things, only use on a per app base",`
                "windows.ui.xaml", "windows.ui.xaml, experimental..."
 
@@ -104,7 +105,7 @@ function check_aik_sanity <# some sanity checks to see if cached files from wind
 function dlloverride
 {
      Param ($value, $dll)
-     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name $dll -Value $value -PropertyType 'String'
+     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name $dll -Value $value -PropertyType 'String' | Select $dll
 }
 
 function reg_edit
@@ -247,10 +248,35 @@ function func_ucrtbase
     7z e $env:TEMP\\$dldir\\32\\4.cab "-o$env:TEMP\\$dldir\\32" a10 -y | Select-String 'ok' ; quit?('7z')
 
     foreach ($i in 'ucrtbase.dll'){
-        7z e $env:TEMP\\$dldir\\64\\a10 "-o$env:systemroot\system32" $i -aoa | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
-        7z e $env:TEMP\\$dldir\\32\\a10 "-o$env:systemroot\syswow64" $i -aoa | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1]); quit?('7z') }
+        7z e $env:TEMP\\$dldir\\64\\a10 "-o$env:systemroot\system32" $i -aoa | Select-String 'ok'; quit?('7z')
+        7z e $env:TEMP\\$dldir\\32\\a10 "-o$env:systemroot\syswow64" $i -aoa | Select-String 'ok'; quit?('7z') }
     foreach($i in 'ucrtbase') { dlloverride 'native' $i }
 } <# end ucrtbase #>
+
+function func_vcrun2019
+{
+    func_ucrtbase
+    $dldir = "vcredist140"
+
+    if ( ![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $dldir,  "64", "VC_redist.x64.exe" ) ) -or 
+         ![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $dldir,  "32", "VC__redist.x86.exe") ) ) {
+        choco install vcredist140 -n
+        . $env:ProgramData\\chocolatey\\lib\\vcredist140\\tools\\data.ps1  #source the file via dot operator
+        w_download_to "vcredist140\\64" $installData64.url64 "VC_redist.x64.exe"
+        w_download_to "vcredist140\\32" $installData32.url VC__redist.x86.exe }
+    
+    7z -t# x $cachedir\\$dldir\\64\\VC_redist.x64.exe "-o$env:TEMP\\$dldir\\64" 4.cab -y | Select-String 'ok'; quit?('7z')
+    7z -t# x $cachedir\\$dldir\\32\\VC__redist.x86.exe "-o$env:TEMP\\$dldir\\32" 4.cab -y | Select-String 'ok'; quit?('7z')
+    7z e $env:TEMP\\$dldir\\64\\4.cab "-o$env:TEMP\\$dldir\\64" a12 -y | Select-String 'ok' ;quit?('7z')
+    7z e $env:TEMP\\$dldir\\64\\4.cab "-o$env:TEMP\\$dldir\\64" a13 -y | Select-String 'ok'; quit?('7z')
+    7z e $env:TEMP\\$dldir\\32\\4.cab "-o$env:TEMP\\$dldir\\32" a10 -y | Select-String 'ok'; quit?('7z')
+    7z e $env:TEMP\\$dldir\\32\\4.cab "-o$env:TEMP\\$dldir\\32" a11 -y | Select-String 'ok'; quit?('7z')
+    7z e $env:TEMP\\$dldir\\64\\a12 "-o$env:systemroot\\system32" -y | Select-String 'ok';
+    7z e $env:TEMP\\$dldir\\64\\a13 "-o$env:systemroot\\system32" -y | Select-String 'ok';
+    7z e $env:TEMP\\$dldir\\32\\a10 "-o$env:systemroot\\syswow64" -y | Select-String 'ok';
+    7z e $env:TEMP\\$dldir\\32\\a11 "-o$env:systemroot\\syswow64" -y | Select-String 'ok'; quit?('7z')
+    foreach($i in 'concrt140', 'msvcp140', 'msvcp140_1', 'msvcp140_2', 'vcruntime140', 'vcruntime140_1') { dlloverride 'native' $i }
+} <# end vcrun2019 #>
 
 function func_hnetcfg <# fix for https://bugs.winehq.org/show_bug.cgi?id=45432 #>
 {
@@ -263,29 +289,6 @@ function func_hnetcfg <# fix for https://bugs.winehq.org/show_bug.cgi?id=45432 #
     foreach($i in 'hnetcfg') { dlloverride 'native' $i }
 } <# end hnetcfg #>
 
-function func_vcrun2019
-{
-    func_ucrtbase
-    
-    choco install vcredist140 -n
-    . $env:ProgramData\\chocolatey\\lib\\vcredist140\\tools\\data.ps1  #source the file via dot operator
-    w_download_to "vcredist140\\64" $installData64.url64 "VC_redist.x64.exe"
-    w_download_to "vcredist140\\32" $installData32.url VC__redist.x86.exe
-    $dldir = "vcredist140"
-        
-    7z -t# x $cachedir\\$dldir\\64\\VC_redist.x64.exe "-o$env:TEMP\\$dldir\\64" 4.cab -y; quit?('7z')
-    7z -t# x $cachedir\\$dldir\\32\\VC__redist.x86.exe "-o$env:TEMP\\$dldir\\32" 4.cab -y; quit?('7z')
-    7z e $env:TEMP\\$dldir\\64\\4.cab "-o$env:TEMP\\$dldir\\64" a12 -y ;quit?('7z')
-    7z e $env:TEMP\\$dldir\\64\\4.cab "-o$env:TEMP\\$dldir\\64" a13 -y ;quit?('7z')
-    7z e $env:TEMP\\$dldir\\32\\4.cab "-o$env:TEMP\\$dldir\\32" a10 -y; quit?('7z')
-    7z e $env:TEMP\\$dldir\\32\\4.cab "-o$env:TEMP\\$dldir\\32" a11 -y; quit?('7z')
-    7z e $env:TEMP\\$dldir\\64\\a12 "-o$env:systemroot\\system32" -y; quit?('7z')
-    7z e $env:TEMP\\$dldir\\64\\a13 "-o$env:systemroot\\system32" -y; quit?('7z')
-    7z e $env:TEMP\\$dldir\\32\\a10 "-o$env:systemroot\\syswow64" -y; quit?('7z')
-    7z e $env:TEMP\\$dldir\\32\\a11 "-o$env:systemroot\\syswow64" -y; quit?('7z')
-    foreach($i in 'concrt140', 'msvcp140', 'msvcp140_1', 'msvcp140_2', 'vcruntime140', 'vcruntime140_1') { dlloverride 'native' $i }
-} <# end vcrun2019 #>
-
 function func_dxvk1101
 {
     $dldir = "dxvk1101"
@@ -296,6 +299,41 @@ function func_dxvk1101
     7z e $env:TEMP\\dxvk-1.10.1.tar "-o$env:systemroot\\syswow64" dxvk-1.10.1/x32 -y;
     foreach($i in 'dxgi', 'd3d9', 'd3d10_1', 'd3d10core', 'd3d10', 'd3d11') { dlloverride 'native' $i }
 } <# end dxvk1101 #>
+
+function func_wsh57
+{
+    check_aik_sanity; $dldir = "aik70"
+    $dlls = @( 'amd64_microsoft-windows-scripting_31bf3856ad364e35_6.1.7600.16385_none_a45d44bd1a0af822/wshom.ocx',`
+               'amd64_microsoft-windows-scripting_31bf3856ad364e35_6.1.7600.16385_none_a45d44bd1a0af822/wscript.exe',`
+               'amd64_microsoft-windows-scripting_31bf3856ad364e35_6.1.7600.16385_none_a45d44bd1a0af822/cscript.exe',`
+               'amd64_microsoft-windows-scripting_31bf3856ad364e35_6.1.7600.16385_none_a45d44bd1a0af822/wshcon.dll',`
+               'amd64_microsoft-windows-scripting_31bf3856ad364e35_6.1.7600.16385_none_a45d44bd1a0af822/scrrun.dll',`
+               'amd64_microsoft-windows-scripting_31bf3856ad364e35_6.1.7600.16385_none_a45d44bd1a0af822/scrobj.dll',`
+               'amd64_microsoft-windows-scripting_31bf3856ad364e35_6.1.7600.16385_none_a45d44bd1a0af822/dispex.dll',`
+               'amd64_microsoft-windows-scripting-vbscript_31bf3856ad364e35_6.1.7600.16385_none_a44ef4f6479809f0/vbscript.dll',`
+               'amd64_microsoft-windows-scripting-jscript_31bf3856ad364e35_8.0.7600.16385_none_f98f217587d75631/jscript.dll',`
+               'x86_microsoft-windows-scripting_31bf3856ad364e35_6.1.7600.16385_none_483ea93961ad86ec/wshom.ocx',`
+               'x86_microsoft-windows-scripting_31bf3856ad364e35_6.1.7600.16385_none_483ea93961ad86ec/wscript.exe',`
+               'x86_microsoft-windows-scripting_31bf3856ad364e35_6.1.7600.16385_none_483ea93961ad86ec/cscript.exe',`
+               'x86_microsoft-windows-scripting_31bf3856ad364e35_6.1.7600.16385_none_483ea93961ad86ec/wshcon.dll',`
+               'x86_microsoft-windows-scripting_31bf3856ad364e35_6.1.7600.16385_none_483ea93961ad86ec/scrrun.dll',`
+               'x86_microsoft-windows-scripting_31bf3856ad364e35_6.1.7600.16385_none_483ea93961ad86ec/scrobj.dll',`
+               'x86_microsoft-windows-scripting_31bf3856ad364e35_6.1.7600.16385_none_483ea93961ad86ec/dispex.dll',`
+               'x86_microsoft-windows-scripting-vbscript_31bf3856ad364e35_6.1.7600.16385_none_483059728f3a98ba/vbscript.dll',`
+               'x86_microsoft-windows-scripting-msscript_31bf3856ad364e35_6.1.7600.16385_none_90381958050e76f8/msscript.ocx',`
+               'x86_microsoft-windows-scripting-jscript_31bf3856ad364e35_8.0.7600.16385_none_9d7085f1cf79e4fb/jscript.dll')
+		  
+    foreach ($i in $dlls) {
+        if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_SCRIPTING.CAB "-o$env:systemroot\\system32" $i -y | Select-String 'ok' }
+        if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_SCRIPTING.CAB "-o$env:systemroot\\syswow64" $i -y | Select-String 'ok' }} quit?('7z')
+
+    foreach($i in 'dispex.dll', 'jscript.dll', 'scrobj.dll', 'scrrun.dll', 'vbscript.dll', 'msscript.ocx', 'wshom.ocx', 'wscript.exe', 'cscript.exe') { dlloverride 'native' $i }
+
+    foreach($i in 'msscript.ocx', 'jscript.dll', 'scrobj.dll', 'scrrun.dll', 'vbscript.dll', 'wshcon.dll', 'wshom.ocx', 'dispex.dll') {
+        & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\$i"
+        & "$env:systemroot\\system32\\regsvr32"  "$env:systemroot\\system32\\$i" }
+
+} <# end wsh57 #>
 
 function func_msado15
 {
