@@ -38,7 +38,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
 
     lstrcatW(conemu_pathW, L"\\ConEmu\\ConEmu.exe");
     lstrcatW(pwsh_pathW, L"\\Powershell\\7\\pwsh.exe");
-
+    /* Download and Install */
     memset( &si, 0, sizeof( STARTUPINFO )); si.cb = sizeof( STARTUPINFO ); memset( &pi, 0, sizeof( PROCESS_INFORMATION ) );
     if ( !wcsncmp ( &argv[0][lstrlenW(argv[0])-25] , L"ChoCinstaller_" , 14 ) )
     {    
@@ -70,7 +70,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
 
         memset( &si, 0, sizeof( STARTUPINFO )); si.cb = sizeof( STARTUPINFO ); memset( &pi, 0, sizeof( PROCESS_INFORMATION ));
         GetTempPathW( MAX_PATH, tmpW );
-        CreateProcessW(lstrcatW( msiexecW, L"\\msiexec.exe" ), lstrcatW( bufW, lstrcatW( lstrcatW( tmpW, msiW ) , L" /q" ) ), 0, 0, 0, HIGH_PRIORITY_CLASS, 0, 0, &si, &pi);
+        CreateProcessW(lstrcatW( msiexecW, L"\\msiexec.exe" ), lstrcatW( bufW, lstrcatW( lstrcatW( tmpW, msiW ) , L" ENABLE_PSREMOTING=1 REGISTER_MANIFEST=0 /q" ) ), 0, 0, 0, HIGH_PRIORITY_CLASS, 0, 0, &si, &pi);
         WaitForSingleObject( pi.hProcess, INFINITE ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );   
 
         memset( &si, 0, sizeof( STARTUPINFO ) ); si.cb = sizeof( STARTUPINFO ); memset( &pi , 0, sizeof( PROCESS_INFORMATION ) );
