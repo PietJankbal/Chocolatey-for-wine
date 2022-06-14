@@ -36,7 +36,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
     if(!ExpandEnvironmentStringsW(L"%ProgramW6432%", pwsh_pathW, MAX_PATH+1)) goto failed; /* win32 only apparently, not supported... */
     if(!ExpandEnvironmentStringsW(L"%SystemDrive%", conemu_pathW, MAX_PATH+1)) goto failed;
 
-    lstrcatW(conemu_pathW, L"\\ConEmu\\ConEmu.exe");
+    lstrcatW(conemu_pathW, L"\\ConEmu\\ConEmu64.exe");
     lstrcatW(pwsh_pathW, L"\\Powershell\\7\\pwsh.exe");
     /* Download and Install */
     memset( &si, 0, sizeof( STARTUPINFO )); si.cb = sizeof( STARTUPINFO ); memset( &pi, 0, sizeof( PROCESS_INFORMATION ) );
