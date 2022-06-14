@@ -1,3 +1,325 @@
+################################################################################################################### 
+#                                                                                                                 #
+#  Miscellaneous registry keys                                                                                    #
+#                                                                                                                 #
+###################################################################################################################
+$misc_reg = @'
+REGEDIT4
+[HKEY_CURRENT_USER\Software\Wine\DllOverrides]
+"mscorwks"="native"
+"mscoree"="native"
+"d3dcompiler_47"="native"
+"d3dcompiler_43"="native"
+"wusa.exe"="native"
+"tasklist.exe"="native"
+"schtasks.exe"="native"
+"robocopy.exe"="native"
+"systeminfo.exe"="native"
+"wmic.exe"="native"
+
+[HKEY_CURRENT_USER\Software\Wine\AppDefaults\conemu64.exe]
+
+[HKEY_CURRENT_USER\Software\Wine\AppDefaults\conemu64.exe\DllOverrides]
+"dwmapi"=""
+"user32"="builtin"
+
+[HKEY_CURRENT_USER\Software\Wine\AppDefaults\pwsh.exe]
+
+[HKEY_CURRENT_USER\Software\Wine\AppDefaults\pwsh.exe\DllOverrides]
+"amsi"=""
+"dwmapi"=""
+
+[HKEY_LOCAL_MACHINE\Software\Microsoft\.NETFramework]
+"OnlyUseLatestCLR"=dword:00000001
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\.NETFramework\Policy\v2.0]
+"50727"="50727-50727"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\NET Framework Setup\NDP\v3.0]
+"Install"=dword:0x00000001
+"SP"=dword:0x00000002
+"Version"="3.2.30729"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\NET Framework Setup\NDP\v3.0\Setup]
+"InstallSuccess"=dword:0x00000001
+"Version"="3.2.30729"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\NET Framework Setup\NDP\v3.5]
+"Install"=dword:0x00000001
+"SP"=dword:0x00000001
+"Version"="3.5.30729.4926"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\NET Framework Setup\NDP\v3.5\1033]
+"Install"=dword:0x00000001
+
+[HKEY_CURRENT_USER\Software\Microsoft\Avalon.Graphics]
+"DisableHWAcceleration"=dword:00000000
+
+[HKEY_CLASSES_ROOT\CCWU.ComCallWrapper.1\CLSID]
+@="{3F281000-E95A-11d2-886B-00C04F869F04}"
+
+[HKEY_CLASSES_ROOT\CCWU.ComCallWrapper.1]
+@="Com Call Wrapper Unmarshal Class"
+
+[HKEY_CLASSES_ROOT\CCWU.ComCallWrapper\CLSID]
+@="{3F281000-E95A-11d2-886B-00C04F869F04}"
+
+[HKEY_CLASSES_ROOT\CCWU.ComCallWrapper]
+@="Com Call Wrapper Unmarshal Class"
+
+[HKEY_CLASSES_ROOT\CCWU.ComCallWrapper\CurVer]
+@="CCWU.ComCallWrapper.1"
+
+[HKEY_CLASSES_ROOT\CLSID\{1D2680C9-0E2A-469d-B787-065558BC7D43}\Implemented Categories\{62C8FE65-4EBB-45E7-B440-6E39B2CDBF29}]
+
+[HKEY_CLASSES_ROOT\CLSID\{1D2680C9-0E2A-469d-B787-065558BC7D43}]
+"InfoTip"=".NET Framework Assemblies"
+@="Fusion Cache"
+
+[HKEY_CLASSES_ROOT\CLSID\{1D2680C9-0E2A-469d-B787-065558BC7D43}\InprocServer32]
+@="c:\\windows\\system32\\mscoree.dll"
+"ThreadingModel"="Apartment"
+
+[HKEY_CLASSES_ROOT\CLSID\{1D2680C9-0E2A-469d-B787-065558BC7D43}\Server]
+@="Shfusion.dll"
+
+[HKEY_CLASSES_ROOT\CLSID\{1D2680C9-0E2A-469d-B787-065558BC7D43}\shellex\ContextMenuHandlers\{1D2680C9-0E2A-469d-B787-065558BC7D43}]
+
+[HKEY_CLASSES_ROOT\CLSID\{1D2680C9-0E2A-469d-B787-065558BC7D43}\ShellFolder]
+"Attributes"=hex:00,01,10,F0
+
+[HKEY_CLASSES_ROOT\CLSID\{1EC2DE53-75CC-11d2-9775-00A0C9B4D50C}\Implemented Categories\{62C8FE65-4EBB-45E7-B440-6E39B2CDBF29}]
+
+[HKEY_CLASSES_ROOT\CLSID\{1EC2DE53-75CC-11d2-9775-00A0C9B4D50C}\NotInsertable]
+
+[HKEY_CLASSES_ROOT\CLSID\{3F281000-E95A-11d2-886B-00C04F869F04}]
+@="Com Call Wrapper Unmarshal Class"
+
+[HKEY_CLASSES_ROOT\CLSID\{3F281000-E95A-11d2-886B-00C04F869F04}\Implemented Categories\{62C8FE65-4EBB-45E7-B440-6E39B2CDBF29}]
+
+[HKEY_CLASSES_ROOT\CLSID\{3F281000-E95A-11d2-886B-00C04F869F04}\InprocServer32]
+"ThreadingModel"="Both"
+@="c:\\windows\\system32\\mscoree.dll"
+
+[HKEY_CLASSES_ROOT\CLSID\{3F281000-E95A-11d2-886B-00C04F869F04}\NotInsertable]
+
+[HKEY_CLASSES_ROOT\CLSID\{3F281000-E95A-11d2-886B-00C04F869F04}\ProgID]
+@="CCWU.ComCallWrapper.1"
+
+[HKEY_CLASSES_ROOT\CLSID\{3F281000-E95A-11d2-886B-00C04F869F04}\VersionIndependentProgID]
+@="CCWU.ComCallWrapper"
+
+[HKEY_CLASSES_ROOT\CLSID\{CB2F6723-AB3A-11d2-9C40-00C04FA30A3E}\Implemented Categories\{62C8FE65-4EBB-45E7-B440-6E39B2CDBF29}]
+
+[HKEY_CLASSES_ROOT\CLSID\{CB2F6723-AB3A-11d2-9C40-00C04FA30A3E}]
+@="Microsoft Common Language Runtime Meta Data"
+
+[HKEY_CLASSES_ROOT\CLSID\{CB2F6723-AB3A-11d2-9C40-00C04FA30A3E}\NotInsertable]
+
+[HKEY_CLASSES_ROOT\CLSID\{E5CB7A31-7512-11D2-89CE-0080C792E5D8}\Implemented Categories\{62C8FE65-4EBB-45E7-B440-6E39B2CDBF29}]
+
+[HKEY_CLASSES_ROOT\CLSID\{E5CB7A31-7512-11D2-89CE-0080C792E5D8}]
+"MasterVersion"=dword:0x00000002
+
+[HKEY_CLASSES_ROOT\CLSID\{E5CB7A31-7512-11D2-89CE-0080C792E5D8}\NotInsertable]
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Classes\CLSID\{0A29FF9E-7F9C-4437-8B11-F424491E3931}\InprocServer32]
+@="C:\\Windows\\System32\\mscoree.dll"
+"ThreadingModel"="Both"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Classes\CLSID\{0A29FF9E-7F9C-4437-8B11-F424491E3931}]
+@="NDP SymBinder"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Classes\CLSID\{0A29FF9E-7F9C-4437-8B11-F424491E3931}\ProgID]
+@="CorSymBinder_SxS"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Classes\CLSID\{0A29FF9E-7F9C-4437-8B11-F424491E3931}\Server]
+@="diasymreader.dll"
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Application\.NET Runtime]
+"TypesSupported"=dword:0x00000007
+
+'@
+################################################################################################################### 
+#                                                                                                                 #
+#  profile.ps1: Put workarounds/hacks here. It goes into Program Files\\Powershell\\7\\profile.ps1                #
+#                                                                                                                 #
+###################################################################################################################
+$profile_ps1 = @'
+#Put workarounds/hacks here.../Adjust to your own needs. It goes into c:\\Program Files\\Powershell\\7\\profile.ps1
+
+#Remove ~/Documents/Powershell/Modules from modulepath; it becomes a mess because it`s not removed when one deletes the wineprefix... 
+$path = $env:PSModulePath -split ';'
+$env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -join ';'
+
+$profile = '$env:ProgramFiles\PowerShell\7\profile.ps1'
+
+#Set-PSReadlineKeyHandler -Key Tab -Function MenuComplete
+
+# Enable Chocolatey profile
+$ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+if (Test-Path($ChocolateyProfile)) {
+    Import-Module "$ChocolateyProfile"
+}
+
+#Register-WMIEvent not available in PS Core, so for now just change into noop
+function Register-WMIEvent {
+    exit 0
+}
+
+#Based on Get-WmiCustom by Daniele Muscetta, so credits to aforementioned author (https://www.powershellgallery.com/packages/Traverse/0.6/Content/Private%5CGet-WMICustom.ps1)
+#Only works as of wine-6.20 ( https://bugs.winehq.org/show_bug.cgi?id=51871) e.g. (new-object System.Management.ManagementObjectSearcher("SELECT * FROM Win32_Bios")).Get().manufacturer failed before
+#Examples of usage: Get-WmiObject win32_operatingsystem version or $(Get-WmiObject win32_videocontroller).name etc.
+#TODO: very short: ([wmiclass]"\\.\root\cimv2:win32_bios").GetInstances()
+Function Get-WmiObject([parameter(mandatory)] [string]$class, [string[]]$property="*", `
+                       [string]$computername = "localhost", [string]$namespace = "root\cimv2", `
+                       [string]$filter)
+{   <# Do not remove or change, it will break Chocolatey #>
+    $ConnectionOptions = new-object System.Management.ConnectionOptions
+    $assembledpath = "\\" + $computername + "\" + $namespace
+    
+    $Scope = new-object System.Management.ManagementScope $assembledpath, $ConnectionOptions
+    $Scope.Connect() 
+    
+    $querystring = "SELECT " +  $property + " FROM " + $class
+    $query = new-object System.Management.ObjectQuery $querystring
+    $searcher = new-object System.Management.ManagementObjectSearcher
+    $searcher.Query = $querystring
+    $searcher.Scope = $Scope 
+
+    [System.Management.ManagementObjectCollection]$result = $searcher.get()
+
+    if (!$filter) {
+        return $result 
+    }
+    else {
+        $hashtable = ConvertFrom-StringData -StringData $filter
+        return $result | where $hashtable.Keys -eq $hashtable.Values
+    }
+}
+
+Function Get-CIMInstance ( [parameter(position=0)] [string]$classname, [string[]]$property="*")
+{
+     Get-WMIObject $classname -property $property
+} 
+ 
+#Example (works on windows,requires admin rights): Set-WmiInstance -class win32_operatingsystem -arguments @{"description" = "MyDescription"}
+#Based on https://devblogs.microsoft.com/scripting/use-the-set-wmiinstance-powershell-cmdlet-to-ease-configuration/
+Function Set-WmiInstance( [string]$class, [hashtable]$arguments, [string]$computername = "localhost", `
+                          [string]$namespace = "root\cimv2" <#, [string]$path #>)
+{
+    $assembledpath = "\\" + $computername + "\" + $namespace + ":" + $class
+    $obj = ([wmiclass]"$assembledpath").CreateInstance()
+
+    foreach ($h in $arguments.GetEnumerator()) {
+        $obj.$($h.Name) = $($h.Value)
+    }
+    $result = $obj.put()
+
+    return $result.Path
+}
+
+function check_busybox {
+    if (!([System.IO.File]::Exists("$env:systemdrive\\ProgramData\\chocolatey\\bin\\busybox64.exe "))){ choco install Busybox -y }
+}
+
+<# A few Unix commands I find handy, just remove stuff below if you don`t want it #>
+function du   { check_busybox; Busybox64.exe du $args}
+function df   { check_busybox; Busybox64.exe df $args}
+function wget { check_busybox; Busybox64.exe wget $args}
+function grep { check_busybox; Busybox64.exe grep $args}
+function bash { check_busybox; Busybox64.exe bash $args}
+<# A few from NoPowerShell, Powershell Core does't have these #>
+function Resolve-DnsName    { NoPowerShell.exe Resolve-DnsName $args    }
+function Invoke-WmiMethod   { NoPowerShell.exe Invoke-WmiMethod $args   }
+function Get-NetIPAddress   { NoPowerShell.exe Get-NetIPAddress $args   }
+function Get-NetRoute       { NoPowerShell.exe Get-NetRoute $args       }
+function Test-NetConnection { NoPowerShell.exe Test-NetConnection $args }
+function Get-Computerinfo   { NoPowerShell.exe Get-Computerinfo $args   }
+
+function winetricks {
+     if (!([System.IO.File]::Exists("$env:systemdrive\\winetricks.ps1"))){
+         (New-Object System.Net.WebClient).DownloadFile('https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/winetricks.ps1', "$env:systemdrive\\winetricks.ps1")
+     }
+     pwsh -f  $( Join-Path ${env:\\systemdrive} "winetricks.ps1")   $args
+}
+
+# Query program replacement for wusa.exe; Do not remove or change, it will break Chocolatey
+Set-Alias "QPR.$env:systemroot\system32\wusa.exe" QPR_wusa; Set-Alias QPR.wusa.exe QPR_wusa; Set-Alias QPR.wusa QPR_wusa
+function QPR_wusa { <# wusa.exe replacement #>
+     Write-Host "This is wusa dummy doing nothing..."
+     exit 0;
+}
+
+# Note: Following overrides wine(-staging)`s tasklist so remove stuff below if you don`t want that, and remove native override in winecfg 
+Set-Alias "QPR.$env:systemroot\system32\tasklist.exe" QPR_tl; Set-Alias QPR.tasklist.exe QPR_tl; Set-Alias QPR.tasklist QPR_tl
+function QPR_tl { <# tasklist.exe replacement #>
+    Get-WmiObject win32_process "processid,name" | Format-Table -Property Name, processid -autosize
+}
+
+function use_google_as_browser { <# replace winebrowser with google chrome to open webpages #>
+    if (!([System.IO.File]::Exists("$env:ProgramFiles\Google\Chrome\Application\Chrome.exe"))){ choco install googlechrome}
+
+$regkey = @"
+REGEDIT4
+[HKEY_CLASSES_ROOT\https\shell\open\command]
+@="\"%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe\" \"%1\""
+[HKEY_CLASSES_ROOT\http\shell\open\command]
+@="\"%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe\" \"%1\""
+"@
+
+    $regkey | Out-File -FilePath $env:TEMP\\regkey.reg
+    reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:64;
+    reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:32;
+}
+
+Set-Alias "QPR.$env:systemroot\system32\systeminfo.exe" QPR_si; Set-Alias QPR.systeminfo.exe QPR_si; Set-Alias QPR.systeminfo QPR_si
+function QPR_si { <# systeminfo replacement #>
+    NoPowerShell.exe systeminfo
+}
+
+#If passing back (manipulated) arguments back to the same program, make sure to backup a copy (here QPR.schtasks.exe, copied during installation)
+Set-Alias "QPR.$env:systemroot\system32\schtasks.exe" QPR_stsk; Set-Alias QPR.schtasks.exe QPR_stsk; Set-Alias QPR.schtasks QPR_stsk
+function QPR_stsk { <# schtasks.exe replacement #>
+    $spl = $args.Split(" ")
+    if ($args | Select-string '/CREATE') { <# Just execute this stuff instantly #>
+        Start-Process $spl[$spl.IndexOf("/TR") + 1] } <# hack for Spotify #>
+    else {
+        Start-Process -Wait -NoNewWindow QPR.schtasks.exe $args }
+}
+
+Set-Alias "QPR.$env:systemroot\system32\wbem\wmic.exe" QPR_wmic; Set-Alias QPR.wmic.exe QPR_wmic; Set-Alias QPR.wmic QPR_wmic
+function QPR_wmic { <# wmic replacement #>
+    [CmdletBinding()]
+        Param([parameter(Position=0)][string]$alias,
+        [parameter(Position=1)][string]$option, <# only 'get' supported, param not used at all a.t.m. #>
+        [parameter(Position=2)][string[]]$property="*")
+
+    $hash = @{
+        'os' = "win32_operatingsystem"
+        'bios' = "win32_bios"
+        'logicaldisk' = "win32_logicaldisk"
+        'process' = "win32_process" } <# etc. etc. #>
+
+    foreach ($key in $hash.keys) {
+         if($alias -eq $key) {$class = $hash[$key];} }
+    <# Syntax example from NopowerShell: "gwmi "Select ProcessId,Name,CommandLine From Win32_Process" #>
+    $query = 'Select' + ' ' + ($property -join ',') + ' ' + 'From' + ' ' + $class
+    #get-wmiobject win32_logicaldisk |where @"deviceid"='c:'" |select-object freespace
+    NoPowerShell.exe Get-WMIObject "$query" 
+} 
+#Easy access to the C# compiler
+Set-Alias csc c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
+
+function apply_conemu_hack { New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ConEmu64.exe\\DllOverrides' -force -Name 'user32' -Value 'native' -PropertyType 'String' && Stop-Process -name conemu64 && Stop-Process -name conemuC64 && Start-Process "powershell" -NoNewWindow }
+function handy_apps { choco install explorersuite reactos-paint}
+'@
+################################################################################################################### 
+#                                                                                                                 #
+#  Install ConEmu, Chocolatey, dotnet48, arial, d3dcompiler_47 and a few extras (nopowershell and wine robocopy)  #
+#                                                                                                                 #
+###################################################################################################################
+
     (New-Object System.Net.WebClient).DownloadFile('https://conemu.github.io/install2.ps1', $(Join-Path "$env:TEMP" 'install2.ps1') )
     Invoke-Expression  $(cat $(Join-Path "$env:TEMP" 'install2.ps1') | Select-string 'url_7za =')  <# Get the 7za.exe downloadlink from install2.ps1 file #>
     (New-Object System.Net.WebClient).DownloadFile($url_7za, $(Join-Path "$env:TEMP" '7za.exe') )
@@ -33,14 +355,14 @@
         &{c:\\windows\\system32\\msiexec.exe  /i $C_TMP\\netfx_Full_x64.msi EXTUI=1 /sfxlang:1033 /q /norestart} ;Get-Process 'msiexec' -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit()}
     }
     
-    Copy-Item $(Join-Path $args[0] "misc.reg") $env:TEMP
-    Copy-Item $(Join-Path $args[0] "profile.ps1") $env:TEMP
-    Copy-Item $(Join-Path $args[0] "profile.ps1") $(Join-Path $(Split-Path -Path (Get-Process -Id $pid).Path) "profile.ps1") <# Copy profile.ps1 to Powershell directory #>
+    $misc_reg | Out-File $env:TEMP\\misc.reg
+    $profile_ps1 | Out-File $env:TEMP\\profile.ps1
+    $profile_ps1 | Out-File $(Join-Path $(Split-Path -Path (Get-Process -Id $pid).Path) "profile.ps1") <# Write profile.ps1 to Powershell directory #>
 
     <# Install Chocolatey #>
     Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
     <# This makes Astro Photography Tool happy #>
-    foreach($i in 'regasm.exe', 'InstallUtil.exe', 'InstallUtil.exe.config', 'InstallUtilLib.dll') { 
+    foreach($i in 'regasm.exe') { 
         Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\$i
         Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework64\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\$i}
       <# Many programs need arial and native d3dcompiler_47, so install it #>
@@ -234,10 +556,8 @@
     ForEach ($file in "schtasks.exe") {
         Copy-Item -Path "$env:windir\\SysWOW64\\$file" -Destination "$env:windir\\SysWOW64\\QPR.$file" -Force
         Copy-Item -Path "$env:winsysdir\\$file" -Destination "$env:winsysdir\\QPR.$file" -Force}
-    ForEach ($file in "wusa.exe","tasklist.exe","winebrowser.exe","schtasks.exe","systeminfo.exe","wbem\\wmic.exe") {
+    ForEach ($file in "wusa.exe","tasklist.exe","schtasks.exe","systeminfo.exe","wbem\\wmic.exe") {
         Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\$file" -Force
         Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\$file" -Force}
-    <# NexusTK checks for this key #>
-    New-Item -Path "$env:SystemRoot\Microsoft.NET\Framework64" -Name "v3.5" -ItemType "directory" -ErrorAction SilentlyContinue <# for NexusTK #>
-    New-Item -Path "$env:SystemRoot\Microsoft.NET\Framework" -Name "v3.5" -ItemType "directory" -ErrorAction SilentlyContinue
+    <# It seems some programs need this dir?? #>
     New-Item -Path "$env:LOCALAPPDATA" -Name "Temp" -ItemType "directory" -ErrorAction SilentlyContinue
