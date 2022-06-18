@@ -29,6 +29,6 @@ Notes:
 
     x86_64-w64-mingw32-gcc -municode -mconsole mainv1.c -lurlmon -lshlwapi -s -o ChoCinstaller_0.3.703.exe
     
-    - Then copy choc_install.ps1 into the same directory
-    - Then do 'wine ChoCinstaller_0.3.703.exe'
+  - Then copy choc_install.ps1 into the same directory
+  - Then do 'wine ChoCinstaller_0.3.703.exe'
   
