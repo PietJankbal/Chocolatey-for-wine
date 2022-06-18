@@ -1,6 +1,6 @@
 ################################################################################################################### 
 #                                                                                                                 #
-#  Miscellaneous registry keys                                                                                    #
+#  Miscellaneous registry keys, mainly from mscoree manifest so we can skip dotnet40 install                      #
 #                                                                                                                 #
 ###################################################################################################################
 $misc_reg = @'
@@ -139,10 +139,16 @@ REGEDIT4
 [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Application\.NET Runtime]
 "TypesSupported"=dword:0x00000007
 
+[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Fonts]
+"Arial (TrueType)"="arial.ttf"
+"Arial Bold (TrueType)"="arialbd.ttf"
+"Arial Bold Italic (TrueType)"="arialbi.ttf"
+"Arial Italic (TrueType)"="ariali.ttf"
+
 '@
 ################################################################################################################### 
 #                                                                                                                 #
-#  profile.ps1: Put workarounds/hacks here. It goes into Program Files\\Powershell\\7\\profile.ps1                #
+#  profile.ps1: Put workarounds/hacks here. It goes into c:\\Program Files\\Powershell\\7\\profile.ps1            #
 #                                                                                                                 #
 ###################################################################################################################
 $profile_ps1 = @'
@@ -316,7 +322,7 @@ function handy_apps { choco install explorersuite reactos-paint}
 '@
 ################################################################################################################### 
 #                                                                                                                 #
-#  Install ConEmu, Chocolatey, dotnet48, arial, d3dcompiler_47 and a few extras (nopowershell and wine robocopy)  #
+#  Install dotnet48, ConEmu, Chocolatey, arial, d3dcompiler_47 and a few extras (nopowershell and wine robocopy)  #
 #                                                                                                                 #
 ###################################################################################################################
 
@@ -332,7 +338,7 @@ function handy_apps { choco install explorersuite reactos-paint}
 
        $url = @('http://download.windowsupdate.com/msdownload/update/software/crup/2010/06/windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', `
                  'https://mirrors.kernel.org/gentoo/distfiles/arial32.exe', `
-                 'https://mirrors.kernel.org/gentoo/distfiles/arialb32.exe', `
+#                'https://mirrors.kernel.org/gentoo/distfiles/arialb32.exe', `
                  'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47.dll', `
                  'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47_32.dll' `
                  ) `
@@ -343,7 +349,7 @@ function handy_apps { choco install explorersuite reactos-paint}
        Start-Process -FilePath $env:TEMP\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\dotnet40\\Windows6.1-KB958488-x64.cab -o$env:TEMP\\dotnet40 x86_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_7daed23956119a9f/mscoree.dll"; `
        Start-Process -FilePath $env:TEMP\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\dotnet40\\Windows6.1-KB958488-x64.cab -o$env:TEMP\\dotnet40 amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5/mscoree.dll";`
        Start-Process -FilePath $env:TEMP\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $(Join-Path $args[0] 'EXTRAS\wine_robocopy.7z') -o$env:TEMP"; `
-       Start-Process -FilePath $env:TEMP\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $(Join-Path $args[0] 'EXTRAS\wine_user32_for_conemu_hack_for_wine7_9.7z') -o$env:TEMP" `
+       Start-Process -FilePath $env:TEMP\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $(Join-Path $args[0] 'EXTRAS\wine_user32_for_conemu_hack_for_wine7_11.7z') -o$env:TEMP" `
 
 
        & $env:TEMP\\install2.ps1  <# ConEmu install #>
@@ -361,14 +367,6 @@ function handy_apps { choco install explorersuite reactos-paint}
 
     <# Install Chocolatey #>
     Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
-    <# This makes Astro Photography Tool happy #>
-    foreach($i in 'regasm.exe') { 
-        Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\$i
-        Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework64\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\$i}
-      <# Many programs need arial and native d3dcompiler_47, so install it #>
-    start-threadjob -throttle 2 -ScriptBlock {Start-Process -FilePath "$C_TMP\\arial32.exe" -Wait -ArgumentList  "-q" }
-    start-threadjob -throttle 2 -ScriptBlock {Start-Process -FilePath "$C_TMP\\arialb32.exe" -Wait -ArgumentList  "-q" }
-
     <# dotnet40: we (probably) only need mscoree.dll from winetricks dotnet40 recipe, so just copy it and write registry values from it`s manifest file. This saves quite some time!#>
     Copy-Item -Path "$C_TMP\\dotnet40\\x86_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_7daed23956119a9f/mscoree.dll" -Destination "$env:systemroot\\syswow64\\" -Force
     Copy-Item -Path "$C_TMP\\dotnet40\\amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5/mscoree.dll" -Destination "$env:systemroot\\system32\\" -Force
@@ -533,6 +531,18 @@ function handy_apps { choco install explorersuite reactos-paint}
     <# Dismiss ConEmu's fast configuration window by hitting enter #>
     [Synthesize_Keystrokes]::SendKeyStroke()
 
+    <# This makes Astro Photography Tool happy #>
+    foreach($i in 'regasm.exe') { 
+        Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\$i
+        Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework64\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\$i}
+    <# Many programs need arial and native d3dcompiler_47, so install it #>
+    foreach($i in 'arial.ttf', 'ariali.ttf', 'arialbi.ttf', 'arialbd.ttf') { <# fixme?: also install arial32b.exe (ariblk.ttf "Arial Black)??? #>
+        Start-Process $env:TEMP\\7za.exe -NoNewWindow -Wait -ArgumentList "e $env:TEMP\\arial32.exe -o$env:systemroot\Fonts $i -aoa" } 
+    Copy-Item -Path "$C_TMP\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_47.dll" -Force
+    Copy-Item -Path "$C_TMP\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_43.dll" -Force
+    Copy-Item -Path "$C_TMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_47.dll" -Force
+    Copy-Item -Path "$C_TMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_43.dll" -Force
+
     <# fragile test...; Download and 'install' NoPowerShell.exe which has some extra Powershell cmdlets #>
     if (!(Test-Path -Path "$env:WINEHOMEDIR\.cache\choc_install_files\netfx_Full_x64.msi".substring(4) -PathType Leaf)) {
         (New-Object System.Net.WebClient).DownloadFile('https://github.com/bitsadmin/nopowershell/releases/download/1.23/NoPowerShell_trunk.zip', $(Join-Path "$env:TEMP" 'NoPowerShell_trunk.zip') )
@@ -546,12 +556,8 @@ function handy_apps { choco install explorersuite reactos-paint}
     <# wine robocopy and hack for ConEmu #>
     Copy-Item -Path "$C_TMP\\robocopy64.exe" -Destination "$env:SystemRoot\\System32\\robocopy.exe" -Force
     Copy-Item -Path "$C_TMP\\robocopy32.exe" -Destination "$env:SystemRoot\\syswow64\\robocopy.exe" -Force
-    Copy-Item -Path "$C_TMP\\user32_32.dll" -Destination "$env:SystemDrive\\ConEmu\\user32.dll" -Force
+    Copy-Item -Path "$C_TMP\\user32.dll" -Destination "$env:SystemDrive\\ConEmu\\user32.dll" -Force
 
-    Copy-Item -Path "$C_TMP\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_47.dll" -Force
-    Copy-Item -Path "$C_TMP\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_43.dll" -Force
-    Copy-Item -Path "$C_TMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_47.dll" -Force
-    Copy-Item -Path "$C_TMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_43.dll" -Force
     <# Replace some system programs by functions (in profile.ps1); This also makes wusa a dummy program: we don`t want windows updates and it doesn`t work anyway #>
     ForEach ($file in "schtasks.exe") {
         Copy-Item -Path "$env:windir\\SysWOW64\\$file" -Destination "$env:windir\\SysWOW64\\QPR.$file" -Force
