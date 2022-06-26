@@ -7,8 +7,8 @@ function validate_param
 [CmdletBinding()]
  Param(
         [Parameter(Mandatory=$false)]
-        [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', `
-                     'dxvk1101', 'hnetcfg', 'pwsh40', 'crypt32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'comctl32', 'wsh57')]
+        [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'd2d1',`
+                     'dxvk1101', 'hnetcfg', 'pwsh40', 'pwsh51', 'crypt32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'comctl32', 'wsh57')]
         [string[]]$verb
       )
 }
@@ -33,11 +33,13 @@ $custom_array = @() # Creating an empty array to populate data in
                "dxvk1101", "dxvk",`
                "crypt32", "crypt32 (and msasn1)",`
                "pwsh40", "rudimentary PowerShell 4.0 (downloads yet another huge amount of Mb`s!)",`
+               "pwsh51", "rudimentary PowerShell 5.1 (downloads yet another huge amount of Mb`s!)",`
                "msvbvm60", "msvbvm60",`
                "xmllite", "xmllite",`
                "windowscodecs", "windowscodecs",`
                "wsh57", "MS Windows Script Host",`
                "comctl32", "dangerzone, only for testing, might break things, only use on a per app base",`
+               "d2d1", "dangerzone, only for testing, might break things, only use on a per app base",`
                "windows.ui.xaml", "windows.ui.xaml, experimental..."
 
 for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) { 
@@ -199,6 +201,30 @@ function func_gdiplus
     foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }
     foreach($i in 'gdiplus') { dlloverride 'native' $i }  
 } <# end gdiplus #>
+
+function func_d2d1
+{
+    $url = "http://download.windowsupdate.com/d/msdownload/update/software/updt/2016/05/windows6.1-kb3125574-v4-x64_2dafb1d203c8964239af3048b5dd4b1264cd93b9.msu"
+    $cab = "Windows6.1-KB3125574-v4-x64.cab"
+    $sourcefile = @(`
+    'amd64_microsoft-windows-d2d_31bf3856ad364e35_7.1.7601.23403_none_f7c6a38a168dcfb8/d2d1.dll',`
+    'x86_microsoft-windows-d2d_31bf3856ad364e35_7.1.7601.23403_none_9ba808065e305e82/d2d1.dll'`
+   )
+
+    check_msu_sanity $url $cab; $dldir = $($url.split('/')[-1]) -replace '.msu',''
+
+    foreach ($i in $sourcefile) {
+        if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
+                    if( $i.SubString(0,3) -eq 'amd' ) {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) }
+                    if( $i.SubString(0,3) -eq 'x86' ) {<# Nothing to do #>}  }  }
+
+    foreach ($i in $sourcefile) {
+        if( $i.SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" -destination $env:systemroot\\system32\\$($i.split('/')[-1]) }
+        if( $i.SubString(0,3) -eq 'x86' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\syswow64\\$($i.split('/')[-1]) } } 
+
+    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }
+    foreach($i in 'd2d1') { dlloverride 'native' $i }  
+} <# end d2d1 #>
 
 function func_windows.ui.xaml <# experimental... #>
 {
@@ -554,7 +580,7 @@ REGEDIT4
     reg_edit $regkey
 } <# end mshtml #>
 
-function func_pwsh40 <# rudimentary powershell 4.0; do 'ps40 -h' for help #>
+function func_pwsh40 <# rudimentary powershell 4.0; do 'ps51 -h' for help #>
 {   
     $url = "http://download.windowsupdate.com/d/msdownload/update/software/updt/2016/05/windows6.1-kb3125574-v4-x64_2dafb1d203c8964239af3048b5dd4b1264cd93b9.msu"
     $cab = "Windows6.1-KB3125574-v4-x64.cab"
@@ -581,9 +607,11 @@ $regkey40 = @"
 REGEDIT4
 [HKEY_LOCAL_MACHINE\Software\Microsoft\PowerShell]
 [HKEY_LOCAL_MACHINE\Software\Microsoft\PowerShell\1]
+"Install"=dword:00000001
 [HKEY_LOCAL_MACHINE\Software\Microsoft\PowerShell\1\PowerShellEngine]
 "ApplicationBase"="C:\\Windows\\System32\\WindowsPowerShell\\v1.0"
 [HKEY_LOCAL_MACHINE\Software\Microsoft\PowerShell\3]
+"Install"=dword:00000001
 [HKEY_LOCAL_MACHINE\Software\Microsoft\PowerShell\3\PowerShellEngine]
 "ApplicationBase"="c:\\windows\\system32\\WindowsPowerShell\\v1.0"
 "@
@@ -759,8 +787,228 @@ namespace Powershdll
     &$env:systemroot\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /r:$env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\system.management.automation.dll `
         /out:$env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\ps40.exe "$env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\ps40.cs"
 
+    Copy-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\system.management.automation.dll" -Destination (New-item -Name "System.Management.Automation\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
+
     foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }      
 } <# end pwsh40 #>
+
+function func_pwsh51 <# rudimentary powershell 5.1; do 'ps51 -h' for help #>
+{   
+    $dldir = "pwsh51"
+    if ( ![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $dldir, "Windows6.1-KB3191566-x64.cab" ) ) ) {
+        w_download_to $dldir "https://download.microsoft.com/download/6/F/5/6F5FF66C-6775-42B0-86C4-47D41F2DA187/Win7AndW2K8R2-KB3191566-x64.zip" Win7AndW2K8R2-KB3191566-x64.zip
+        7z e $cachedir\\$dldir\\Win7AndW2K8R2-KB3191566-x64.zip "-o$cachedir\\$dldir" Win7AndW2K8R2-KB3191566-x64.msu -y | Select-String 'ok'; quit?('7z')
+        7z e $cachedir\\$dldir\\Win7AndW2K8R2-KB3191566-x64.msu "-o$cachedir\\$dldir" Windows6.1-KB3191566-x64.cab -y | Select-String 'ok'; quit?('7z')}
+
+    $cab = "Windows6.1-KB3191566-x64.cab"
+    $sourcefile = @(`
+    'msil_system.management.automation_31bf3856ad364e35_7.3.7601.16384_none_85266a48f56bfafc/system.management.automation.dll',`
+    'msil_microsoft.powershel..ommands.diagnostics_31bf3856ad364e35_7.3.7601.16384_none_3cbfce2c3881d318/microsoft.powershell.commands.diagnostics.dll',`
+    'msil_microsoft.powershell.commands.utility_31bf3856ad364e35_7.3.7601.16384_none_d96091fd5568ce18/microsoft.powershell.commands.utility.dll',`
+    'msil_microsoft.powershell.consolehost_31bf3856ad364e35_7.3.7601.16384_none_8634e813855724c9/microsoft.powershell.consolehost.dll',`
+    'msil_microsoft.powershell.commands.management_31bf3856ad364e35_7.3.7601.16384_none_c1a0335546714b23/microsoft.powershell.commands.management.dll',`
+    'msil_microsoft.management.infrastructure_31bf3856ad364e35_7.3.7601.16384_none_8310156aa31a52f1/microsoft.management.infrastructure.dll',`
+    'msil_microsoft.powershell.security_31bf3856ad364e35_7.3.7601.16384_none_64c18e3e0eafee92/microsoft.powershell.security.dll',`
+    'msil_microsoft.wsman.runtime_31bf3856ad364e35_7.3.7601.16384_none_a19b148df40272fb/microsoft.wsman.runtime.dll',`
+    'msil_microsoft.wsman.management_31bf3856ad364e35_7.3.7601.16384_none_60964e40b40fafee/microsoft.wsman.management.dll'`
+    )
+
+    func_expand
+    foreach ($i in 'cabinet', 'expand.exe') { dlloverride 'native' $i } 
+
+    foreach ($i in $sourcefile) {
+        if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
+            expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) } 
+        Copy-Item -force "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\system32\\WindowsPowerShell\v1.0\\$($i.split('/')[-1])}
+
+$regkey51 = @"
+REGEDIT4
+[HKEY_LOCAL_MACHINE\Software\Microsoft\PowerShell]
+[HKEY_LOCAL_MACHINE\Software\Microsoft\PowerShell\1]
+"Install"=dword:00000001
+[HKEY_LOCAL_MACHINE\Software\Microsoft\PowerShell\1\PowerShellEngine]
+"ApplicationBase"="C:\\Windows\\System32\\WindowsPowerShell\\v1.0"
+[HKEY_LOCAL_MACHINE\Software\Microsoft\PowerShell\3]
+"Install"=dword:00000001
+[HKEY_LOCAL_MACHINE\Software\Microsoft\PowerShell\3\PowerShellEngine]
+"ApplicationBase"="c:\\windows\\system32\\WindowsPowerShell\\v1.0"
+"@
+
+    reg_edit $regkey51
+		  
+<# Included license hereafter: code below is 99 % copy/paste from https://github.com/p3nt4/PowerShdll ( Program.cs and Common.cs ) #>
+$ps51script = @"
+//MIT License
+//Copyright (c) 2017 p3nt4
+
+//Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+//The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+using System;
+using System.Text;
+using System.Collections.ObjectModel;
+using System.Management.Automation;
+using System.Management.Automation.Runspaces;
+using System.IO;
+//https://blogs.msdn.microsoft.com/kebab/2014/04/28/executing-powershell-scripts-from-c/
+
+namespace Powershdll
+{  
+
+    static class Program
+    {
+        static void Main(string[] args)
+        {
+            PowerShdll psdl = new PowerShdll();
+            psdl.start(args);
+        }
+    }
+
+    class PowerShdll
+    {
+        PS ps;
+        public PowerShdll()
+        {
+            ps = new PS();
+        }
+        public void interact()
+        {
+            Console.ForegroundColor = ConsoleColor.Yellow; Console.WriteLine("Entering PowerShell 5.1 console. Do 'exit' to exit.\n");
+            string cmd = "";
+            while (cmd.ToLower() != "exit")
+            {
+                Console.Write("PS 5.1!\\" + ps.exe("`$(get-location).Path").Replace(System.Environment.NewLine, String.Empty) + ">");
+                cmd = Console.ReadLine();
+                Console.WriteLine(ps.exe(cmd));
+            } Console.ForegroundColor = ConsoleColor.White;
+        }
+        public static string LoadScript(string filename)
+        {
+            try
+            {
+                using (StreamReader sr = new StreamReader(filename))
+                {
+                    StringBuilder fileContents = new StringBuilder();
+                    string curLine;
+                    while ((curLine = sr.ReadLine()) != null)
+                    {
+                        fileContents.Append(curLine + "\n");
+                    }
+                    return fileContents.ToString();
+                }
+            }
+            catch (Exception e)
+            {
+                string errorText = e.Message + "\n";
+                Console.WriteLine(errorText);
+                return ("error");
+            }
+
+        }
+        public void usage()
+        {
+            Console.WriteLine("Usage:");
+            Console.WriteLine("ps51 <script>");
+            Console.WriteLine("ps51 -h\t Display this messages");
+            Console.WriteLine("ps51 -f <path>\t Run the script passed as argument");
+            Console.WriteLine("ps51 -i\t Start an interactive console (Default)");
+        }
+        public void start(string[] args)
+        {
+            // Place payload here for embeded payload:
+            string payload = "";
+            if (payload.Length != 0) {
+                Console.Write(ps.exe(payload));
+                ps.close(); 
+                return; 
+            }
+            if (args.Length==0) { this.interact(); return; }
+            else if (args[0] == "-h")
+            {
+                usage();
+            }
+            else if (args[0] == "-w")
+            {
+                this.interact();
+            }
+            else if (args[0] == "-i")
+            {
+                Console.Title = "PowerShdll";
+                this.interact();
+                ps.close();
+            }
+            else if (args[0] == "-f")
+            {
+                if (args.Length < 2) { usage(); return; }
+                string script = PowerShdll.LoadScript(args[1]);
+                if (script != "error")
+                {
+                    Console.Write(ps.exe(script));
+                }
+            }
+            else
+            {
+                string script = string.Join(" ", args);
+                Console.Write(ps.exe(script));
+                ps.close();
+            }
+            return;
+        }
+    }
+
+    public class PS
+    {
+        Runspace runspace;
+
+        public PS()
+        {
+            this.runspace = RunspaceFactory.CreateRunspace();
+            // open it
+            this.runspace.Open();
+
+        }
+        public string exe(string cmd)
+        {
+            try
+            {
+                Pipeline pipeline = runspace.CreatePipeline();
+                pipeline.Commands.AddScript(cmd);
+                pipeline.Commands.Add("Out-String");
+                Collection<PSObject> results = pipeline.Invoke();
+                StringBuilder stringBuilder = new StringBuilder();
+                foreach (PSObject obj in results)
+                {
+                    foreach (string line in obj.ToString().Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None))
+                    {
+                        stringBuilder.AppendLine(line.TrimEnd());
+                    }
+                }
+                return stringBuilder.ToString();
+            }
+            catch (Exception e)
+            {
+                // Let the user know what went wrong.
+
+                string errorText = e.Message + "\n";
+                return (errorText);
+            }
+        }
+        public void close()
+        {
+            this.runspace.Close();
+        }
+    }
+}
+"@
+    $ps51script | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\ps51.cs
+    &$env:systemroot\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /r:$env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\system.management.automation.dll `
+        /out:$env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\ps51.exe "$env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\ps51.cs"
+
+    Copy-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\system.management.automation.dll" -Destination (New-item -Name "System.Management.Automation\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
+
+    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }      
+} <# end pwsh51 #>
 
 function func_msvbvm60 <# msvbvm60 #>
 {   
