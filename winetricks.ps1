@@ -8,7 +8,7 @@ function validate_param
  Param(
         [Parameter(Mandatory=$false)]
         [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'd2d1',`
-                     'dxvk1101', 'hnetcfg', 'pwsh40', 'pwsh51', 'crypt32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'comctl32', 'wsh57')]
+                     'dxvk1101', 'hnetcfg', 'ps40', 'ps51', 'crypt32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'comctl32', 'wsh57')]
         [string[]]$verb
       )
 }
@@ -32,8 +32,8 @@ $custom_array = @() # Creating an empty array to populate data in
                "hnetcfg", "hnetcfg with fix for https://bugs.winehq.org/show_bug.cgi?id=45432",`
                "dxvk1101", "dxvk",`
                "crypt32", "crypt32 (and msasn1)",`
-               "pwsh40", "rudimentary PowerShell 4.0 (downloads yet another huge amount of Mb`s!)",`
-               "pwsh51", "rudimentary PowerShell 5.1 (downloads yet another huge amount of Mb`s!)",`
+               "ps40", "rudimentary PowerShell 4.0 (downloads yet another huge amount of Mb`s!)",`
+               "ps51", "rudimentary PowerShell 5.1 (downloads yet another huge amount of Mb`s!)",`
                "msvbvm60", "msvbvm60",`
                "xmllite", "xmllite",`
                "windowscodecs", "windowscodecs",`
@@ -580,7 +580,7 @@ REGEDIT4
     reg_edit $regkey
 } <# end mshtml #>
 
-function func_pwsh40 <# rudimentary powershell 4.0; do 'ps40 -h' for help #>
+function func_ps40 <# rudimentary powershell 4.0; do 'ps40 -h' for help #>
 {   
     $url = "http://download.windowsupdate.com/d/msdownload/update/software/updt/2016/05/windows6.1-kb3125574-v4-x64_2dafb1d203c8964239af3048b5dd4b1264cd93b9.msu"
     $cab = "Windows6.1-KB3125574-v4-x64.cab"
@@ -790,11 +790,11 @@ namespace Powershdll
     Copy-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\system.management.automation.dll" -Destination (New-item -Name "System.Management.Automation\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
 
     foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }      
-} <# end pwsh40 #>
+} <# end ps40 #>
 
-function func_pwsh51 <# rudimentary powershell 5.1; do 'ps51 -h' for help #>
+function func_ps51 <# rudimentary powershell 5.1; do 'ps51 -h' for help #>
 {   
-    $dldir = "pwsh51"
+    $dldir = "ps51"
     if ( ![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $dldir, "Windows6.1-KB3191566-x64.cab" ) ) ) {
         w_download_to $dldir "https://download.microsoft.com/download/6/F/5/6F5FF66C-6775-42B0-86C4-47D41F2DA187/Win7AndW2K8R2-KB3191566-x64.zip" Win7AndW2K8R2-KB3191566-x64.zip
         7z e $cachedir\\$dldir\\Win7AndW2K8R2-KB3191566-x64.zip "-o$cachedir\\$dldir" Win7AndW2K8R2-KB3191566-x64.msu -y | Select-String 'ok'; quit?('7z')
@@ -1008,7 +1008,7 @@ namespace Powershdll
     Copy-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\system.management.automation.dll" -Destination (New-item -Name "System.Management.Automation\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
 
     foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }      
-} <# end pwsh51 #>
+} <# end ps51 #>
 
 function func_msvbvm60 <# msvbvm60 #>
 {   
