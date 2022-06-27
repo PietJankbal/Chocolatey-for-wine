@@ -105,6 +105,18 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         if ( !is_single_or_last_option ( argv[i] ) ) i++;
         i++;
     }
+    /* by setting this env variable, there's a possibility to execute the cmd through rudimentary windows powershell 5.1, requires 'winetricks ps51' first */
+    if ( GetEnvironmentVariable( L"PS51", bufW, MAX_PATH + 1 ) && !wcscmp( bufW, L"1") )
+    {   /* Note: when run from bash, escape special char $ with single quotes and backtick e.g. PS51=1 wine powershell '`SPSVersionTable' */
+        if( i == argc) no_psconsole = FALSE;
+        lstrcatW( cmdlineW, L" -c ps51 " );
+        while(argv[i]) 
+        {
+            lstrcatW( lstrcatW( cmdlineW, L" " ), argv[i] ); 
+            i++;
+        } 
+        goto exec;
+    }
 
     if( i == argc) no_psconsole = FALSE;  /*no command found, start PSConsole later in ConEmu to work around bug https://bugs.winehq.org/show_bug.cgi?id=49780*/
 
@@ -126,7 +138,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         lstrcatW( lstrcatW( cmdlineW, L" " ), argv[i] );
         i++;
     }
- 
+exec: 
     if ( GetEnvironmentVariable( L"PWSHVERBOSE", bufW, MAX_PATH + 1 ) ) 
         { fwprintf( stderr, L"\033[1;35m" ); fwprintf( stderr, L"\n command line is %ls \n", cmdlineW ); fwprintf( stderr, L"\033[0m\n" ); }
     /* if not a command, start powershellconsole in ConEmu to work around missing ENABLE_VIRTUAL_TERMINAL_PROCESSING (bug https://bugs.winehq.org/show_bug.cgi?id=49780) */
