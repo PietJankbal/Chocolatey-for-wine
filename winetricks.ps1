@@ -31,7 +31,7 @@ $custom_array = @() # Creating an empty array to populate data in
 	       "mshtml", "experimental, dangerzone, might break things, only use on a per app base",`
                "hnetcfg", "hnetcfg with fix for https://bugs.winehq.org/show_bug.cgi?id=45432",`
                "dxvk1101", "dxvk",`
-               "crypt32", "crypt32 (and msasn1)",`
+               "crypt32", "experimental, dangerzone, might break things, only use on a per app base",`
                "ps40", "rudimentary PowerShell 4.0 (downloads yet another huge amount of Mb`s!)",`
                "ps51", "rudimentary PowerShell 5.1 (downloads yet another huge amount of Mb`s!)",`
                "msvbvm60", "msvbvm60",`
