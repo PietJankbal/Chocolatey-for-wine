@@ -1011,9 +1011,9 @@ namespace Powershdll
 <# add a custom profile file for powershell 5.1 #>
 $profile51 = @"
 <# PowerShell 5.1 profile #>
-function Get-CIMInstance ( [parameter(position=0)] [string]$classname, [string[]]$property="*")
+function Get-CIMInstance ( [parameter(position=0)] [string]`$classname, [string[]]`$property="*")
 {
-     Get-WMIObject $classname -property $property
+     Get-WMIObject `$classname -property `$property
 }
 
  Set-Alias -Name gcim -Value Get-CIMInstance
