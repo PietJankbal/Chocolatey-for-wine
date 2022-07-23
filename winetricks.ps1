@@ -1008,7 +1008,7 @@ namespace Powershdll
     &$env:systemroot\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /r:$env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\system.management.automation.dll `
         /out:$env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\ps51.exe "$env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\ps51.cs"
 
-<# add a custom profile file for powershell 5.1 #>
+<# add a custom profile file for powershell 5.1 ; escape dollarsign with back-tick here to write it correctly to profile file! #>
 $profile51 = @"
 <# PowerShell 5.1 profile #>
 function Get-CIMInstance ( [parameter(position=0)] [string]`$classname, [string[]]`$property="*")
