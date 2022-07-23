@@ -963,7 +963,10 @@ namespace Powershdll
 
         public PS()
         {
-            this.runspace = RunspaceFactory.CreateRunspace();
+            //this.runspace = RunspaceFactory.CreateRunspace(); /* modification: replaced with three lines of code below, to allow loading a custom profile.ps1 */
+	    InitialSessionState initial = InitialSessionState.CreateDefault();
+            initial.ImportPSModule(new string[] {"C:\\windows\\system32\\WindowsPowerShell\\v1.0\\profile.ps1"} );
+            this.runspace = RunspaceFactory.CreateRunspace(initial);
             // open it
             this.runspace.Open();
 
@@ -1004,6 +1007,18 @@ namespace Powershdll
     $ps51script | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\ps51.cs
     &$env:systemroot\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /r:$env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\system.management.automation.dll `
         /out:$env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\ps51.exe "$env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\ps51.cs"
+
+<# add a custom profile file for powershell 5.1 #>
+$profile51 = @"
+<# PowerShell 5.1 profile #>
+function Get-CIMInstance ( [parameter(position=0)] [string]$classname, [string[]]$property="*")
+{
+     Get-WMIObject $classname -property $property
+}
+
+ Set-Alias -Name gcim -Value Get-CIMInstance
+"@
+    $profile51 | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\profile.ps1
 
     Copy-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\system.management.automation.dll" -Destination (New-item -Name "System.Management.Automation\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
 
