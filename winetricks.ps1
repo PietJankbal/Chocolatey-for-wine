@@ -1018,6 +1018,7 @@ function Get-CIMInstance ( [parameter(position=0)] [string]`$classname, [string[
 
  Set-Alias -Name gcim -Value Get-CIMInstance
 "@
+
     $profile51 | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\profile.ps1
 
     Copy-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\system.management.automation.dll" -Destination (New-item -Name "System.Management.Automation\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
