@@ -25,7 +25,7 @@ $custom_array = @() # Creating an empty array to populate data in
                "riched20","riched20",`
 	       "msado15","some minimal mdac dlls",`
 	       "expand", "native expand.exe",`
-               "wmp", "TODO, some wmp (windows media player) dlls",`
+               "wmp", "some wmp (windows media player) dlls",`
 	       "ucrtbase", "ucrtbase from vcrun2015",`
 	       "vcrun2019", "vcredist2019",`
 	       "mshtml", "experimental, dangerzone, might break things, only use on a per app base",`
