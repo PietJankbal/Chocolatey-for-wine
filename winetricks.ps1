@@ -482,8 +482,48 @@ REGEDIT4
     foreach($i in 'comctl32') { dlloverride 'native' $i }
 } <# end comctl32 #>
 
-function func_wmp{ Write-Host $((Get-PSCallStack)[0].FunctionName.replace('func','regkey')) TODO, Nothing here yet ...}
+function func_wmp
+{
+    $url = "https://download.microsoft.com/download/7/A/D/7AD12930-3AA6-4040-81CF-350BF1E99076/Windows6.2-KB2703761-x64.msu"
+    $cab = "Windows6.2-KB2703761-x64.cab"
+    $sourcefile = @(`
+    'x86_microsoft-windows-mediaplayer-wmasf_31bf3856ad364e35_6.2.9200.16384_none_a460fc8111ced20d/wmasf.dll',`
+    'amd64_microsoft-windows-mediaplayer-wmasf_31bf3856ad364e35_6.2.9200.16384_none_007f9804ca2c4343/wmasf.dll',`
+    'x86_microsoft-windows-mediaplayer-wmvcore_31bf3856ad364e35_6.2.9200.16384_none_03dd8faea73e4600/wmvcore.dll',`
+    'amd64_microsoft-windows-mediaplayer-wmvcore_31bf3856ad364e35_6.2.9200.16384_none_5ffc2b325f9bb736/wmvcore.dll',`
+    'amd64_microsoft-windows-mediaplayer-wmnetmgr_31bf3856ad364e35_6.2.9200.16384_none_a00f9d7b48661606/wmnetmgr.dll',`
+    'wow64_microsoft-windows-mediaplayer-wmnetmgr_31bf3856ad364e35_6.2.9200.16384_none_aa6447cd7cc6d801/wmnetmgr.dll',`
+    'amd64_microsoft-windows-mfplat_31bf3856ad364e35_6.2.9200.16384_none_4f744011dd398719/mfplat.dll',`
+    'x86_microsoft-windows-mfplat_31bf3856ad364e35_6.2.9200.16384_none_f355a48e24dc15e3/mfplat.dll',`
+    'wow64_microsoft-windows-mediaplayer-wmpdxm_31bf3856ad364e35_6.2.9200.16384_none_07567510e5f08109/wmpdxm.dll',`
+    'amd64_microsoft-windows-mediaplayer-wmpdxm_31bf3856ad364e35_6.2.9200.16384_none_fd01cabeb18fbf0e/wmpdxm.dll',`
+    'wow64_microsoft-windows-mediaplayer-core_31bf3856ad364e35_6.2.9200.16384_none_6e8814d60d3eb187/wmp.dll',`
+    'amd64_microsoft-windows-mediaplayer-core_31bf3856ad364e35_6.2.9200.16384_none_64336a83d8ddef8c/wmp.dll',`
+    'wow64_microsoft-windows-mediaplayer-core_31bf3856ad364e35_6.2.9200.16384_none_6e8814d60d3eb187/wmploc.dll',`
+    'amd64_microsoft-windows-mediaplayer-core_31bf3856ad364e35_6.2.9200.16384_none_64336a83d8ddef8c/wmploc.dll'`
+    )
 
+    check_msu_sanity $url $cab; $dldir = $($url.split('/')[-1]) -replace '.msu',''
+
+    foreach ($i in $sourcefile) {
+        if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
+                    if( $i.SubString(0,3) -eq 'amd' ) {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) }
+                    if( $i.SubString(0,3) -eq 'x86' ) {<# Nothing to do #>}
+                    if( $i.SubString(0,3) -eq 'wow' ) {<# Nothing to do #>}  }  }
+
+    foreach ($i in $sourcefile) {
+        if( $i.SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" -destination $env:systemroot\\system32\\$($i.split('/')[-1]) }
+        if( $i.SubString(0,3) -eq 'x86' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\syswow64\\$($i.split('/')[-1]) }
+        if( $i.SubString(0,3) -eq 'wow' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\syswow64\\$($i.split('/')[-1]) } } 
+	  
+    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }
+    foreach($i in 'wmp') { dlloverride 'native' $i }
+
+    foreach($i in 'wmp', 'wmpdxm') {
+        & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\$i"
+        & "$env:systemroot\\system32\\regsvr32"  "$env:systemroot\\system32\\$i" }
+}
+ 
 function func_mshtml
 {
     check_aik_sanity; $dldir = "aik70"
