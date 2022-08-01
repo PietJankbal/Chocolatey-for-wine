@@ -522,7 +522,7 @@ function func_wmp
     foreach($i in 'wmp', 'wmpdxm') {
         & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\$i"
         & "$env:systemroot\\system32\\regsvr32"  "$env:systemroot\\system32\\$i" }
-}
+} <# end wmp #>
  
 function func_mshtml
 {
