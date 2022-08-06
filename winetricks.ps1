@@ -1058,6 +1058,10 @@ function Get-CIMInstance ( [parameter(position=0)] [string]`$classname, [string[
 
  Set-Alias -Name gcim -Value Get-CIMInstance
  
+ Set-ExecutionPolicy Unrestricted
+ 
+ Import-Module PSReadLine
+ 
 function quit
 {
     [System.Console]::ForegroundColor = "white"; Stop-Process -Name ps51
