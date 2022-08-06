@@ -914,14 +914,14 @@ namespace Powershdll
         }
         public void interact()
         {
-            Console.ForegroundColor = ConsoleColor.Yellow; Console.WriteLine("Entering PowerShell 5.1 console. Do 'exit' to exit.\n");
+            Console.ForegroundColor = ConsoleColor.Yellow; Console.WriteLine("Entering PowerShell 5.1 console. Do 'quit' to exit!\n");
             string cmd = "";
-            while (cmd.ToLower() != "exit")
+            while (true) //(cmd.ToLower() != "exit")
             {
                 Console.Write("PS 5.1!\\" + ps.exe("`$(get-location).Path").Replace(System.Environment.NewLine, String.Empty) + ">");
-                cmd = Console.ReadLine();
+                cmd = ps.exe("PSConsoleHostReadLine"); //cmd = Console.ReadLine();
                 Console.WriteLine(ps.exe(cmd));
-            } Console.ForegroundColor = ConsoleColor.White;
+            }   //Console.ForegroundColor = ConsoleColor.White;
         }
         public static string LoadScript(string filename)
         {
@@ -1057,6 +1057,12 @@ function Get-CIMInstance ( [parameter(position=0)] [string]`$classname, [string[
 }
 
  Set-Alias -Name gcim -Value Get-CIMInstance
+ 
+function quit
+{
+    [System.Console]::ForegroundColor = "white"; Stop-Process -Name ps51
+}
+
 "@
 
     $profile51 | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\profile.ps1
