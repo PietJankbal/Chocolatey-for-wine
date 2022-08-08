@@ -531,6 +531,8 @@ function handy_apps { choco install explorersuite reactos-paint}
     <# Dismiss ConEmu's fast configuration window by hitting enter #>
     [Synthesize_Keystrokes]::SendKeyStroke()
 
+    iex "$env:ProgramData\\chocolatey\\tools\\shimgen.exe --output=$env:ProgramData\\chocolatey\\bin\\7z.exe --path=$env:ProgramData\\chocolatey\\tools\\7z.exe"
+
     <# This makes Astro Photography Tool happy #>
     foreach($i in 'regasm.exe') { 
         Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\$i
