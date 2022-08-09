@@ -15,6 +15,21 @@ Optional:
 - Check if things went well: "choco install chromium -y" and  "start chrome.exe"  (--no-sandbox not needed anymore since wine-7.8)
   
   Or if you like to install via GUI: "choco install ChocolateyGUI" and "start chocolateygui.exe"
+  
+About PowerShell:
+
+- 'wine powershell.exe' starts the PowerShell-Core console.
+
+  There's also some rudimentary PowerShell 5.1 support:
+
+- From PowerShell-Core console do 'winetricks ps51' (takes very long time to complete! and downloads gigs of mostly   useless stuff)
+
+  Then from PowerShell-Core console you could:
+
+- start (rudimentary) powershell 5.1 console by "ps51"
+- or execute some command through powershell 5.1 like (an example)  " ps51 '$PSVersionTable' "
+- by setting environment variable "$env:PS51=1" you can start a new powershell 5.1 console by just "powershell" 
+  (or from bash: "PS51=1 wine powershell")
 
 Notes:
 
