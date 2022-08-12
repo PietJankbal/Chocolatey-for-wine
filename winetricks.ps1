@@ -991,7 +991,7 @@ namespace Powershdll
         }
         public void interact()
         {
-            Console.ForegroundColor = ConsoleColor.Yellow; Console.WriteLine("Entering PowerShell 5.1 console. Do 'quit' to exit!\n");
+            Console.WriteLine("$([char]0x1b)[93m"); Console.WriteLine("Entering PowerShell 5.1 console. Do 'quit' to exit!\n");
             string cmd = "";
             while (true) //(cmd.ToLower() != "exit")
             {
