@@ -145,7 +145,7 @@ exec:
     if( !no_psconsole || noexit)
     {
         bufW[0] = 0;
-        CreateProcessW( conemu_pathW, lstrcatW( lstrcatW( lstrcatW( bufW, L" -NoUpdate -Title \"This is Powershell Core (pwsh.exe), not (!) powershell.exe\" -run "), pwsh_pathW), cmdlineW), 0, 0, 0, 0, 0, 0, &si, &pi) ;
+        CreateProcessW( conemu_pathW, lstrcatW( lstrcatW( lstrcatW( bufW, L" -NoUpdate -LoadRegistry -run "), pwsh_pathW), cmdlineW), 0, 0, 0, 0, 0, 0, &si, &pi) ;
         WaitForSingleObject( pi.hProcess, INFINITE ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );
         return 0;
     }
