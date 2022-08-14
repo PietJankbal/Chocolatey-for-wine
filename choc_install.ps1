@@ -29,6 +29,9 @@ REGEDIT4
 "amsi"=""
 "dwmapi"=""
 
+[HKEY_CURRENT_USER\Software\ConEmu\.Vanilla]
+"ColorTable14"=dword:0000ffff
+
 [HKEY_LOCAL_MACHINE\Software\Microsoft\.NETFramework]
 "OnlyUseLatestCLR"=dword:00000001
 
@@ -159,6 +162,8 @@ $path = $env:PSModulePath -split ';'
 $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -join ';'
 
 $profile = '$env:ProgramFiles\PowerShell\7\profile.ps1'
+
+$host.ui.RawUI.WindowTitle = 'This is Powershell Core (pwsh.exe), not (!) powershell.exe'
 
 #Set-PSReadlineKeyHandler -Key Tab -Function MenuComplete
 
@@ -322,44 +327,44 @@ function handy_apps { choco install explorersuite reactos-paint}
 '@
 ################################################################################################################### 
 #                                                                                                                 #
-#  Install dotnet48, ConEmu, Chocolatey, arial, d3dcompiler_47 and a few extras (nopowershell and wine robocopy)  #
+#  Install dotnet48, ConEmu, Chocolatey, 7z, arial, d3dcompiler_47 and a few extras (nopowershell and wine robocopy)  #
 #                                                                                                                 #
 ###################################################################################################################
-
-    (New-Object System.Net.WebClient).DownloadFile('https://conemu.github.io/install2.ps1', $(Join-Path "$env:TEMP" 'install2.ps1') )
-    Invoke-Expression  $(cat $(Join-Path "$env:TEMP" 'install2.ps1') | Select-string 'url_7za =')  <# Get the 7za.exe downloadlink from install2.ps1 file #>
-    (New-Object System.Net.WebClient).DownloadFile($url_7za, $(Join-Path "$env:TEMP" '7za.exe') )
+#   Invoke-Expression  $(cat $(Join-Path "$env:TEMP" 'install2.ps1') | Select-string 'url_7za =')  <# Get the 7za.exe downloadlink from install2.ps1 file #>
+#   (New-Object System.Net.WebClient).DownloadFile($url_7za, $(Join-Path "$env:TEMP" '7za.exe') )
+    (New-Object System.Net.WebClient).DownloadFile('https://d3.7-zip.org/a/7z2201-x64.exe', $(Join-Path "$env:TEMP" '7z2201-x64.exe') )
+    iex "$(Join-Path "$env:TEMP" '7z2201-x64.exe') /S"; while(!(Test-Path -Path "$env:ProgramW6432\\7-zip\\7z.exe") ) {Sleep 0.25}
 
     <# fragile test... If install files already present skip downloads. Run choc_installer once with 'SAVEINSTALLFILES=1' to cache downloads #>
-    if (!(Test-Path -Path "$env:WINEHOMEDIR\.cache\choc_install_files\netfx_Full_x64.msi".substring(4) -PathType Leaf)) { <# First download/extract/install dotnet48 as job, this takes most time #>
-        (New-Object System.Net.WebClient).DownloadFile('https://download.visualstudio.microsoft.com/download/pr/7afca223-55d2-470a-8edc-6a1739ae3252/abd170b4b0ec15ad0222a809b761a036/ndp48-x86-x64-allos-enu.exe', $(Join-Path "$env:TEMP" 'ndp48-x86-x64-allos-enu.exe') )
-        start-threadjob -throttle 2 -ScriptBlock {[System.Threading.Thread]::CurrentThread.Priority = 'Highest'; Start-Process -FilePath $env:TEMP\\7za.exe -NoNewWindow -ArgumentList  "x -x!*.cab -ms190M $env:TEMP\\ndp48-x86-x64-allos-enu.exe -o$env:TEMP"}
-        start-threadjob -throttle 2 -ScriptBlock {  while(!(Test-Path -Path "$env:TEMP\1025") ) {Sleep 0.25} ;[System.Threading.Thread]::CurrentThread.Priority = 'Highest'; &{ c:\\windows\\system32\\msiexec.exe  /i $env:TEMP\\netfx_Full_x64.msi EXTUI=1 /sfxlang:1033 /q /norestart} }
-
-       $url = @('http://download.windowsupdate.com/msdownload/update/software/crup/2010/06/windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', `
-                 'https://mirrors.kernel.org/gentoo/distfiles/arial32.exe', `
-#                'https://mirrors.kernel.org/gentoo/distfiles/arialb32.exe', `
-                 'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47.dll', `
-                 'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47_32.dll' `
-                 ) `
-       <# Download stuff #>
-       $url | ForEach-Object { Write-Host -ForeGroundColor Yellow "Downloading $PSItem" && (New-Object System.Net.WebClient).DownloadFile($PSItem, $(Join-Path "$env:TEMP" ($PSItem  -split '/' | Select-Object -Last 1)))}; `
-       <# Extract stuff we need for quick dotnet40 install, only mscoree (probably)#>
-       Start-Process -FilePath $env:TEMP\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu -o$env:TEMP\\dotnet40 Windows6.1-KB958488-x64.cab"; `
-       Start-Process -FilePath $env:TEMP\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\dotnet40\\Windows6.1-KB958488-x64.cab -o$env:TEMP\\dotnet40 x86_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_7daed23956119a9f/mscoree.dll"; `
-       Start-Process -FilePath $env:TEMP\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\dotnet40\\Windows6.1-KB958488-x64.cab -o$env:TEMP\\dotnet40 amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5/mscoree.dll";`
-       Start-Process -FilePath $env:TEMP\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $(Join-Path $args[0] 'EXTRAS\wine_robocopy.7z') -o$env:TEMP"; `
-       Start-Process -FilePath $env:TEMP\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $(Join-Path $args[0] 'EXTRAS\wine_user32_for_conemu_hack_for_wine7_11.7z') -o$env:TEMP" `
-
-
-       & $env:TEMP\\install2.ps1  <# ConEmu install #>
-       $C_TMP = $env:TEMP
-    }
+    if (!(Test-Path -Path "$env:WINEHOMEDIR\.cache\choc_install_files\ndp48-x86-x64-allos-enu.exe".substring(4) -PathType Leaf)) { <# First download/extract/install dotnet48 as job, this takes most time #>
+        (New-Object System.Net.WebClient).DownloadFile('https://download.visualstudio.microsoft.com/download/pr/7afca223-55d2-470a-8edc-6a1739ae3252/abd170b4b0ec15ad0222a809b761a036/ndp48-x86-x64-allos-enu.exe', $(Join-Path "$env:TEMP" 'ndp48-x86-x64-allos-enu.exe') ) }
     else {
-        $C_TMP = "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4)
-        & $env:TEMP\\install2.ps1   <# ConEmu install #>
-        &{c:\\windows\\system32\\msiexec.exe  /i $C_TMP\\netfx_Full_x64.msi EXTUI=1 /sfxlang:1033 /q /norestart} ;Get-Process 'msiexec' -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit()}
-    }
+        Copy-Item -Path "$env:WINEHOMEDIR\.cache\choc_install_files\ndp48-x86-x64-allos-enu.exe".substring(4) -Destination "$env:TEMP" -Force }
+    start-threadjob -throttle 2 -ScriptBlock {[System.Threading.Thread]::CurrentThread.Priority = 'Highest'; Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -ArgumentList  "x -x!*.cab -ms190M $env:TEMP\\ndp48-x86-x64-allos-enu.exe -o$env:TEMP"}
+    start-threadjob -throttle 2 -ScriptBlock {  while(!(Test-Path -Path "$env:TEMP\1025") ) {Sleep 0.25} ;[System.Threading.Thread]::CurrentThread.Priority = 'Highest'; &{ c:\\windows\\system32\\msiexec.exe  /i $env:TEMP\\netfx_Full_x64.msi EXTUI=1 /sfxlang:1033 /q /norestart} }
+
+    $url = @('http://download.windowsupdate.com/msdownload/update/software/crup/2010/06/windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', `
+             'https://mirrors.kernel.org/gentoo/distfiles/arial32.exe', `
+#            'https://mirrors.kernel.org/gentoo/distfiles/arialb32.exe', `
+             'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47.dll', `
+             'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47_32.dll', `
+             'https://conemu.github.io/install2.ps1' `
+                 ) `
+
+    <# Download stuff #>
+    $url | ForEach-Object { Write-Host -ForeGroundColor Yellow "Downloading $PSItem" && (New-Object System.Net.WebClient).DownloadFile($PSItem, $(Join-Path "$env:TEMP" ($PSItem  -split '/' | Select-Object -Last 1)))}; `
+    <# Extract stuff we need for quick dotnet40 install, only mscoree (probably)#>
+    Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu -o$env:TEMP\\dotnet40 Windows6.1-KB958488-x64.cab"; `
+    Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\dotnet40\\Windows6.1-KB958488-x64.cab -o$env:TEMP\\dotnet40 x86_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_7daed23956119a9f/mscoree.dll"; `
+    Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\dotnet40\\Windows6.1-KB958488-x64.cab -o$env:TEMP\\dotnet40 amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5/mscoree.dll";`
+    Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $(Join-Path $args[0] 'EXTRAS\wine_robocopy.7z') -o$env:TEMP"; `
+    Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $(Join-Path $args[0] 'EXTRAS\wine_user32_for_conemu_hack_for_wine7_15.7z') -o$env:TEMP" `
+
+    <# dotnet40: we (probably) only need mscoree.dll from winetricks dotnet40 recipe, so just copy it and write registry values from it`s manifest file. This saves quite some time!#>
+    Copy-Item -Path "$env:TMP\\dotnet40\\x86_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_7daed23956119a9f/mscoree.dll" -Destination "$env:systemroot\\syswow64\\" -Force
+    Copy-Item -Path "$env:TMP\\dotnet40\\amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5/mscoree.dll" -Destination "$env:systemroot\\system32\\" -Force
+
+    & $env:TEMP\\install2.ps1  <# ConEmu install #>
     
     $misc_reg | Out-File $env:TEMP\\misc.reg
     $profile_ps1 | Out-File $env:TEMP\\profile.ps1
@@ -367,13 +372,11 @@ function handy_apps { choco install explorersuite reactos-paint}
 
     <# Install Chocolatey #>
     Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
-    <# dotnet40: we (probably) only need mscoree.dll from winetricks dotnet40 recipe, so just copy it and write registry values from it`s manifest file. This saves quite some time!#>
-    Copy-Item -Path "$C_TMP\\dotnet40\\x86_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_7daed23956119a9f/mscoree.dll" -Destination "$env:systemroot\\syswow64\\" -Force
-    Copy-Item -Path "$C_TMP\\dotnet40\\amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5/mscoree.dll" -Destination "$env:systemroot\\system32\\" -Force
     <# Import reg keys: keys from mscoree manifest files, tweaks to advertise compability with lower .Net versions, and set some native dlls #>
-    Get-job |wait-job;        Get-Process '7za' -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() } 
-    reg.exe  IMPORT  $C_TMP\\misc.reg /reg:64
-    reg.exe  IMPORT  $C_TMP\\misc.reg /reg:32      
+    Get-job |wait-job; 
+    Get-Process '7z' -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() } 
+    reg.exe  IMPORT  $env:TMP\\misc.reg /reg:64
+    reg.exe  IMPORT  $env:TMP\\misc.reg /reg:32      
 
     <# do not use chocolatey's builtin powershell host #>
     cd c:\; c:\\ProgramData\\chocolatey\\choco.exe feature disable --name=powershellHost; winecfg /v win10
@@ -531,7 +534,7 @@ function handy_apps { choco install explorersuite reactos-paint}
     <# Dismiss ConEmu's fast configuration window by hitting enter #>
     [Synthesize_Keystrokes]::SendKeyStroke()
 
-    iex "$env:ProgramData\\chocolatey\\tools\\shimgen.exe --output=$env:ProgramData\\chocolatey\\bin\\7z.exe --path=$env:ProgramData\\chocolatey\\tools\\7z.exe"
+    iex "$env:ProgramData\\chocolatey\\tools\\shimgen.exe --output=`"$env:ProgramData`"\\chocolatey\\bin\\7z.exe --path=`"$env:ProgramW6432`"\\7-zip\\7z.exe"
 
     <# This makes Astro Photography Tool happy #>
     foreach($i in 'regasm.exe') { 
@@ -539,26 +542,27 @@ function handy_apps { choco install explorersuite reactos-paint}
         Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework64\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\$i}
     <# Many programs need arial and native d3dcompiler_47, so install it #>
     foreach($i in 'arial.ttf', 'ariali.ttf', 'arialbi.ttf', 'arialbd.ttf') { <# fixme?: also install arial32b.exe (ariblk.ttf "Arial Black)??? #>
-        Start-Process $env:TEMP\\7za.exe -NoNewWindow -Wait -ArgumentList "e $env:TEMP\\arial32.exe -o$env:systemroot\Fonts $i -aoa" } 
-    Copy-Item -Path "$C_TMP\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_47.dll" -Force
-    Copy-Item -Path "$C_TMP\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_43.dll" -Force
-    Copy-Item -Path "$C_TMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_47.dll" -Force
-    Copy-Item -Path "$C_TMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_43.dll" -Force
+        Start-Process $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList "e $env:TEMP\\arial32.exe -o$env:systemroot\Fonts $i -aoa" } 
+    Copy-Item -Path "$env:TMP\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_47.dll" -Force
+    Copy-Item -Path "$env:TMP\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_43.dll" -Force
+    Copy-Item -Path "$env:TMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_47.dll" -Force
+    Copy-Item -Path "$env:TMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_43.dll" -Force
 
     <# fragile test...; Download and 'install' NoPowerShell.exe which has some extra Powershell cmdlets #>
     if (!(Test-Path -Path "$env:WINEHOMEDIR\.cache\choc_install_files\netfx_Full_x64.msi".substring(4) -PathType Leaf)) {
         (New-Object System.Net.WebClient).DownloadFile('https://github.com/bitsadmin/nopowershell/releases/download/1.23/NoPowerShell_trunk.zip', $(Join-Path "$env:TEMP" 'NoPowerShell_trunk.zip') )
-        Start-Process -FilePath $env:TEMP\\7za.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\NoPowerShell_trunk.zip Dotnet45/* -o$env:TEMP"}
-    Copy-Item "$C_TMP\\DOTNET45\\*.*" "$env:SystemRoot\\system32\\WindowsPowershell\\v1.0\\"
+        Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\NoPowerShell_trunk.zip Dotnet45/* -o$env:TEMP"}
+    Copy-Item "$env:TMP\\DOTNET45\\*.*" "$env:SystemRoot\\system32\\WindowsPowershell\\v1.0\\"
     <# Backup files if wanted #>
     if (Test-Path 'env:SAVEINSTALLFILES') { 
         New-Item -Path "$env:WINEHOMEDIR\.cache\".substring(4) -Name "choc_install_files" -ItemType "directory" -ErrorAction SilentlyContinue
-        Copy-Item -Recurse -Path $env:TEMP\\* -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4)  -force
+        Copy-Item -Recurse -Path $env:TEMP\\ndp48-x86-x64-allos-enu.exe -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4)  -force
+        Copy-Item -Recurse -Path $env:TEMP\\PowerShell-7.0.3-win-x64.msi -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4)  -force
     }
     <# wine robocopy and hack for ConEmu #>
-    Copy-Item -Path "$C_TMP\\robocopy64.exe" -Destination "$env:SystemRoot\\System32\\robocopy.exe" -Force
-    Copy-Item -Path "$C_TMP\\robocopy32.exe" -Destination "$env:SystemRoot\\syswow64\\robocopy.exe" -Force
-    Copy-Item -Path "$C_TMP\\user32.dll" -Destination "$env:SystemDrive\\ConEmu\\user32.dll" -Force
+    Copy-Item -Path "$env:TMP\\robocopy64.exe" -Destination "$env:SystemRoot\\System32\\robocopy.exe" -Force
+    Copy-Item -Path "$env:TMP\\robocopy32.exe" -Destination "$env:SystemRoot\\syswow64\\robocopy.exe" -Force
+    Copy-Item -Path "$env:TMP\\user32.dll" -Destination "$env:SystemDrive\\ConEmu\\user32.dll" -Force
 
     <# Replace some system programs by functions (in profile.ps1); This also makes wusa a dummy program: we don`t want windows updates and it doesn`t work anyway #>
     ForEach ($file in "schtasks.exe") {
