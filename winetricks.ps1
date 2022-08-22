@@ -8,7 +8,7 @@ function validate_param
  Param(
         [Parameter(Mandatory=$false)]
         [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'd2d1',`
-                     'dxvk1101', 'hnetcfg', 'ps40', 'ps51', 'crypt32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'comctl32', 'wsh57')]
+                     'dxvk1101', 'hnetcfg', 'sapi', 'ps51', 'crypt32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'comctl32', 'wsh57')]
         [string[]]$verb
       )
 }
@@ -32,7 +32,7 @@ $custom_array = @() # Creating an empty array to populate data in
                "hnetcfg", "hnetcfg with fix for https://bugs.winehq.org/show_bug.cgi?id=45432",`
                "dxvk1101", "dxvk",`
                "crypt32", "experimental, dangerzone, might break things, only use on a per app base",`
-               "ps40", "rudimentary PowerShell 4.0 (downloads yet another huge amount of Mb`s!)",`
+               "sapi", "Speech api, experimental",`
                "ps51", "rudimentary PowerShell 5.1 (downloads yet another huge amount of Mb`s!)",`
                "msvbvm60", "msvbvm60",`
                "xmllite", "xmllite",`
@@ -697,217 +697,80 @@ REGEDIT4
     reg_edit $regkey
 } <# end mshtml #>
 
-function func_ps40 <# rudimentary powershell 4.0; do 'ps40 -h' for help #>
+function func_sapi <# Speech api #>
 {   
-    $url = "http://download.windowsupdate.com/d/msdownload/update/software/updt/2016/05/windows6.1-kb3125574-v4-x64_2dafb1d203c8964239af3048b5dd4b1264cd93b9.msu"
-    $cab = "Windows6.1-KB3125574-v4-x64.cab"
+    $url = "http://download.windowsupdate.com/c/msdownload/update/software/updt/2016/11/windows10.0-kb3205436-x64_45c915e7a85a7cc7fc211022ecd38255297049c3.msu"
+    $cab = "Windows10.0-KB3205436-x64.cab"
     $sourcefile = @(`
-    'msil_system.management.automation_31bf3856ad364e35_7.2.7601.23403_none_7eff6ece76149477/system.management.automation.dll',`
-    'msil_microsoft.powershel..ommands.diagnostics_31bf3856ad364e35_7.2.7601.23403_none_3698d2b1b92a6c93/microsoft.powershell.commands.diagnostics.dll',`
-    'msil_microsoft.powershell.commands.utility_31bf3856ad364e35_7.2.7601.23403_none_d3399682d6116793/microsoft.powershell.commands.utility.dll',`
-    'msil_microsoft.powershell.consolehost_31bf3856ad364e35_7.2.7601.23403_none_800dec9905ffbe44/microsoft.powershell.consolehost.dll',`
-    'msil_microsoft.powershell.commands.management_31bf3856ad364e35_7.2.7601.23403_none_bb7937dac719e49e/microsoft.powershell.commands.management.dll',`
-    'msil_microsoft.management.infrastructure_31bf3856ad364e35_7.2.7601.23403_none_7ce919f023c2ec6c/microsoft.management.infrastructure.dll',`
-    'msil_microsoft.powershell.security_31bf3856ad364e35_7.2.7601.23403_none_5e9a92c38f58880d/microsoft.powershell.security.dll',`
-    'msil_microsoft.wsman.runtime_31bf3856ad364e35_7.2.7601.23403_none_9b74191374ab0c76/microsoft.wsman.runtime.dll',`
-    'msil_microsoft.wsman.management_31bf3856ad364e35_7.2.7601.23403_none_5a6f52c634b84969/microsoft.wsman.management.dll'`
+        'amd64_microsoft-windows-speechcommon_31bf3856ad364e35_10.0.10240.17184_none_ddf5e9c56d621922/sapi.dll',
+        'x86_microsoft-windows-speechcommon_31bf3856ad364e35_10.0.10240.17184_none_81d74e41b504a7ec/sapi.dll' `
     )
 
-    check_msu_sanity $url $cab; $dldir = $($url.split('/')[-1]) -replace '.msu',''  
+    check_msu_sanity $url $cab; $dldir = $($url.split('/')[-1]) -replace '.msu',''    
 
     foreach ($i in $sourcefile) {
         if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
-            expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) } 
-        Copy-Item -force "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\system32\\WindowsPowerShell\v1.0\\$($i.split('/')[-1])}
+                    if( $i.SubString(0,3) -eq 'amd' ) {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) }
+                    if( $i.SubString(0,3) -eq 'x86' ) {<# Nothing to do #>}  }  }
 
-$regkey40 = @"
-REGEDIT4
-[HKEY_LOCAL_MACHINE\Software\Microsoft\PowerShell]
-[HKEY_LOCAL_MACHINE\Software\Microsoft\PowerShell\1]
-"Install"=dword:00000001
-[HKEY_LOCAL_MACHINE\Software\Microsoft\PowerShell\1\PowerShellEngine]
-"ApplicationBase"="C:\\Windows\\System32\\WindowsPowerShell\\v1.0"
-[HKEY_LOCAL_MACHINE\Software\Microsoft\PowerShell\3]
-"Install"=dword:00000001
-[HKEY_LOCAL_MACHINE\Software\Microsoft\PowerShell\3\PowerShellEngine]
-"ApplicationBase"="c:\\windows\\system32\\WindowsPowerShell\\v1.0"
+    foreach ($i in $sourcefile) {
+        if( $i.SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" -destination $env:systemroot\\system32\\Speech\\Common\\$($i.split('/')[-1]) }
+        if( $i.SubString(0,3) -eq 'x86' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\syswow64\\Speech\\Common\\$($i.split('/')[-1]) } } 
+
+    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }  
+
+    reg.exe DELETE "HKLM\SOFTWARE\Microsoft\Speech\Voices\Tokens\Wine Default Voice" /f /reg:64
+    reg.exe DELETE "HKLM\SOFTWARE\Microsoft\Speech\Voices\Tokens\Wine Default Voice" /f /reg:32
+
+    <# 64-bit#> #   https://download.microsoft.com/download/A/6/4/A64012D6-D56F-4E58-85E3-531E56ABC0E6/x86_SpeechPlatformRuntime/SpeechPlatformRuntime.msi
+    <# 32-bit#> #   https://download.microsoft.com/download/A/6/4/A64012D6-D56F-4E58-85E3-531E56ABC0E6/x64_SpeechPlatformRuntime/SpeechPlatformRuntime.msi
+    <# dlls  #> #   clwtelfe.dat, mssps.dll, spsreng.dll, msttsengine.dll, spsrx.dll,lwsreng.dll, msttsloc.dll, srloc.dll, Microsoft.Speech.dll
+
+    $dldir = "SpeechRuntime"
+    w_download_to "$dldir\\32" "https://download.microsoft.com/download/A/6/4/A64012D6-D56F-4E58-85E3-531E56ABC0E6/x86_SpeechPlatformRuntime/SpeechPlatformRuntime.msi" "SpeechPlatformRuntime.msi"
+    w_download_to "$dldir\\64" "https://download.microsoft.com/download/A/6/4/A64012D6-D56F-4E58-85E3-531E56ABC0E6/x64_SpeechPlatformRuntime/SpeechPlatformRuntime.msi" "SpeechPlatformRuntime.msi"
+
+#    7z e $cachedir\\$dldir\\64\\SpeechPlatformRuntime.msi "-o$env:systemroot\\system32\\Speech\\Engines\\TTS" msttsengine.dll -y
+#    7z e $cachedir\\$dldir\\64\\SpeechPlatformRuntime.msi "-o$env:systemroot\\system32\\Speech\\Engines\\TTS" msttsloc.dll -y
+#    7z e $cachedir\\$dldir\\32\\SpeechPlatformRuntime.msi "-o$env:systemroot\\syswow64\\Speech\\Engines\\TTS" msttsengine.dll -y
+#    7z e $cachedir\\$dldir\\32\\SpeechPlatformRuntime.msi "-o$env:systemroot\\syswow64\\Speech\\Engines\\TTS" msttsloc.dll -y; quit?('7z')
+
+    foreach ($i in 'sapi') { dlloverride 'native' $i } 
+
+#    foreach($i in 'msttsengine.dll') {
+#        & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\Speech\\Engines\\TTS\\v11.0\\$i"
+#        & "$env:systemroot\\system32\\regsvr32"  "$env:systemroot\\system32\\Speech\\Engines\\TTS\\v11.0\\$i" }
+
+    iex "msiexec /i $cachedir\\$dldir\\64\\SpeechPlatformRuntime.msi INSTALLDIR='$env:SystemRoot\\system32\\Speech\\Engines' /q "
+    iex "msiexec /i $cachedir\\$dldir\\32\\SpeechPlatformRuntime.msi INSTALLDIR='$env:SystemRoot\\syswow64\\Speech\\Engines' /q "
+
+    foreach($i in 'sapi.dll') {
+        & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\Speech\\Common\\$i"
+        & "$env:systemroot\\system32\\regsvr32"  "$env:systemroot\\system32\\Speech\\Common\\$i" }
+
+    w_download_to "$dldir" "https://download.microsoft.com/download/4/0/D/40D6347A-AFA5-417D-A9BB-173D937BEED4/MSSpeech_TTS_en-US_ZiraPro.msi" "MSSpeech_TTS_en-US_ZiraPro.msi"
+
+    #New-Item -Path "$env:SystemRoot\\Speech\\" -Name "Engines" -ItemType "directory" -ErrorAction SilentlyContinue
+
+    #7z e $cachedir\\$dldir\\MSSpeech_TTS_en-US_ZiraPro.msi "-o$env:systemroot\\Speech\\Engines\\TTS\\en-US"  -y
+
+     iex "msiexec /i $cachedir\\$dldir\\MSSpeech_TTS_en-US_ZiraPro.msi <# INSTALLDIR='$env:SystemRoot\\Speech\\Engines\\TTS\\en-US' #> "
+
+#     func_wsh57
+     quit?('msiexec')
+
+    reg.exe COPY "HKLM\Software\MicroSoft\Speech Server\v11.0" "HKLM\Software\MicroSoft\Speech" /s /f /reg:64
+    reg.exe COPY "HKLM\Software\MicroSoft\Speech Server\v11.0" "HKLM\Software\MicroSoft\Speech" /s /f /reg:32
+
+$test = @"
+CreateObject("SAPI.SpVoice").Speak" This is mostly a bunch of crap. Please improve me"
 "@
 
-    reg_edit $regkey40
-		  
-<# Included license hereafter: code below is 99 % copy/paste from https://github.com/p3nt4/PowerShdll ( Program.cs and Common.cs ) #>
-$ps40script = @"
-//MIT License
-//Copyright (c) 2017 p3nt4
-
-//Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-//The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-using System;
-using System.Text;
-using System.Collections.ObjectModel;
-using System.Management.Automation;
-using System.Management.Automation.Runspaces;
-using System.IO;
-//https://blogs.msdn.microsoft.com/kebab/2014/04/28/executing-powershell-scripts-from-c/
-
-namespace Powershdll
-{  
-
-    static class Program
-    {
-        static void Main(string[] args)
-        {
-            PowerShdll psdl = new PowerShdll();
-            psdl.start(args);
-        }
-    }
-
-    class PowerShdll
-    {
-        PS ps;
-        public PowerShdll()
-        {
-            ps = new PS();
-        }
-        public void interact()
-        {
-            Console.ForegroundColor = ConsoleColor.Yellow; Console.WriteLine("Entering PowerShell 4.0 console. Do 'exit' to exit.\n");
-            string cmd = "";
-            while (cmd.ToLower() != "exit")
-            {
-                Console.Write("PS 4.0!\\" + ps.exe("`$(get-location).Path").Replace(System.Environment.NewLine, String.Empty) + ">");
-                cmd = Console.ReadLine();
-                Console.WriteLine(ps.exe(cmd));
-            } Console.ForegroundColor = ConsoleColor.White;
-        }
-        public static string LoadScript(string filename)
-        {
-            try
-            {
-                using (StreamReader sr = new StreamReader(filename))
-                {
-                    StringBuilder fileContents = new StringBuilder();
-                    string curLine;
-                    while ((curLine = sr.ReadLine()) != null)
-                    {
-                        fileContents.Append(curLine + "\n");
-                    }
-                    return fileContents.ToString();
-                }
-            }
-            catch (Exception e)
-            {
-                string errorText = e.Message + "\n";
-                Console.WriteLine(errorText);
-                return ("error");
-            }
-
-        }
-        public void usage()
-        {
-            Console.WriteLine("Usage:");
-            Console.WriteLine("ps40 <script>");
-            Console.WriteLine("ps40 -h\t Display this messages");
-            Console.WriteLine("ps40 -f <path>\t Run the script passed as argument");
-            Console.WriteLine("ps40 -i\t Start an interactive console (Default)");
-        }
-        public void start(string[] args)
-        {
-            // Place payload here for embeded payload:
-            string payload = "";
-            if (payload.Length != 0) {
-                Console.Write(ps.exe(payload));
-                ps.close(); 
-                return; 
-            }
-            if (args.Length==0) { this.interact(); return; }
-            else if (args[0] == "-h")
-            {
-                usage();
-            }
-            else if (args[0] == "-w")
-            {
-                this.interact();
-            }
-            else if (args[0] == "-i")
-            {
-                Console.Title = "PowerShdll";
-                this.interact();
-                ps.close();
-            }
-            else if (args[0] == "-f")
-            {
-                if (args.Length < 2) { usage(); return; }
-                string script = PowerShdll.LoadScript(args[1]);
-                if (script != "error")
-                {
-                    Console.Write(ps.exe(script));
-                }
-            }
-            else
-            {
-                string script = string.Join(" ", args);
-                Console.Write(ps.exe(script));
-                ps.close();
-            }
-            return;
-        }
-    }
-
-    public class PS
-    {
-        Runspace runspace;
-
-        public PS()
-        {
-            this.runspace = RunspaceFactory.CreateRunspace();
-            // open it
-            this.runspace.Open();
-
-        }
-        public string exe(string cmd)
-        {
-            try
-            {
-                Pipeline pipeline = runspace.CreatePipeline();
-                pipeline.Commands.AddScript(cmd);
-                pipeline.Commands.Add("Out-String");
-                Collection<PSObject> results = pipeline.Invoke();
-                StringBuilder stringBuilder = new StringBuilder();
-                foreach (PSObject obj in results)
-                {
-                    foreach (string line in obj.ToString().Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None))
-                    {
-                        stringBuilder.AppendLine(line.TrimEnd());
-                    }
-                }
-                return stringBuilder.ToString();
-            }
-            catch (Exception e)
-            {
-                // Let the user know what went wrong.
-
-                string errorText = e.Message + "\n";
-                return (errorText);
-            }
-        }
-        public void close()
-        {
-            this.runspace.Close();
-        }
-    }
-}
-"@
-    $ps40script | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\ps40.cs
-    &$env:systemroot\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /r:$env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\system.management.automation.dll `
-        /out:$env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\ps40.exe "$env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\ps40.cs"
-
-    Copy-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\system.management.automation.dll" -Destination (New-item -Name "System.Management.Automation\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
+    $test | Out-File $env:SystemRoot\\test.vbs
+    iex "$env:SystemRoot\\syswow64\\cscript.exe $env:SystemRoot\\test.vbs"
 
     foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }      
-} <# end ps40 #>
+} <# end sapi #>
 
 function func_ps51 <# rudimentary powershell 5.1; do 'ps51 -h' for help #>
 {   
