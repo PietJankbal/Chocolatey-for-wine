@@ -25,14 +25,14 @@ $custom_array = @() # Creating an empty array to populate data in
                "riched20","riched20",`
 	       "msado15","some minimal mdac dlls",`
 	       "expand", "native expand.exe",`
-               "wmp", "some wmp (windows media player) dlls",`
+               "wmp", "some wmp (windows media player) dlls, makes e-Sword start",`
 	       "ucrtbase", "ucrtbase from vcrun2015",`
 	       "vcrun2019", "vcredist2019",`
 	       "mshtml", "experimental, dangerzone, might break things, only use on a per app base",`
                "hnetcfg", "hnetcfg with fix for https://bugs.winehq.org/show_bug.cgi?id=45432",`
                "dxvk1101", "dxvk",`
                "crypt32", "experimental, dangerzone, might break things, only use on a per app base",`
-               "sapi", "Speech api, experimental",`
+               "sapi", "Speech api, experimental, makes Balabolka work",`
                "ps51", "rudimentary PowerShell 5.1 (downloads yet another huge amount of Mb`s!)",`
                "msvbvm60", "msvbvm60",`
                "xmllite", "xmllite",`
@@ -722,27 +722,14 @@ function func_sapi <# Speech api #>
     reg.exe DELETE "HKLM\SOFTWARE\Microsoft\Speech\Voices\Tokens\Wine Default Voice" /f /reg:64
     reg.exe DELETE "HKLM\SOFTWARE\Microsoft\Speech\Voices\Tokens\Wine Default Voice" /f /reg:32
 
-    <# 64-bit#> #   https://download.microsoft.com/download/A/6/4/A64012D6-D56F-4E58-85E3-531E56ABC0E6/x86_SpeechPlatformRuntime/SpeechPlatformRuntime.msi
-    <# 32-bit#> #   https://download.microsoft.com/download/A/6/4/A64012D6-D56F-4E58-85E3-531E56ABC0E6/x64_SpeechPlatformRuntime/SpeechPlatformRuntime.msi
-    <# dlls  #> #   clwtelfe.dat, mssps.dll, spsreng.dll, msttsengine.dll, spsrx.dll,lwsreng.dll, msttsloc.dll, srloc.dll, Microsoft.Speech.dll
-
     $dldir = "SpeechRuntime"
     w_download_to "$dldir\\32" "https://download.microsoft.com/download/A/6/4/A64012D6-D56F-4E58-85E3-531E56ABC0E6/x86_SpeechPlatformRuntime/SpeechPlatformRuntime.msi" "SpeechPlatformRuntime.msi"
     w_download_to "$dldir\\64" "https://download.microsoft.com/download/A/6/4/A64012D6-D56F-4E58-85E3-531E56ABC0E6/x64_SpeechPlatformRuntime/SpeechPlatformRuntime.msi" "SpeechPlatformRuntime.msi"
 
-#    7z e $cachedir\\$dldir\\64\\SpeechPlatformRuntime.msi "-o$env:systemroot\\system32\\Speech\\Engines\\TTS" msttsengine.dll -y
-#    7z e $cachedir\\$dldir\\64\\SpeechPlatformRuntime.msi "-o$env:systemroot\\system32\\Speech\\Engines\\TTS" msttsloc.dll -y
-#    7z e $cachedir\\$dldir\\32\\SpeechPlatformRuntime.msi "-o$env:systemroot\\syswow64\\Speech\\Engines\\TTS" msttsengine.dll -y
-#    7z e $cachedir\\$dldir\\32\\SpeechPlatformRuntime.msi "-o$env:systemroot\\syswow64\\Speech\\Engines\\TTS" msttsloc.dll -y; quit?('7z')
-
-    foreach ($i in 'sapi') { dlloverride 'native' $i } 
-
-#    foreach($i in 'msttsengine.dll') {
-#        & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\Speech\\Engines\\TTS\\v11.0\\$i"
-#        & "$env:systemroot\\system32\\regsvr32"  "$env:systemroot\\system32\\Speech\\Engines\\TTS\\v11.0\\$i" }
-
     iex "msiexec /i $cachedir\\$dldir\\64\\SpeechPlatformRuntime.msi INSTALLDIR='$env:SystemRoot\\system32\\Speech\\Engines' /q "
     iex "msiexec /i $cachedir\\$dldir\\32\\SpeechPlatformRuntime.msi INSTALLDIR='$env:SystemRoot\\syswow64\\Speech\\Engines' /q "
+
+    foreach ($i in 'sapi') { dlloverride 'native' $i } 
 
     foreach($i in 'sapi.dll') {
         & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\Speech\\Common\\$i"
@@ -750,14 +737,9 @@ function func_sapi <# Speech api #>
 
     w_download_to "$dldir" "https://download.microsoft.com/download/4/0/D/40D6347A-AFA5-417D-A9BB-173D937BEED4/MSSpeech_TTS_en-US_ZiraPro.msi" "MSSpeech_TTS_en-US_ZiraPro.msi"
 
-    #New-Item -Path "$env:SystemRoot\\Speech\\" -Name "Engines" -ItemType "directory" -ErrorAction SilentlyContinue
+    iex "msiexec /i $cachedir\\$dldir\\MSSpeech_TTS_en-US_ZiraPro.msi <# INSTALLDIR='$env:SystemRoot\\Speech\\Engines\\TTS\\en-US' #> "
 
-    #7z e $cachedir\\$dldir\\MSSpeech_TTS_en-US_ZiraPro.msi "-o$env:systemroot\\Speech\\Engines\\TTS\\en-US"  -y
-
-     iex "msiexec /i $cachedir\\$dldir\\MSSpeech_TTS_en-US_ZiraPro.msi <# INSTALLDIR='$env:SystemRoot\\Speech\\Engines\\TTS\\en-US' #> "
-
-#     func_wsh57
-     quit?('msiexec')
+    quit?('msiexec')
 
     reg.exe COPY "HKLM\Software\MicroSoft\Speech Server\v11.0" "HKLM\Software\MicroSoft\Speech" /s /f /reg:64
     reg.exe COPY "HKLM\Software\MicroSoft\Speech Server\v11.0" "HKLM\Software\MicroSoft\Speech" /s /f /reg:32
