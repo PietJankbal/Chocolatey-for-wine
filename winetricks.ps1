@@ -749,9 +749,7 @@ CreateObject("SAPI.SpVoice").Speak" This is mostly a bunch of crap. Please impro
 "@
 
     $test | Out-File $env:SystemRoot\\test.vbs
-    iex "$env:SystemRoot\\syswow64\\cscript.exe $env:SystemRoot\\test.vbs"
-
-    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }      
+    iex "cscript.exe $env:SystemRoot\\test.vbs"      
 } <# end sapi #>
 
 function func_ps51 <# rudimentary powershell 5.1; do 'ps51 -h' for help #>
