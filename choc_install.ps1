@@ -5,6 +5,7 @@
 ###################################################################################################################
 $misc_reg = @'
 REGEDIT4
+
 [HKEY_CURRENT_USER\Software\Wine\DllOverrides]
 "mscorwks"="native"
 "mscoree"="native"
@@ -30,6 +31,7 @@ REGEDIT4
 "dwmapi"=""
 
 [HKEY_CURRENT_USER\Software\ConEmu\.Vanilla]
+"ColorTable00"=dword:00562401
 "ColorTable14"=dword:0000ffff
 
 [HKEY_LOCAL_MACHINE\Software\Microsoft\.NETFramework]
