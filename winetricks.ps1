@@ -770,7 +770,8 @@ function func_ps51 <# rudimentary powershell 5.1; do 'ps51 -h' for help #>
     'msil_microsoft.management.infrastructure_31bf3856ad364e35_7.3.7601.16384_none_8310156aa31a52f1/microsoft.management.infrastructure.dll',`
     'msil_microsoft.powershell.security_31bf3856ad364e35_7.3.7601.16384_none_64c18e3e0eafee92/microsoft.powershell.security.dll',`
     'msil_microsoft.wsman.runtime_31bf3856ad364e35_7.3.7601.16384_none_a19b148df40272fb/microsoft.wsman.runtime.dll',`
-    'msil_microsoft.wsman.management_31bf3856ad364e35_7.3.7601.16384_none_60964e40b40fafee/microsoft.wsman.management.dll'`
+    'msil_microsoft.wsman.management_31bf3856ad364e35_7.3.7601.16384_none_60964e40b40fafee/microsoft.wsman.management.dll',`
+    'msil_microsoft.powershell.graphicalhost_31bf3856ad364e35_7.3.7601.16384_none_c32121af2a1808d4/microsoft.powershell.graphicalhost.dll'`
     )
 
     func_expand
@@ -976,17 +977,16 @@ function Get-CIMInstance ( [parameter(position=0)] [string]`$classname, [string[
      Get-WMIObject `$classname -property `$property
 }
 
- Set-Alias -Name gcim -Value Get-CIMInstance
+Set-Alias -Name gcim -Value Get-CIMInstance
  
- Set-ExecutionPolicy Unrestricted
+Set-ExecutionPolicy Unrestricted
  
- Import-Module PSReadLine
+Import-Module PSReadLine
  
-function quit
-{
-    [System.Console]::ForegroundColor = "white"; Stop-Process -Name ps51
-}
+function quit { [System.Console]::ForegroundColor = "white"; Stop-Process -Name ps51 }
 
+function clear_host { pwsh -c cls } <# Due to primitive console Clear-Host doesn't work, so adding sad workaround... #>
+New-Alias -Name Clear-Host -Value clear_host -Force
 "@
 
     $profile51 | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\profile.ps1
