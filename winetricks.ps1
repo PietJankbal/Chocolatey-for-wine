@@ -985,8 +985,8 @@ Import-Module PSReadLine
  
 function quit { [System.Console]::ForegroundColor = "white"; Stop-Process -Name ps51 }
 
-function clear_host { pwsh -c cls } <# Due to primitive console Clear-Host doesn't work, so adding sad workaround... #>
-New-Alias -Name Clear-Host -Value clear_host -Force
+function Clear-Host { pwsh -c cls } <# Due to primitive console Clear-Host doesn't work, so adding sad workaround... #>
+
 "@
 
     $profile51 | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\profile.ps1
