@@ -926,7 +926,7 @@ namespace Powershdll
         {
             //this.runspace = RunspaceFactory.CreateRunspace(); /* modification: replaced with three lines of code below, to allow loading a custom profile.ps1 */
 	    InitialSessionState initial = InitialSessionState.CreateDefault();
-            initial.ImportPSModule(new string[] {"C:\\windows\\system32\\WindowsPowerShell\\v1.0\\profile.ps1"} );
+            initial.ImportPSModule(new string[] {"C:\\windows\\system32\\WindowsPowerShell\\v1.0\\profile51.ps1"} );
             this.runspace = RunspaceFactory.CreateRunspace(initial);
             // open it
             this.runspace.Open();
@@ -989,7 +989,7 @@ function Clear-Host { pwsh -c cls } <# Due to primitive console Clear-Host doesn
 
 "@
 
-    $profile51 | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\profile.ps1
+    $profile51 | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\profile51.ps1
 
     Copy-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\system.management.automation.dll" -Destination (New-item -Name "System.Management.Automation\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
 
