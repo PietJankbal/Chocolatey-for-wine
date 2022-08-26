@@ -1,8 +1,10 @@
 # Chocolatey-for-wine
 Chocolatey packagemanager automatic installer in wine, handy to install quickly programs in wine
-![Screenshot from 2022-08-26 12-31-18](https://user-images.githubusercontent.com/26839562/186885380-d5a617c4-9cf4-4831-a475-2bd85a3b5784.png)
+
 Install :
 - Download and unzip the release zip-file and do 'wine ChoCinstaller_0.5.703.exe 
+
+![Screenshot from 2022-08-26 12-31-18](https://user-images.githubusercontent.com/26839562/186885380-d5a617c4-9cf4-4831-a475-2bd85a3b5784.png)
 
 Updates:
 - Update: Now chocolateys builtin powershell-host is disabled in the installscript, so we don't have to install
