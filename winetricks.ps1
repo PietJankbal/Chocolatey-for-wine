@@ -982,6 +982,9 @@ Set-Alias -Name gcim -Value Get-CIMInstance
 Set-ExecutionPolicy Unrestricted
  
 Import-Module PSReadLine
+
+<# Following line allows tab-completion for classes too , like "[System. <tab>  <tab>" or "[System. <ctrl>  <space>" #> 
+Microsoft.PowerShell.Core\Set-StrictMode -Off <# (Like it says in PowerShell/7/Modules/PSReadLine/PSReadLine.psm1) #>
  
 function quit { [System.Console]::ForegroundColor = "white"; Stop-Process -Name ps51 }
 
