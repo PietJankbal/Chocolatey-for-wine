@@ -1,6 +1,6 @@
 # Chocolatey-for-wine
 Chocolatey packagemanager automatic installer in wine, handy to install quickly programs in wine
-
+![Screenshot from 2022-08-26 12-31-18](https://user-images.githubusercontent.com/26839562/186885380-d5a617c4-9cf4-4831-a475-2bd85a3b5784.png)
 Install :
 - Download and unzip the release zip-file and do 'wine ChoCinstaller_0.5.703.exe 
 
@@ -32,6 +32,7 @@ About PowerShell:
 - by setting environment variable "$env:PS51=1" you can start a new powershell 5.1 console by just "powershell" 
   (or from linux bash: "PS51=1 wine powershell")
 - If you really hate Windows you could also start bash (via Busybox) from the PowerShell Core console by just "bash"
+![Screenshot from 2022-08-26 12-37-26](https://user-images.githubusercontent.com/26839562/186886330-c2b16509-4d29-40f7-a531-fc79e63e7289.png)
 
 Notes:
 
