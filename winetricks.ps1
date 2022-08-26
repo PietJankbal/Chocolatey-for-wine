@@ -983,14 +983,12 @@ Set-ExecutionPolicy Unrestricted
  
 Import-Module PSReadLine
 
-<# Following line allows tab-completion for classes too , like "[System. <tab>  <tab>" or "[System. <ctrl>  <space>" #> 
-Microsoft.PowerShell.Core\Set-StrictMode -Off <# (Like it says in PowerShell/7/Modules/PSReadLine/PSReadLine.psm1) #>
- 
 function quit { [System.Console]::ForegroundColor = "white"; Stop-Process -Name ps51 }
 
 function Clear-Host { pwsh -c cls } <# Due to primitive console Clear-Host doesn't work, so adding sad workaround... #>
 
-function Write-Host { pwsh -c Write-Host $args } <# Due to primitive console Write-Host doesn't work, so adding sad workaround... #>
+function Write-Host { pwsh -c Write-Host `$args } <# Due to primitive console Write-Host doesn't work, so adding sad workaround... #>
+
 "@
 
     $profile51 | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\profile51.ps1
