@@ -842,8 +842,8 @@ namespace Powershdll
             {
                 Console.Write("PS 5.1!\\" + ps.exe("`$(get-location).Path").Replace(System.Environment.NewLine, String.Empty) + ">");
                 cmd = ps.exe("PSConsoleHostReadLine"); //cmd = Console.ReadLine();
-                Console.WriteLine(ps.exe(cmd));
-            }   //Console.ForegroundColor = ConsoleColor.White;
+                Console.Write(ps.exe(cmd));            //Console.WriteLine(ps.exe(cmd));
+            }
         }
         public static string LoadScript(string filename)
         {
@@ -948,8 +948,8 @@ namespace Powershdll
                     {
                         stringBuilder.AppendLine(line.TrimEnd());
                     }
-                }
-                return stringBuilder.ToString();
+                } //Remove the extra linebreak (\n) that "Out-String" produces by default, by trimming last 2 characters from the built string
+                return stringBuilder.ToString().Substring(0, stringBuilder.ToString().Length - 2) ; //return stringBuilder.ToString();
             }
             catch (Exception e)
             {
