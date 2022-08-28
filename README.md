@@ -33,6 +33,7 @@ About PowerShell:
 - or execute some command through powershell 5.1 like (an example)  " ps51 '$PSVersionTable' "
 - by setting environment variable "$env:PS51=1" you can start a new powershell 5.1 console by just "powershell" 
   (or from linux bash: "PS51=1 wine powershell")
+- or you could work in graphical PowerShell 5.1 Integrated Scripting Environment with 'winetricks ps51_ise' 
 - If you really hate Windows you could also start bash (via Busybox) from the PowerShell Core console by just "bash"
 ![Screenshot from 2022-08-26 12-37-26](https://user-images.githubusercontent.com/26839562/186886330-c2b16509-4d29-40f7-a531-fc79e63e7289.png)
 
