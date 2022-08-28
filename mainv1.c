@@ -18,7 +18,7 @@
  *
  * Compile:
  * i686-w64-mingw32-gcc -municode  -mconsole mainv1.c -lurlmon -lshlwapi -s -o powershell32.exe
- * x86_64-w64-mingw32-gcc -municode  -mconsole mainv1.c -lurlmon -lshlwapi -s -o ChoCinstaller_0.0.703.exe
+ * x86_64-w64-mingw32-gcc -municode  -mconsole mainv1.c -lurlmon -lshlwapi -s -o ChoCinstaller_0.5a.703.exe
  */
 #include <windows.h>
 #include <stdio.h>
@@ -40,7 +40,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
     lstrcatW(pwsh_pathW, L"\\Powershell\\7\\pwsh.exe");
     /* Download and Install */
     memset( &si, 0, sizeof( STARTUPINFO )); si.cb = sizeof( STARTUPINFO ); memset( &pi, 0, sizeof( PROCESS_INFORMATION ) );
-    if ( !wcsncmp ( &argv[0][lstrlenW(argv[0])-25] , L"ChoCinstaller_" , 14 ) )
+    if ( !wcsncmp ( &argv[0][lstrlenW(argv[0])-26] , L"ChoCinstaller_" , 14 ) )
     {    
        WCHAR ps_pathW[MAX_PATH] = L"", setup_pathW[MAX_PATH]= L"", tmpW[MAX_PATH], versionW[] = L".....";
        WCHAR profile_pathW[MAX_PATH], msiexecW[MAX_PATH], cacheW[MAX_PATH], msiW[MAX_PATH] = L"", downloadW[MAX_PATH] = L"";
@@ -48,7 +48,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
        if ( !ExpandEnvironmentStringsW( L"%SystemRoot%", ps_pathW, MAX_PATH + 1 ) ) goto failed; 
        if ( !CopyFileW( argv[0], lstrcatW(ps_pathW, L"\\system32\\WindowsPowershell\\v1.0\\powershell.exe" ), FALSE) ) goto failed;
        lstrcpyW( setup_pathW, argv[0] );
-       versionW[0] = (PathFindFileNameW( setup_pathW ))[18]; versionW[2] = PathFindFileNameW( setup_pathW )[19]; versionW[4] = PathFindFileNameW( setup_pathW )[20];
+       versionW[0] = (PathFindFileNameW( setup_pathW ))[19]; versionW[2] = PathFindFileNameW( setup_pathW )[20]; versionW[4] = PathFindFileNameW( setup_pathW )[21];
        PathRemoveFileSpecW( setup_pathW );
  
        if( !ExpandEnvironmentStringsW( L"%SystemRoot%", ps_pathW, MAX_PATH + 1 ) ) goto failed;
