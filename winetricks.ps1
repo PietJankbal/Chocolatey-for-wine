@@ -8,7 +8,7 @@ function validate_param
  Param(
         [Parameter(Mandatory=$false)]
         [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'd2d1',`
-                     'dxvk1101', 'hnetcfg', 'sapi', 'ps51', 'crypt32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'comctl32', 'wsh57')]
+                     'dxvk1101', 'hnetcfg', 'sapi', 'ps51', 'ps51_ise', 'crypt32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'comctl32', 'wsh57')]
         [string[]]$verb
       )
 }
@@ -34,6 +34,7 @@ $custom_array = @() # Creating an empty array to populate data in
                "crypt32", "experimental, dangerzone, might break things, only use on a per app base",`
                "sapi", "Speech api, experimental, makes Balabolka work",`
                "ps51", "rudimentary PowerShell 5.1 (downloads yet another huge amount of Mb`s!)",`
+               "ps51_ise", "PowerShell 5.1 Integrated Scripting Environment",`
                "msvbvm60", "msvbvm60",`
                "xmllite", "xmllite",`
                "windowscodecs", "windowscodecs",`
@@ -998,6 +999,78 @@ function Write-Host { pwsh -c Write-Host `$args } <# Due to primitive console Wr
 
     foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }      
 } <# end ps51 #>
+
+function func_ps51_ise <# Powershell 5.1 Integrated Scripting Environment #>
+{   
+    $cab = "Windows6.1-KB3191566-x64.cab"
+    $sourcefile = @(`
+    'msil_microsoft.powershell.isecommon_31bf3856ad364e35_7.3.7601.16384_none_a33e3db6b35267f1/microsoft.powershell.isecommon.dll',`
+    'msil_microsoft.powershell.gpowershell_31bf3856ad364e35_7.3.7601.16384_none_4ae744e0977d3ba7/microsoft.powershell.gpowershell.dll',`
+    'msil_microsoft.powershell.editor_31bf3856ad364e35_7.3.7601.16384_none_63323f1238aa80de/microsoft.powershell.editor.dll'`
+    )
+    <# Following files have to go into their right directories like on Windows (like e.g. $env:systemroot\\system32\\WindowsPowerShell\v1.0\\Modules\\ISE etc.) #>
+    $modfiles = @(` <# sourcefile #>                                                                                                             <# destination #>
+    @('wow64_microsoft-windows-gpowershell-exe_31bf3856ad364e35_7.3.7601.16384_none_228e49bab56b74ea/powershell_ise.exe',                        ''),`
+    @('amd64_microsoft-windows-gpowershell-exe_31bf3856ad364e35_7.3.7601.16384_none_18399f68810ab2ef/powershell_ise.exe',                        ''),`
+    @('amd64_microsoft-windows-gpowershell-exe_31bf3856ad364e35_7.3.7601.16384_none_18399f68810ab2ef/ise.psd1',                                  'Modules\\ISE'),`
+    @('amd64_microsoft-windows-gpowershell-exe_31bf3856ad364e35_7.3.7601.16384_none_18399f68810ab2ef/ise.psm1',                                  'Modules\\ISE'),`
+    @('wow64_microsoft-windows-gpowershell-exe_31bf3856ad364e35_7.3.7601.16384_none_228e49bab56b74ea/ise.psd1',                                  'Modules\\ISE'),`
+    @('wow64_microsoft-windows-gpowershell-exe_31bf3856ad364e35_7.3.7601.16384_none_228e49bab56b74ea/ise.psm1',                                  'Modules\\ISE'),`
+    @('amd64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_77331ae862faf7ef/microsoft.powershell.management.psd1', 'Modules\\microsoft.powershell.management'),`
+    @('wow64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_8187c53a975bb9ea/microsoft.powershell.management.psd1', 'Modules\\microsoft.powershell.management'),`
+    @('amd64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_77331ae862faf7ef/microsoft.powershell.utility.psd1',    'Modules\\microsoft.powershell.utility'),`
+    @('wow64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_8187c53a975bb9ea/microsoft.powershell.utility.psd1',    'Modules\\microsoft.powershell.utility'),`
+    @('amd64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_77331ae862faf7ef/microsoft.powershell.utility.psm1',    'Modules\\microsoft.powershell.utility'),`
+    @('wow64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_8187c53a975bb9ea/microsoft.powershell.utility.psm1',    'Modules\\microsoft.powershell.utility')`
+    )
+
+    $dldir = "ps51"
+
+    func_ps51
+
+    func_expand
+
+    foreach ($i in 'cabinet', 'expand.exe') { dlloverride 'native' $i } 
+
+    foreach ($i in $sourcefile) {
+        if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
+            expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) } 
+        Copy-Item -force $(Join-Path $cachedir $dldir $i) $env:systemroot\\system32\\WindowsPowerShell\v1.0\\$($i.split('/')[-1])}
+
+    foreach ($i in $modfiles) {
+        if (![System.IO.File]::Exists(  $(Join-Path $cachedir  $dldir  $i[0]) ) ){  
+                    if( $i[0].SubString(0,3) -eq 'amd' ) {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i[0].split('/')[-1]) $(Join-Path $cachedir $dldir) }
+                    if( $i[0].SubString(0,3) -eq 'wow' ) {<# Nothing to do #>}  }  }  
+
+    foreach ($i in $modfiles) {
+        if( $i[0].SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose $(Join-Path $cachedir $dldir $i[0]) -destination (New-Item -Path $(Join-Path $env:systemroot\\system32\\WindowsPowerShell\\v1.0 $i[1] ) -Type Directory -force) }
+        if( $i[0].SubString(0,3) -eq 'wow' ) {Copy-Item -force -verbose $(Join-Path $cachedir $dldir $i[0]) -destination (New-Item -Path $(Join-Path $env:systemroot\\syswow64\\WindowsPowerShell\\v1.0 $i[1] ) -Type Directory -force) } } 
+
+$regkey_ise = @"
+REGEDIT4
+[HKEY_CURRENT_USER\Software\Wine\Fonts\Replacements]
+"Lucida Console"="Arial"
+"@
+
+    reg_edit $regkey_ise
+
+<# add a custom profile file for powershell_ise 5.1 ; escape dollarsign with back-tick here to write it correctly to profile file! #>
+$profile = @"
+<# PowerShell 5.1 profile for powershell_ise #>
+function Get-CIMInstance ( [parameter(position=0)] [string]`$classname, [string[]]`$property="*")
+{
+     Get-WMIObject `$classname -property `$property
+}
+
+Set-Alias -Name gcim -Value Get-CIMInstance
+"@
+
+    $profile | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\profile.ps1
+
+    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i } 
+
+    powershell_ise.exe     
+} <# end ps51_ise #>
 
 function func_msvbvm60 <# msvbvm60 #>
 {   
