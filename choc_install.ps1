@@ -251,10 +251,11 @@ function Test-NetConnection { NoPowerShell.exe Test-NetConnection $args }
 function Get-Computerinfo   { NoPowerShell.exe Get-Computerinfo $args   }
 
 function winetricks {
-     if (!([System.IO.File]::Exists("$env:systemdrive\\winetricks.ps1"))){
-         (New-Object System.Net.WebClient).DownloadFile('https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/winetricks.ps1', "$env:systemdrive\\winetricks.ps1")
+     if (!([System.IO.File]::Exists("$env:ProgramData\\winetricks.ps1"))){
+         Add-Type -AssemblyName PresentationCore,PresentationFramework;
+         [System.Windows.MessageBox]::Show("winetricks script is missing`nplease reinstall it in c:\\ProgramData",'Congrats','ok','exclamation')
      }
-     pwsh -f  $( Join-Path ${env:\\systemdrive} "winetricks.ps1")   $args
+     pwsh -f  $( Join-Path ${env:\\ProgramData} "winetricks.ps1")   $args
 }
 
 # Query program replacement for wusa.exe; Do not remove or change, it will break Chocolatey
@@ -324,7 +325,13 @@ function QPR_wmic { <# wmic replacement #>
 #Easy access to the C# compiler
 Set-Alias csc c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
 
-function apply_conemu_hack { New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ConEmu64.exe\\DllOverrides' -force -Name 'user32' -Value 'native' -PropertyType 'String' && Stop-Process -name conemu64 && Stop-Process -name conemuC64 && Start-Process "powershell" -NoNewWindow }
+function apply_conemu_hack {
+    Copy-Item $env:SystemRoot\\system32\\user32.dll $env:SystemRoot\\system32\\user32dummy.dll -force
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ConEmu64.exe\\DllOverrides' -force -Name 'user32' -Value 'native' -PropertyType 'String' 
+    Stop-Process -name conemu64 -erroraction silentlycontinue ; Stop-Process -name conemuC64 -erroraction silentlycontinue 
+    Start-Process "powershell" -NoNewWindow
+}
+
 function handy_apps { choco install explorersuite reactos-paint}
 '@
 ################################################################################################################### 
@@ -360,7 +367,7 @@ function handy_apps { choco install explorersuite reactos-paint}
     Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\dotnet40\\Windows6.1-KB958488-x64.cab -o$env:TEMP\\dotnet40 x86_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_7daed23956119a9f/mscoree.dll"; `
     Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\dotnet40\\Windows6.1-KB958488-x64.cab -o$env:TEMP\\dotnet40 amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5/mscoree.dll";`
     Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $(Join-Path $args[0] 'EXTRAS\wine_robocopy.7z') -o$env:TEMP"; `
-    Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $(Join-Path $args[0] 'EXTRAS\wine_user32_for_conemu_hack_for_wine7_15.7z') -o$env:TEMP" `
+    Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $(Join-Path $args[0] 'EXTRAS\wine_user32_for_conemu_hack_for_wine7_16.7z') -o$env:TEMP" `
 
     <# dotnet40: we (probably) only need mscoree.dll from winetricks dotnet40 recipe, so just copy it and write registry values from it`s manifest file. This saves quite some time!#>
     Copy-Item -Path "$env:TMP\\dotnet40\\x86_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_7daed23956119a9f/mscoree.dll" -Destination "$env:systemroot\\syswow64\\" -Force
@@ -538,6 +545,7 @@ function handy_apps { choco install explorersuite reactos-paint}
 
     iex "$env:ProgramData\\chocolatey\\tools\\shimgen.exe --output=`"$env:ProgramData`"\\chocolatey\\bin\\7z.exe --path=`"$env:ProgramW6432`"\\7-zip\\7z.exe"
 
+    Copy-Item -Path "$(Join-Path $args[0] 'winetricks.ps1')" "$env:ProgramData"
     <# This makes Astro Photography Tool happy #>
     foreach($i in 'regasm.exe') { 
         Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\$i
