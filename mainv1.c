@@ -93,7 +93,6 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         WaitForSingleObject( pi.hProcess, INFINITE ); GetExitCodeProcess( pi.hProcess, &exitcode ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );    
         return ( GetEnvironmentVariable( L"FAKESUCCESS", bufW, MAX_PATH + 1 ) ? 0 : exitcode );
     }
-
     /* Main program: wrap the original powershell-commandline into correct syntax, and send it to pwsh.exe */ 
     BOOL is_single_or_last_option (WCHAR *opt)
     {
@@ -125,7 +124,8 @@ int __cdecl wmain(int argc, WCHAR *argv[])
     while (j < i ) /* concatenate options into new cmdline, meanwhile working around some incompabilities */ 
     {   
         if ( !wcsnicmp( L"-noe", argv[j], 4 ) ) noexit = TRUE;      /* -NoExit, hack to start PSConsole in ConEmu later to work around bug https://bugs.winehq.org/show_bug.cgi?id=49780)*/
-        if ( !wcsnicmp( L"-enc", argv[j], 4 ) ) no_psconsole = TRUE;  /* -File, do not start in PSConsole */
+        if ( !wcsnicmp( L"-f", argv[j], 2 ) ) no_psconsole = TRUE;  /* -File, do not start in PSConsole */
+        if ( !wcsnicmp( L"-enc", argv[j], 4 ) ) no_psconsole = TRUE;/* -EncodedCommand, do not start in PSConsole */
         if ( !wcsnicmp( L"-ve", argv[j], 3 ) ) {j++;  goto done;}   /* -Version, exclude from new cmdline, incompatible... */
         if ( !wcsnicmp( L"-nop", argv[j], 4 ) ) goto done;          /* -NoProfile, also exclude to always enable profile.ps1 to work around possible incompatibilities */   
         lstrcatW( lstrcatW( cmdlineW, L" " ), argv[j] );
