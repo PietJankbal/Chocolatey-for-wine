@@ -18,7 +18,7 @@
  *
  * Compile:
  * i686-w64-mingw32-gcc -municode  -mconsole mainv1.c -lurlmon -lshlwapi -s -o powershell32.exe
- * x86_64-w64-mingw32-gcc -municode  -mconsole mainv1.c -lurlmon -lshlwapi -s -o ChoCinstaller_0.5a.703.exe
+ * x86_64-w64-mingw32-gcc -municode  -mconsole mainv1.c -lurlmon -lshlwapi -s -o ChoCinstaller_0.5c.703.exe
  */
 #include <windows.h>
 #include <stdio.h>
@@ -93,6 +93,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         WaitForSingleObject( pi.hProcess, INFINITE ); GetExitCodeProcess( pi.hProcess, &exitcode ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );    
         return ( GetEnvironmentVariable( L"FAKESUCCESS", bufW, MAX_PATH + 1 ) ? 0 : exitcode );
     }
+
     /* Main program: wrap the original powershell-commandline into correct syntax, and send it to pwsh.exe */ 
     BOOL is_single_or_last_option (WCHAR *opt)
     {
@@ -105,6 +106,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         if ( !is_single_or_last_option ( argv[i] ) ) i++;
         i++;
     }
+
     /* by setting this env variable, there's a possibility to execute the cmd through rudimentary windows powershell 5.1, requires 'winetricks ps51' first */
     if ( GetEnvironmentVariable( L"PS51", bufW, MAX_PATH + 1 ) && !wcscmp( bufW, L"1") )
     {   /* Note: when run from bash, escape special char $ with single quotes and backtick e.g. PS51=1 wine powershell '`SPSVersionTable' */
@@ -123,14 +125,14 @@ int __cdecl wmain(int argc, WCHAR *argv[])
     while (j < i ) /* concatenate options into new cmdline, meanwhile working around some incompabilities */ 
     {   
         if ( !wcsnicmp( L"-noe", argv[j], 4 ) ) noexit = TRUE;      /* -NoExit, hack to start PSConsole in ConEmu later to work around bug https://bugs.winehq.org/show_bug.cgi?id=49780)*/
-        if ( !wcsnicmp( L"-f", argv[j], 2 ) ) no_psconsole = TRUE;  /* -File, do not start in PSConsole */
+        if ( !wcsnicmp( L"-enc", argv[j], 4 ) ) no_psconsole = TRUE;  /* -File, do not start in PSConsole */
         if ( !wcsnicmp( L"-ve", argv[j], 3 ) ) {j++;  goto done;}   /* -Version, exclude from new cmdline, incompatible... */
         if ( !wcsnicmp( L"-nop", argv[j], 4 ) ) goto done;          /* -NoProfile, also exclude to always enable profile.ps1 to work around possible incompatibilities */   
         lstrcatW( lstrcatW( cmdlineW, L" " ), argv[j] );
         done: j++;
     }
     /* now insert a '-c' (if necessary) */
-    if ( argv[i] && wcsnicmp( argv[i-1], L"-c", 2 ) && wcsicmp( argv[i-1], L"-" ) && wcsnicmp( argv[i-1], L"-f", 2 ) && wcsnicmp( argv[i], L"/c", 2 ) )
+    if ( argv[i] && wcsnicmp( argv[i-1], L"-c", 2 ) && wcsicmp( argv[i-1], L"-" ) && wcsnicmp( argv[i-1], L"-enc", 4 ) && wcsnicmp( argv[i-1], L"-f", 2 ) && wcsnicmp( argv[i], L"/c", 2 ) )
         lstrcatW( lstrcatW( cmdlineW, L" " ), L"-c " );
 
     while( i  < argc ) /* concatenate the rest of the arguments into the new cmdline */
