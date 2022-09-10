@@ -8,7 +8,8 @@ function validate_param
  Param(
         [Parameter(Mandatory=$false)]
         [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'd2d1',`
-                     'dxvk1101', 'hnetcfg', 'sapi', 'ps51', 'ps51_ise', 'crypt32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'comctl32', 'wsh57')]
+                     'dxvk1101', 'hnetcfg', 'msi', 'sapi', 'ps51', 'ps51_ise', 'crypt32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'comctl32', 'wsh57',`
+                     'nocrashdialog', 'renderer=vulkan')]
         [string[]]$verb
       )
 }
@@ -30,6 +31,7 @@ $custom_array = @() # Creating an empty array to populate data in
 	       "vcrun2019", "vcredist2019",`
 	       "mshtml", "experimental, dangerzone, might break things, only use on a per app base",`
                "hnetcfg", "hnetcfg with fix for https://bugs.winehq.org/show_bug.cgi?id=45432",`
+               "msi", "if an msi installer fails, might wanna try this msi, just faking success for a few actions... Might also result in broken installation ;)",`
                "dxvk1101", "dxvk",`
                "crypt32", "experimental, dangerzone, might break things, only use on a per app base",`
                "sapi", "Speech api, experimental, makes Balabolka work",`
@@ -41,7 +43,9 @@ $custom_array = @() # Creating an empty array to populate data in
                "wsh57", "MS Windows Script Host",`
                "comctl32", "dangerzone, only for testing, might break things, only use on a per app base",`
                "d2d1", "dangerzone, only for testing, might break things, only use on a per app base",`
-               "windows.ui.xaml", "windows.ui.xaml, experimental..."
+               "windows.ui.xaml", "windows.ui.xaml, experimental...",`
+               "nocrashdialog", "Disable graphical crash dialog",`
+               "renderer=vulkan", "renderer=vulkan"
 
 for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) { 
     $custom_array += New-Object PSObject -Property @{ # Setting up custom array utilizing a PSObject
@@ -315,6 +319,17 @@ function func_hnetcfg <# fix for https://bugs.winehq.org/show_bug.cgi?id=45432 #
         7z e $cachedir\\\\$dldir\\wine_hnetcfg.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1]); quit?('7z') }
     foreach($i in 'hnetcfg') { dlloverride 'native' $i }
 } <# end hnetcfg #>
+
+function func_msi <# wine msi with some hacks faking success #>
+{
+    $dldir = "msi"
+    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_msi.7z" "wine_msi.7z"
+
+    foreach ($i in 'msi.dll'){
+        7z e $cachedir\\$dldir\\wine_msi.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
+        7z e $cachedir\\\\$dldir\\wine_msi.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1]); quit?('7z') }
+    foreach($i in 'msi') { dlloverride 'native' $i }
+} <# end msi #>
 
 function func_dxvk1101
 {
@@ -753,7 +768,7 @@ CreateObject("SAPI.SpVoice").Speak" This is mostly a bunch of crap. Please impro
     iex "cscript.exe $env:SystemRoot\\test.vbs"      
 } <# end sapi #>
 
-function func_ps51 <# rudimentary powershell 5.1; do 'ps51 -h' for help #>
+function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
 {   
     $dldir = "ps51"
     if ( ![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $dldir, "Windows6.1-KB3191566-x64.cab" ) ) ) {
@@ -772,11 +787,24 @@ function func_ps51 <# rudimentary powershell 5.1; do 'ps51 -h' for help #>
     'msil_microsoft.powershell.security_31bf3856ad364e35_7.3.7601.16384_none_64c18e3e0eafee92/microsoft.powershell.security.dll',`
     'msil_microsoft.wsman.runtime_31bf3856ad364e35_7.3.7601.16384_none_a19b148df40272fb/microsoft.wsman.runtime.dll',`
     'msil_microsoft.wsman.management_31bf3856ad364e35_7.3.7601.16384_none_60964e40b40fafee/microsoft.wsman.management.dll',`
-    'msil_microsoft.powershell.graphicalhost_31bf3856ad364e35_7.3.7601.16384_none_c32121af2a1808d4/microsoft.powershell.graphicalhost.dll',`
-    'amd64_microsoft.managemen..frastructure.native_31bf3856ad364e35_7.3.7601.16384_none_8ab57567838da803/microsoft.management.infrastructure.native.dll'`
+    'msil_microsoft.powershell.graphicalhost_31bf3856ad364e35_7.3.7601.16384_none_c32121af2a1808d4/microsoft.powershell.graphicalhost.dll'`
     )
 
-    func_expand
+    <# Following files have to go into $env:systemroot\\system32\\WindowsPowerShell\v1.0\\ #>
+    $psrootfiles = @(` <# sourcefile #>                                                                                                                        <# destination file #>
+    @('wow64_microsoft-windows-powershell-exe_31bf3856ad364e35_7.3.7601.16384_none_531328cc15e8fa79/powershell.exe',                                           'ps51.exe'),`
+    @('amd64_microsoft-windows-powershell-exe_31bf3856ad364e35_7.3.7601.16384_none_48be7e79e188387e/powershell.exe',                                           'ps51.exe'),`
+    @('x86_microsoft.managemen..frastructure.native_31bf3856ad364e35_7.3.7601.16384_none_d262ac3e9809d109/microsoft.management.infrastructure.native.dll',     'microsoft.management.infrastructure.native.dll'),`
+    @('amd64_microsoft.managemen..frastructure.native_31bf3856ad364e35_7.3.7601.16384_none_8ab57567838da803/microsoft.management.infrastructure.native.dll',   'microsoft.management.infrastructure.native.dll')`
+    )
+
+    <# Following files have to go into their right directories like on Windows (like e.g. $env:systemroot\\system32\\WindowsPowerShell\v1.0\\Modules\\microsoft.powershell.management etc.) #>
+    $modfiles = @(` <# sourcefile #>                                                                                                             <# destination directory #>
+    @('amd64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_77331ae862faf7ef/microsoft.powershell.management.psd1', 'Modules\\microsoft.powershell.management'),`
+    @('wow64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_8187c53a975bb9ea/microsoft.powershell.management.psd1', 'Modules\\microsoft.powershell.management')`
+    )
+    <# fragile test... #>
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:systemroot, "system32", "dpx.dll")  ) ) { func_expand }
     foreach ($i in 'cabinet', 'expand.exe') { dlloverride 'native' $i } 
 
     foreach ($i in $sourcefile) {
@@ -784,8 +812,29 @@ function func_ps51 <# rudimentary powershell 5.1; do 'ps51 -h' for help #>
             expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) } 
         Copy-Item -force "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\system32\\WindowsPowerShell\v1.0\\$($i.split('/')[-1])}
 
+    foreach ($i in $psrootfiles) {
+        if (![System.IO.File]::Exists(  $(Join-Path $cachedir  $dldir  $i[0]) ) ){  
+            if( $i[0].SubString(0,3) -eq 'amd' ) {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i[0].split('/')[-1]) $(Join-Path $cachedir $dldir) }
+            if( $i[0].SubString(0,3) -eq 'x86' ) {<# Nothing to do #>}     
+            if( $i[0].SubString(0,3) -eq 'wow' ) {<# Nothing to do #>}  }  }  
+
+    foreach ($i in $psrootfiles) {
+        if( $i[0].SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose $(Join-Path $cachedir $dldir $i[0]) -destination  $(Join-Path $env:systemroot\\system32\\WindowsPowerShell\\v1.0 $i[1] ) }
+        if( $i[0].SubString(0,3) -eq 'x86' ) {Copy-Item -force -verbose $(Join-Path $cachedir $dldir $i[0]) -destination  $(Join-Path $env:systemroot\\syswow64\\WindowsPowerShell\\v1.0 $i[1] ) }
+        if( $i[0].SubString(0,3) -eq 'wow' ) {Copy-Item -force -verbose $(Join-Path $cachedir $dldir $i[0]) -destination  $(Join-Path $env:systemroot\\syswow64\\WindowsPowerShell\\v1.0 $i[1] ) } }
+
+    foreach ($i in $modfiles) {
+        if (![System.IO.File]::Exists(  $(Join-Path $cachedir  $dldir  $i[0]) ) ){  
+            if( $i[0].SubString(0,3) -eq 'amd' ) {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i[0].split('/')[-1]) $(Join-Path $cachedir $dldir) }
+            if( $i[0].SubString(0,3) -eq 'wow' ) {<# Nothing to do #>}  }  }  
+
+    foreach ($i in $modfiles) {
+        if( $i[0].SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose $(Join-Path $cachedir $dldir $i[0]) -destination (New-Item -Path $(Join-Path $env:systemroot\\system32\\WindowsPowerShell\\v1.0 $i[1] ) -Type Directory -force) }
+        if( $i[0].SubString(0,3) -eq 'wow' ) {Copy-Item -force -verbose $(Join-Path $cachedir $dldir $i[0]) -destination (New-Item -Path $(Join-Path $env:systemroot\\syswow64\\WindowsPowerShell\\v1.0 $i[1] ) -Type Directory -force) } } 
+
 $regkey51 = @"
 REGEDIT4
+
 [HKEY_LOCAL_MACHINE\Software\Microsoft\PowerShell]
 [HKEY_LOCAL_MACHINE\Software\Microsoft\PowerShell\1]
 "Install"=dword:00000001
@@ -795,205 +844,51 @@ REGEDIT4
 "Install"=dword:00000001
 [HKEY_LOCAL_MACHINE\Software\Microsoft\PowerShell\3\PowerShellEngine]
 "ApplicationBase"="c:\\windows\\system32\\WindowsPowerShell\\v1.0"
+"ConsoleHostAssemblyName"="Microsoft.PowerShell.ConsoleHost, Version=3.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, ProcessorArchitecture=msil"
+"ConsoleHostModuleName"="C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\Microsoft.PowerShell.ConsoleHost.dll"
+"PowerShellVersion"="5.1.19041.1"
+"PSCompatibleVersion"="1.0, 2.0, 3.0, 4.0, 5.0, 5.1"
+"PSPluginWkrModuleName"="C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\system.management.automation.dll"
+"RuntimeVersion"="v4.0.30319"
 "@
-
     reg_edit $regkey51
-		  
-<# Included license hereafter: code below is 99 % copy/paste from https://github.com/p3nt4/PowerShdll ( Program.cs and Common.cs ) #>
-$ps51script = @"
-//MIT License
-//Copyright (c) 2017 p3nt4
-
-//Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-//The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-using System;
-using System.Text;
-using System.Collections.ObjectModel;
-using System.Management.Automation;
-using System.Management.Automation.Runspaces;
-using System.IO;
-//https://blogs.msdn.microsoft.com/kebab/2014/04/28/executing-powershell-scripts-from-c/
-
-namespace Powershdll
-{  
-
-    static class Program
-    {
-        static void Main(string[] args)
-        {
-            PowerShdll psdl = new PowerShdll();
-            psdl.start(args);
-        }
-    }
-
-    class PowerShdll
-    {
-        PS ps;
-        public PowerShdll()
-        {
-            ps = new PS();
-        }
-        public void interact()
-        {
-            Console.WriteLine("$([char]0x1b)[93m"); Console.WriteLine("Entering PowerShell 5.1 console. Do 'quit' to exit!\n");
-            string cmd = "";
-            while (true) //(cmd.ToLower() != "exit")
-            {
-                Console.Write("PS 5.1!\\" + ps.exe("`$(get-location).Path").Replace(System.Environment.NewLine, String.Empty) + ">");
-                cmd = ps.exe("PSConsoleHostReadLine"); //cmd = Console.ReadLine();
-                Console.Write(ps.exe(cmd));            //Console.WriteLine(ps.exe(cmd));
-            }
-        }
-        public static string LoadScript(string filename)
-        {
-            try
-            {
-                using (StreamReader sr = new StreamReader(filename))
-                {
-                    StringBuilder fileContents = new StringBuilder();
-                    string curLine;
-                    while ((curLine = sr.ReadLine()) != null)
-                    {
-                        fileContents.Append(curLine + "\n");
-                    }
-                    return fileContents.ToString();
-                }
-            }
-            catch (Exception e)
-            {
-                string errorText = e.Message + "\n";
-                Console.WriteLine(errorText);
-                return ("error");
-            }
-
-        }
-        public void usage()
-        {
-            Console.WriteLine("Usage:");
-            Console.WriteLine("ps51 <script>");
-            Console.WriteLine("ps51 -h\t Display this messages");
-            Console.WriteLine("ps51 -f <path>\t Run the script passed as argument");
-            Console.WriteLine("ps51 -i\t Start an interactive console (Default)");
-        }
-        public void start(string[] args)
-        {
-            // Place payload here for embeded payload:
-            string payload = "";
-            if (payload.Length != 0) {
-                Console.Write(ps.exe(payload));
-                ps.close(); 
-                return; 
-            }
-            if (args.Length==0) { this.interact(); return; }
-            else if (args[0] == "-h")
-            {
-                usage();
-            }
-            else if (args[0] == "-w")
-            {
-                this.interact();
-            }
-            else if (args[0] == "-i")
-            {
-                Console.Title = "PowerShdll";
-                this.interact();
-                ps.close();
-            }
-            else if (args[0] == "-f")
-            {
-                if (args.Length < 2) { usage(); return; }
-                string script = PowerShdll.LoadScript(args[1]);
-                if (script != "error")
-                {
-                    Console.Write(ps.exe(script));
-                }
-            }
-            else
-            {
-                string script = string.Join(" ", args);
-                Console.Write(ps.exe(script));
-                ps.close();
-            }
-            return;
-        }
-    }
-
-    public class PS
-    {
-        Runspace runspace;
-
-        public PS()
-        {
-            //this.runspace = RunspaceFactory.CreateRunspace(); /* modification: replaced with three lines of code below, to allow loading a custom profile.ps1 */
-	    InitialSessionState initial = InitialSessionState.CreateDefault();
-            initial.ImportPSModule(new string[] {"C:\\windows\\system32\\WindowsPowerShell\\v1.0\\profile51.ps1"} );
-            this.runspace = RunspaceFactory.CreateRunspace(initial);
-            // open it
-            this.runspace.Open();
-
-        }
-        public string exe(string cmd)
-        {
-            try
-            {
-                Pipeline pipeline = runspace.CreatePipeline();
-                pipeline.Commands.AddScript(cmd);
-                pipeline.Commands.Add("Out-String");
-                Collection<PSObject> results = pipeline.Invoke();
-                StringBuilder stringBuilder = new StringBuilder();
-                foreach (PSObject obj in results)
-                {
-                    foreach (string line in obj.ToString().Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None))
-                    {
-                        stringBuilder.AppendLine(line.TrimEnd());
-                    }
-                } //Remove the extra linebreak (\n) that "Out-String" produces by default, by trimming last 2 characters from the built string
-                return stringBuilder.ToString().Substring(0, stringBuilder.ToString().Length - 2) ; //return stringBuilder.ToString();
-            }
-            catch (Exception e)
-            {
-                // Let the user know what went wrong.
-
-                string errorText = e.Message + "\n";
-                return (errorText);
-            }
-        }
-        public void close()
-        {
-            this.runspace.Close();
-        }
-    }
-}
-"@
-    $ps51script | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\ps51.cs
-    &$env:systemroot\\Microsoft.NET\\Framework64\\v4.0.30319\\csc.exe /r:$env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\system.management.automation.dll `
-        /out:$env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\ps51.exe "$env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\ps51.cs"
 
 <# add a custom profile file for powershell 5.1 ; escape dollarsign with back-tick here to write it correctly to profile file! #>
 $profile51 = @"
 <# PowerShell 5.1 profile #>
+`$env:PSModulepath += ';c:\windows\system32\WindowsPowershell\v1.0\Modules'
+
 function Get-CIMInstance ( [parameter(position=0)] [string]`$classname, [string[]]`$property="*")
 {
      Get-WMIObject `$classname -property `$property
 }
 
 Set-Alias -Name gcim -Value Get-CIMInstance
+
+if (!(Get-process -Name powershell_ise -erroraction silentlycontinue)) {
+    (Get-Host).ui.RawUI.WindowTitle='This is Powershell 5.1!'
  
-Set-ExecutionPolicy Unrestricted
+    Set-ExecutionPolicy ByPass
  
-Import-Module PSReadLine
+    Import-Module PSReadLine
 
-function quit { [System.Console]::ForegroundColor = "white"; Stop-Process -Name ps51 }
+    function prompt  
+    {  
+        `$ESC = [char]27
+         "`$ESC[93mPS 51! `$(`$executionContext.SessionState.Path.CurrentLocation)`$(' `$' * (`$nestedPromptLevel + 1)) `$ESC[0m"  
+    }
 
-function Clear-Host { pwsh -c cls } <# Due to primitive console Clear-Host doesn't work, so adding sad workaround... #>
-
-function Write-Host { pwsh -c Write-Host `$args } <# Due to primitive console Write-Host doesn't work, so adding sad workaround... #>
-
+    function winetricks
+    {
+         if (!([System.IO.File]::Exists("`$env:ProgramData\\winetricks.ps1"))){
+             Add-Type -AssemblyName PresentationCore,PresentationFramework;
+             [System.Windows.MessageBox]::Show("winetricks script is missing`nplease reinstall it in c:\\ProgramData",'Congrats','ok','exclamation')
+         }
+         pwsh -f `$( Join-Path `${env:\\ProgramData} "winetricks.ps1") `$args
+    }
+}
 "@
-
-    $profile51 | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\profile51.ps1
+    $profile51 | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\profile.ps1
 
     Copy-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\system.management.automation.dll" -Destination (New-item -Name "System.Management.Automation\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
 
@@ -1016,20 +911,18 @@ function func_ps51_ise <# Powershell 5.1 Integrated Scripting Environment #>
     @('amd64_microsoft-windows-gpowershell-exe_31bf3856ad364e35_7.3.7601.16384_none_18399f68810ab2ef/ise.psm1',                                  'Modules\\ISE'),`
     @('wow64_microsoft-windows-gpowershell-exe_31bf3856ad364e35_7.3.7601.16384_none_228e49bab56b74ea/ise.psd1',                                  'Modules\\ISE'),`
     @('wow64_microsoft-windows-gpowershell-exe_31bf3856ad364e35_7.3.7601.16384_none_228e49bab56b74ea/ise.psm1',                                  'Modules\\ISE'),`
-    @('amd64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_77331ae862faf7ef/microsoft.powershell.management.psd1', 'Modules\\microsoft.powershell.management'),`
-    @('wow64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_8187c53a975bb9ea/microsoft.powershell.management.psd1', 'Modules\\microsoft.powershell.management'),`
     @('amd64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_77331ae862faf7ef/microsoft.powershell.utility.psd1',    'Modules\\microsoft.powershell.utility'),`
     @('wow64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_8187c53a975bb9ea/microsoft.powershell.utility.psd1',    'Modules\\microsoft.powershell.utility'),`
     @('amd64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_77331ae862faf7ef/microsoft.powershell.utility.psm1',    'Modules\\microsoft.powershell.utility'),`
     @('wow64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_8187c53a975bb9ea/microsoft.powershell.utility.psm1',    'Modules\\microsoft.powershell.utility')`
     )
 
-    $dldir = "ps51"
-
     func_ps51
 
-    func_expand
+    $dldir = "ps51"
 
+    <# fragile test... #>
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:systemroot, "system32", "dpx.dll")  ) ) { func_expand }
     foreach ($i in 'cabinet', 'expand.exe') { dlloverride 'native' $i } 
 
     foreach ($i in $sourcefile) {
@@ -1051,21 +944,7 @@ REGEDIT4
 [HKEY_CURRENT_USER\Software\Wine\Fonts\Replacements]
 "Lucida Console"="Arial"
 "@
-
     reg_edit $regkey_ise
-
-<# add a custom profile file for powershell_ise 5.1 ; escape dollarsign with back-tick here to write it correctly to profile file! #>
-$profile = @"
-<# PowerShell 5.1 profile for powershell_ise #>
-function Get-CIMInstance ( [parameter(position=0)] [string]`$classname, [string[]]`$property="*")
-{
-     Get-WMIObject `$classname -property `$property
-}
-
-Set-Alias -Name gcim -Value Get-CIMInstance
-"@
-
-    $profile | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\profile.ps1
 
     foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i } 
 
@@ -1090,8 +969,27 @@ function func_msvbvm60 <# msvbvm60 #>
     foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }      
 } <# end msvbvm60 #>
 
+function func_nocrashdialog <# nocrashdialog #>
+{   
+$regkey = @"
+REGEDIT4
+[HKEY_CURRENT_USER\Software\Wine\WineDbg]
+"ShowCrashDialog"=dword:00000000
+"BreakOnFirstChance"=dword:00000000
+"@
+    reg_edit $regkey
+} <# end nocrashdialog #>
+
+function func_renderer=vulkan <# renderer=vulkan #>
+{   
+$regkey = @"
+REGEDIT4
+[HKEY_CURRENT_USER\Software\Wine\Direct3D]
+"renderer"="vulkan"
+"@
+    reg_edit $regkey
+} <# end renderer=vulkan #>
+
 <# Main function #>
-if(!$args.count){
-    $Result = $custom_array  | select name,description | Out-GridView  -PassThru  -Title 'Make a  selection'
-    Foreach ($i in $Result){ $call = 'func_' +  $i.Name; & $call; } }
-else { for ( $i = 0; $i -lt $args.count; $i++ ) { $call = 'func_' +  $args[$i]; & $call; } }
+    $result = ($args.count) ? ($args) : ($custom_array  | select name,description | Out-GridView  -PassThru  -Title 'Make a  selection')
+    foreach ($i in $result) { $call = ($args.count) ? ($i) : ($i.Name); & $('func_' + $call); }
