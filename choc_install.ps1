@@ -151,6 +151,10 @@ REGEDIT4
 "Arial Bold Italic (TrueType)"="arialbi.ttf"
 "Arial Italic (TrueType)"="ariali.ttf"
 
+[HKEY_CURRENT_USER\Software\Wine\Debug]
+"RelayExclude"="user32.CharNextA;KERNEL32.GetProcessHeap;KERNEL32.GetCurrentThreadId;KERNEL32.TlsGetValue;KERNEL32.GetCurrentThreadId;KERNEL32.TlsSetValue;ntdll.RtlEncodePointer;ntdll.RtlDecodePointer;ntdll.RtlEnterCriticalSection;ntdll.RtlLeaveCriticalSection;kernel32.94;kernel32.95;kernel32.96;kernel32.97;kernel32.98;KERNEL32.TlsGetValue;KERNEL32.FlsGetValue;ntdll.RtlFreeHeap;ntdll.RtlAllocateHeap;KERNEL32.InterlockedDecrement;KERNEL32.InterlockedCompareExchange;ntdll.RtlTryEnterCriticalSection;KERNEL32.InitializeCriticalSection;ntdll.RtlDeleteCriticalSection;KERNEL32.InterlockedExchange;KERNEL32.InterlockedIncrement;KERNEL32.LocalFree;Kernel32.LocalAlloc;ntdll.RtlReAllocateHeap;KERNEL32.VirtualAlloc;Kernel32.VirtualFree;Kernel32.HeapFree;KERNEL32.QueryPerformanceCounter;KERNEL32.QueryThreadCycleTime;ntdll.RtlFreeHeap;ntdll.memmove;ntdll.memcmp;KERNEL32.GetTickCount"
+"RelayFromExclude"="winex11.drv;user32;gdi32;advapi32;kernel32"
+
 '@
 ################################################################################################################### 
 #                                                                                                                 #
@@ -195,7 +199,7 @@ Function Get-WmiObject([parameter(mandatory)] [string]$class, [string[]]$propert
     $Scope = new-object System.Management.ManagementScope $assembledpath, $ConnectionOptions
     $Scope.Connect() 
     
-    $querystring = "SELECT " +  $property + " FROM " + $class
+    $querystring = "SELECT " +  $($property | Join-String -Separator ",") + " FROM " + $class
     $query = new-object System.Management.ObjectQuery $querystring
     $searcher = new-object System.Management.ManagementObjectSearcher
     $searcher.Query = $querystring
@@ -212,11 +216,11 @@ Function Get-WmiObject([parameter(mandatory)] [string]$class, [string[]]$propert
     }
 }
 
-Function Get-CIMInstance ( [parameter(position=0)] [string]$classname, [string[]]$property="*")
+Function Get-CIMInstance ( [parameter(mandatory)] [string]$classname, [string[]]$property="*")
 {
      Get-WMIObject $classname -property $property
 } 
- 
+  
 #Example (works on windows,requires admin rights): Set-WmiInstance -class win32_operatingsystem -arguments @{"description" = "MyDescription"}
 #Based on https://devblogs.microsoft.com/scripting/use-the-set-wmiinstance-powershell-cmdlet-to-ease-configuration/
 Function Set-WmiInstance( [string]$class, [hashtable]$arguments, [string]$computername = "localhost", `
@@ -272,6 +276,12 @@ function QPR_wusa { <# wusa.exe replacement #>
 Set-Alias "QPR.$env:systemroot\system32\tasklist.exe" QPR_tl; Set-Alias QPR.tasklist.exe QPR_tl; Set-Alias QPR.tasklist QPR_tl
 function QPR_tl { <# tasklist.exe replacement #>
     Get-WmiObject win32_process "processid,name" | Format-Table -Property Name, processid -autosize
+}
+
+# Note: Visual Studio calls this, not sure if this is really needed by it... 
+Set-Alias "QPR.$env:systemroot\system32\getmac.exe" QPR_gm; Set-Alias QPR.getmac.exe QPR_gm; Set-Alias QPR.getmac QPR_gm
+function QPR_gm { <# getmac.exe replacement #>
+    Get-WmiObject win32_networkadapterconfiguration | Format-Table @{L=’Physical address’;E={$_.macaddress}}
 }
 
 function use_google_as_browser { <# replace winebrowser with google chrome to open webpages #>
@@ -584,7 +594,7 @@ function handy_apps { choco install explorersuite reactos-paint}
     ForEach ($file in "schtasks.exe") {
         Copy-Item -Path "$env:windir\\SysWOW64\\$file" -Destination "$env:windir\\SysWOW64\\QPR.$file" -Force
         Copy-Item -Path "$env:winsysdir\\$file" -Destination "$env:winsysdir\\QPR.$file" -Force}
-    ForEach ($file in "wusa.exe","tasklist.exe","schtasks.exe","systeminfo.exe","wbem\\wmic.exe") {
+    ForEach ($file in "wusa.exe","tasklist.exe","schtasks.exe","systeminfo.exe","getmac.exe","wbem\\wmic.exe") {
         Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\$file" -Force
         Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\$file" -Force}
     <# It seems some programs need this dir?? #>
