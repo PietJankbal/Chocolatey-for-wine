@@ -35,7 +35,22 @@ About PowerShell:
   (or from linux bash: "PS51=1 wine powershell")
 - or you could work in graphical PowerShell 5.1 Integrated Scripting Environment with 'winetricks ps51_ise' 
 - If you really hate Windows you could also start bash (via Busybox) from the PowerShell Core console by just "bash"
+
 ![Screenshot from 2022-09-10 19-36-30](https://user-images.githubusercontent.com/26839562/189495238-2b4893ba-09d1-4e60-bb4c-f326d4939482.png)
+
+
+About ConEmu:
+
+ConEmu console suffers from a few wine-bugs:
+  - Ctrl^C to quit a program that doesn't return to the console doesn`t work. Use Shift^Ctrl^C instead.
+  - After maximizing ConEmu console, then send it to the systray, and then raise it again the console screen is not       redrawn. Workaround: just don`t maximize the ConEmu window...
+  - Selecting text in the ConEmu window (for copy/paste) doesn`t highlight the selection. Included is a very sad hack to     work around ConEmu's 'missing highlight selection' bug. This is a hack against recent wine versions.
+    To enable the hack just do 'apply_conemu_hack', and highlighting selection should work.
+    If you run different wine-versions after each other (or upgrade wine), the hack might break and
+    'wine powershell.exe' (ConEmu) might not start anymore.
+
+    * Try 'wine powershell.exe apply_conemu_hack' and it should likely work again.
+    * If it still doesn't start, fire up winecfg and remove dll overrides for ConEmu64.exe (hack is incompatible               with your wine version).
 
 Notes:
 
