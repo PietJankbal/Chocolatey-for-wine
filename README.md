@@ -44,7 +44,6 @@ About ConEmu:
 
 ConEmu console suffers from a few wine-bugs:
   - Ctrl^C to quit a program that doesn't return to the console doesn`t work. Use Shift^Ctrl^C instead.
-  - After maximizing ConEmu console, then send it to the systray, and then raise it again the console screen is not       redrawn. Workaround: just don`t maximize the ConEmu window...
   - Selecting text in the ConEmu window (for copy/paste) doesn`t highlight the selection. Included is a very sad hack to     work around ConEmu's 'missing highlight selection' bug. This is a hack against recent wine versions.
     To enable the hack just do 'apply_conemu_hack', and highlighting selection should work.
     If you run different wine-versions after each other (or upgrade wine), the hack might break and
