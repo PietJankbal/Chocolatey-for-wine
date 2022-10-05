@@ -52,6 +52,15 @@ ConEmu console suffers from a few wine-bugs:
     * Try 'wine powershell.exe apply_conemu_hack' and it should likely work again.
     * If it still doesn't start, fire up winecfg and remove dll overrides for ConEmu64.exe (hack is incompatible               with your wine version).
 
+About system programs:
+
+Feature is added to replace simple system programs like for example tasklist.exe by a function in
+c:\\Program Files\Powershell\7\profile.ps1. Or add system programs that are missing like setx.exe.
+If programs fail because of insufficient mature or missing system programs one could write a 
+function to return whatever the program expects. See profile.ps1 and choc_install.ps1.
+No garantuee this works for more complex programs as well...
+![Screenshot from 2022-10-06 00-21-16](https://user-images.githubusercontent.com/26839562/194174837-fb54aff1-f31b-4ed6-9fed-4e3b53831189.png)
+
 Notes:
 
   - Do NOT use on existing wineprefix, only on fresh new created prefix! The installation just stupidly installs dotnet48 itsself and messes with registrykeys.
