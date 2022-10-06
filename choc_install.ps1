@@ -189,18 +189,23 @@ function Register-WMIEvent {
 #Only works as of wine-6.20 ( https://bugs.winehq.org/show_bug.cgi?id=51871) e.g. (new-object System.Management.ManagementObjectSearcher("SELECT * FROM Win32_Bios")).Get().manufacturer failed before
 #Examples of usage: Get-WmiObject win32_operatingsystem version or $(Get-WmiObject win32_videocontroller).name etc.
 #TODO: very short: ([wmiclass]"\\.\root\cimv2:win32_bios").GetInstances()
-Function Get-WmiObject([parameter(mandatory)] [string]$class, [string[]]$property="*", `
+Function Get-WmiObject([parameter(mandatory=$true, position = 0, parametersetname = 'class')] [string]$class, `
+                       [parameter( position = 1, parametersetname = 'class')][string[]]$property="*", `
                        [string]$computername = "localhost", [string]$namespace = "root\cimv2", `
-                       [string]$filter)
+                       [string]$filter, [parameter(parametersetname = 'query')] [string]$query)
 {   <# Do not remove or change, it will break Chocolatey #>
     $ConnectionOptions = new-object System.Management.ConnectionOptions
     $assembledpath = "\\" + $computername + "\" + $namespace
     
     $Scope = new-object System.Management.ManagementScope $assembledpath, $ConnectionOptions
     $Scope.Connect() 
-    
-    $querystring = "SELECT " +  $($property | Join-String -Separator ",") + " FROM " + $class
-    $query = new-object System.Management.ObjectQuery $querystring
+
+    if(!$query) {    
+        $querystring = "SELECT " +  $($property | Join-String -Separator ",") + " FROM " + $class }
+    else {
+        $querystring = $query}
+
+    $queryobj = new-object System.Management.ObjectQuery $querystring
     $searcher = new-object System.Management.ManagementObjectSearcher
     $searcher.Query = $querystring
     $searcher.Scope = $Scope 
@@ -284,6 +289,14 @@ function QPR_gm { <# getmac.exe replacement #>
     Get-WmiObject win32_networkadapterconfiguration | Format-Table @{L=’Physical address’;E={$_.macaddress}}
 }
 
+Set-Alias "QPR.$env:systemroot\system32\setx.exe" QPR_stx; Set-Alias QPR.setx.exe QPR_stx; Set-Alias QPR.setx QPR_stx
+function QPR_stx { <# setx.exe replacement #>
+    <# FIXME, only setting env. variable handled atm. #>
+    New-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Session Manager\\Environment' -force -Name $args[0] -Value $args[1] -PropertyType 'String' 
+    New-ItemProperty -Path 'HKCU:\\Environment' -force -Name $args[0] -Value $args[1] -PropertyType 'String' 
+    $env:QPREXITCODE=0;
+}
+
 function use_google_as_browser { <# replace winebrowser with google chrome to open webpages #>
     if (!([System.IO.File]::Exists("$env:ProgramFiles\Google\Chrome\Application\Chrome.exe"))){ choco install googlechrome}
 
@@ -294,7 +307,6 @@ REGEDIT4
 [HKEY_CLASSES_ROOT\http\shell\open\command]
 @="\"%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe\" \"%1\""
 "@
-
     $regkey | Out-File -FilePath $env:TEMP\\regkey.reg
     reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:64;
     reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:32;
@@ -308,19 +320,16 @@ function QPR_si { <# systeminfo replacement #>
 #If passing back (manipulated) arguments back to the same program, make sure to backup a copy (here QPR.schtasks.exe, copied during installation)
 Set-Alias "QPR.$env:systemroot\system32\schtasks.exe" QPR_stsk; Set-Alias QPR.schtasks.exe QPR_stsk; Set-Alias QPR.schtasks QPR_stsk
 function QPR_stsk { <# schtasks.exe replacement #>
-    $spl = $args.Split(" ")
-    if ($args | Select-string '/CREATE') { <# Just execute this stuff instantly #>
-        Start-Process $spl[$spl.IndexOf("/TR") + 1] } <# hack for Spotify #>
-    else {
-        Start-Process -Wait -NoNewWindow QPR.schtasks.exe $args }
+    $spl = $($env:QPRCMDLINE.Split('"'' ''"').Trim('"')).replace('/silent','') <# hack for Spotify #>
+
+    if ($env:QPRCMDLINE | Select-string '"/CREATE"') {Write-Host <# Just execute this stuff instantly #>
+        Start-Process  $spl[$spl.IndexOf('/TR') + 1].replace('''','') } <# hack for Spotify #>
+    else { $env:QPRCMDLINE.Split('"'' ''"').Trim().Trim('"') 
+        Start-Process -Wait -NoNewWindow QPR.schtasks.exe $env:QPRCMDLINE.Split('" "').Trim().Trim('"') }
 }
 
-Set-Alias "QPR.$env:systemroot\system32\wbem\wmic.exe" QPR_wmic; Set-Alias QPR.wmic.exe QPR_wmic; Set-Alias QPR.wmic QPR_wmic
-function QPR_wmic { <# wmic replacement #>
-    [CmdletBinding()]
-        Param([parameter(Position=0)][string]$alias,
-        [parameter(Position=1)][string]$option, <# only 'get' supported, param not used at all a.t.m. #>
-        [parameter(Position=2)][string[]]$property="*")
+Set-Alias "QPR.$env:systemroot\system32\wbem\wmic.exe" QPR_wmic; Set-Alias QPR.wmic.exe QPR_wmic
+function QPR_wmic { <# wmic replacement, this part only rebuilds the arguments #>
 
     $hash = @{
         'os' = "win32_operatingsystem"
@@ -328,12 +337,48 @@ function QPR_wmic { <# wmic replacement #>
         'logicaldisk' = "win32_logicaldisk"
         'process' = "win32_process" } <# etc. etc. #>
 
+    for($i = 0; $i -lt $args.count; $i++) {
+        if ($args[$i][0] -ne '/') {
+            if ($args[$i-1] -and $args[$i-1] -eq '/PATH') {$class = $args[$i];}
+            else { $alias = $args[$i];  }
+        $idx = $i;
+        break;
+        }
+        $idx
+    }
+ 
     foreach ($key in $hash.keys) {
-         if($alias -eq $key) {$class = $hash[$key];} }
-    <# Syntax example from NopowerShell: "gwmi "Select ProcessId,Name,CommandLine From Win32_Process" #>
-    $query = 'Select' + ' ' + ($property -join ',') + ' ' + 'From' + ' ' + $class
+        if($alias -eq $key) {$class = $hash[$key];}
+    }
+
+    $cmdline = '-class ' + $class + ' '
+
+    for($i = 0; $i -lt $args.count; $i++) {
+        if ($args[$i][0] -eq '/') { $cmdline += ($args[$i] -creplace '/','-' -creplace ':',' '''); if( $args[$i].Contains(':') ) {$cmdline += ''' ' } else  {$cmdline += ' '}}
+        elseif ($args[$i] -eq 'get') { $cmdline += '-property' + ' ' }
+        elseif ($i -eq $idx) {}
+        #elseif ($i -eq 'where') { $cmdline += '-where' + ' ' + 'where'} <# FIXME #>
+        else {$cmdline += $args[$i] + ' '} }
+
+    iex  -Command ('_wmic ' + $cmdline)
+} 
+
+function _wmic { <# wmic replacement #>
+    [CmdletBinding()]
+    Param([parameter(Position=0)][string]$class,
+    [string[]]$property="*",
+    #[string]$where,
+    [string[]]$node,
+    [string[]]$failfast,
+    [switch]$path<#dummy #>,
+    [parameter(ValueFromRemainingArguments=$true)]$vars)
+
+    $query = 'Select' + ' ' + ($property -join ',') + ' ' + 'From' + ' ' + $class + ' ' + $vars
     #get-wmiobject win32_logicaldisk |where @"deviceid"='c:'" |select-object freespace
-    NoPowerShell.exe Get-WMIObject "$query" 
+    if($property -eq '*'){ <# 'get-wmiobject $class | select *' does not work because of wine-bug, so need a workaround:  #>
+        Get-WmiObject $class ($($(Get-WmiObject $class |Get-Member) |where {$_.membertype -eq 'property'}).name |Join-String -Separator ',') }
+    else {
+        Get-WMIObject -query $query }
 } 
 #Easy access to the C# compiler
 Set-Alias csc c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
@@ -554,6 +599,7 @@ function handy_apps { choco install explorersuite reactos-paint}
             }
     }
 "@
+
     <# Dismiss ConEmu's fast configuration window by hitting enter #>
     [Synthesize_Keystrokes]::SendKeyStroke()
 
@@ -594,8 +640,10 @@ function handy_apps { choco install explorersuite reactos-paint}
     ForEach ($file in "schtasks.exe") {
         Copy-Item -Path "$env:windir\\SysWOW64\\$file" -Destination "$env:windir\\SysWOW64\\QPR.$file" -Force
         Copy-Item -Path "$env:winsysdir\\$file" -Destination "$env:winsysdir\\QPR.$file" -Force}
-    ForEach ($file in "wusa.exe","tasklist.exe","schtasks.exe","systeminfo.exe","getmac.exe","wbem\\wmic.exe") {
+    ForEach ($file in "wusa.exe","tasklist.exe","schtasks.exe","systeminfo.exe","getmac.exe","setx.exe","wbem\\wmic.exe") {
         Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\$file" -Force
         Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\$file" -Force}
     <# It seems some programs need this dir?? #>
     New-Item -Path "$env:LOCALAPPDATA" -Name "Temp" -ItemType "directory" -ErrorAction SilentlyContinue
+    <# Native Access needs this dir #>
+    New-Item -Path "$env:Public" -Name "Downloads" -ItemType "directory" -ErrorAction SilentlyContinue
