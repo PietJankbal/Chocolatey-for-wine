@@ -8,8 +8,8 @@ function validate_param
  Param(
         [Parameter(Mandatory=$false)]
         [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'd2d1',`
-                     'dxvk1101', 'hnetcfg', 'msi', 'sapi', 'ps51', 'ps51_ise', 'crypt32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'comctl32', 'wsh57',`
-                     'nocrashdialog', 'renderer=vulkan')]
+                     'dxvk1101', 'hnetcfg', 'msi', 'sapi', 'ps51', 'ps51_ise', 'crypt32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'uxtheme', 'comctl32', 'wsh57',`
+                     'nocrashdialog', 'renderer=vulkan', 'renderer=gl', 'vs19')]
         [string[]]$verb
       )
 }
@@ -40,12 +40,15 @@ $custom_array = @() # Creating an empty array to populate data in
                "msvbvm60", "msvbvm60",`
                "xmllite", "xmllite",`
                "windowscodecs", "windowscodecs",`
+               "uxtheme", "uxtheme",`
                "wsh57", "MS Windows Script Host",`
                "comctl32", "dangerzone, only for testing, might break things, only use on a per app base",`
                "d2d1", "dangerzone, only for testing, might break things, only use on a per app base",`
                "windows.ui.xaml", "windows.ui.xaml, experimental...",`
                "nocrashdialog", "Disable graphical crash dialog",`
-               "renderer=vulkan", "renderer=vulkan"
+               "renderer=vulkan", "renderer=vulkan",`
+               "renderer=gl", "renderer=gl",`
+               "vs19", "Visual Studio 2019, only install, devenv doesn't work "
 
 for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) { 
     $custom_array += New-Object PSObject -Property @{ # Setting up custom array utilizing a PSObject
@@ -183,6 +186,16 @@ function func_windowscodecs
         7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -aoa } quit?('7z')
     foreach($i in 'windowscodecs') { dlloverride 'native' $i }
 }  <# end windowscodecs #>
+
+function func_uxtheme
+{
+    $dlls = @('uxtheme.dll'); check_aik_sanity; $dldir = "aik70"
+
+    foreach ($i in $dlls) {
+        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -aoa; 
+        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -aoa } quit?('7z')
+    foreach($i in 'uxtheme') { dlloverride 'native' $i }
+}  <# end uxtheme #>
 
 function func_gdiplus
 {
@@ -989,6 +1002,33 @@ REGEDIT4
 "@
     reg_edit $regkey
 } <# end renderer=vulkan #>
+
+function func_renderer=gl <# renderer=gl #>
+{   
+$regkey = @"
+REGEDIT4
+[HKEY_CURRENT_USER\Software\Wine\Direct3D]
+"renderer"="gl"
+"@
+    reg_edit $regkey
+} <# end renderer=vulkan #>
+
+
+function func_vs19
+{
+func_msxml6
+
+winecfg /v win7
+
+(New-Object System.Net.WebClient).DownloadFile('https://aka.ms/vs/16/release/installer', "$env:TMP\\installer")
+
+7z x $env:TMP\\installer "-o$env:TMP\\opc" -y ;quit?('7z')
+
+set-executionpolicy bypass
+ 
+ Start-Process  "$env:TMP\\opc\\Contents\\vs_installer.exe" -Verb RunAs -ArgumentList "install --channelId VisualStudio.16.Release --channelUri `"https://aka.ms/vs/16/release/channel`" --productId Microsoft.VisualStudio.Product.Community <#--add `"Microsoft.VisualStudio.Workload.VCTools`"#> --includeRecommended --quiet"
+
+}
 
 <# Main function #>
     $result = ($args.count) ? ($args) : ($custom_array  | select name,description | Out-GridView  -PassThru  -Title 'Make a  selection')
