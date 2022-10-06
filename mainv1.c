@@ -18,7 +18,7 @@
  *
  * Compile:
  * i686-w64-mingw32-gcc -municode  -mconsole mainv1.c -lurlmon -lshlwapi -s -o powershell32.exe
- * x86_64-w64-mingw32-gcc -municode  -mconsole mainv1.c -lurlmon -lshlwapi -s -o ChoCinstaller_0.5c.703.exe
+ * x86_64-w64-mingw32-gcc -municode  -mconsole mainv1.c -lurlmon -lshlwapi -s -o ChoCinstaller_0.5e.703.exe
  */
 #include <windows.h>
 #include <stdio.h>
@@ -26,13 +26,13 @@
 
 int __cdecl wmain(int argc, WCHAR *argv[])
 {
-    BOOL no_psconsole = TRUE, noexit = FALSE;
+    BOOL no_psconsole = TRUE, read_from_stdin = FALSE;
     WCHAR conemu_pathW[MAX_PATH], cmdlineW[MAX_PATH]=L"", pwsh_pathW[MAX_PATH], bufW[MAX_PATH] = L"";
     DWORD exitcode;       
     STARTUPINFOW si;
     PROCESS_INFORMATION pi;
     int i = 1, j = 1;
-    
+
     if(!ExpandEnvironmentStringsW(L"%ProgramW6432%", pwsh_pathW, MAX_PATH+1)) goto failed; /* win32 only apparently, not supported... */
     if(!ExpandEnvironmentStringsW(L"%SystemDrive%", conemu_pathW, MAX_PATH+1)) goto failed;
 
@@ -126,23 +126,89 @@ int __cdecl wmain(int argc, WCHAR *argv[])
 
     if( i == argc) no_psconsole = FALSE;  /*no command found, start PSConsole later in ConEmu to work around bug https://bugs.winehq.org/show_bug.cgi?id=49780*/
 
-    while (j < i ) /* concatenate options into new cmdline, meanwhile working around some incompabilities */ 
+    while ( argv[j] ) /* concatenate options into new cmdline, meanwhile working around some incompabilities */ 
     { 
-        if ( !wcsnicmp( L"-f", argv[j], 2 ) ) no_psconsole = TRUE;  /* -File, do not start in PSConsole */
-        if ( !wcsnicmp( L"-enc", argv[j], 4 ) ) no_psconsole = TRUE;/* -EncodedCommand, do not start in PSConsole */
-        if ( !wcsnicmp( L"-ve", argv[j], 3 ) ) {j++;  goto done;}   /* -Version, exclude from new cmdline, incompatible... */
-        if ( !wcsnicmp( L"-nop", argv[j], 4 ) ) goto done;          /* -NoProfile, also exclude to always enable profile.ps1 to work around possible incompatibilities */   
+        if ( !wcsnicmp( L"-f", argv[j], 2 ) ) no_psconsole = TRUE;           /* -File, do not start in PSConsole */
+        if ( !wcsnicmp( L"-enc", argv[j], 4 ) ) no_psconsole = TRUE;         /* -EncodedCommand, do not start in PSConsole */
+        if ( !wcscmp( L"-", argv[j] ) ) {read_from_stdin = TRUE; goto done;} /* hyphen handled later on */
+        if ( !wcsnicmp( L"-ve", argv[j], 3 ) ) {j++;  goto done;}            /* -Version, exclude from new cmdline, incompatible... */
+        if ( !wcsnicmp( L"-nop", argv[j], 4 ) ) goto done;                   /* -NoProfile, also exclude to always enable profile.ps1 to work around possible incompatibilities */   
         lstrcatW( lstrcatW( cmdlineW, L" " ), argv[j] );
         done: j++;
     }
     /* now insert a '-c' (if necessary) */
-    if ( argv[i] && wcsnicmp( argv[i-1], L"-c", 2 ) && wcsicmp( argv[i-1], L"-" ) && wcsnicmp( argv[i-1], L"-enc", 4 ) && wcsnicmp( argv[i-1], L"-f", 2 ) && wcsnicmp( argv[i], L"/c", 2 ) )
+    if ( argv[i] && wcsnicmp( argv[i-1], L"-c", 2 ) && wcsnicmp( argv[i-1], L"-enc", 4 ) && wcsnicmp( argv[i-1], L"-f", 2 ) && wcsnicmp( argv[i], L"/c", 2 ) )
         lstrcatW( lstrcatW( cmdlineW, L" " ), L"-c " );
 
     while( i  < argc ) /* concatenate the rest of the arguments into the new cmdline */
     {
         lstrcatW( lstrcatW( cmdlineW, L" " ), argv[i] );
         i++;
+    }
+
+    /* following code for reading console is shamelessly stolen from wine/programs/find/find.c */
+    /* to handle |powershell.exe -NoLogo -InputFormat Text -NoExit -ExecutionPolicy Unrestricted -Command - */
+    if( read_from_stdin ) { /* or support something like "echo 'get-date' |powershell -c -" */
+        WCHAR *line;
+
+        BOOL read_char_from_handle(HANDLE handle, char *char_out)
+        {
+            static char buffer[4096];
+            static DWORD buffer_max = 0, buffer_pos = 0;
+            /* Read next content into buffer */
+            if (buffer_pos >= buffer_max)
+            {
+                BOOL success = ReadFile(handle, buffer, 4096, &buffer_max, NULL);
+                if (!success || !buffer_max) return FALSE;
+                buffer_pos = 0;
+            }
+            *char_out = buffer[buffer_pos++];
+            return TRUE;
+        }
+
+        /* Read a line from a handle, returns NULL if the end is reached */
+        WCHAR* read_line_from_handle(HANDLE handle)
+        {
+            int line_max = 4096, length = 0, line_converted_length;
+            WCHAR *line_converted;
+            BOOL success;
+            char *line = HeapAlloc(GetProcessHeap(), 0, line_max);
+
+            for (;;)
+            {
+                char c;
+                success = read_char_from_handle(handle, &c);
+                /* Check for EOF */
+                if (!success) { if (length == 0) return NULL; else break; }
+                if (c == '\n') break;
+                /* Make sure buffer is large enough */
+                if (length + 2 >= line_max)
+                { 
+                    line_max *= 2;
+                    line = line ? HeapAlloc(GetProcessHeap(), 0, line_max) :  HeapReAlloc(GetProcessHeap(), 0, line, line_max);
+                }
+                if (c == '"') line[length++] = '\\';  /* escape the double quotes so they won`t get lost */
+                line[length++] = c;   
+            }
+
+            line[length] = 0; /* Strip \r of windows line endings */
+            if (length - 1 >= 0 && line[length - 1] == '\r') line[length - 1] = 0;
+
+            line_converted_length = MultiByteToWideChar(CP_ACP, 0, line, -1, 0, 0);
+            line_converted = HeapAlloc(GetProcessHeap(), 0, line_converted_length * sizeof(WCHAR)); 
+            MultiByteToWideChar(CP_ACP, 0, line, -1, line_converted, line_converted_length);
+
+            HeapFree(GetProcessHeap(), 0, line);
+            return line_converted;
+        }
+
+        HANDLE input = GetStdHandle(STD_INPUT_HANDLE);
+        if( !wcscmp(argv[argc-1], L"-" ) && wcsnicmp(argv[argc-2], L"-c", 2 ) ) lstrcatW(cmdlineW, L" -c ");
+        lstrcatW(cmdlineW, L" &{"); /* embed cmdline in scriptblock */
+
+        while ((line = read_line_from_handle(input)) != NULL) lstrcatW( cmdlineW, line); 
+        lstrcatW(cmdlineW, L"}");
+        no_psconsole = TRUE;
     }
 exec: 
     if ( GetEnvironmentVariable( L"PWSHVERBOSE", bufW, MAX_PATH + 1 ) ) 
