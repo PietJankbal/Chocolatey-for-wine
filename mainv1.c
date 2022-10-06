@@ -27,7 +27,7 @@
 int __cdecl wmain(int argc, WCHAR *argv[])
 {
     BOOL no_psconsole = TRUE, noexit = FALSE;
-    WCHAR conemu_pathW[MAX_PATH], cmdlineW[MAX_PATH]=L"", pwsh_pathW[MAX_PATH], bufW[MAX_PATH] = L" /i ";
+    WCHAR conemu_pathW[MAX_PATH], cmdlineW[MAX_PATH]=L"", pwsh_pathW[MAX_PATH], bufW[MAX_PATH] = L"";
     DWORD exitcode;       
     STARTUPINFOW si;
     PROCESS_INFORMATION pi;
@@ -70,7 +70,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
 
         memset( &si, 0, sizeof( STARTUPINFO )); si.cb = sizeof( STARTUPINFO ); memset( &pi, 0, sizeof( PROCESS_INFORMATION ));
         GetTempPathW( MAX_PATH, tmpW );
-        CreateProcessW(lstrcatW( msiexecW, L"\\msiexec.exe" ), lstrcatW( bufW, lstrcatW( lstrcatW( tmpW, msiW ) , L" ENABLE_PSREMOTING=1 REGISTER_MANIFEST=1 /q" ) ), 0, 0, 0, HIGH_PRIORITY_CLASS, 0, 0, &si, &pi);
+        CreateProcessW(lstrcatW( msiexecW, L"\\msiexec.exe" ), lstrcatW( lstrcatW( bufW, L" /i " ), lstrcatW( lstrcatW( tmpW, msiW ) , L" ENABLE_PSREMOTING=1 REGISTER_MANIFEST=1 /q" ) ), 0, 0, 0, HIGH_PRIORITY_CLASS, 0, 0, &si, &pi);
         WaitForSingleObject( pi.hProcess, INFINITE ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );   
 
         memset( &si, 0, sizeof( STARTUPINFO ) ); si.cb = sizeof( STARTUPINFO ); memset( &pi , 0, sizeof( PROCESS_INFORMATION ) );
@@ -80,19 +80,25 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         WaitForSingleObject( pi.hProcess, INFINITE ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );
         
         return 0;  /* End download and install */    
-    }
+    } 
     /* I can also act as a dummy program if my exe-name is not powershell */ 
     /* Allows to replace a system executable (like wusa.exe, or any exe really) by a function in profile.ps1 */
     memset( &si, 0, sizeof( STARTUPINFO )); si.cb = sizeof( STARTUPINFO ); memset( &pi, 0, sizeof( PROCESS_INFORMATION ) );
     if ( wcsnicmp ( &argv[0][lstrlenW(argv[0]) - 14 ] , L"powershell.exe" , 14 ) && wcsnicmp ( &argv[0][lstrlenW(argv[0]) - 10 ] , L"powershell" , 10 ) )
-    {    /* Rename the exe in the cmdline: add some prefix to it, so we can query for program replacement in profile.ps1) */
-        lstrcatW ( lstrcatW( lstrcatW( lstrcatW( cmdlineW, L" " ), L" -c " ), L"QPR." ) , argv[0] );
-        while( i  < argc ) {/* concatenate the rest of the arguments into the new cmdline */
-            lstrcatW( lstrcatW( cmdlineW, L" " ), argv[i] ); i++;}
+    {   
+        WCHAR *ptr = argv[0]; 
+        while( *ptr ) { 
+            if( *ptr=='/' ) { *ptr='\\'; } ptr++; } /* some programs call like 'c:\\windows/system32/setx' so we replace forward with back slashes */
+        lstrcatW( lstrcatW( cmdlineW, L" -c QPR." ) , argv[0] ); /* add some prefix to the executable, so we can query for program replacement in profile.ps1 */
+        if ( wcsnicmp ( &argv[0][ lstrlenW(argv[0]) - 4 ] , L".exe" , 4 ) ) lstrcatW( cmdlineW, L".exe" ); /* and add '.exe' if necessary */
+        for( i = 1; i < argc; i++ ) { /* concatenate the rest of the arguments into the new cmdline */
+            lstrcatW( lstrcatW( lstrcatW( cmdlineW, L" '\"" )  , argv[i] ), L"\"'" ); }
+        SetEnvironmentVariableW( L"QPRCMDLINE", cmdlineW ); /* option to track the complete commandline via $env:QPRCMDLINE */
         CreateProcessW( pwsh_pathW, cmdlineW , 0, 0, 0, 0, 0, 0, &si, &pi ); /* send the new commandline to pwsh.exe */
         WaitForSingleObject( pi.hProcess, INFINITE ); GetExitCodeProcess( pi.hProcess, &exitcode ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );    
-        return ( GetEnvironmentVariable( L"FAKESUCCESS", bufW, MAX_PATH + 1 ) ? 0 : exitcode );
+        return ( GetEnvironmentVariable( L"QPREXITCODE", bufW, MAX_PATH + 1 ) ? _wtoi( bufW ) : exitcode );
     }
+
     /* Main program: wrap the original powershell-commandline into correct syntax, and send it to pwsh.exe */ 
     BOOL is_single_or_last_option (WCHAR *opt)
     {
@@ -105,7 +111,6 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         if ( !is_single_or_last_option ( argv[i] ) ) i++;
         i++;
     }
-
     /* by setting this env variable, there's a possibility to execute the cmd through rudimentary windows powershell 5.1, requires 'winetricks ps51' first */
     if ( GetEnvironmentVariable( L"PS51", bufW, MAX_PATH + 1 ) && !wcscmp( bufW, L"1") )
     {   /* Note: when run from bash, escape special char $ with single quotes and backtick e.g. PS51=1 wine powershell '`SPSVersionTable' */
@@ -122,8 +127,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
     if( i == argc) no_psconsole = FALSE;  /*no command found, start PSConsole later in ConEmu to work around bug https://bugs.winehq.org/show_bug.cgi?id=49780*/
 
     while (j < i ) /* concatenate options into new cmdline, meanwhile working around some incompabilities */ 
-    {   
-        if ( !wcsnicmp( L"-noe", argv[j], 4 ) ) noexit = TRUE;      /* -NoExit, hack to start PSConsole in ConEmu later to work around bug https://bugs.winehq.org/show_bug.cgi?id=49780)*/
+    { 
         if ( !wcsnicmp( L"-f", argv[j], 2 ) ) no_psconsole = TRUE;  /* -File, do not start in PSConsole */
         if ( !wcsnicmp( L"-enc", argv[j], 4 ) ) no_psconsole = TRUE;/* -EncodedCommand, do not start in PSConsole */
         if ( !wcsnicmp( L"-ve", argv[j], 3 ) ) {j++;  goto done;}   /* -Version, exclude from new cmdline, incompatible... */
@@ -144,7 +148,7 @@ exec:
     if ( GetEnvironmentVariable( L"PWSHVERBOSE", bufW, MAX_PATH + 1 ) ) 
         { fwprintf( stderr, L"\033[1;35m" ); fwprintf( stderr, L"\n command line is %ls \n", cmdlineW ); fwprintf( stderr, L"\033[0m\n" ); }
     /* if not a command, start powershellconsole in ConEmu to work around missing ENABLE_VIRTUAL_TERMINAL_PROCESSING (bug https://bugs.winehq.org/show_bug.cgi?id=49780) */
-    if( !no_psconsole || noexit)
+    if( !no_psconsole )
     {
         bufW[0] = 0;
         CreateProcessW( conemu_pathW, lstrcatW( lstrcatW( lstrcatW( bufW, L" -NoUpdate -LoadRegistry -run "), pwsh_pathW), cmdlineW), 0, 0, 0, 0, 0, 0, &si, &pi) ;
