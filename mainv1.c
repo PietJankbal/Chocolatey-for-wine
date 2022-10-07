@@ -190,7 +190,6 @@ int __cdecl wmain(int argc, WCHAR *argv[])
                 if (c == '"')  line[length++] = '\\';  /* escape the double quotes so they won`t get lost */
                 if (c == '\'') line[length++] = '\'';  /* escape the single quote so they won`t get lost */
                 if (c == '\r') c = ';';                /* carriage return should be replaced */
-
                 line[length++] = c;   
             }
 
