@@ -172,7 +172,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
             int line_max = 4096, length = 0, line_converted_length;
             WCHAR *line_converted;
             BOOL success;
-            char *line = HeapAlloc(GetProcessHeap(), 0, line_max);
+            char *line = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, line_max);
 
             for (;;)
             {
@@ -185,9 +185,12 @@ int __cdecl wmain(int argc, WCHAR *argv[])
                 if (length + 2 >= line_max)
                 { 
                     line_max *= 2;
-                    line = line ? HeapAlloc(GetProcessHeap(), 0, line_max) :  HeapReAlloc(GetProcessHeap(), 0, line, line_max);
+                    line = line ? HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, line_max) :  HeapReAlloc(GetProcessHeap(), 0, line, line_max);
                 }
-                if (c == '"') line[length++] = '\\';  /* escape the double quotes so they won`t get lost */
+                if (c == '"')  line[length++] = '\\';  /* escape the double quotes so they won`t get lost */
+                if (c == '\'') line[length++] = '\'';  /* escape the single quote so they won`t get lost */
+                if (c == '\r') c = ';';                /* carriage return should be replaced */
+
                 line[length++] = c;   
             }
 
@@ -195,7 +198,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
             if (length - 1 >= 0 && line[length - 1] == '\r') line[length - 1] = 0;
 
             line_converted_length = MultiByteToWideChar(CP_ACP, 0, line, -1, 0, 0);
-            line_converted = HeapAlloc(GetProcessHeap(), 0, line_converted_length * sizeof(WCHAR)); 
+            line_converted = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, line_converted_length * sizeof(WCHAR)); 
             MultiByteToWideChar(CP_ACP, 0, line, -1, line_converted, line_converted_length);
 
             HeapFree(GetProcessHeap(), 0, line);
@@ -204,15 +207,15 @@ int __cdecl wmain(int argc, WCHAR *argv[])
 
         HANDLE input = GetStdHandle(STD_INPUT_HANDLE);
         if( !wcscmp(argv[argc-1], L"-" ) && wcsnicmp(argv[argc-2], L"-c", 2 ) ) lstrcatW(cmdlineW, L" -c ");
-        lstrcatW(cmdlineW, L" &{"); /* embed cmdline in scriptblock */
+        lstrcatW(cmdlineW, L" iex '& {"); /* embed cmdline in scriptblock */
 
         while ((line = read_line_from_handle(input)) != NULL) lstrcatW( cmdlineW, line); 
-        lstrcatW(cmdlineW, L"}");
+        lstrcatW(cmdlineW, L"}'");
         no_psconsole = TRUE;
     }
 exec: 
     if ( GetEnvironmentVariable( L"PWSHVERBOSE", bufW, MAX_PATH + 1 ) ) 
-        { fwprintf( stderr, L"\033[1;35m" ); fwprintf( stderr, L"\n command line is %ls \n", cmdlineW ); fwprintf( stderr, L"\033[0m\n" ); }
+       { fwprintf( stderr, L"\033[1;35m" ); fwprintf( stderr, L"\n command line is %ls \n", cmdlineW ); fwprintf( stderr, L"\033[0m\n" ); }
     /* if not a command, start powershellconsole in ConEmu to work around missing ENABLE_VIRTUAL_TERMINAL_PROCESSING (bug https://bugs.winehq.org/show_bug.cgi?id=49780) */
     if( !no_psconsole )
     {
