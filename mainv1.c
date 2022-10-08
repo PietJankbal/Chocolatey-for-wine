@@ -126,7 +126,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
 
     if( i == argc) no_psconsole = FALSE;  /*no command found, start PSConsole later in ConEmu to work around bug https://bugs.winehq.org/show_bug.cgi?id=49780*/
 
-    while ( argv[j] ) /* concatenate options into new cmdline, meanwhile working around some incompabilities */ 
+    while ( j < i ) /* concatenate options into new cmdline, meanwhile working around some incompabilities */ 
     { 
         if ( !wcsnicmp( L"-f", argv[j], 2 ) ) no_psconsole = TRUE;           /* -File, do not start in PSConsole */
         if ( !wcsnicmp( L"-enc", argv[j], 4 ) ) no_psconsole = TRUE;         /* -EncodedCommand, do not start in PSConsole */
@@ -146,9 +146,9 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         i++;
     }
 
-    /* following code for reading console is shamelessly stolen from wine/programs/find/find.c */
-    /* to handle |powershell.exe -NoLogo -InputFormat Text -NoExit -ExecutionPolicy Unrestricted -Command - */
-    if( read_from_stdin ) { /* or support something like "echo 'get-date' |powershell -c -" */
+    /* support pipeline to handle something like " '$(get-date) | powershell - ' */
+    /* following code for reading console is shamelessly stolen and adapted from wine/programs/find/find.c */
+       if( read_from_stdin ) {
         WCHAR *line;
 
         BOOL read_char_from_handle(HANDLE handle, char *char_out)
@@ -211,7 +211,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         while ((line = read_line_from_handle(input)) != NULL) lstrcatW( cmdlineW, line); 
         lstrcatW(cmdlineW, L"}'");
         no_psconsole = TRUE;
-    }
+    } /* end support pipeline */ 
 exec: 
     if ( GetEnvironmentVariable( L"PWSHVERBOSE", bufW, MAX_PATH + 1 ) ) 
        { fwprintf( stderr, L"\033[1;35m" ); fwprintf( stderr, L"\n command line is %ls \n", cmdlineW ); fwprintf( stderr, L"\033[0m\n" ); }
