@@ -20,6 +20,7 @@ REGEDIT4
 "wmic.exe"="native"
 
 [HKEY_CURRENT_USER\Software\Wine\AppDefaults\conemu64.exe]
+"Version"="win81"
 
 [HKEY_CURRENT_USER\Software\Wine\AppDefaults\conemu64.exe\DllOverrides]
 "dwmapi"=""
@@ -221,6 +222,8 @@ Function Get-WmiObject([parameter(mandatory=$true, position = 0, parametersetnam
     }
 }
 
+Set-Alias gwmi Get-WmiObject
+
 Function Get-CIMInstance ( [parameter(mandatory)] [string]$classname, [string[]]$property="*")
 {
      Get-WMIObject $classname -property $property
@@ -280,7 +283,7 @@ function QPR_wusa { <# wusa.exe replacement #>
 # Note: Following overrides wine(-staging)`s tasklist so remove stuff below if you don`t want that, and remove native override in winecfg 
 Set-Alias "QPR.$env:systemroot\system32\tasklist.exe" QPR_tl; Set-Alias QPR.tasklist.exe QPR_tl; Set-Alias QPR.tasklist QPR_tl
 function QPR_tl { <# tasklist.exe replacement #>
-    Get-WmiObject win32_process "processid,name" | Format-Table -Property Name, processid -autosize
+    $(ps) |  ft  -autosize -property  Name, id, sessionid, @{Name="Mem Usage(MB)";Expression={[math]::round($_.ws / 1mb)}} 
 }
 
 # Note: Visual Studio calls this, not sure if this is really needed by it... 
@@ -330,55 +333,40 @@ function QPR_stsk { <# schtasks.exe replacement #>
 
 Set-Alias "QPR.$env:systemroot\system32\wbem\wmic.exe" QPR_wmic; Set-Alias QPR.wmic.exe QPR_wmic
 function QPR_wmic { <# wmic replacement, this part only rebuilds the arguments #>
-
+    $cmdline = $env:QPRCMDLINE 
     $hash = @{
-        'os' = "win32_operatingsystem"
-        'bios' = "win32_bios"
-        'logicaldisk' = "win32_logicaldisk"
-        'process' = "win32_process" } <# etc. etc. #>
+        'os' = "-class win32_operatingsystem"
+        'bios' = "-class win32_bios"
+        'logicaldisk' = "-class win32_logicaldisk"
+        'process' = "-class win32_process" } <# etc. etc. #>
 
-    for($i = 0; $i -lt $args.count; $i++) {
-        if ($args[$i][0] -ne '/') {
-            if ($args[$i-1] -and $args[$i-1] -eq '/PATH') {$class = $args[$i];}
-            else { $alias = $args[$i];  }
-        $idx = $i;
-        break;
-        }
-        $idx
-    }
- 
     foreach ($key in $hash.keys) {
-        if($alias -eq $key) {$class = $hash[$key];}
-    }
-
-    $cmdline = '-class ' + $class + ' '
-
-    for($i = 0; $i -lt $args.count; $i++) {
-        if ($args[$i][0] -eq '/') { $cmdline += ($args[$i] -creplace '/','-' -creplace ':',' '''); if( $args[$i].Contains(':') ) {$cmdline += ''' ' } else  {$cmdline += ' '}}
-        elseif ($args[$i] -eq 'get') { $cmdline += '-property' + ' ' }
-        elseif ($i -eq $idx) {}
-        #elseif ($i -eq 'where') { $cmdline += '-where' + ' ' + 'where'} <# FIXME #>
-        else {$cmdline += $args[$i] + ' '} }
+        if( $cmdline |select-string "\b$key\b" ) { $cmdline = $cmdline -replace $key, $hash[$key]; break }    }
+   
+    $cmdline = $cmdline -replace 'get', '-property' -replace 'where', '-where' -replace "/path", "-class" -replace "'", "'`"'"  <# escape quotes (??) #>
 
     iex  -Command ('_wmic ' + $cmdline)
-} 
+}
 
 function _wmic { <# wmic replacement #>
     [CmdletBinding()]
     Param([parameter(Position=0)][string]$class,
     [string[]]$property="*",
-    #[string]$where,
-    [string[]]$node,
-    [string[]]$failfast,
-    [switch]$path<#dummy #>,
-    [parameter(ValueFromRemainingArguments=$true)]$vars)
+    [string]$where,
+    [parameter(ValueFromRemainingArguments=$true)]$vargs)
 
-    $query = 'Select' + ' ' + ($property -join ',') + ' ' + 'From' + ' ' + $class + ' ' + $vars
-    #get-wmiobject win32_logicaldisk |where @"deviceid"='c:'" |select-object freespace
     if($property -eq '*'){ <# 'get-wmiobject $class | select *' does not work because of wine-bug, so need a workaround:  #>
         Get-WmiObject $class ($($(Get-WmiObject $class |Get-Member) |where {$_.membertype -eq 'property'}).name |Join-String -Separator ',') }
-    else {
-        Get-WMIObject -query $query }
+
+    $custom_array = @()
+    foreach ($i in $property){
+        $query = 'Select' + ' ' + $i + ' ' + 'From' + ' ' + $class + (($where) ? (' where ' + $where ) : ('')) #+ $vargs
+        $custom_array += New-Object PSObject -Property @{ # Setting up custom array utilizing a PSObject
+            prop = $i 
+            val = ( Get-WMIObject -query $query ).$i } 
+    }
+    ($custom_array.GetEnumerator()  | % { "$($_.prop) $($_.Value -join ',')" })  -join "`t" 
+    ($custom_array.GetEnumerator()  | % { "$($_.val) $($_.Value -join ',')" }) -join "`t" 
 } 
 #Easy access to the C# compiler
 Set-Alias csc c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
@@ -397,8 +385,10 @@ function handy_apps { choco install explorersuite reactos-paint}
 #  Install dotnet48, ConEmu, Chocolatey, 7z, arial, d3dcompiler_47 and a few extras (nopowershell and wine robocopy+taskschd)  #
 #                                                                                                                              #
 ################################################################################################################################   
+    Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072;
 #   Invoke-Expression  $(cat $(Join-Path "$env:TEMP" 'install2.ps1') | Select-string 'url_7za =')  <# Get the 7za.exe downloadlink from install2.ps1 file #>
 #   (New-Object System.Net.WebClient).DownloadFile($url_7za, $(Join-Path "$env:TEMP" '7za.exe') )
+
     (New-Object System.Net.WebClient).DownloadFile('https://d3.7-zip.org/a/7z2201-x64.exe', $(Join-Path "$env:TEMP" '7z2201-x64.exe') )
     iex "$(Join-Path "$env:TEMP" '7z2201-x64.exe') /S"; while(!(Test-Path -Path "$env:ProgramW6432\\7-zip\\7z.exe") ) {Sleep 0.25}
 
@@ -647,3 +637,5 @@ function handy_apps { choco install explorersuite reactos-paint}
     New-Item -Path "$env:LOCALAPPDATA" -Name "Temp" -ItemType "directory" -ErrorAction SilentlyContinue
     <# Native Access needs this dir #>
     New-Item -Path "$env:Public" -Name "Downloads" -ItemType "directory" -ErrorAction SilentlyContinue
+    <# a game launcher tried to open this key, i think it should be present (?) #>
+    reg.exe COPY "HKLM\SYSTEM\CurrentControlSet" "HKLM\SYSTEM\ControlSet001" /s /f
