@@ -340,7 +340,7 @@ function _schtasks { <# _schtasks replacement #>
     start-process ($tr -replace "'" -replace "/silent") } <# hack for spotify #>
    else {
        $cmdline = $cmdline -replace "^[^ ]+" <# remove everything up yo 1st space #> -replace "-","/"
-       Start-Process QPR.schtasks.exe -argumentlist "$cmdline" }
+       Start-Process -NoNewWindow QPR.schtasks.exe -argumentlist "$cmdline" }
 }
 
 Set-Alias "QPR.$env:systemroot\system32\wbem\wmic.exe" QPR_wmic; Set-Alias QPR.wmic.exe QPR_wmic
