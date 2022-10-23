@@ -18,7 +18,7 @@
  *
  * Compile:
  * i686-w64-mingw32-gcc -municode  -mconsole mainv1.c -lurlmon -lshlwapi -s -o powershell32.exe
- * x86_64-w64-mingw32-gcc -municode  -mconsole mainv1.c -lurlmon -lshlwapi -s -o ChoCinstaller_0.5e.703.exe
+ * x86_64-w64-mingw32-gcc -municode  -mconsole mainv1.c -lurlmon -lshlwapi -s -o ChoCinstaller_0.5g.703.exe
  */
 #include <windows.h>
 #include <stdio.h>
@@ -93,7 +93,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         if ( wcsnicmp ( &argv[0][ lstrlenW(argv[0]) - 4 ] , L".exe" , 4 ) ) lstrcatW( cmdlineW, L".exe" ); /* and add '.exe' if necessary */
         for( i = 1; i < argc; i++ ) { /* concatenate the rest of the arguments into the new cmdline */
             lstrcatW( lstrcatW( lstrcatW( cmdlineW, L" '\"" )  , argv[i] ), L"\"'" ); }
-        SetEnvironmentVariableW( L"QPRCMDLINE", cmdlineW ); /* option to track the complete commandline via $env:QPRCMDLINE */
+        SetEnvironmentVariableW( L"QPRCMDLINE", GetCommandLineW() ); /* option to track the complete commandline via $env:QPRCMDLINE */
         CreateProcessW( pwsh_pathW, cmdlineW , 0, 0, 0, 0, 0, 0, &si, &pi ); /* send the new commandline to pwsh.exe */
         WaitForSingleObject( pi.hProcess, INFINITE ); GetExitCodeProcess( pi.hProcess, &exitcode ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );    
         return ( GetEnvironmentVariable( L"QPREXITCODE", bufW, MAX_PATH + 1 ) ? _wtoi( bufW ) : exitcode );
