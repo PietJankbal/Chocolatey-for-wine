@@ -321,14 +321,26 @@ function QPR_si { <# systeminfo replacement #>
 }
 
 #If passing back (manipulated) arguments back to the same program, make sure to backup a copy (here QPR.schtasks.exe, copied during installation)
-Set-Alias "QPR.$env:systemroot\system32\schtasks.exe" QPR_stsk; Set-Alias QPR.schtasks.exe QPR_stsk; Set-Alias QPR.schtasks QPR_stsk
+Set-Alias "QPR.$env:systemroot\system32\schtasks.exe" QPR_stsk; Set-Alias QPR.schtasks.exe QPR_stsk
 function QPR_stsk { <# schtasks.exe replacement #>
-    $spl = $($env:QPRCMDLINE.Split('"'' ''"').Trim('"')).replace('/silent','') <# hack for Spotify #>
+    $cmdline = $env:QPRCMDLINE
 
-    if ($env:QPRCMDLINE | Select-string '"/CREATE"') {Write-Host <# Just execute this stuff instantly #>
-        Start-Process  $spl[$spl.IndexOf('/TR') + 1].replace('''','') } <# hack for Spotify #>
-    else { $env:QPRCMDLINE.Split('"'' ''"').Trim().Trim('"') 
-        Start-Process -Wait -NoNewWindow QPR.schtasks.exe $env:QPRCMDLINE.Split('" "').Trim().Trim('"') }
+    $cmdline = $cmdline -replace '/create', '-create' -replace '/tn', '-tn' -replace "/tr", "-tr" <#-replace "'", "'`"'"#>  <# escape quotes (??) #> `
+                        -replace "/sc", "-sc" -replace "/run", "-run" -replace "/delete", "-delete"
+    $cmdline
+    iex  -Command ('_schtasks ' + $cmdline)
+}
+
+function _schtasks { <# _schtasks replacement #>
+   # [CmdletBinding()]
+    Param([switch]$create, [string]$tn, [string]$tr, [string]$sc, [switch]$run, [switch]$delete,
+    [parameter(ValueFromRemainingArguments=$true)]$vargs)
+
+   if($create) {$tr -replace "'" 
+    start-process ($tr -replace "'" -replace "/silent") } <# hack for spotify #>
+   else {
+       $cmdline = $cmdline -replace "^[^ ]+" <# remove everything up yo 1st space #> -replace "-","/"
+       Start-Process QPR.schtasks.exe -argumentlist "$cmdline" }
 }
 
 Set-Alias "QPR.$env:systemroot\system32\wbem\wmic.exe" QPR_wmic; Set-Alias QPR.wmic.exe QPR_wmic
