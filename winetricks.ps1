@@ -9,7 +9,7 @@ function validate_param
         [Parameter(Mandatory=$false)]
         [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'd2d1',`
                      'dxvk1101', 'hnetcfg', 'msi', 'sapi', 'ps51', 'ps51_ise', 'crypt32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'uxtheme', 'comctl32', 'wsh57',`
-                     'nocrashdialog', 'renderer=vulkan', 'renderer=gl', 'vs19')]
+                     'nocrashdialog', 'renderer=vulkan', 'renderer=gl', 'vs19', 'd3dx','sspicli', 'dshow', 'findstr')]
         [string[]]$verb
       )
 }
@@ -48,7 +48,11 @@ $custom_array = @() # Creating an empty array to populate data in
                "nocrashdialog", "Disable graphical crash dialog",`
                "renderer=vulkan", "renderer=vulkan",`
                "renderer=gl", "renderer=gl",`
-               "vs19", "Visual Studio 2019, only install, devenv doesn't work "
+               "vs19", "Visual Studio 2019, only install, devenv doesn't work ",
+               "d3dx", "d3x9*, d3dx10*, d3dx11*, xactengine*, xapofx* x3daudio*, xinput* and d3dcompiler",
+               "sspicli", "dangerzone, only for testing, might break things, only use on a per app base",
+               "dshow", "directshow dlls: qdvd qcap etc.",
+               "findstr", "findstr.exe"
 
 for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) { 
     $custom_array += New-Object PSObject -Property @{ # Setting up custom array utilizing a PSObject
@@ -197,6 +201,16 @@ function func_uxtheme
     foreach($i in 'uxtheme') { dlloverride 'native' $i }
 }  <# end uxtheme #>
 
+function func_sspicli
+{
+    $dlls = @('sspicli.dll'); check_aik_sanity; $dldir = "aik70"
+
+    foreach ($i in $dlls) {
+        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -aoa; 
+        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -aoa } quit?('7z')
+    foreach($i in 'sspicli') { dlloverride 'native' $i }
+}  <# end sspicli #>
+
 function func_gdiplus
 {
     $url = "https://download.microsoft.com/download/3/5/C/35C470D8-802B-457A-9890-F1AFC277C907/Windows6.1-KB2834886-x64.msu"
@@ -296,6 +310,66 @@ function func_ucrtbase
         7z e $env:TEMP\\$dldir\\32\\a10 "-o$env:systemroot\syswow64" $i -aoa | Select-String 'ok'; quit?('7z') }
     foreach($i in 'ucrtbase') { dlloverride 'native' $i }
 } <# end ucrtbase #>
+
+function func_dshow
+{
+    $dldir = "win7sp1"
+    w_download_to "$dldir" "http://download.windowsupdate.com/msdownload/update/software/svpk/2011/02/windows6.1-kb976932-x64_74865ef2562006e51d7f9333b4a8d45b7a749dab.exe" "windows6.1-kb976932-x64_74865ef2562006e51d7f9333b4a8d45b7a749dab.exe"
+    if ( ![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $dldir, "191.cab" ) ) ) {
+        7z -t# x $cachedir\\$dldir\\windows6.1-kb976932-x64_74865ef2562006e51d7f9333b4a8d45b7a749dab.exe "-o$cachedir\\$dldir" 191.cab -y  ; quit?('7z') }
+
+    foreach ($i in 
+        'amd64_microsoft-windows-directshow-other_31bf3856ad364e35_6.1.7601.17514_none_6b778d68f75a1a54/amstream.dll',
+        'x86_microsoft-windows-directshow-other_31bf3856ad364e35_6.1.7601.17514_none_0f58f1e53efca91e/amstream.dll',
+        'wow64_microsoft-windows-directshow-asf_31bf3856ad364e35_6.1.7601.17514_none_83382f97498abe19/qasf.dll',
+        'amd64_microsoft-windows-directshow-asf_31bf3856ad364e35_6.1.7601.17514_none_78e385451529fc1e/qasf.dll',
+        'x86_microsoft-windows-directshow-capture_31bf3856ad364e35_6.1.7601.17514_none_bae08d1e7dcccf2a/qcap.dll',
+        'amd64_microsoft-windows-directshow-capture_31bf3856ad364e35_6.1.7601.17514_none_16ff28a2362a4060/qcap.dll',
+        'x86_microsoft-windows-directshow-dvdsupport_31bf3856ad364e35_6.1.7601.17514_none_562994bd321aac67/qdvd.dll',
+        'amd64_microsoft-windows-directshow-dvdsupport_31bf3856ad364e35_6.1.7601.17514_none_b2483040ea781d9d/qdvd.dll',
+        'wow64_microsoft-windows-qedit_31bf3856ad364e35_6.1.7601.17514_none_c3168c6e9267a403/qedit.dll',
+        'amd64_microsoft-windows-qedit_31bf3856ad364e35_6.1.7601.17514_none_b8c1e21c5e06e208/qedit.dll',
+        'wow64_microsoft-windows-directshow-core_31bf3856ad364e35_6.1.7601.17514_none_0eeae7a238e677c8/quartz.dll',
+        'amd64_microsoft-windows-directshow-core_31bf3856ad364e35_6.1.7601.17514_none_04963d500485b5cd/quartz.dll') {
+        if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\191.cab "-o$env:systemroot\system32" $i -aoa ; quit?('7z') }
+        if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\191.cab "-o$env:systemroot\syswow64" $i -aoa ; quit?('7z') }
+        if( $i.SubString(0,3) -eq 'wow' ) {7z e $cachedir\\$dldir\\191.cab "-o$env:systemroot\syswow64" $i -aoa ; quit?('7z') } }
+
+    foreach($i in 'amstream', 'qasf', 'qcap', 'qdvd', 'qedit' , 'quartz') { dlloverride 'native' $i }
+
+    foreach($i in  'amstream.dll', 'qasf.dll', 'qcap.dll', 'qdvd.dll', 'qedit.dll' , 'quartz.dll') {
+        & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\$i"
+        & "$env:systemroot\\system32\\regsvr32"  "$env:systemroot\\system32\\$i" }
+} <# end dshow #>
+
+function func_findstr
+{
+    $dldir = "win7sp1"
+    w_download_to "$dldir" "http://download.windowsupdate.com/msdownload/update/software/svpk/2011/02/windows6.1-kb976932-x64_74865ef2562006e51d7f9333b4a8d45b7a749dab.exe" "windows6.1-kb976932-x64_74865ef2562006e51d7f9333b4a8d45b7a749dab.exe"
+    if ( ![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $dldir, "191.cab" ) ) ) {
+        7z -t# x $cachedir\\$dldir\\windows6.1-kb976932-x64_74865ef2562006e51d7f9333b4a8d45b7a749dab.exe "-o$cachedir\\$dldir" 191.cab -y  ; quit?('7z') }
+
+    foreach ($i in 
+        'x86_microsoft-windows-findstr_31bf3856ad364e35_6.1.7601.17514_none_2936f54db7f6c08f/findstr.exe',
+        'amd64_microsoft-windows-findstr_31bf3856ad364e35_6.1.7601.17514_none_855590d1705431c5/findstr.exe') {
+        if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\191.cab "-o$env:systemroot\system32" $i -aoa ; quit?('7z') }
+        if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\191.cab "-o$env:systemroot\syswow64" $i -aoa ; quit?('7z') }
+        if( $i.SubString(0,3) -eq 'wow' ) {7z e $cachedir\\$dldir\\191.cab "-o$env:systemroot\syswow64" $i -aoa ; quit?('7z') } }
+
+    foreach($i in 'findstr.exe') { dlloverride 'native' $i }
+} <# end findstr #>
+
+function func_d3dx
+{
+    $dldir = "d3dx"
+     #w_download_to "$dldir" "https://globalcdn.nuget.org/packages/microsoft.dxsdk.d3dx.9.29.952.8.nupkg" "microsoft.dxsdk.d3dx.9.29.952.8.nupkg" 
+     w_download_to "$dldir" "https://download.microsoft.com/download/c/c/2/cc291a37-2ebd-4ac2-ba5f-4c9124733bf1/UAPSignedBinary_Microsoft.DirectX.x64.appx" "UAPSignedBinary_Microsoft.DirectX.x64.appx"
+     #7z x $cachedir\\$dldir\\microsoft.dxsdk.d3dx.9.29.952.8.nupkg "-o$env:TEMP\\$dldir\\d3dx" -y #this one has 'D3DCompiler_43.dll', 'd3dx10_43.dll', 'd3dx11_43.dll', 'D3DX9_43.dll'
+     7z x $cachedir\\$dldir\\UAPSignedBinary_Microsoft.DirectX.x64.appx "-o$env:SystemRoot\\system32" -y
+
+     w_download_to "$dldir" "https://download.microsoft.com/download/c/c/2/cc291a37-2ebd-4ac2-ba5f-4c9124733bf1/UAPSignedBinary_Microsoft.DirectX.x86.appx" "UAPSignedBinary_Microsoft.DirectX.x86.appx" 
+     7z x $cachedir\\$dldir\\UAPSignedBinary_Microsoft.DirectX.x86.appx "-o$env:SystemRoot\\syswow64" -y
+} <# end d3dx #>
 
 function func_vcrun2019
 {
@@ -1013,11 +1087,9 @@ REGEDIT4
     reg_edit $regkey
 } <# end renderer=vulkan #>
 
-
 function func_vs19
 {
 func_msxml6
-
 winecfg /v win7
 
 (New-Object System.Net.WebClient).DownloadFile('https://aka.ms/vs/16/release/installer', "$env:TMP\\installer")
