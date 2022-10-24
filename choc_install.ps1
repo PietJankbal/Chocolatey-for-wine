@@ -362,24 +362,16 @@ function QPR_wmic { <# wmic replacement, this part only rebuilds the arguments #
 
 function _wmic { <# wmic replacement #>
     [CmdletBinding()]
-    Param([parameter(Position=0)][string]$class,
-    [string[]]$property="*",
-    [string]$where,
-    [parameter(ValueFromRemainingArguments=$true)]$vargs)
+    Param([parameter(Position=0)][string]$class, [string[]]$property="*",
+    [string]$where, [parameter(ValueFromRemainingArguments=$true)]$vargs)
 
     if($property -eq '*'){ <# 'get-wmiobject $class | select *' does not work because of wine-bug, so need a workaround:  #>
         Get-WmiObject $class ($($(Get-WmiObject $class |Get-Member) |where {$_.membertype -eq 'property'}).name |Join-String -Separator ',') }
-
-    $custom_array = @()
-    foreach ($i in $property){
-        $query = 'Select' + ' ' + $i + ' ' + 'From' + ' ' + $class + (($where) ? (' where ' + $where ) : ('')) #+ $vargs
-        $custom_array += New-Object PSObject -Property @{ # Setting up custom array utilizing a PSObject
-            prop = $i 
-            val = ( Get-WMIObject -query $query ).$i } 
-    }
-    ($custom_array.GetEnumerator()  | % { "$($_.prop) $($_.Value -join ',')" })  -join "`t" 
-    ($custom_array.GetEnumerator()  | % { "$($_.val) $($_.Value -join ',')" }) -join "`t" 
-} 
+    #handle e.g. wmic logicaldisk where "deviceid='C:'" get freespace or  wmic logicaldisk where "deviceid='C:'" get freespace
+    $query = 'Select' + ' ' + $($property -join ',' ) + ' ' + 'From' + ' ' + $class + (($where) ? (' where ' + $where ) : ('')) #+ $vargs
+    <#                                                                              -Stream: break up in lines  skip seperatorline(---) remove blank lines #>
+    (Get-WMIObject -query $query |ft ($property |sort-object) -autosize |Out-string -Stream | Select-Object    -skipindex (2)|          ?{$_.trim() -ne ""})  
+}
 #Easy access to the C# compiler
 Set-Alias csc c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
 
