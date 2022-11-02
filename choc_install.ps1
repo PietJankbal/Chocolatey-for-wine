@@ -186,40 +186,20 @@ function Register-WMIEvent {
     exit 0
 }
 
-#Based on Get-WmiCustom by Daniele Muscetta, so credits to aforementioned author (https://www.powershellgallery.com/packages/Traverse/0.6/Content/Private%5CGet-WMICustom.ps1)
-#Only works as of wine-6.20 ( https://bugs.winehq.org/show_bug.cgi?id=51871) e.g. (new-object System.Management.ManagementObjectSearcher("SELECT * FROM Win32_Bios")).Get().manufacturer failed before
 #Examples of usage: Get-WmiObject win32_operatingsystem version or $(Get-WmiObject win32_videocontroller).name etc.
-#TODO: very short: ([wmiclass]"\\.\root\cimv2:win32_bios").GetInstances()
 Function Get-WmiObject([parameter(mandatory=$true, position = 0, parametersetname = 'class')] [string]$class, `
                        [parameter( position = 1, parametersetname = 'class')][string[]]$property="*", `
                        [string]$computername = "localhost", [string]$namespace = "root\cimv2", `
                        [string]$filter, [parameter(parametersetname = 'query')] [string]$query)
 {   <# Do not remove or change, it will break Chocolatey #>
-    $ConnectionOptions = new-object System.Management.ConnectionOptions
-    $assembledpath = "\\" + $computername + "\" + $namespace
-    
-    $Scope = new-object System.Management.ManagementScope $assembledpath, $ConnectionOptions
-    $Scope.Connect() 
-
     if(!$query) {    
-        $querystring = "SELECT " +  $($property | Join-String -Separator ",") + " FROM " + $class }
-    else {
-        $querystring = $query}
+        $query = "SELECT " +  $($property | Join-String -Separator ",") + " FROM " + $class + (($filter) ? (' where ' + $filter ) : ('')) }
 
-    $queryobj = new-object System.Management.ObjectQuery $querystring
-    $searcher = new-object System.Management.ManagementObjectSearcher
-    $searcher.Query = $querystring
-    $searcher.Scope = $Scope 
+    $searcher = [wmisearcher]$query
 
-    [System.Management.ManagementObjectCollection]$result = $searcher.get()
+    $searcher.scope.path = "\\" + $computername + "\" + $namespace
 
-    if (!$filter) {
-        return $result 
-    }
-    else {
-        $hashtable = ConvertFrom-StringData -StringData $filter
-        return $result | where $hashtable.Keys -eq $hashtable.Values
-    }
+    return [System.Management.ManagementObjectCollection]$searcher.get()
 }
 
 Set-Alias gwmi Get-WmiObject
