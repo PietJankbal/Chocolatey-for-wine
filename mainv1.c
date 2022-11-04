@@ -206,10 +206,10 @@ int __cdecl wmain(int argc, WCHAR *argv[])
 
         HANDLE input = GetStdHandle(STD_INPUT_HANDLE);
         if( !wcscmp(argv[argc-1], L"-" ) && wcsnicmp(argv[argc-2], L"-c", 2 ) ) lstrcatW(cmdlineW, L" -c ");
-        lstrcatW(cmdlineW, L" iex '& {"); /* embed cmdline in scriptblock */
+        lstrcatW(cmdlineW, L" \"& {"); /* embed cmdline in scriptblock */
 
         while ((line = read_line_from_handle(input)) != NULL) lstrcatW( cmdlineW, line); 
-        lstrcatW(cmdlineW, L"}'");
+        lstrcatW(cmdlineW, L"}\"");
         no_psconsole = TRUE;
     } /* end support pipeline */ 
 exec: 
