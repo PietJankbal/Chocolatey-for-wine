@@ -57,7 +57,7 @@ If programs fail because of insufficient mature or missing system programs one c
 function to return whatever the program expects. Or you could just manipulate the arguments passed to the system program. See profile.ps1 and choc_install.ps1.
 No garantuee this works for more complex programs as well...
 
-![Screenshot from 2022-10-06 00-21-16](https://user-images.githubusercontent.com/26839562/194174837-fb54aff1-f31b-4ed6-9fed-4e3b53831189.png)
+![Screenshot from 2022-11-05 17-59-32](https://user-images.githubusercontent.com/26839562/200132126-d3fbec4b-081d-440c-9ef9-341572ad7787.png)
 
 Notes:
 
