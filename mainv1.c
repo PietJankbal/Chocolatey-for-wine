@@ -18,7 +18,7 @@
  *
  * Compile:
  * i686-w64-mingw32-gcc -municode  -mconsole mainv1.c -lurlmon -lshlwapi -s -o powershell32.exe
- * x86_64-w64-mingw32-gcc -municode  -mconsole mainv1.c -lurlmon -lshlwapi -s -o ChoCinstaller_0.5g.703.exe
+ * x86_64-w64-mingw32-gcc -municode  -mconsole mainv1.c -lurlmon -lshlwapi -s -o ChoCinstaller_0.5i.703.exe
  */
 #include <windows.h>
 #include <stdio.h>
@@ -26,7 +26,7 @@
 
 int __cdecl wmain(int argc, WCHAR *argv[])
 {
-    BOOL no_psconsole = TRUE, read_from_stdin = FALSE;
+    BOOL read_from_stdin = FALSE;
     WCHAR conemu_pathW[MAX_PATH], cmdlineW[MAX_PATH]=L"", pwsh_pathW[MAX_PATH], bufW[MAX_PATH] = L"";
     DWORD exitcode;       
     STARTUPINFOW si;
@@ -98,54 +98,33 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         WaitForSingleObject( pi.hProcess, INFINITE ); GetExitCodeProcess( pi.hProcess, &exitcode ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );    
         return ( GetEnvironmentVariable( L"QPREXITCODE", bufW, MAX_PATH + 1 ) ? _wtoi( bufW ) : exitcode );
     }
-
     /* Main program: wrap the original powershell-commandline into correct syntax, and send it to pwsh.exe */ 
     BOOL is_single_or_last_option (WCHAR *opt)
     {
-        return ( ( ( !wcsnicmp( opt, L"-c", 2 ) && wcsnicmp( opt, L"-config", 7 ) ) || !wcsnicmp( opt, L"-n", 2 ) || \
+        return ( ( ( !wcsnicmp( opt, L"-c", 2 ) && wcsnicmp( opt, L"-config", 7 ) ) || !wcsnicmp( opt, L"-n", 2 ) || !wcsnicmp( opt, L"-enc", 4 ) ||\
                      !wcsnicmp( opt, L"-m", 2 ) || !wcsnicmp( opt, L"-s", 2 )  || !wcsicmp( opt, L"-" ) || !wcsnicmp( opt, L"-f", 2 ) ) ? TRUE : FALSE );
     }
     /* pwsh requires a command option "-c" , powershell doesn`t, so we have to insert it somewhere e.g. 'powershell -nologo 2+1' should go into 'powershell -nologo -c 2+1'*/ 
-    while ( !wcsnicmp(L"-", argv[i], 1 ) ) /* Search for 1st argument after options */
-    {
-        if ( !is_single_or_last_option ( argv[i] ) ) i++;
-        i++;
-    }
+    for (i = 1; !wcsnicmp(L"-", argv[i], 1 ); i++ ) { if ( !is_single_or_last_option ( argv[i] ) ) i++; } /* Search for 1st argument after options */
     /* by setting this env variable, there's a possibility to execute the cmd through rudimentary windows powershell 5.1, requires 'winetricks ps51' first */
     if ( GetEnvironmentVariable( L"PS51", bufW, MAX_PATH + 1 ) && !wcscmp( bufW, L"1") )
     {   /* Note: when run from bash, escape special char $ with single quotes and backtick e.g. PS51=1 wine powershell '`SPSVersionTable' */
-        if( i == argc) no_psconsole = FALSE;
         lstrcatW( cmdlineW, L" -c ps51 " );
-        while(argv[i]) 
-        {
-            lstrcatW( lstrcatW( cmdlineW, L" " ), argv[i] ); 
-            i++;
-        } 
+        for ( i = 1 ; argv[i] ; i++) lstrcatW( lstrcatW( cmdlineW, L" " ), argv[i] ); 
         goto exec;
     }
-
-    if( i == argc) no_psconsole = FALSE;  /*no command found, start PSConsole later in ConEmu to work around bug https://bugs.winehq.org/show_bug.cgi?id=49780*/
-
-    while ( j < i ) /* concatenate options into new cmdline, meanwhile working around some incompabilities */ 
+    for (j = 1; j < i ; j++ ) /* concatenate options into new cmdline, meanwhile working around some incompabilities */ 
     { 
-        if ( !wcsnicmp( L"-f", argv[j], 2 ) ) no_psconsole = TRUE;           /* -File, do not start in PSConsole */
-        if ( !wcsnicmp( L"-enc", argv[j], 4 ) ) no_psconsole = TRUE;         /* -EncodedCommand, do not start in PSConsole */
-        if ( !wcscmp( L"-", argv[j] ) ) {read_from_stdin = TRUE; goto done;} /* hyphen handled later on */
-        if ( !wcsnicmp( L"-ve", argv[j], 3 ) ) {j++;  goto done;}            /* -Version, exclude from new cmdline, incompatible... */
-        if ( !wcsnicmp( L"-nop", argv[j], 4 ) ) goto done;                   /* -NoProfile, also exclude to always enable profile.ps1 to work around possible incompatibilities */   
+        if ( !wcscmp( L"-", argv[j] ) ) {read_from_stdin = TRUE; continue;} /* hyphen handled later on */
+        if ( !wcsnicmp( L"-ve", argv[j], 3 ) ) {j++;  continue;}            /* -Version, exclude from new cmdline, incompatible... */
+        if ( !wcsnicmp( L"-nop", argv[j], 4 ) ) continue;                   /* -NoProfile, also exclude to always enable profile.ps1 to work around possible incompatibilities */   
         lstrcatW( lstrcatW( cmdlineW, L" " ), argv[j] );
-        done: j++;
     }
     /* now insert a '-c' (if necessary) */
     if ( argv[i] && wcsnicmp( argv[i-1], L"-c", 2 ) && wcsnicmp( argv[i-1], L"-enc", 4 ) && wcsnicmp( argv[i-1], L"-f", 2 ) && wcsnicmp( argv[i], L"/c", 2 ) )
         lstrcatW( lstrcatW( cmdlineW, L" " ), L"-c " );
-
-    while( i  < argc ) /* concatenate the rest of the arguments into the new cmdline */
-    {
-        lstrcatW( lstrcatW( cmdlineW, L" " ), argv[i] );
-        i++;
-    }
-
+    /* concatenate the rest of the arguments into the new cmdline */
+    for( j = i; j < argc; j++ ) lstrcatW( lstrcatW( cmdlineW, L" " ), argv[j] );
     /* support pipeline to handle something like " '$(get-date) | powershell - ' */
     /* following code for reading console is shamelessly stolen and adapted from wine/programs/find/find.c */
        if( read_from_stdin ) {
@@ -181,14 +160,13 @@ int __cdecl wmain(int argc, WCHAR *argv[])
                 /* Check for EOF */
                 if (!success) { if (length == 0) return NULL; else break; }
                 if (c == '\n') break;
-                /* Make sure buffer is large enough */
-                if (length + 2 >= line_max)
+                if (length + 2 >= line_max) /* Make sure buffer is large enough */
                 { 
                     line_max *= 2;
                     line = line ? HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, line_max) :  HeapReAlloc(GetProcessHeap(), 0, line, line_max);
                 }
                 if (c == '"')  line[length++] = '\\';  /* escape the double quotes so they won`t get lost */
-                if (c == '\'') line[length++] = '\'';  /* escape the single quote so they won`t get lost */
+                //if (c == '\'') line[length++] = '\'';  /* escape the single quote so they won`t get lost */
                 if (c == '\r') c = ';';                /* carriage return should be replaced */
                 line[length++] = c;   
             }
@@ -207,24 +185,16 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         HANDLE input = GetStdHandle(STD_INPUT_HANDLE);
         if( !wcscmp(argv[argc-1], L"-" ) && wcsnicmp(argv[argc-2], L"-c", 2 ) ) lstrcatW(cmdlineW, L" -c ");
         lstrcatW(cmdlineW, L" \"& {"); /* embed cmdline in scriptblock */
-
         while ((line = read_line_from_handle(input)) != NULL) lstrcatW( cmdlineW, line); 
         lstrcatW(cmdlineW, L"}\"");
-        no_psconsole = TRUE;
     } /* end support pipeline */ 
 exec: 
     if ( GetEnvironmentVariable( L"PWSHVERBOSE", bufW, MAX_PATH + 1 ) ) 
        { fwprintf( stderr, L"\033[1;35m" ); fwprintf( stderr, L"\n command line is %ls \n", cmdlineW ); fwprintf( stderr, L"\033[0m\n" ); }
-    /* if not a command, start powershellconsole in ConEmu to work around missing ENABLE_VIRTUAL_TERMINAL_PROCESSING (bug https://bugs.winehq.org/show_bug.cgi?id=49780) */
-    if( !no_psconsole )
-    {
-        bufW[0] = 0;
-        CreateProcessW( conemu_pathW, lstrcatW( lstrcatW( lstrcatW( bufW, L" -NoUpdate -LoadRegistry -run "), pwsh_pathW), cmdlineW), 0, 0, 0, 0, 0, 0, &si, &pi) ;
-        WaitForSingleObject( pi.hProcess, INFINITE ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );
-        return 0;
-    }
-    /* Otherwise execute the command through pwsh.exe */
-    CreateProcessW( pwsh_pathW, cmdlineW , 0, 0, 0, 0, 0, 0, &si, &pi );
+
+    bufW[0] = 0; /* Execute the command through pwsh.exe (or start PSconsole via ConEmu if no command found) */
+    CreateProcessW( pwsh_pathW, !( (i == argc ) && !read_from_stdin ) ? cmdlineW : lstrcatW( lstrcatW ( lstrcatW( lstrcatW( lstrcatW( \
+                    bufW, L" -c " ) , conemu_pathW ) , L" -NoUpdate -LoadRegistry -run "), pwsh_pathW ), cmdlineW ), 0, 0, 0, 0, 0, 0, &si, &pi );
     WaitForSingleObject( pi.hProcess, INFINITE ); GetExitCodeProcess( pi.hProcess, &exitcode ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );    
 
     return ( GetEnvironmentVariable( L"FAKESUCCESS", bufW, MAX_PATH + 1 ) ? 0 : exitcode ); 
