@@ -24,7 +24,7 @@ REGEDIT4
 
 [HKEY_CURRENT_USER\Software\Wine\AppDefaults\conemu64.exe\DllOverrides]
 "dwmapi"=""
-"user32"="builtin"
+"user32"="native"
 
 [HKEY_CURRENT_USER\Software\Wine\AppDefaults\pwsh.exe]
 
@@ -181,6 +181,26 @@ if (Test-Path($ChocolateyProfile)) {
     Import-Module "$ChocolateyProfile"
 }
 
+if($env:FirstRun -eq '2') {
+    Write-Host Installed Software besides ConEmu: ; Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Format-Table ; [Environment]::SetEnvironmentVariable("FirstRun",$null)}
+
+if($env:FirstRun -eq '1') { $env:FirstRun=2 }
+
+<# if wineprefix is updated by running another wine version we have to update the hack for ConEmu bug https://bugs.winehq.org/show_bug.cgi?id=48761 #>
+if( !( (Get-FileHash C:\windows\system32\user32.dll).Hash -eq (Get-FileHash C:\windows\system32\user32dummy.dll).Hash) ) {
+    Copy-Item $env:SystemRoot\\system32\\user32.dll $env:SystemRoot\\system32\\user32dummy.dll -force -erroraction silentlycontinue
+}
+<# check wine-version, hack is only compatible with recent wine versions #>
+$MethodDefinition = @" 
+[DllImport("ntdll.dll", CharSet = CharSet.Ansi)] public static extern string wine_get_version();
+"@
+$ntdll = Add-Type -MemberDefinition $MethodDefinition -Name 'ntdll' -PassThru
+
+if( [System.Convert]::ToDecimal($ntdll::wine_get_version()) -lt 7.16 ) { <# hack incompatible for older wine versions #>
+    $null = New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ConEmu64.exe\\DllOverrides' -force -Name 'user32' -Value 'builtin' -PropertyType 'String'}
+else {
+     $null = New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ConEmu64.exe\\DllOverrides' -force -Name 'user32' -Value 'native' -PropertyType 'String'}
+<# end update ConEmu hack #>
 #Register-WMIEvent not available in PS Core, so for now just change into noop
 function Register-WMIEvent {
     exit 0
@@ -224,6 +244,60 @@ Function Set-WmiInstance( [string]$class, [hashtable]$arguments, [string]$comput
 
     return $result.Path
 }
+
+function Test-NetConnection { <# stolen from https://copdips.com/2019/09/fast-tcp-port-check-in-powershell.html #>
+    [CmdletBinding()]
+    param ([Parameter(ValueFromPipeline = $true)][String[]]$ComputerName='internetbeacon.msedge.net', [Int]$Port = 80, [Int]$Timeout = 1000)
+
+    begin { $result = [System.Collections.ArrayList]::new() }
+
+    process {
+        foreach ($originalComputerName in $ComputerName) {
+            $remoteInfo = $originalComputerName.Split(":")
+            if ($remoteInfo.count -eq 1) { $remoteHostname = $originalComputerName; $remotePort = $Port } <# 'host' #>
+            elseif ($remoteInfo.count -eq 2) { $remoteHostname = $remoteInfo[0]; $remotePort = $remoteInfo[1] }
+            else { $msg = "Got unknown format "; Write-Error $msg;  return }
+
+            $tcpClient = New-Object System.Net.Sockets.TcpClient
+            $portOpened = $tcpClient.ConnectAsync($remoteHostname, $remotePort).Wait($Timeout)
+            if($portOpened) {
+            $ra = $tcpClient.Client.RemoteEndPoint.Address.ToString() }
+            $sa = $tcpClient.Client.LocalEndPoint.Address.ToString()
+
+            $null = $result.Add([PSCustomObject]@{
+                RemoteHostname = $remoteHostname   ; RemoteAddress = $ra         ; RemotePort = $remotePort
+                SourceAddress  = $sa               ; PortOpened    = $portOpened ; TimeoutInMillisecond = $Timeout
+                SourceHostname = $env:COMPUTERNAME ; OriginalComputerName = $originalComputerName })
+        }
+    }
+    end { return $result }
+}
+
+function Get-NetIPAddress( [string]$AddressFamily='*', [string]$InterfaceIndex='*', [string]$IPAddress='*' ) 
+{
+    $netcfg = (Get-WmiObject  -Class Win32_NetworkAdapterConfiguration ) ; $ip = $netcfg.ipaddress; $ip += '127.0.0.1'
+    $result = @() ; $idx=0
+
+    foreach($i in $ip) { if($i) {
+        $result += New-Object PSObject -Property @{
+             IPAddress        = $i
+             InterfaceIndex   = $netcfg.Index[$idx] ? $netcfg.Index[$idx] : '1' 
+             InterfaceAlias   = ($i -eq '127.0.0.1') ? 'Loopback Pseudo-Interface 1' : 'Ethernet'
+             AddressFamily    = ( ([IPAddress]$i).AddressFamily -eq 'InterNetwork' ) ? 'IPv4' : 'IPv6'}
+             | where-object  {($_.AddressFamily -like $AddressFamily) -and ($_.InterfaceIndex -like $InterfaceIndex) -and ($_.IPAddress -like $IPAddress) } }
+        $idx++
+    }
+    $result |  Select ipaddress,interfaceindex,interfacealias,addressfamily  |fl
+}
+
+function Get-NetRoute {
+      Get-WmiObject -query 'Select  Destination, NextHop From Win32_IP4RouteTable' |select Destination,NextHop |ft }
+
+function Resolve-DnsName([string]$name) { <# https://askme4tech.com/how-resolve-hostname-ip-address-and-vice-versa-powershell #>
+    $type = [Uri]::CheckHostname($name)
+    if( $type -eq 'Dns')                            { [System.Net.Dns]::GetHostaddresses($name) |select IPAddressToString}
+    if( ($type -eq 'IPv4') || ($type -eq 'IPv6'))   { [System.Net.Dns]::GetHostentry($name).hostname}
+}
  <# hack for installing adobereader #>
 function  Unregister-ScheduledTask { Write-Host 'cmdlet Unregister-ScheduledTask not available in PS 7, doing nothing...'; return}
 
@@ -237,13 +311,6 @@ function df   { check_busybox; Busybox64.exe df $args}
 function wget { check_busybox; Busybox64.exe wget $args}
 function grep { check_busybox; Busybox64.exe grep $args}
 function bash { check_busybox; Busybox64.exe bash $args}
-<# A few from NoPowerShell, Powershell Core does't have these #>
-function Resolve-DnsName    { NoPowerShell.exe Resolve-DnsName $args    }
-function Invoke-WmiMethod   { NoPowerShell.exe Invoke-WmiMethod $args   }
-function Get-NetIPAddress   { NoPowerShell.exe Get-NetIPAddress $args   }
-function Get-NetRoute       { NoPowerShell.exe Get-NetRoute $args       }
-function Test-NetConnection { NoPowerShell.exe Test-NetConnection $args }
-function Get-Computerinfo   { NoPowerShell.exe Get-Computerinfo $args   }
 
 function winetricks {
      if (!([System.IO.File]::Exists("$env:ProgramData\\winetricks.ps1"))){
@@ -297,8 +364,32 @@ REGEDIT4
 
 Set-Alias "QPR.$env:systemroot\system32\systeminfo.exe" QPR_si; Set-Alias QPR.systeminfo.exe QPR_si; Set-Alias QPR.systeminfo QPR_si
 function QPR_si { <# systeminfo replacement #>
-    NoPowerShell.exe systeminfo
+    $result = [System.Collections.ArrayList]::new() ;  $p=[System.Collections.ArrayList]::new() 
+
+    foreach ($i in 'operatingsystem', 'computersystem', 'processor', 'bios', 'QuickFixEngineering', 'PageFileUsage', 'videocontroller') {
+        $null = $p.Add( [PSCustomObject]@{ v = Get-WmiObject ('win32_' + $i)} ) } 
+
+        $null = $result.Add([PSCustomObject]@{
+    "Host Name"=$p[0].v.csname ; "OS Name"=$p[0].v.caption ; "OS Version"=$p[0].v.version + ' Build ' + $p[0].v.buildnumber         
+    "OS Manufacturer"=$p[0].v.manufacturer ; "OS Build Type"=$p[0].v.buildtype ; "Registered Owner"=$p[0].v.registereduser          
+    "Registered Organization"=$p[0].v.organization ; "Product ID"=$p[0].v.SerialNumber                
+    "Original Install Date"=[Management.ManagementDateTimeConverter]::ToDateTime($p[0].v.InstallDate) 
+    "System Boot Time"=[Management.ManagementDateTimeConverter]::ToDateTime($p[0].v.LastBootUpTime)    
+    "System Manufacturer"=$p[1].v.manufacturer ; "System Model"=$p[1].v.model ; "System Type"=$p[1].v.systemtype            
+    "Processor(s)"=$p[2].v.Description + ' ~' + $p[2].v.CurrentClockSpeed + 'Mhz'            
+    "BIOS Version"=$p[3].v.Manufacturer + ' ' + $p[3].v.SMBIOSBIOSVersion + ' ' + [Management.ManagementDateTimeConverter]::ToDateTime($p[3].v.ReleaseDate)            
+    "Windows Directory"=$p[0].v.windowsdirectory ; "System Directory"=$p[0].v.systemdirectory ; "Boot Device"=$p[0].v.bootdevice          
+    "System Locale"=$p[0].v.oslanguage ; "Input Locale"=$p[0].v.oslanguage
+    "Time Zone"='UTC' + (( ($p[0].v.CurrentTimeZone/60) -gt 0) ? ('+') : ('-')) + $p[0].v.currenttimezone/60 
+    "Total Physical Memory"=$p[0].v.TotalVisibleMemorySize ; "Available Physical Memory"=$p[0].v.FreePhysicalMemory
+    "Virtual Memory: Max Size"=$p[0].v.TotalVirtualMemorySize ; "Virtual Memory: Available"=$p[0].v.FreeVirtualMemory
+    "Virtual Memory: In Use"='[not implemented]' ; "Page File Location(s)"=$p[5].v.name ; "Domain"=$p[1].v.domain ; "Logon Server"=$env:LOGONSERVER ;
+    "Hotfix(s)"=$p[4].v.hotfixid ; "Network Card(s)"='[not implemented]' ; "Hyper-V Requirements"='[not implemented]' ; "GPU"=$p[6].v.videoprocessor })
+   
+    return $result 
 }
+
+Set-Alias Get-ComputerInfo QPR_si
 
 #If passing back (manipulated) arguments back to the same program, make sure to backup a copy (here QPR.schtasks.exe, copied during installation)
 Set-Alias "QPR.$env:systemroot\system32\schtasks.exe" QPR_stsk; Set-Alias QPR.schtasks.exe QPR_stsk
@@ -355,25 +446,21 @@ function _wmic { <# wmic replacement #>
 #Easy access to the C# compiler
 Set-Alias csc c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
 
-function apply_conemu_hack {
-    Copy-Item $env:SystemRoot\\system32\\user32.dll $env:SystemRoot\\system32\\user32dummy.dll -force
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ConEmu64.exe\\DllOverrides' -force -Name 'user32' -Value 'native' -PropertyType 'String' 
-    Stop-Process -name conemu64 -erroraction silentlycontinue ; Stop-Process -name conemuC64 -erroraction silentlycontinue 
-    Start-Process "powershell" -NoNewWindow
-}
-
 function handy_apps { choco install explorersuite reactos-paint}
 '@
 ################################################################################################################################ 
 #                                                                                                                              #
-#  Install dotnet48, ConEmu, Chocolatey, 7z, arial, d3dcompiler_47 and a few extras (nopowershell and wine robocopy+taskschd)  #
+#  Install dotnet48, ConEmu, Chocolatey, 7z, arial, d3dcompiler_47 and a few extras (wine robocopy + wine taskschd)                   #
 #                                                                                                                              #
 ################################################################################################################################   
     Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072;
 #   Invoke-Expression  $(cat $(Join-Path "$env:TEMP" 'install2.ps1') | Select-string 'url_7za =')  <# Get the 7za.exe downloadlink from install2.ps1 file #>
 #   (New-Object System.Net.WebClient).DownloadFile($url_7za, $(Join-Path "$env:TEMP" '7za.exe') )
+    if (!(Test-Path -Path "$env:WINEHOMEDIR\.cache\choc_install_files\7z2201-x64.exe".substring(4) -PathType Leaf)) { 
+        (New-Object System.Net.WebClient).DownloadFile('https://d3.7-zip.org/a/7z2201-x64.exe', $(Join-Path "$env:TEMP" '7z2201-x64.exe') ) }
+    else {
+        Copy-Item -Path "$env:WINEHOMEDIR\.cache\choc_install_files\7z2201-x64.exe".substring(4) -Destination "$env:TEMP" -Force }
 
-    (New-Object System.Net.WebClient).DownloadFile('https://d3.7-zip.org/a/7z2201-x64.exe', $(Join-Path "$env:TEMP" '7z2201-x64.exe') )
     iex "$(Join-Path "$env:TEMP" '7z2201-x64.exe') /S"; while(!(Test-Path -Path "$env:ProgramW6432\\7-zip\\7z.exe") ) {Sleep 0.25}
 
     <# fragile test... If install files already present skip downloads. Run choc_installer once with 'SAVEINSTALLFILES=1' to cache downloads #>
@@ -388,12 +475,15 @@ function handy_apps { choco install explorersuite reactos-paint}
              'https://mirrors.kernel.org/gentoo/distfiles/arial32.exe', `
 #            'https://mirrors.kernel.org/gentoo/distfiles/arialb32.exe', `
              'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47.dll', `
-             'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47_32.dll', `
-             'https://conemu.github.io/install2.ps1' `
-                 ) `
-
+             'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47_32.dll' )
     <# Download stuff #>
-    $url | ForEach-Object { Write-Host -ForeGroundColor Yellow "Downloading $PSItem" && (New-Object System.Net.WebClient).DownloadFile($PSItem, $(Join-Path "$env:TEMP" ($PSItem  -split '/' | Select-Object -Last 1)))}; `
+    foreach($i in $url) {          `
+         if (!(Test-Path -Path "$env:WINEHOMEDIR\.cache\choc_install_files\$i.split('/')[-1]".substring(4) -PathType Leaf)) { 
+              (New-Object System.Net.WebClient).DownloadFile($i, $(Join-Path "$env:TEMP" $i.split('/')[-1]) ) }
+         else {
+             Copy-Item -Path "$env:WINEHOMEDIR\.cache\choc_install_files\$i.split('/')[-1]".substring(4) -Destination "$env:TEMP" -Force } }
+    <# Download ConEmu #>
+    (New-Object System.Net.WebClient).DownloadFile('https://conemu.github.io/install2.ps1', $(Join-Path "$env:TEMP" 'install2.ps1') )
     <# Extract stuff we need for quick dotnet40 install, only mscoree (probably)#>
     Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu -o$env:TEMP\\dotnet40 Windows6.1-KB958488-x64.cab"; `
     Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\dotnet40\\Windows6.1-KB958488-x64.cab -o$env:TEMP\\dotnet40 x86_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_7daed23956119a9f/mscoree.dll"; `
@@ -418,13 +508,17 @@ function handy_apps { choco install explorersuite reactos-paint}
     Get-job |wait-job; 
     Get-Process '7z' -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() } 
     reg.exe  IMPORT  $env:TMP\\misc.reg /reg:64
-    reg.exe  IMPORT  $env:TMP\\misc.reg /reg:32      
+    reg.exe  IMPORT  $env:TMP\\misc.reg /reg:32 
+    
+    Copy-Item -Path "$env:TMP\\user32.dll" -Destination "$env:SystemDrive\\ConEmu\\user32.dll" -Force
+    Copy-Item $env:SystemRoot\\system32\\user32.dll $env:SystemRoot\\system32\\user32dummy.dll -force
 
     <# do not use chocolatey's builtin powershell host #>
     cd c:\; c:\\ProgramData\\chocolatey\\choco.exe feature disable --name=powershellHost; winecfg /v win10
     c:\\ProgramData\\chocolatey\\choco.exe feature enable -n allowGlobalConfirmation <# to confirm automatically (no -y needed) #>
     # Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
     # choco install tccle -y; & "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tcc.exe" "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tccbatch.btm"; <># cmd.exe replacement #
+    $env:FirstRun=1
     Start-Process "powershell" -NoNewWindow
 ################################################################################################################### 
 #  All code below is only for sending a single keystroke (ENTER) to ConEmu's annoying                             #
@@ -495,7 +589,6 @@ function handy_apps { choco install explorersuite reactos-paint}
             internal InputUnion Data;
             internal static int Size { get { return Marshal.SizeOf(typeof(lpInput)); } }            
         }
-
         [StructLayout(LayoutKind.Explicit)] /* Union structure */
         internal struct InputUnion {
             [FieldOffset(0)]
@@ -574,8 +667,7 @@ function handy_apps { choco install explorersuite reactos-paint}
     }
 "@
 
-    <# Dismiss ConEmu's fast configuration window by hitting enter #>
-    [Synthesize_Keystrokes]::SendKeyStroke()
+    [Synthesize_Keystrokes]::SendKeyStroke() <# Dismiss ConEmu's fast configuration window by hitting enter #>
 
     iex "$env:ProgramData\\chocolatey\\tools\\shimgen.exe --output=`"$env:ProgramData`"\\chocolatey\\bin\\7z.exe --path=`"$env:ProgramW6432`"\\7-zip\\7z.exe"
 
@@ -592,23 +684,17 @@ function handy_apps { choco install explorersuite reactos-paint}
     Copy-Item -Path "$env:TMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_47.dll" -Force
     Copy-Item -Path "$env:TMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_43.dll" -Force
 
-    <# fragile test...; Download and 'install' NoPowerShell.exe which has some extra Powershell cmdlets #>
-    if (!(Test-Path -Path "$env:WINEHOMEDIR\.cache\choc_install_files\netfx_Full_x64.msi".substring(4) -PathType Leaf)) {
-        (New-Object System.Net.WebClient).DownloadFile('https://github.com/bitsadmin/nopowershell/releases/download/1.23/NoPowerShell_trunk.zip', $(Join-Path "$env:TEMP" 'NoPowerShell_trunk.zip') )
-        Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\NoPowerShell_trunk.zip Dotnet45/* -o$env:TEMP"}
-    Copy-Item "$env:TMP\\DOTNET45\\*.*" "$env:SystemRoot\\system32\\WindowsPowershell\\v1.0\\"
     <# Backup files if wanted #>
     if (Test-Path 'env:SAVEINSTALLFILES') { 
         New-Item -Path "$env:WINEHOMEDIR\.cache\".substring(4) -Name "choc_install_files" -ItemType "directory" -ErrorAction SilentlyContinue
-        Copy-Item -Recurse -Path $env:TEMP\\ndp48-x86-x64-allos-enu.exe -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4)  -force
-        Copy-Item -Recurse -Path $env:TEMP\\PowerShell-7.0.3-win-x64.msi -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4)  -force
+        foreach($i in 'ndp48-x86-x64-allos-enu.exe', 'PowerShell-7.0.3-win-x64.msi', 'arial32.exe', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2201-x64.exe') {
+            Copy-Item -Path $env:TEMP\\$i -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4)  -force }
     }
     <# wine robocopy and hack for ConEmu #>
     Copy-Item -Path "$env:TMP\\robocopy64.exe" -Destination "$env:SystemRoot\\System32\\robocopy.exe" -Force
     Copy-Item -Path "$env:TMP\\robocopy32.exe" -Destination "$env:SystemRoot\\syswow64\\robocopy.exe" -Force
     Copy-Item -Path "$env:TMP\\taskschd64.dll" -Destination "$env:SystemRoot\\System32\\taskschd.dll" -Force
     Copy-Item -Path "$env:TMP\\taskschd32.dll" -Destination "$env:SystemRoot\\syswow64\\taskschd.dll" -Force
-    Copy-Item -Path "$env:TMP\\user32.dll" -Destination "$env:SystemDrive\\ConEmu\\user32.dll" -Force
 
     <# Replace some system programs by functions (in profile.ps1); This also makes wusa a dummy program: we don`t want windows updates and it doesn`t work anyway #>
     ForEach ($file in "schtasks.exe") {
