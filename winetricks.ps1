@@ -9,7 +9,7 @@ function validate_param
         [Parameter(Mandatory=$false)]
         [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'd2d1',`
                      'dxvk1101', 'hnetcfg', 'msi', 'sapi', 'ps51', 'ps51_ise', 'crypt32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'uxtheme', 'comctl32', 'wsh57',`
-                     'nocrashdialog', 'renderer=vulkan', 'renderer=gl', 'vs19', 'd3dx','sspicli', 'dshow', 'findstr')]
+                     'nocrashdialog', 'renderer=vulkan', 'renderer=gl', 'app_paths', 'vs19', 'd3dx','sspicli', 'dshow', 'findstr')]
         [string[]]$verb
       )
 }
@@ -48,6 +48,7 @@ $custom_array = @() # Creating an empty array to populate data in
                "nocrashdialog", "Disable graphical crash dialog",`
                "renderer=vulkan", "renderer=vulkan",`
                "renderer=gl", "renderer=gl",`
+               "app_paths", "start new shell with app paths added to the path (permanently), invoke from powershell console!",
                "vs19", "Visual Studio 2019, only install, devenv doesn't work ",
                "d3dx", "d3x9*, d3dx10*, d3dx11*, xactengine*, xapofx* x3daudio*, xinput* and d3dcompiler",
                "sspicli", "dangerzone, only for testing, might break things, only use on a per app base",
@@ -1086,6 +1087,17 @@ REGEDIT4
 "@
     reg_edit $regkey
 } <# end renderer=vulkan #>
+
+function func_app_paths
+{
+    Push-Location ;
+    Set-Location 'HKLM:' 
+    $r=(Get-ItemProperty (dir 'HKLM:\Software\Microsoft\Windows\CurrentVersion\App Paths')).path -join ';'
+    $env:PATH += ";$r" 
+    [Environment]::SetEnvironmentVariable("PATH", $env:PATH, "MACHINE")  
+    Pop-Location
+    pwsh -nologo
+}
 
 function func_vs19
 {
