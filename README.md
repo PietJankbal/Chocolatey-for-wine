@@ -41,14 +41,8 @@ About ConEmu:
 
 ConEmu console suffers from a few wine-bugs:
   - Ctrl^C to quit a program that doesn't return to the console doesn`t work. Use Shift^Ctrl^C instead.
-  - Selecting text in the ConEmu window (for copy/paste) doesn`t highlight the selection. Included is a very sad hack to     work around ConEmu's 'missing highlight selection' bug. This is a hack against recent wine versions.
-    To enable the hack just do 'apply_conemu_hack', and highlighting selection should work.
-    If you run different wine-versions after each other (or upgrade wine), the hack might break and
-    'wine powershell.exe' (ConEmu) might not start anymore.
-
-    * Try 'wine powershell.exe apply_conemu_hack' and it should likely work again.
-    * If it still doesn't start, fire up winecfg and remove dll overrides for ConEmu64.exe (hack is incompatible               with your wine version).
-
+  - Selecting text in the ConEmu window (for copy/paste) doesn`t highlight the selection. Included is a very sad hack       against recent wine versions that works around this, so highlighting should just work now.
+   
 About system programs:
 
 Feature is added to replace simple system programs like for example tasklist.exe by a function in
@@ -61,7 +55,7 @@ No garantuee this works for more complex programs as well...
 
 Notes:
 
-  - Do NOT use on existing wineprefix, only on fresh new created prefix! The installation just stupidly installs dotnet48 itsself and messes with registrykeys.
+  - Do NOT use on existing wineprefix, only on fresh new created prefix! The installer just stupidly installs dotnet48 itsself and messes with registrykeys.
     If you have any dotnet version already installed with winetricks, it will likely fail, and even if it succeeds, you'll likely end up with a broken prefix.
     If you need to install stuff via winetricks for programs, do NOT use any of the dotnet* verbs. 
     BTW 'Arial' and 'd3dcompiler_47' verbs are already installed by default.
@@ -75,5 +69,5 @@ Compile:
     x86_64-w64-mingw32-gcc -municode -mconsole mainv1.c -lurlmon -lshlwapi -s -o ChoCinstaller_0.5c.703.exe
     
   - Then copy choc_install.ps1 into the same directory
-  - Then do 'wine ChoCinstaller_0.5c.703.exe'
+  - Then do 'wine ChoCinstaller_0.5i.703.exe'
   
