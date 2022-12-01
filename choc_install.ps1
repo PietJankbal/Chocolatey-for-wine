@@ -348,7 +348,7 @@ function QPR_stx { <# setx.exe replacement #>
 }
 
 function use_google_as_browser { <# replace winebrowser with google chrome to open webpages #>
-    if (!([System.IO.File]::Exists("$env:ProgramFiles\Google\Chrome\Application\Chrome.exe"))){ choco install googlechrome --version 102.0.5005.63 --ignore-checksum }
+    if (!([System.IO.File]::Exists("$env:ProgramFiles\Google\Chrome\Application\Chrome.exe"))){ choco install googlechrome}
 
 $regkey = @"
 REGEDIT4
@@ -509,7 +509,7 @@ function handy_apps { choco install explorersuite reactos-paint}
     Get-Process '7z' -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() } 
     reg.exe  IMPORT  $env:TMP\\misc.reg /reg:64
     reg.exe  IMPORT  $env:TMP\\misc.reg /reg:32 
-    
+    <# fix up the 'highlight selection'-hack for ConEmu #>
     Copy-Item -Path "$env:TMP\\user32.dll" -Destination "$env:SystemDrive\\ConEmu\\user32.dll" -Force
     Copy-Item $env:SystemRoot\\system32\\user32.dll $env:SystemRoot\\system32\\user32dummy.dll -force
 
@@ -668,9 +668,14 @@ function handy_apps { choco install explorersuite reactos-paint}
 "@
 
     [Synthesize_Keystrokes]::SendKeyStroke() <# Dismiss ConEmu's fast configuration window by hitting enter #>
-
+################################################################################################################### 
+#                                                                                                                 #
+#  Finish installation and some app specific tweaks                                                               #
+#                                                                                                                 #
+###################################################################################################################
+    <# easy access to 7z #>
     iex "$env:ProgramData\\chocolatey\\tools\\shimgen.exe --output=`"$env:ProgramData`"\\chocolatey\\bin\\7z.exe --path=`"$env:ProgramW6432`"\\7-zip\\7z.exe"
-
+    <# put winetricks.ps1 in ProgramData #>
     Copy-Item -Path "$(Join-Path $args[0] 'winetricks.ps1')" "$env:ProgramData"
     <# This makes Astro Photography Tool happy #>
     foreach($i in 'regasm.exe') { 
@@ -683,14 +688,13 @@ function handy_apps { choco install explorersuite reactos-paint}
     Copy-Item -Path "$env:TMP\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_43.dll" -Force
     Copy-Item -Path "$env:TMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_47.dll" -Force
     Copy-Item -Path "$env:TMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_43.dll" -Force
-
     <# Backup files if wanted #>
     if (Test-Path 'env:SAVEINSTALLFILES') { 
         New-Item -Path "$env:WINEHOMEDIR\.cache\".substring(4) -Name "choc_install_files" -ItemType "directory" -ErrorAction SilentlyContinue
         foreach($i in 'ndp48-x86-x64-allos-enu.exe', 'PowerShell-7.0.3-win-x64.msi', 'arial32.exe', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2201-x64.exe') {
             Copy-Item -Path $env:TEMP\\$i -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4)  -force }
     }
-    <# wine robocopy and hack for ConEmu #>
+    <# install wine robocopy and (custom) wine tasksch.dll #>
     Copy-Item -Path "$env:TMP\\robocopy64.exe" -Destination "$env:SystemRoot\\System32\\robocopy.exe" -Force
     Copy-Item -Path "$env:TMP\\robocopy32.exe" -Destination "$env:SystemRoot\\syswow64\\robocopy.exe" -Force
     Copy-Item -Path "$env:TMP\\taskschd64.dll" -Destination "$env:SystemRoot\\System32\\taskschd.dll" -Force
