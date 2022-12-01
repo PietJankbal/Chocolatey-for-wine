@@ -348,7 +348,7 @@ function QPR_stx { <# setx.exe replacement #>
 }
 
 function use_google_as_browser { <# replace winebrowser with google chrome to open webpages #>
-    if (!([System.IO.File]::Exists("$env:ProgramFiles\Google\Chrome\Application\Chrome.exe"))){ choco install googlechrome}
+    if (!([System.IO.File]::Exists("$env:ProgramFiles\Google\Chrome\Application\Chrome.exe"))){ choco install googlechrome --version 102.0.5005.63 --ignore-checksum }
 
 $regkey = @"
 REGEDIT4
