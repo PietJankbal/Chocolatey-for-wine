@@ -36,63 +36,61 @@ int __cdecl wmain(int argc, WCHAR *argv[])
     if(!ExpandEnvironmentStringsW(L"%ProgramW6432%", pwsh_pathW, MAX_PATH+1)) goto failed; /* win32 only apparently, not supported... */
     if(!ExpandEnvironmentStringsW(L"%SystemDrive%", conemu_pathW, MAX_PATH+1)) goto failed;
 
-    lstrcatW(conemu_pathW, L"\\ConEmu\\ConEmu64.exe");
-    lstrcatW(pwsh_pathW, L"\\Powershell\\7\\pwsh.exe");
+    wcscat(conemu_pathW, L"\\ConEmu\\ConEmu64.exe");
+    wcscat(pwsh_pathW, L"\\Powershell\\7\\pwsh.exe");
     /* Download and Install */
     memset( &si, 0, sizeof( STARTUPINFO )); si.cb = sizeof( STARTUPINFO ); memset( &pi, 0, sizeof( PROCESS_INFORMATION ) );
-    if ( !wcsncmp ( &argv[0][lstrlenW(argv[0])-26] , L"ChoCinstaller_" , 14 ) )
+    if ( !wcsncmp ( &argv[0][wcslen(argv[0])-26] , L"ChoCinstaller_" , 14 ) )
     {    
        WCHAR ps_pathW[MAX_PATH] = L"", setup_pathW[MAX_PATH]= L"", tmpW[MAX_PATH], versionW[] = L".....";
        WCHAR profile_pathW[MAX_PATH], msiexecW[MAX_PATH], cacheW[MAX_PATH], msiW[MAX_PATH] = L"", downloadW[MAX_PATH] = L"";
        
        if ( !ExpandEnvironmentStringsW( L"%SystemRoot%", ps_pathW, MAX_PATH + 1 ) ) goto failed; 
-       if ( !CopyFileW( argv[0], lstrcatW(ps_pathW, L"\\system32\\WindowsPowershell\\v1.0\\powershell.exe" ), FALSE) ) goto failed;
+       if ( !CopyFileW( argv[0], wcscat(ps_pathW, L"\\system32\\WindowsPowershell\\v1.0\\powershell.exe" ), FALSE) ) goto failed;
        lstrcpyW( setup_pathW, argv[0] );
        versionW[0] = (PathFindFileNameW( setup_pathW ))[19]; versionW[2] = PathFindFileNameW( setup_pathW )[20]; versionW[4] = PathFindFileNameW( setup_pathW )[21];
        PathRemoveFileSpecW( setup_pathW );
  
        if( !ExpandEnvironmentStringsW( L"%SystemRoot%", ps_pathW, MAX_PATH + 1 ) ) goto failed;
-       if( !CopyFileW( lstrcatW( setup_pathW, L"\\powershell32.exe" ), lstrcatW( ps_pathW, L"\\syswow64\\WindowsPowershell\\v1.0\\powershell.exe" ), FALSE) ) goto failed;
+       if( !CopyFileW( wcscat( setup_pathW, L"\\powershell32.exe" ), wcscat( ps_pathW, L"\\syswow64\\WindowsPowershell\\v1.0\\powershell.exe" ), FALSE) ) goto failed;
        /* Download and install*/
-       lstrcatW( lstrcatW( msiW, L"PowerShell-"), versionW ); lstrcatW( msiW, L"-win-x64.msi" ); 
+       wcscat( wcscat( msiW, L"PowerShell-"), versionW ); wcscat( msiW, L"-win-x64.msi" ); 
 
        if ( !ExpandEnvironmentStringsW( L"%ProgramW6432%", profile_pathW, MAX_PATH + 1 ) ) goto failed; /* win32 only apparently, not supported... */
        if ( !ExpandEnvironmentStringsW( L"%winsysdir%", msiexecW, MAX_PATH + 1 ) ) goto failed; 
        if ( !ExpandEnvironmentStringsW( L"%WINEHOMEDIR%", cacheW, MAX_PATH+1) ) goto failed; 
        
-        GetTempPathW( MAX_PATH, tmpW ); lstrcatW ( lstrcatW( cacheW, L"\\.cache\\choc_install_files\\" ), msiW );
-        if ( !CopyFileW( cacheW , lstrcatW( tmpW, msiW ), FALSE ) )
+        GetTempPathW( MAX_PATH, tmpW ); wcscat ( wcscat( cacheW, L"\\.cache\\choc_install_files\\" ), msiW );
+        if ( !CopyFileW( cacheW , wcscat( tmpW, msiW ), FALSE ) )
         {
             fwprintf( stderr, L"\033[1;93m" ); fwprintf( stderr, L"\nDownloading %ls \n", msiW ); fwprintf( stderr, L"\033[0m\n" );
-            if( URLDownloadToFileW( NULL, lstrcatW( lstrcatW( lstrcatW ( lstrcatW ( downloadW, L"https://github.com/PowerShell/PowerShell/releases/download/v" ), versionW) , L"/" ), msiW), tmpW,0 , NULL ) != S_OK )
+            if( URLDownloadToFileW( NULL, wcscat( wcscat( wcscat ( wcscat ( downloadW, L"https://github.com/PowerShell/PowerShell/releases/download/v" ), versionW) , L"/" ), msiW), tmpW,0 , NULL ) != S_OK )
                 goto failed;
         }
 
         memset( &si, 0, sizeof( STARTUPINFO )); si.cb = sizeof( STARTUPINFO ); memset( &pi, 0, sizeof( PROCESS_INFORMATION ));
         GetTempPathW( MAX_PATH, tmpW );
-        CreateProcessW(lstrcatW( msiexecW, L"\\msiexec.exe" ), lstrcatW( lstrcatW( bufW, L" /i " ), lstrcatW( lstrcatW( tmpW, msiW ) , L" ENABLE_PSREMOTING=1 REGISTER_MANIFEST=1 /q" ) ), 0, 0, 0, HIGH_PRIORITY_CLASS, 0, 0, &si, &pi);
+        CreateProcessW(wcscat( msiexecW, L"\\msiexec.exe" ), wcscat( wcscat( bufW, L" /i " ), wcscat( wcscat( tmpW, msiW ) , L" ENABLE_PSREMOTING=1 REGISTER_MANIFEST=1 /q" ) ), 0, 0, 0, HIGH_PRIORITY_CLASS, 0, 0, &si, &pi);
         WaitForSingleObject( pi.hProcess, INFINITE ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );   
 
         memset( &si, 0, sizeof( STARTUPINFO ) ); si.cb = sizeof( STARTUPINFO ); memset( &pi , 0, sizeof( PROCESS_INFORMATION ) );
         GetTempPathW( MAX_PATH, tmpW ); bufW[0] = 0;
         PathRemoveFileSpecW( setup_pathW );
-        CreateProcessW( pwsh_pathW, lstrcatW ( lstrcatW( lstrcatW( lstrcatW( bufW, L" -file " ), setup_pathW ), L"\\choc_install.ps1 " ), setup_pathW ), 0, 0, 0, HIGH_PRIORITY_CLASS, 0, 0, &si, &pi);
+        CreateProcessW( pwsh_pathW, wcscat ( wcscat( wcscat( wcscat( bufW, L" -file " ), setup_pathW ), L"\\choc_install.ps1 " ), setup_pathW ), 0, 0, 0, HIGH_PRIORITY_CLASS, 0, 0, &si, &pi);
         WaitForSingleObject( pi.hProcess, INFINITE ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );
         
         return 0;  /* End download and install */    
     } 
-    /* I can also act as a dummy program if my exe-name is not powershell */ 
-    /* Allows to replace a system executable (like wusa.exe, or any exe really) by a function in profile.ps1 */
-    memset( &si, 0, sizeof( STARTUPINFO )); si.cb = sizeof( STARTUPINFO ); memset( &pi, 0, sizeof( PROCESS_INFORMATION ) );
-    if ( wcsnicmp ( &argv[0][lstrlenW(argv[0]) - 14 ] , L"powershell.exe" , 14 ) && wcsnicmp ( &argv[0][lstrlenW(argv[0]) - 10 ] , L"powershell" , 10 ) )
+    /* I can also act as a dummy program if my exe-name is not powershell, allows to replace a system exe (like wusa.exe, or any exe really) by a function in profile.ps1 */
+    if ( wcsnicmp ( &argv[0][wcslen(argv[0]) - 14 ] , L"powershell.exe" , 14 ) && wcsnicmp ( &argv[0][wcslen(argv[0]) - 10 ] , L"powershell" , 10 ) )
     {   
         WCHAR *ptr = argv[0]; 
         while( *ptr ) { 
             if( *ptr=='/' ) { *ptr='\\'; } ptr++; } /* some programs call like 'c:\\windows/system32/setx' so we replace forward with back slashes */
-        lstrcatW( lstrcatW( cmdlineW, L" -c QPR." ) , argv[0] ); /* add some prefix to the executable, so we can query for program replacement in profile.ps1 */
-        if ( wcsnicmp ( &argv[0][ lstrlenW(argv[0]) - 4 ] , L".exe" , 4 ) ) lstrcatW( cmdlineW, L".exe" ); /* and add '.exe' if necessary */
+        wcscat( wcscat( cmdlineW, L" -c QPR." ) , argv[0] ); /* add some prefix to the executable, so we can query for program replacement in profile.ps1 */
+        if ( wcsnicmp ( &argv[0][ wcslen(argv[0]) - 4 ] , L".exe" , 4 ) ) wcscat( cmdlineW, L".exe" ); /* and add '.exe' if necessary */
         for( i = 1; i < argc; i++ ) { /* concatenate the rest of the arguments into the new cmdline */
-            lstrcatW( lstrcatW( lstrcatW( cmdlineW, L" '\"" )  , argv[i] ), L"\"'" ); }
+            wcscat( wcscat( wcscat( cmdlineW, L" '\"" )  , argv[i] ), L"\"'" ); }
         SetEnvironmentVariableW( L"QPRCMDLINE", GetCommandLineW() ); /* option to track the complete commandline via $env:QPRCMDLINE */
         CreateProcessW( pwsh_pathW, cmdlineW , 0, 0, 0, 0, 0, 0, &si, &pi ); /* send the new commandline to pwsh.exe */
         WaitForSingleObject( pi.hProcess, INFINITE ); GetExitCodeProcess( pi.hProcess, &exitcode ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );    
@@ -109,8 +107,8 @@ int __cdecl wmain(int argc, WCHAR *argv[])
     /* by setting this env variable, there's a possibility to execute the cmd through rudimentary windows powershell 5.1, requires 'winetricks ps51' first */
     if ( GetEnvironmentVariable( L"PS51", bufW, MAX_PATH + 1 ) && !wcscmp( bufW, L"1") )
     {   /* Note: when run from bash, escape special char $ with single quotes and backtick e.g. PS51=1 wine powershell '`SPSVersionTable' */
-        lstrcatW( cmdlineW, L" -c ps51 " );
-        for ( i = 1 ; argv[i] ; i++) lstrcatW( lstrcatW( cmdlineW, L" " ), argv[i] ); 
+        wcscat( cmdlineW, L" -c ps51 " );
+        for ( i = 1 ; argv[i] ; i++) wcscat( wcscat( cmdlineW, L" " ), argv[i] ); 
         goto exec;
     }
     for (j = 1; j < i ; j++ ) /* concatenate options into new cmdline, meanwhile working around some incompabilities */ 
@@ -118,13 +116,13 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         if ( !wcscmp( L"-", argv[j] ) ) {read_from_stdin = TRUE; continue;} /* hyphen handled later on */
         if ( !wcsnicmp( L"-ve", argv[j], 3 ) ) {j++;  continue;}            /* -Version, exclude from new cmdline, incompatible... */
         if ( !wcsnicmp( L"-nop", argv[j], 4 ) ) continue;                   /* -NoProfile, also exclude to always enable profile.ps1 to work around possible incompatibilities */   
-        lstrcatW( lstrcatW( cmdlineW, L" " ), argv[j] );
+        wcscat( wcscat( cmdlineW, L" " ), argv[j] );
     }
     /* now insert a '-c' (if necessary) */
     if ( argv[i] && wcsnicmp( argv[i-1], L"-c", 2 ) && wcsnicmp( argv[i-1], L"-enc", 4 ) && wcsnicmp( argv[i-1], L"-f", 2 ) && wcsnicmp( argv[i], L"/c", 2 ) )
-        lstrcatW( lstrcatW( cmdlineW, L" " ), L"-c " );
+        wcscat( wcscat( cmdlineW, L" " ), L"-c " );
     /* concatenate the rest of the arguments into the new cmdline */
-    for( j = i; j < argc; j++ ) lstrcatW( lstrcatW( cmdlineW, L" " ), argv[j] );
+    for( j = i; j < argc; j++ ) wcscat( wcscat( cmdlineW, L" " ), argv[j] );
     /* support pipeline to handle something like " '$(get-date) | powershell - ' */
     /* following code for reading console is shamelessly stolen and adapted from wine/programs/find/find.c */
        if( read_from_stdin ) {
@@ -183,17 +181,17 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         }
 
         HANDLE input = GetStdHandle(STD_INPUT_HANDLE);
-        if( !wcscmp(argv[argc-1], L"-" ) && wcsnicmp(argv[argc-2], L"-c", 2 ) ) lstrcatW(cmdlineW, L" -c ");
-        lstrcatW(cmdlineW, L" \"& {"); /* embed cmdline in scriptblock */
-        while ((line = read_line_from_handle(input)) != NULL) lstrcatW( cmdlineW, line); 
-        lstrcatW(cmdlineW, L"}\"");
+        if( !wcscmp(argv[argc-1], L"-" ) && wcsnicmp(argv[argc-2], L"-c", 2 ) ) wcscat(cmdlineW, L" -c ");
+        wcscat(cmdlineW, L" \"& {"); /* embed cmdline in scriptblock */
+        while ((line = read_line_from_handle(input)) != NULL) wcscat( cmdlineW, line); 
+        wcscat(cmdlineW, L"}\"");
     } /* end support pipeline */ 
 exec: 
     if ( GetEnvironmentVariable( L"PWSHVERBOSE", bufW, MAX_PATH + 1 ) ) 
        { fwprintf( stderr, L"\033[1;35m" ); fwprintf( stderr, L"\n command line is %ls \n", cmdlineW ); fwprintf( stderr, L"\033[0m\n" ); }
 
     bufW[0] = 0; /* Execute the command through pwsh.exe (or start PSconsole via ConEmu if no command found) */
-    CreateProcessW( pwsh_pathW, !( (i == argc ) && !read_from_stdin ) ? cmdlineW : lstrcatW( lstrcatW ( lstrcatW( lstrcatW( lstrcatW( \
+    CreateProcessW( pwsh_pathW, !( (i == argc ) && !read_from_stdin ) ? cmdlineW : wcscat( wcscat ( wcscat( wcscat( wcscat( \
                     bufW, L" -c " ) , conemu_pathW ) , L" -NoUpdate -LoadRegistry -run "), pwsh_pathW ), cmdlineW ), 0, 0, 0, 0, 0, 0, &si, &pi );
     WaitForSingleObject( pi.hProcess, INFINITE ); GetExitCodeProcess( pi.hProcess, &exitcode ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );    
 
