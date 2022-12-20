@@ -196,7 +196,7 @@ $MethodDefinition = @"
 "@
 $ntdll = Add-Type -MemberDefinition $MethodDefinition -Name 'ntdll' -PassThru
 
-if( [System.Convert]::ToDecimal($ntdll::wine_get_version()) -lt 7.16 ) { <# hack incompatible for older wine versions #>
+if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 7.16 ) { <# hack incompatible for older wine versions #>
     $null = New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ConEmu64.exe\\DllOverrides' -force -Name 'user32' -Value 'builtin' -PropertyType 'String'}
 else {
      $null = New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ConEmu64.exe\\DllOverrides' -force -Name 'user32' -Value 'native' -PropertyType 'String'}
