@@ -9,7 +9,7 @@ function validate_param
         [Parameter(Mandatory=$false)]
         [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'd2d1',`
                      'dxvk1103', 'hnetcfg', 'msi', 'sapi', 'ps51', 'ps51_ise', 'crypt32', 'oleaut32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'uxtheme', 'comctl32', 'wsh57',`
-                     'nocrashdialog', 'renderer=vulkan', 'renderer=gl', 'app_paths', 'vs19','sharpdx', 'cef', 'd3dx','sspicli', 'dshow', 'findstr', 'wpf_xaml', 'wpf_msgbox', 'wpf_routedevents')]
+                     'nocrashdialog', 'renderer=vulkan', 'renderer=gl', 'app_paths', 'vs19','sharpdx', 'cef', 'd3dx','sspicli', 'dshow', 'findstr', 'wpf_xaml', 'wpf_msgbox', 'wpf_routedevents', 'embed-exe-vkcube', 'vulkansamples')]
         [string[]]$verb
       )
 }
@@ -50,16 +50,19 @@ $custom_array = @() # Creating an empty array to populate data in
                "renderer=vulkan", "renderer=vulkan",`
                "renderer=gl", "renderer=gl",`
                "app_paths", "start new shell with app paths added to the path (permanently), invoke from powershell console!",
-               "sharpdx", "directX with powershell (spinning cube), test if your d3d11 works, further rather useless verb for now ;)",
                "vs19", "Visual Studio 2019, only install, devenv doesn't work ",
                "d3dx", "d3x9*, d3dx10*, d3dx11*, xactengine*, xapofx* x3daudio*, xinput* and d3dcompiler",
                "sspicli", "dangerzone, only for testing, might break things, only use on a per app base",
                "dshow", "directshow dlls: qdvd qcap etc.",
                "findstr", "findstr.exe",
+               "sharpdx", "directX with powershell (spinning cube), test if your d3d11 works, further rather useless verb for now ;)",
+               "vulkansamples", "51 vulkan samples to test if your vulkan works, do shift-ctrl^c if you wanna leave earlier ;)",
                "wpf_xaml", "codesnippets from around the internet: how to use wpf+xaml in powershell",
                "wpf_msgbox", "codesnippets from around the internet: some fancy messageboxes (via wpf) in powershell",
                "wpf_routedevents", "codesnippets from around the internet: how to use wpf+xaml+routedevents in powershell",
-               "cef", "codesnippets from around the internet: how to use cef / test cef"
+               "cef", "codesnippets from around the internet: how to use cef / test cef",
+               "embed-exe-vkcube", "codesnippets from around the internet: downloads and runs vkcube-script (examplescript howto embed an exe into ps-scripts)"
+
 
 for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) { 
     $custom_array += New-Object PSObject -Property @{ # Setting up custom array utilizing a PSObject
@@ -2248,6 +2251,27 @@ $xaml.SelectNodes("//*[@*[contains(translate(name(.),'n','N'),'Name')]]") | ForE
 $StackPanel.AddHandler([System.Windows.Controls.RadioButton]::CheckedEvent, $CheckedEventHandler)
 
 $Window.Showdialog() | Out-Null
+}
+
+function func_embed-exe-vkcube
+{
+    if (-not(Test-Path "$env:ProgramData\embedding-exe-files-into-powershell-scripts-example_vkcube.exe.ps1" -PathType Leaf)) {
+        (New-Object System.Net.WebClient).DownloadFile("https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/embedding-exe-files-into-powershell-scripts-example_vkcube.exe.ps1", "$env:ProgramData\embedding-exe-files-into-powershell-scripts-example_vkcube.exe.ps1") }
+
+    . "$env:ProgramData\embedding-exe-files-into-powershell-scripts-example_vkcube.exe.ps1"
+}
+
+function func_vulkansamples
+{   <# https://www.saschawillems.de/blog/2017/03/25/updated-vulkan-example-binaries/ #>
+    $dldir = "vulkansamples"
+    w_download_to $dldir "http://vulkan.gpuinfo.org/downloads/examples/vulkan_examples_windows_x64.7z" "vulkan_examples_windows_x64.7z" 
+    w_download_to $dldir "http://vulkan.gpuinfo.org/downloads/examples/vulkan_examples_mediapack.7z" "vulkan_examples_mediapack.7z" 
+    7z x $cachedir\\$dldir\\vulkan_examples_windows_x64.7z "-o$cachedir\\$dldir\\" -y; quit?(7z)
+    7z x $cachedir\\$dldir\\vulkan_examples_mediapack.7z "-o$cachedir\\$dldir\\vulkan_examples_windows_x64" -y; quit?(7z)
+    Push-Location
+    cd $cachedir\\$dldir\\vulkan_examples_windows_x64\\bin
+    foreach($i in $( ls $cachedir\\$dldir\\vulkan_examples_windows_x64\\bin\\*.exe).Name) { Start-process -Wait "$cachedir\\$dldir\\vulkan_examples_windows_x64\\bin\\$i"}
+    Pop-Location
 }
 
 <# Main function #>
