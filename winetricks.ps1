@@ -61,7 +61,7 @@ $custom_array = @() # Creating an empty array to populate data in
                "wpf_msgbox", "codesnippets from around the internet: some fancy messageboxes (via wpf) in powershell",
                "wpf_routedevents", "codesnippets from around the internet: how to use wpf+xaml+routedevents in powershell",
                "cef", "codesnippets from around the internet: how to use cef / test cef",
-               "embed-exe-vkcube", "codesnippets from around the internet: downloads and runs vkcube-script (examplescript howto embed an exe into ps-scripts)"
+               "embed-exe-vkcube", "codesnippets from around the internet: downloads and runs examplescript howto embed an exe into powershell-scripts (vkcube.exe)"
 
 
 for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) { 
