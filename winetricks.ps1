@@ -9,7 +9,7 @@ function validate_param
         [Parameter(Mandatory=$false)]
         [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'd2d1',`
                      'dxvk1103', 'hnetcfg', 'msi', 'sapi', 'ps51', 'ps51_ise', 'crypt32', 'oleaut32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'uxtheme', 'comctl32', 'wsh57',`
-                     'nocrashdialog', 'renderer=vulkan', 'renderer=gl', 'app_paths', 'vs19','sharpdx', 'cef', 'd3dx','sspicli', 'dshow', 'findstr', 'wpf_xaml', 'wpf_msgbox', 'wpf_routedevents', 'embed-exe-vkcube', 'vulkansamples')]
+                     'nocrashdialog', 'renderer=vulkan', 'renderer=gl', 'app_paths', 'vs19','sharpdx', 'cef', 'd3dx','sspicli', 'dshow', 'findstr', 'wpf_xaml', 'wpf_msgbox', 'wpf_routedevents', 'embed-exe-in-psscript', 'vulkansamples')]
         [string[]]$verb
       )
 }
@@ -61,7 +61,7 @@ $custom_array = @() # Creating an empty array to populate data in
                "wpf_msgbox", "codesnippets from around the internet: some fancy messageboxes (via wpf) in powershell",
                "wpf_routedevents", "codesnippets from around the internet: how to use wpf+xaml+routedevents in powershell",
                "cef", "codesnippets from around the internet: how to use cef / test cef",
-               "embed-exe-vkcube", "codesnippets from around the internet: downloads and runs examplescript howto embed an exe into powershell-scripts (vkcube.exe)"
+               "embed-exe-in-psscript", "codesnippets from around the internet: downloads and runs samplescript howto embed an exe into powershell-scripts (vkcube.exe)"
 
 
 for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) { 
@@ -2253,7 +2253,7 @@ $StackPanel.AddHandler([System.Windows.Controls.RadioButton]::CheckedEvent, $Che
 $Window.Showdialog() | Out-Null
 }
 
-function func_embed-exe-vkcube
+function func_embed-exe-in-psscript
 {
     if (-not(Test-Path "$env:ProgramData\embedding-exe-files-into-powershell-scripts-example_vkcube.exe.ps1" -PathType Leaf)) {
         (New-Object System.Net.WebClient).DownloadFile("https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/embedding-exe-files-into-powershell-scripts-example_vkcube.exe.ps1", "$env:ProgramData\embedding-exe-files-into-powershell-scripts-example_vkcube.exe.ps1") }
@@ -2270,7 +2270,7 @@ function func_vulkansamples
     7z x $cachedir\\$dldir\\vulkan_examples_mediapack.7z "-o$cachedir\\$dldir\\vulkan_examples_windows_x64" -y; quit?(7z)
     Push-Location
     cd $cachedir\\$dldir\\vulkan_examples_windows_x64\\bin
-    foreach($i in $( ls $cachedir\\$dldir\\vulkan_examples_windows_x64\\bin\\*.exe).Name) { Start-process -Wait "$cachedir\\$dldir\\vulkan_examples_windows_x64\\bin\\$i"}
+    foreach($i in $( ls $cachedir\\$dldir\\vulkan_examples_windows_x64\\bin\\*.exe).Name) { Write-Host 'Press Shift-Ctrl^C to exit earlier...'; Start-process -Wait "$cachedir\\$dldir\\vulkan_examples_windows_x64\\bin\\$i"}
     Pop-Location
 }
 
