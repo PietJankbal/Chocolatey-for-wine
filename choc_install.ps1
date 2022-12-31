@@ -666,7 +666,6 @@ function handy_apps { choco install explorersuite reactos-paint}
             }
     }
 "@
-
     [Synthesize_Keystrokes]::SendKeyStroke() <# Dismiss ConEmu's fast configuration window by hitting enter #>
 ################################################################################################################### 
 #                                                                                                                 #
@@ -675,8 +674,9 @@ function handy_apps { choco install explorersuite reactos-paint}
 ###################################################################################################################
     <# easy access to 7z #>
     iex "$env:ProgramData\\chocolatey\\tools\\shimgen.exe --output=`"$env:ProgramData`"\\chocolatey\\bin\\7z.exe --path=`"$env:ProgramW6432`"\\7-zip\\7z.exe"
-    <# put winetricks.ps1 in ProgramData #>
+    <# put winetricks.ps1 and codesnippets in ProgramData #>
     Copy-Item -Path "$(Join-Path $args[0] 'winetricks.ps1')" "$env:ProgramData"
+    Copy-Item -Path "$(Join-Path $args[0] 'EXTRAS' 'powershell_collected_codesnippets_examples.ps1')" "$env:ProgramData"
     <# This makes Astro Photography Tool happy #>
     foreach($i in 'regasm.exe') { 
         Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\$i
