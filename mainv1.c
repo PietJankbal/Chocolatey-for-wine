@@ -84,7 +84,7 @@ WCHAR* read_line_from_handle(HANDLE handle)
 int __cdecl wmain(int argc, WCHAR *argv[])
 {
     BOOL read_from_stdin = FALSE;
-    WCHAR conemu_pathW[MAX_PATH], cmdlineW[MAX_PATH]=L"", pwsh_pathW[MAX_PATH], bufW[MAX_PATH] = L"", *filenameW;
+    wchar_t conemu_pathW[MAX_PATH], cmdlineW[MAX_PATH]=L"", pwsh_pathW[MAX_PATH], bufW[MAX_PATH] = L"", filepathW[MAX_PATH], *filenameW;
     DWORD exitcode;       
     STARTUPINFOW si;
     PROCESS_INFORMATION pi;
@@ -95,8 +95,8 @@ int __cdecl wmain(int argc, WCHAR *argv[])
 
     wcscat(conemu_pathW, L"\\ConEmu\\ConEmu64.exe");
     wcscat(pwsh_pathW, L"\\Powershell\\7\\pwsh.exe");
-
-    filenameW = wcsrchr( argv[0], '\\') + 1;
+    GetModuleFileNameW(NULL, filepathW ,MAX_PATH);
+    filenameW =  wcsrchr( filepathW, '\\') + 1;
 
     /* Download and Install */
     memset( &si, 0, sizeof( STARTUPINFO )); si.cb = sizeof( STARTUPINFO ); memset( &pi, 0, sizeof( PROCESS_INFORMATION ) );
