@@ -20,7 +20,7 @@
  * i686-w64-mingw32-gcc -municode  -mconsole mainv1.c -lurlmon -lshlwapi -s -o powershell32.exe
  * x86_64-w64-mingw32-gcc -municode  -mconsole mainv1.c -lurlmon -lshlwapi -s -o ChoCinstaller_0.5i.703.exe
  * Btw: The included binaries are compiled with windows mingw (after 'choco install mingw' and 'choco install mingw --x86') and compressed with upx:
- * gcc -s -Os -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -falign-functions=1  -mpreferred-stack-boundary=2{32-bit}4{64-bit} -falign-jumps=1 -falign-loops=1 -mconsole -municode  -o h.exe mainv1.c -lurlmon -lshlwapi
+ * gcc -s -O1 -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -falign-functions=1  -mpreferred-stack-boundary=2{32-bit}4{64-bit} -falign-jumps=1 -falign-loops=1 -mconsole -municode  -o h.exe mainv1.c -lurlmon -lshlwapi
  */
 
 #include <windows.h>
