@@ -8,8 +8,8 @@ function validate_param
  Param(
         [Parameter(Mandatory=$false)]
         [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'd2d1',`
-                     'dxvk1103', 'hnetcfg', 'msi', 'sapi', 'ps51', 'ps51_ise', 'crypt32', 'oleaut32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'uxtheme', 'comctl32', 'wsh57',`
-                     'nocrashdialog', 'renderer=vulkan', 'renderer=gl', 'app_paths', 'vs19','sharpdx', 'cef', 'd3dx','sspicli', 'dshow', 'findstr', 'wpf_xaml', 'wpf_msgbox', 'wpf_routedevents', 'embed-exe-in-psscript', 'vulkansamples')]
+                     'dxvk1103', 'dxvk20', 'hnetcfg', 'msi', 'sapi', 'ps51', 'ps51_ise', 'crypt32', 'oleaut32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'uxtheme', 'comctl32', 'wsh57',`
+                     'nocrashdialog', 'renderer=vulkan', 'renderer=gl', 'app_paths', 'vs19','sharpdx', 'dotnet481' ,'cef', 'd3dx','sspicli', 'dshow', 'findstr', 'wpf_xaml', 'wpf_msgbox', 'wpf_routedevents', 'embed-exe-in-psscript', 'vulkansamples', 'ps2exe')]
         [string[]]$verb
       )
 }
@@ -33,6 +33,7 @@ $custom_array = @() # Creating an empty array to populate data in
                "hnetcfg", "hnetcfg with fix for https://bugs.winehq.org/show_bug.cgi?id=45432",`
                "msi", "if an msi installer fails, might wanna try this msi, just faking success for a few actions... Might also result in broken installation ;)",`
                "dxvk1103", "dxvk 1.10.3, latest compatible with Kepler (Nvidia GT 470) ??? )",`
+               "dxvk20", "dxvk 2.0",`
                "crypt32", "experimental, dangerzone, might break things, only use on a per app base",`
                "oleaut32", "experimental, dangerzone, will likely break things (!), only use on a per app base",`
                "sapi", "Speech api, experimental, makes Balabolka work",`
@@ -55,13 +56,15 @@ $custom_array = @() # Creating an empty array to populate data in
                "sspicli", "dangerzone, only for testing, might break things, only use on a per app base",
                "dshow", "directshow dlls: qdvd qcap etc.",
                "findstr", "findstr.exe",
+               "dotnet481", "dotnet481",
                "sharpdx", "directX with powershell (spinning cube), test if your d3d11 works, further rather useless verb for now ;)",
                "vulkansamples", "51 vulkan samples to test if your vulkan works, do shift-ctrl^c if you wanna leave earlier ;)",
                "wpf_xaml", "codesnippets from around the internet: how to use wpf+xaml in powershell",
                "wpf_msgbox", "codesnippets from around the internet: some fancy messageboxes (via wpf) in powershell",
                "wpf_routedevents", "codesnippets from around the internet: how to use wpf+xaml+routedevents in powershell",
                "cef", "codesnippets from around the internet: how to use cef / test cef",
-               "embed-exe-in-psscript", "codesnippets from around the internet: samplescript howto embed and run an exe into a powershell-scripts (vkcube.exe)"
+               "embed-exe-in-psscript", "codesnippets from around the internet: samplescript howto embed and run an exe into a powershell-scripts (vkcube.exe)",
+               "ps2exe", "convert a ps1-script into an executable; requires powershell 5.1, so 1st time usage may take very long time!!!"
 
 
 for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) { 
@@ -448,6 +451,17 @@ function func_dxvk1103
     7z e $env:TEMP\\dxvk-1.10.3.tar "-o$env:systemroot\\syswow64" dxvk-1.10.3/x32 -y;
     foreach($i in 'dxgi', 'd3d9', 'd3d10_1', 'd3d10core', 'd3d10', 'd3d11') { dlloverride 'native' $i }
 } <# end dxvk1101 #>
+
+function func_dxvk20
+{
+    $dldir = "dxvk20"
+    w_download_to "dxvk20" "https://github.com/doitsujin/dxvk/releases/download/v2.0/dxvk-2.0.tar.gz" "dxvk-2.0.tar.gz"
+
+    7z x -y $cachedir\\$dldir\\dxvk-2.0.tar.gz "-o$env:TEMP";quit?('7z') 
+    7z e $env:TEMP\\dxvk-2.0.tar "-o$env:systemroot\\system32" dxvk-2.0/x64 -y;
+    7z e $env:TEMP\\dxvk-2.0.tar "-o$env:systemroot\\syswow64" dxvk-2.0/x32 -y;
+    foreach($i in 'dxgi', 'd3d9', 'd3d10_1', 'd3d10core', 'd3d10', 'd3d11') { dlloverride 'native' $i }
+} <# end dxvk20 #>
 
 function func_wsh57
 {
@@ -997,7 +1011,18 @@ if (!(Get-process -Name powershell_ise -erroraction silentlycontinue)) {
 "@
     $profile51 | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\profile.ps1
 
-    Copy-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\system.management.automation.dll" -Destination (New-item -Name "System.Management.Automation\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
+#    Copy-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\system.management.automation.dll" -Destination (New-item -Name "System.Management.Automation\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
+    Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\system.management.automation.dll" -Destination (New-item -Name "System.Management.Automation\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
+    Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.wsman.runtime.dll" -Destination (New-item -Name "Microsoft.WSMan.Runtime\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
+    Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.wsman.management.dll" -Destination (New-item -Name "Microsoft.WSMan.Management\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
+    Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.powershell.security.dll" -Destination (New-item -Name "Microsoft.PowerShell.Security\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
+    Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.management.infrastructure.native.dll" -Destination (New-item -Name "Microsoft.Management.Infrastructure\v4.0_1.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_64" -Force) -Force -Verbose
+    Move-Item -Path "$env:systemroot\syswow64\WindowsPowershell\v1.0\microsoft.management.infrastructure.native.dll" -Destination (New-item -Name "Microsoft.Management.Infrastructure\v4.0_1.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_32" -Force) -Force -Verbose
+    Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.management.infrastructure.dll" -Destination (New-item -Name "Microsoft.Management.Infrastructure\v4.0_1.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
+    Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.powershell.commands.management.dll" -Destination (New-item -Name "Microsoft.PowerShell.Commands.Management\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
+    Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.powershell.commands.utility.dll" -Destination (New-item -Name "Microsoft.PowerShell.Commands.Utility\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
+    Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.powershell.consolehost.dll" -Destination (New-item -Name "Microsoft.PowerShell.ConsoleHost\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
+    Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.powershell.commands.diagnostics.dll" -Destination (New-item -Name "Microsoft.PowerShell.Commands.Diagnostics\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
 
     foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }      
 } <# end ps51 #>
@@ -1555,7 +1580,6 @@ if(1) {
 
     $frame.ShowDialog()
     }
-
 }
 
 function func_wpf_xaml
@@ -1563,7 +1587,6 @@ function func_wpf_xaml
     . "$env:ProgramData\powershell_collected_codesnippets_examples.ps1"
     func_wpf_xaml2
 }
-
 
 function func_wpf_msgbox
 {
@@ -1583,6 +1606,12 @@ function func_embed-exe-in-psscript
     func_embed-exe-in-psscript2
 }
 
+function func_ps2exe
+{
+    . "$env:ProgramData\powershell_collected_codesnippets_examples.ps1"
+    func_ps2exe2
+}
+
 function func_vulkansamples
 {   <# https://www.saschawillems.de/blog/2017/03/25/updated-vulkan-example-binaries/ #>
     $dldir = "vulkansamples"
@@ -1595,6 +1624,131 @@ function func_vulkansamples
     foreach($i in $( ls $cachedir\\$dldir\\vulkan_examples_windows_x64\\bin\\*.exe).Name) { Write-Host 'Press Shift-Ctrl^C to exit earlier...'; Start-process -Wait "$cachedir\\$dldir\\vulkan_examples_windows_x64\\bin\\$i"}
     Pop-Location
 }
+
+function func_dotnet481
+{
+    $dldir = "dotnet481"
+    w_download_to $dldir "https://download.visualstudio.microsoft.com/download/pr/6f083c7e-bd40-44d4-9e3f-ffba71ec8b09/3951fd5af6098f2c7e8ff5c331a0679c/ndp481-x86-x64-allos-enu.exe" "ndp481-x86-x64-allos-enu.exe" 
+    7z x $cachedir\\$dldir\\ndp481-x86-x64-allos-enu.exe "-o$env:TEMP\\$dldir\\" -y; quit?(7z)
+    7z x $env:TEMP\\$dldir\\x64-Windows10.0-KB5011048-x64.cab "-o$env:TEMP\\$dldir\\" -y; quit?(7z)
+
+    Stop-Process -Name mscorsvw -ErrorAction SilentlyContinue <# otherwise some dlls fail to be replaced as they are in use by mscorvw; only mscoreei.dll has to be copied manually afaict as it is in use by pwsh #>
+
+    function install_from_manifest{ <# installs files to systemdirs using info from manifestfile #>
+        param ($manifestfile)
+    
+        $Xml = [xml](Get-Content -Path $manifestfile)
+
+        $file_names= $Xml.assembly.file | Where-Object -Property name #-eq -Value $file_name
+ 
+        foreach ($destpath in $file_names.destinationpath ) {
+            if ($destpath) {
+                if ( $Xml.assembly.assemblyIdentity.processorArchitecture -eq 'amd64' ) {
+                    $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\system32" -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramFiles" `
+	            -replace ([Regex]::Escape('$(runtime.wbem)')),"$env:systemroot\\system32\\wbem" -replace ([Regex]::Escape('$(runtime.commonFiles)')),"$env:CommonProgramFiles"
+                }
+
+                if ( ($Xml.assembly.assemblyIdentity.processorArchitecture -eq 'wow64') -or  ($Xml.assembly.assemblyIdentity.processorArchitecture -eq 'x86') ) {
+                    $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\syswow64" -replace ([Regex]::Escape('$(runtime.programFiles)')),"${env:ProgramFiles`(x86`)}" `
+                    -replace ([Regex]::Escape('$(runtime.wbem)')),"$env:systemroot\\syswow64\\wbem" -replace ([Regex]::Escape('$(runtime.commonFiles)')),"${env:CommonProgramFiles`(x86`)}"
+                }
+
+                $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.windows)')),"$env:systemroot" -replace ([Regex]::Escape('$(runtime.inf)')),"$env:systemroot\\inf"
+
+                if (-not (Test-Path -Path $finalpath )) { New-Item -Path $finalpath -ItemType directory -Force }
+
+                Copy-Item -Path $($manifestfile.Replace('.manifest','\') +'*') -Destination $finalpath -Force -ErrorAction SilentlyContinue  #-verbose
+            } 
+        }
+    ############  Also copy 'links' #########################
+
+        if ($Xml.assembly.file.link) {
+            foreach ($destpath in $Xml.assembly.file.link.destination){
+
+                if ( $Xml.assembly.assemblyIdentity.processorArchitecture -eq 'amd64' ) {
+                    $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\system32" -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramFiles" `
+                    -replace ([Regex]::Escape('$(runtime.wbem)')),"$env:systemroot\\system32\\wbem" -replace ([Regex]::Escape('$(runtime.commonFiles)')),"$env:CommonProgramFiles"
+                }
+
+                if ( ($Xml.assembly.assemblyIdentity.processorArchitecture -eq 'wow64') -or  ($Xml.assembly.assemblyIdentity.processorArchitecture -eq 'x86') ) {
+                    $finalpath = $destpath -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\syswow64" -replace ([Regex]::Escape('$(runtime.programFiles)')),"${env:ProgramFiles`(x86`)}" `
+		                           -replace ([Regex]::Escape('$(runtime.wbem)')),"$env:systemroot\\syswow64\\wbem" -replace ([Regex]::Escape('$(runtime.commonFiles)')),"${env:CommonProgramFiles`(x86`)}" `
+                }
+
+                $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.windows)')),"$env:systemroot" -replace ([Regex]::Escape('$(runtime.inf)')),"$env:systemroot\\inf"
+
+                if (-not (Test-Path -Path ([system.io.fileinfo]$finalpath).DirectoryName )) { New-Item -Path ([system.io.fileinfo]$finalpath).DirectoryName -ItemType directory -Force }
+
+                Copy-Item -Path $($manifestfile.Replace('.manifest','\') + ([system.io.fileinfo]$finalpath).Name<#$Xml.assembly.file.name?'*'#>) -Destination $finalpath -Force #-verbose
+
+            }
+    ############  End copy links #########################
+        }
+    } <# end function install_from_manifest #>
+
+    Write-Host -foregroundColor yellow 'Starting copying files , this takes a while (> 3 minutes), patience...'    
+    foreach ($i in $(Get-ChildItem $env:TEMP\\dotnet481\\*.manifest).FullName) { install_from_manifest($i) }
+
+    ############  Write keys #########################
+    function write_keys_from_manifest{
+        param ($manifest)
+    
+        $Xml = [xml](Get-Content -Path "$manifest")
+
+        if( $Xml.assembly.registryKeys ) { #try write regkeys from manifest file, thanks some guy from freenode webchat channel powershell who wrote skeleton of this in 4 minutes...
+ 
+            foreach ($key in $Xml.assembly.registryKeys.registryKey) {
+                $path = 'Registry::{0}' -f $key.keyName
+    
+                if ( ($Xml.assembly.assemblyIdentity.processorArchitecture -eq 'wow64') -or  ($Xml.assembly.assemblyIdentity.processorArchitecture -eq 'x86') ) { $path = $path -replace 'HKEY_LOCAL_MACHINE\\SOFTWARE','HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node' -replace 'HKEY_CLASSES_ROOT','HKEY_CLASSES_ROOT\Wow6432Node' }
+	 
+                if (-not (Test-Path -Path $path)) { New-Item -Path $path -ItemType Key -Force }
+
+                #Write-Host Processing manifest $manifest
+                foreach ($value in $key.registryValue) {
+                    $propertyType = switch ($value.valueType) {
+                        'REG_SZ'         { 'String' }
+                        'REG_BINARY'     { 'Binary' }
+                        'REG_DWORD'      { 'DWORD'  }
+	                'REG_EXPAND_SZ'  { 'ExpandString' } 
+	                'REG_MULTI_SZ'   { 'MultiString'  } 
+	                'REG_QWORD'      { 'QWord' }
+                        'REG_NONE'       { '' } 
+                    }
+
+                    $Regname = switch ($value.Name) {
+                        '' { ‘(Default)’ }
+                        default { $value.Name }
+                    }
+                    #If ($propertyType -eq "Binary") { $value.Value = [System.Text.Encoding]::Unicode.GetBytes($value.Value + "000") ; $value.Value.Replace(" ",",")}
+                    #https://stackoverflow.com/questions/54543075/how-to-convert-a-hash-string-to-byte-array-in-powershell
+                    if ( ($propertyType -eq "Binary") ) {$hashByteArray = [byte[]] ($value.Value -replace '..', '0x$&,' -split ',' -ne '');New-ItemProperty -Path $path -Name $Regname -Value $hashByteArray  -PropertyType $propertyType -Force}
+                    else{
+                        if ( $Xml.assembly.assemblyIdentity.processorArchitecture -eq 'amd64' -and $value.Value) {
+                            $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\system32" -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramFiles" `
+	                    -replace ([Regex]::Escape('$(runtime.commonFiles)')),"$env:CommonProgramFiles" -replace ([Regex]::Escape('$(runtime.wbem)')),"$env:systemroot\\system32\\wbem" 
+                        }
+                        if ( ($Xml.assembly.assemblyIdentity.processorArchitecture -eq 'wow64' -and $value.Value ) -or  ($Xml.assembly.assemblyIdentity.processorArchitecture -eq 'x86' -and $value.Value ) ) {            
+                            $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\\syswow64" -replace ([Regex]::Escape('$(runtime.programFiles)')),"${env:ProgramFiles`(x86`)}" `
+	                    -replace ([Regex]::Escape('$(runtime.commonFiles)')),"${env:CommonProgramFiles`(x86`)}" -replace ([Regex]::Escape('$(runtime.wbem)')),"$env:systemroot\\syswow64\\wbem"
+                        }	   
+
+                       if( $value.Value ) { $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.windows)')),"$env:systemroot" -replace ([Regex]::Escape('$(runtime.inf)')),"$env:systemroot\\inf" }
+
+                       $null = New-ItemProperty -Path $path -Name $Regname -Value $value.Value -PropertyType $propertyType -Force -ErrorAction SilentlyContinue   #-Verbose
+                    }
+                }
+            }
+        }
+    } <# end write_keys_from_manifest #>
+
+    foreach ($i in $(Get-ChildItem $env:TEMP\\dotnet481\\*.manifest).FullName ) { write_keys_from_manifest($i) }
+    Write-Host -foregroundColor yellow 'Done , hopefully nothing''s screwed up ;)' 
+
+    <# FIXME:  mscoreei.dll is not installed as it is in use by pwsh.exe #>
+    #Start-Process -FilePath $env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.3031\\ngen.exe -NoNewWindow -ArgumentList "eqi"
+    #Start-Process -FilePath $env:SystemRoot\\Microsoft.NET\\Framework\\v4.0.3031\\ngen.exe -NoNewWindow -ArgumentList "eqi"
+} <# end dotnet481 #>
 
 <# Main function #>
     $result = ($args.count) ? ($args) : ($custom_array  | select name,description | Out-GridView  -PassThru  -Title 'Make a  selection')
