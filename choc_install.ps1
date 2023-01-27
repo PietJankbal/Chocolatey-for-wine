@@ -1,6 +1,6 @@
 ################################################################################################################### 
 #                                                                                                                 #
-#  Miscellaneous registry keys, mainly from mscoree manifest so we can skip dotnet40 install                      #
+#  Miscellaneous registry keys, a few from mscoree manifest so we can skip dotnet40 install                       #
 #                                                                                                                 #
 ###################################################################################################################
 $misc_reg = @'
@@ -60,75 +60,7 @@ REGEDIT4
 "Install"=dword:0x00000001
 
 [HKEY_CURRENT_USER\Software\Microsoft\Avalon.Graphics]
-"DisableHWAcceleration"=dword:00000000
-
-[HKEY_CLASSES_ROOT\CCWU.ComCallWrapper.1\CLSID]
-@="{3F281000-E95A-11d2-886B-00C04F869F04}"
-
-[HKEY_CLASSES_ROOT\CCWU.ComCallWrapper.1]
-@="Com Call Wrapper Unmarshal Class"
-
-[HKEY_CLASSES_ROOT\CCWU.ComCallWrapper\CLSID]
-@="{3F281000-E95A-11d2-886B-00C04F869F04}"
-
-[HKEY_CLASSES_ROOT\CCWU.ComCallWrapper]
-@="Com Call Wrapper Unmarshal Class"
-
-[HKEY_CLASSES_ROOT\CCWU.ComCallWrapper\CurVer]
-@="CCWU.ComCallWrapper.1"
-
-[HKEY_CLASSES_ROOT\CLSID\{1D2680C9-0E2A-469d-B787-065558BC7D43}\Implemented Categories\{62C8FE65-4EBB-45E7-B440-6E39B2CDBF29}]
-
-[HKEY_CLASSES_ROOT\CLSID\{1D2680C9-0E2A-469d-B787-065558BC7D43}]
-"InfoTip"=".NET Framework Assemblies"
-@="Fusion Cache"
-
-[HKEY_CLASSES_ROOT\CLSID\{1D2680C9-0E2A-469d-B787-065558BC7D43}\InprocServer32]
-@="c:\\windows\\system32\\mscoree.dll"
-"ThreadingModel"="Apartment"
-
-[HKEY_CLASSES_ROOT\CLSID\{1D2680C9-0E2A-469d-B787-065558BC7D43}\Server]
-@="Shfusion.dll"
-
-[HKEY_CLASSES_ROOT\CLSID\{1D2680C9-0E2A-469d-B787-065558BC7D43}\shellex\ContextMenuHandlers\{1D2680C9-0E2A-469d-B787-065558BC7D43}]
-
-[HKEY_CLASSES_ROOT\CLSID\{1D2680C9-0E2A-469d-B787-065558BC7D43}\ShellFolder]
-"Attributes"=hex:00,01,10,F0
-
-[HKEY_CLASSES_ROOT\CLSID\{1EC2DE53-75CC-11d2-9775-00A0C9B4D50C}\Implemented Categories\{62C8FE65-4EBB-45E7-B440-6E39B2CDBF29}]
-
-[HKEY_CLASSES_ROOT\CLSID\{1EC2DE53-75CC-11d2-9775-00A0C9B4D50C}\NotInsertable]
-
-[HKEY_CLASSES_ROOT\CLSID\{3F281000-E95A-11d2-886B-00C04F869F04}]
-@="Com Call Wrapper Unmarshal Class"
-
-[HKEY_CLASSES_ROOT\CLSID\{3F281000-E95A-11d2-886B-00C04F869F04}\Implemented Categories\{62C8FE65-4EBB-45E7-B440-6E39B2CDBF29}]
-
-[HKEY_CLASSES_ROOT\CLSID\{3F281000-E95A-11d2-886B-00C04F869F04}\InprocServer32]
-"ThreadingModel"="Both"
-@="c:\\windows\\system32\\mscoree.dll"
-
-[HKEY_CLASSES_ROOT\CLSID\{3F281000-E95A-11d2-886B-00C04F869F04}\NotInsertable]
-
-[HKEY_CLASSES_ROOT\CLSID\{3F281000-E95A-11d2-886B-00C04F869F04}\ProgID]
-@="CCWU.ComCallWrapper.1"
-
-[HKEY_CLASSES_ROOT\CLSID\{3F281000-E95A-11d2-886B-00C04F869F04}\VersionIndependentProgID]
-@="CCWU.ComCallWrapper"
-
-[HKEY_CLASSES_ROOT\CLSID\{CB2F6723-AB3A-11d2-9C40-00C04FA30A3E}\Implemented Categories\{62C8FE65-4EBB-45E7-B440-6E39B2CDBF29}]
-
-[HKEY_CLASSES_ROOT\CLSID\{CB2F6723-AB3A-11d2-9C40-00C04FA30A3E}]
-@="Microsoft Common Language Runtime Meta Data"
-
-[HKEY_CLASSES_ROOT\CLSID\{CB2F6723-AB3A-11d2-9C40-00C04FA30A3E}\NotInsertable]
-
-[HKEY_CLASSES_ROOT\CLSID\{E5CB7A31-7512-11D2-89CE-0080C792E5D8}\Implemented Categories\{62C8FE65-4EBB-45E7-B440-6E39B2CDBF29}]
-
-[HKEY_CLASSES_ROOT\CLSID\{E5CB7A31-7512-11D2-89CE-0080C792E5D8}]
-"MasterVersion"=dword:0x00000002
-
-[HKEY_CLASSES_ROOT\CLSID\{E5CB7A31-7512-11D2-89CE-0080C792E5D8}\NotInsertable]
+"DisableHWAcceleration"=dword:00000001
 
 [HKEY_LOCAL_MACHINE\SOFTWARE\Classes\CLSID\{0A29FF9E-7F9C-4437-8B11-F424491E3931}\InprocServer32]
 @="C:\\Windows\\System32\\mscoree.dll"
@@ -143,9 +75,6 @@ REGEDIT4
 [HKEY_LOCAL_MACHINE\SOFTWARE\Classes\CLSID\{0A29FF9E-7F9C-4437-8B11-F424491E3931}\Server]
 @="diasymreader.dll"
 
-[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Application\.NET Runtime]
-"TypesSupported"=dword:0x00000007
-
 [HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Fonts]
 "Arial (TrueType)"="arial.ttf"
 "Arial Bold (TrueType)"="arialbd.ttf"
@@ -157,6 +86,14 @@ REGEDIT4
 "RelayFromExclude"="winex11.drv;user32;gdi32;advapi32;kernel32"
 
 '@
+
+<# FIXME these keys are different from regular winetricks dotnet48 install????
+[HKEY_CLASSES_ROOT\CLSID\{E5CB7A31-7512-11D2-89CE-0080C792E5D8}]
+"MasterVersion"=dword:0x00000002
+
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Application\.NET Runtime]
+"TypesSupported"=dword:0x00000007
+#>
 ################################################################################################################### 
 #                                                                                                                 #
 #  profile.ps1: Put workarounds/hacks here. It goes into c:\\Program Files\\Powershell\\7\\profile.ps1            #
@@ -174,6 +111,8 @@ $profile = '$env:ProgramFiles\PowerShell\7\profile.ps1'
 $host.ui.RawUI.WindowTitle = 'This is Powershell Core (pwsh.exe), not (!) powershell.exe'
 
 #Set-PSReadlineKeyHandler -Key Tab -Function MenuComplete
+
+$env:DXVK_CONFIG_FILE=("$env:WINECONFIGDIR" + "\" + "drive_c" + "\" + ($env:ProgramData |split-path -leaf) + "\" + "dxvk.conf").substring(6) -replace "\\","/"
 
 # Enable Chocolatey profile
 $ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
@@ -462,6 +401,7 @@ function handy_apps { choco install explorersuite reactos-paint}
         Copy-Item -Path "$env:WINEHOMEDIR\.cache\choc_install_files\7z2201-x64.exe".substring(4) -Destination "$env:TEMP" -Force }
 
     iex "$(Join-Path "$env:TEMP" '7z2201-x64.exe') /S"; while(!(Test-Path -Path "$env:ProgramW6432\\7-zip\\7z.exe") ) {Sleep 0.25}
+    New-Item -Path "$env:systemroot" -Name "assembly" -ItemType "directory" -ErrorAction SilentlyContinue
 
     <# fragile test... If install files already present skip downloads. Run choc_installer once with 'SAVEINSTALLFILES=1' to cache downloads #>
     if (!(Test-Path -Path "$env:WINEHOMEDIR\.cache\choc_install_files\ndp48-x86-x64-allos-enu.exe".substring(4) -PathType Leaf)) { <# First download/extract/install dotnet48 as job, this takes most time #>
@@ -475,7 +415,8 @@ function handy_apps { choco install explorersuite reactos-paint}
              'https://mirrors.kernel.org/gentoo/distfiles/arial32.exe', `
 #            'https://mirrors.kernel.org/gentoo/distfiles/arialb32.exe', `
              'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47.dll', `
-             'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47_32.dll' )
+             'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47_32.dll', `
+             'https://globalcdn.nuget.org/packages/sevenzipextractor.1.0.17.nupkg' )
     <# Download stuff #>
     foreach($i in $url) {          `
          if (!(Test-Path -Path "$env:WINEHOMEDIR\.cache\choc_install_files\$i.split('/')[-1]".substring(4) -PathType Leaf)) { 
@@ -484,17 +425,12 @@ function handy_apps { choco install explorersuite reactos-paint}
              Copy-Item -Path "$env:WINEHOMEDIR\.cache\choc_install_files\$i.split('/')[-1]".substring(4) -Destination "$env:TEMP" -Force } }
     <# Download ConEmu #>
     (New-Object System.Net.WebClient).DownloadFile('https://conemu.github.io/install2.ps1', $(Join-Path "$env:TEMP" 'install2.ps1') )
-    <# Extract stuff we need for quick dotnet40 install, only mscoree (probably)#>
-    Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu -o$env:TEMP\\dotnet40 Windows6.1-KB958488-x64.cab"; `
-    Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\dotnet40\\Windows6.1-KB958488-x64.cab -o$env:TEMP\\dotnet40 x86_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_7daed23956119a9f/mscoree.dll"; `
-    Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\\dotnet40\\Windows6.1-KB958488-x64.cab -o$env:TEMP\\dotnet40 amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5/mscoree.dll";`
+    <# we probably only need this from regular dotnet40 install (???) #>
+    Start-Process wusa.exe -NoNewWindow -Wait -ArgumentList  "$env:TEMP\\windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu"
+     
     Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $(Join-Path $args[0] 'EXTRAS\wine_robocopy.7z') -o$env:TEMP";
     Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $(Join-Path $args[0] 'EXTRAS\wine_taskschd.7z') -o$env:TEMP";
     Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $(Join-Path $args[0] 'EXTRAS\wine_user32_for_conemu_hack_for_wine7_16.7z') -o$env:TEMP" `
-
-    <# dotnet40: we (probably) only need mscoree.dll from winetricks dotnet40 recipe, so just copy it and write registry values from it`s manifest file. This saves quite some time!#>
-    Copy-Item -Path "$env:TMP\\dotnet40\\x86_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_7daed23956119a9f/mscoree.dll" -Destination "$env:systemroot\\syswow64\\" -Force
-    Copy-Item -Path "$env:TMP\\dotnet40\\amd64_netfx-mscoree_dll_31bf3856ad364e35_6.2.7600.16513_none_d9cd6dbd0e6f0bd5/mscoree.dll" -Destination "$env:systemroot\\system32\\" -Force
 
     & $env:TEMP\\install2.ps1  <# ConEmu install #>
     
@@ -666,6 +602,7 @@ function handy_apps { choco install explorersuite reactos-paint}
             }
     }
 "@
+
     [Synthesize_Keystrokes]::SendKeyStroke() <# Dismiss ConEmu's fast configuration window by hitting enter #>
 ################################################################################################################### 
 #                                                                                                                 #
@@ -684,6 +621,7 @@ function handy_apps { choco install explorersuite reactos-paint}
     <# Many programs need arial and native d3dcompiler_47, so install it #>
     foreach($i in 'arial.ttf', 'ariali.ttf', 'arialbi.ttf', 'arialbd.ttf') { <# fixme?: also install arial32b.exe (ariblk.ttf "Arial Black)??? #>
         Start-Process $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList "e $env:TEMP\\arial32.exe -o$env:systemroot\Fonts $i -aoa" } 
+        Start-Process $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList "e $env:TEMP\\sevenzipextractor.1.0.17.nupkg -o$env:systemroot\\system32\\WindowsPowerShell\\v1.0  lib/netstandard2.0/SevenZipExtractor.dll -aoa"
     Copy-Item -Path "$env:TMP\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_47.dll" -Force
     Copy-Item -Path "$env:TMP\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_43.dll" -Force
     Copy-Item -Path "$env:TMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_47.dll" -Force
@@ -691,7 +629,7 @@ function handy_apps { choco install explorersuite reactos-paint}
     <# Backup files if wanted #>
     if (Test-Path 'env:SAVEINSTALLFILES') { 
         New-Item -Path "$env:WINEHOMEDIR\.cache\".substring(4) -Name "choc_install_files" -ItemType "directory" -ErrorAction SilentlyContinue
-        foreach($i in 'ndp48-x86-x64-allos-enu.exe', 'PowerShell-7.0.3-win-x64.msi', 'arial32.exe', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2201-x64.exe') {
+        foreach($i in 'ndp48-x86-x64-allos-enu.exe', 'PowerShell-7.0.3-win-x64.msi', 'arial32.exe', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2201-x64.exe', 'sevenzipextractor.1.0.17.nupkg') {
             Copy-Item -Path $env:TEMP\\$i -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4)  -force }
     }
     <# install wine robocopy and (custom) wine tasksch.dll #>
@@ -713,3 +651,15 @@ function handy_apps { choco install explorersuite reactos-paint}
     New-Item -Path "$env:Public" -Name "Downloads" -ItemType "directory" -ErrorAction SilentlyContinue
     <# a game launcher tried to open this key, i think it should be present (?) #>
     reg.exe COPY "HKLM\SYSTEM\CurrentControlSet" "HKLM\SYSTEM\ControlSet001" /s /f
+    <# dxvk (if installed) doesn't work well with WPF, add workaround from dxvk site  #>
+$dxvkconf = @"
+[pwsh.exe]
+d3d9.shaderModel = 1
+
+[ps51.exe]
+d3d9.shaderModel = 1
+"@
+    $dxvkconf | Out-File -FilePath $env:ProgramData\\dxvk.conf
+
+    #Start-Process $env:systemroot\Microsoft.NET\Framework64\v4.0.30319\ngen.exe -NoNewWindow -Wait -ArgumentList  "eqi"
+    #Start-Process $env:systemroot\Microsoft.NET\Framework\v4.0.30319\ngen.exe -NoNewWindow -Wait -ArgumentList "eqi"
