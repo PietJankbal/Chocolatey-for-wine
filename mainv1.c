@@ -16,16 +16,12 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Compile:
- * i686-w64-mingw32-gcc -municode  -mconsole mainv1.c -lurlmon -lshlwapi -s -o powershell32.exe
- * x86_64-w64-mingw32-gcc -municode  -mconsole mainv1.c -lurlmon -lshlwapi -s -o ChoCinstaller_0.5i.703.exe
- * Btw: The included binaries are compiled with windows mingw (after 'choco install mingw' and 'choco install mingw --x86') and compressed with upx:
- * gcc -s -O1 -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -falign-functions=1  -mpreferred-stack-boundary=2{32-bit}4{64-bit} -falign-jumps=1 -falign-loops=1 -mconsole -municode  -o h.exe mainv1.c -lurlmon -lshlwapi
+ * Compile: // For fun I changed code from standard main(argc,*argv[]) to something like https://nullprogram.com/blog/2016/01/31/)
+ * x86_64-w64-mingw32-gcc -O1 -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -falign-functions=1 -mpreferred-stack-boundary=4 -falign-jumps=1 \-falign-loops=1 -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x100000,0x100000 -nostdlib  -Wall -Wextra -ffreestanding  mainv1.c -lurlmon -lkernel32 -lucrtbase -luser32 -nostdlib -lshell32 --entry=start -s -o ChoCinstaller_0.5s.703.exe
+ * i686-w64-mingw32-gcc -O1 -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -falign-functions=1 -mpreferred-stack-boundary=2 -falign-jumps=1 -falign-loops=1 -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x100000,0x100000 -nostdlib  -Wall -Wextra -ffreestanding mainv1.c -lurlmon -lkernel32 -lucrtbase -luser32 -nostdlib -lshell32 --entry=_start  -s -o powershell32.exe
+ * Btw: The included powershell binaries are compressed with upx (choco install upx) to make them even smaller (approx. 5kb):
  */
-
 #include <windows.h>
-#include <stdio.h>
-#include "shlwapi.h"
 
 BOOL is_single_or_last_option (WCHAR *opt)
 {
@@ -81,39 +77,36 @@ WCHAR* read_line_from_handle(HANDLE handle)
     return line_converted;
 }
 
-int __cdecl wmain(int argc, WCHAR *argv[])
+int start(void)
 {
     BOOL read_from_stdin = FALSE;
-    wchar_t conemu_pathW[MAX_PATH], cmdlineW[MAX_PATH]=L"", pwsh_pathW[MAX_PATH], bufW[MAX_PATH] = L"", filepathW[MAX_PATH], *filenameW;
+    wchar_t conemu_pathW[MAX_PATH], cmdlineW[MAX_PATH]=L"", pwsh_pathW[MAX_PATH], bufW[MAX_PATH] = L"", drive[MAX_PATH] , dir[_MAX_FNAME], filenameW[_MAX_FNAME];
     DWORD exitcode;       
     STARTUPINFOW si;
     PROCESS_INFORMATION pi;
-    int i = 1, j = 1;
+    int i = 1, j = 1, argc;
+    WCHAR **argv;
 
     if(!ExpandEnvironmentStringsW(L"%ProgramW6432%", pwsh_pathW, MAX_PATH+1)) goto failed; /* win32 only apparently, not supported... */
     if(!ExpandEnvironmentStringsW(L"%SystemDrive%", conemu_pathW, MAX_PATH+1)) goto failed;
-
     wcscat(conemu_pathW, L"\\ConEmu\\ConEmu64.exe");
     wcscat(pwsh_pathW, L"\\Powershell\\7\\pwsh.exe");
-    GetModuleFileNameW(NULL, filepathW ,MAX_PATH);
-    filenameW =  wcsrchr( filepathW, '\\') + 1;
 
+    argv = CommandLineToArgvW ( GetCommandLineW(), &argc);
+    _wsplitpath( argv[0], drive, dir, filenameW, NULL );
     /* Download and Install */
     memset( &si, 0, sizeof( STARTUPINFO )); si.cb = sizeof( STARTUPINFO ); memset( &pi, 0, sizeof( PROCESS_INFORMATION ) );
     if ( !wcsncmp( filenameW , L"ChoCinstaller_" , 14 ) )
     {    
-       WCHAR ps_pathW[MAX_PATH] = L"", setup_pathW[MAX_PATH]= L"", tmpW[MAX_PATH], versionW[] = L".....";
+       WCHAR ps_pathW[MAX_PATH] = L"", tmpW[MAX_PATH], versionW[] = L".....";
        WCHAR profile_pathW[MAX_PATH], msiexecW[MAX_PATH], cacheW[MAX_PATH], msiW[MAX_PATH] = L"", downloadW[MAX_PATH] = L"";
        
        if ( !ExpandEnvironmentStringsW( L"%SystemRoot%", ps_pathW, MAX_PATH + 1 ) ) goto failed; 
        if ( !CopyFileW( argv[0], wcscat(ps_pathW, L"\\system32\\WindowsPowershell\\v1.0\\powershell.exe" ), FALSE) ) goto failed;
-       wcscpy( setup_pathW, argv[0] );
-       versionW[0] = (PathFindFileNameW( setup_pathW ))[19]; versionW[2] = PathFindFileNameW( setup_pathW )[20]; versionW[4] = PathFindFileNameW( setup_pathW )[21];
-       PathRemoveFileSpecW( setup_pathW );
+       versionW[0] = filenameW[19]; versionW[2] = filenameW[20]; versionW[4] = filenameW[21];
  
        if( !ExpandEnvironmentStringsW( L"%SystemRoot%", ps_pathW, MAX_PATH + 1 ) ) goto failed;
-       if( !CopyFileW( wcscat( setup_pathW, L"\\powershell32.exe" ), wcscat( ps_pathW, L"\\syswow64\\WindowsPowershell\\v1.0\\powershell.exe" ), FALSE) ) goto failed;
-       /* Download and install*/
+       if( !CopyFileW( wcscat( wcscat( wcscat( drive , L"\\" ) , dir ) , L"powershell32.exe"  ), wcscat( ps_pathW, L"\\syswow64\\WindowsPowershell\\v1.0\\powershell.exe" ), FALSE) ) goto failed;
        wcscat( wcscat( msiW, L"PowerShell-"), versionW ); wcscat( msiW, L"-win-x64.msi" ); 
 
        if ( !ExpandEnvironmentStringsW( L"%ProgramW6432%", profile_pathW, MAX_PATH + 1 ) ) goto failed; /* win32 only apparently, not supported... */
@@ -123,7 +116,6 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         GetTempPathW( MAX_PATH, tmpW ); wcscat ( wcscat( cacheW, L"\\.cache\\choc_install_files\\" ), msiW );
         if ( !CopyFileW( cacheW , wcscat( tmpW, msiW ), FALSE ) )
         {
-            //fwprintf( stderr, L"\033[1;93m" ); fwprintf( stderr, L"\nDownloading %ls \n", msiW ); fwprintf( stderr, L"\033[0m\n" );
             if( URLDownloadToFileW( NULL, wcscat( wcscat( wcscat ( wcscat ( downloadW, L"https://github.com/PowerShell/PowerShell/releases/download/v" ), versionW) , L"/" ), msiW), tmpW,0 , NULL ) != S_OK )
                 goto failed;
         }
@@ -134,18 +126,16 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         WaitForSingleObject( pi.hProcess, INFINITE ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );   
 
         memset( &si, 0, sizeof( STARTUPINFO ) ); si.cb = sizeof( STARTUPINFO ); memset( &pi , 0, sizeof( PROCESS_INFORMATION ) );
-        GetTempPathW( MAX_PATH, tmpW ); bufW[0] = 0;
-        PathRemoveFileSpecW( setup_pathW );
-        CreateProcessW( pwsh_pathW, wcscat ( wcscat( wcscat( wcscat( bufW, L" -file " ), setup_pathW ), L"\\choc_install.ps1 " ), setup_pathW ), 0, 0, 0, HIGH_PRIORITY_CLASS, 0, 0, &si, &pi);
+        GetTempPathW( MAX_PATH, tmpW ); bufW[0] = 0; _wsplitpath( argv[0], drive, dir, filenameW, NULL );
+        CreateProcessW( pwsh_pathW, wcscat( wcscat( wcscat( wcscat( wcscat ( wcscat( wcscat( wcscat( bufW, L" -file " ), drive ), L"\\" ), dir ), L"choc_install.ps1 " ), drive ), L"\\" ), dir ), 0, 0, 0, HIGH_PRIORITY_CLASS, 0, 0, &si, &pi);
         WaitForSingleObject( pi.hProcess, INFINITE ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );
         
         return 0;  /* End download and install */    
     } 
     /* I can also act as a dummy program if my exe-name is not powershell, allows to replace a system exe (like wusa.exe, or any exe really) by a function in profile.ps1 */
-
     if ( _wcsnicmp( filenameW , L"powershell" , 10 ) )
     {   
-        WCHAR *ptr = argv[0]; 
+        WCHAR *ptr = argv[0];
         while( *ptr ) { 
             if( *ptr=='/' ) { *ptr='\\'; } ptr++; } /* some programs call like 'c:\\windows/system32/setx' so we replace forward with back slashes */
         wcscat( wcscat( cmdlineW, L" -c QPR." ) , argv[0] ); /* add some prefix to the executable, so we can query for program replacement in profile.ps1 */
@@ -155,7 +145,7 @@ int __cdecl wmain(int argc, WCHAR *argv[])
         SetEnvironmentVariableW( L"QPRCMDLINE", GetCommandLineW() ); /* option to track the complete commandline via $env:QPRCMDLINE */
         CreateProcessW( pwsh_pathW, cmdlineW , 0, 0, 0, 0, 0, 0, &si, &pi ); /* send the new commandline to pwsh.exe */
         WaitForSingleObject( pi.hProcess, INFINITE ); GetExitCodeProcess( pi.hProcess, &exitcode ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );    
-        return ( GetEnvironmentVariableW( L"QPREXITCODE", bufW, MAX_PATH + 1 ) ? _wtoi( bufW ) : exitcode );
+        return ( GetEnvironmentVariableW( L"QPREXITCODE", bufW, MAX_PATH + 1 ) ? wcstoul( bufW, NULL, 10 ) : exitcode );
     }
     /* by setting this env variable, there's a possibility to execute the cmd through rudimentary windows powershell 5.1, requires 'winetricks ps51' first */
     if ( GetEnvironmentVariableW( L"PS51", bufW, MAX_PATH + 1 ) && !wcscmp( bufW, L"1") )
@@ -204,6 +194,6 @@ exec:
     return ( GetEnvironmentVariableW( L"FAKESUCCESS", bufW, MAX_PATH + 1 ) ? 0 : exitcode ); 
 
 failed:  
-    fprintf( stderr, "Something went wrong :( (failing download?\n" );
+    MessageBoxA(0, "Something went wrong :( (failing download?\n", 0, 0);
     return 0; /* fake success anyway */
 }
