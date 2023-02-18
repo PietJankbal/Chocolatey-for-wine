@@ -17,9 +17,11 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Compile: // For fun I changed code from standard main(argc,*argv[]) to something like https://nullprogram.com/blog/2016/01/31/)
- * x86_64-w64-mingw32-gcc -O1 -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -falign-functions=1 -mpreferred-stack-boundary=4 -falign-jumps=1 \-falign-loops=1 -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x100000,0x100000 -nostdlib  -Wall -Wextra -ffreestanding  mainv1.c -lurlmon -lkernel32 -lucrtbase -luser32 -nostdlib -lshell32 --entry=start -s -o ChoCinstaller_0.5s.703.exe
- * i686-w64-mingw32-gcc -O1 -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -falign-functions=1 -mpreferred-stack-boundary=2 -falign-jumps=1 -falign-loops=1 -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x100000,0x100000 -nostdlib  -Wall -Wextra -ffreestanding mainv1.c -lurlmon -lkernel32 -lucrtbase -luser32 -nostdlib -lshell32 --entry=_start  -s -o powershell32.exe
- * Btw: The included powershell binaries are compressed with upx (choco install upx) to make them even smaller (approx. 5kb):
+ * x86_64-w64-mingw32-gcc -O1 -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -falign-functions=1 -mpreferred-stack-boundary=4 -falign-jumps=1\
+ * -falign-loops=1 -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x100000,0x100000 -nostdlib  -Wall -Wextra -ffreestanding  mainv1.c -lurlmon -lkernel32 -lucrtbase -luser32 -nostdlib -lshell32 --entry=start -s -o ChoCinstaller_0.5s.703.exe
+ * i686-w64-mingw32-gcc -O1 -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -falign-functions=1 -mpreferred-stack-boundary=2 -falign-jumps=1\
+ * -falign-loops=1 -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x100000,0x100000 -nostdlib  -Wall -Wextra -ffreestanding mainv1.c -lurlmon -lkernel32 -lucrtbase -luser32 -nostdlib -lshell32 --entry=_start  -s -o powershell32.exe
+ * Btw: The included binaries are compressed with upx to make them even smaller (choco install upx):
  */
 #include <windows.h>
 
@@ -28,7 +30,7 @@ BOOL is_single_or_last_option (WCHAR *opt)
     return ( ( ( !_wcsnicmp( opt, L"-c", 2 ) && _wcsnicmp( opt, L"-config", 7 ) ) || !_wcsnicmp( opt, L"-n", 2 ) || !_wcsnicmp( opt, L"-enc", 4 ) ||\
                  !_wcsnicmp( opt, L"-m", 2 ) || !_wcsnicmp( opt, L"-s", 2 )  || !wcscmp( opt, L"-" ) || !_wcsnicmp( opt, L"-f", 2 ) ) ? TRUE : FALSE );
 }
-
+/* following code for reading console is shamelessly stolen (and adapted) from wine/programs/find/find.c */
 BOOL read_char_from_handle(HANDLE handle, char *char_out)
 {
     static char buffer[4096];
@@ -63,9 +65,9 @@ WCHAR* read_line_from_handle(HANDLE handle)
             line_max *= 2;
             line = line ? (char *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, line_max) :  (char *)HeapReAlloc(GetProcessHeap(), 0, line, line_max);
         }
-        if (c == '"')  line[length++] = '\\';  /* escape the double quotes so they won`t get lost */
+        if (c == '"')  line[length++] = '\\';    /* escape the double quotes so they won`t get lost */
         //if (c == '\'') line[length++] = '\'';  /* escape the single quote so they won`t get lost */
-        if (c == '\r') c = ';';                /* carriage return should be replaced */
+        if (c == '\r') c = ';';                  /* carriage return replacement */
         line[length++] = c;   
     }
     line[length] = 0; /* Strip \r of windows line endings */
@@ -80,12 +82,11 @@ WCHAR* read_line_from_handle(HANDLE handle)
 int start(void)
 {
     BOOL read_from_stdin = FALSE;
-    wchar_t conemu_pathW[MAX_PATH], cmdlineW[MAX_PATH]=L"", pwsh_pathW[MAX_PATH], bufW[MAX_PATH] = L"", drive[MAX_PATH] , dir[_MAX_FNAME], filenameW[_MAX_FNAME];
+    wchar_t conemu_pathW[MAX_PATH], cmdlineW[MAX_PATH]=L"", pwsh_pathW[MAX_PATH], bufW[MAX_PATH] = L"", drive[MAX_PATH] , dir[_MAX_FNAME], filenameW[_MAX_FNAME], **argv;;
     DWORD exitcode;       
     STARTUPINFOW si;
     PROCESS_INFORMATION pi;
     int i = 1, j = 1, argc;
-    WCHAR **argv;
 
     if(!ExpandEnvironmentStringsW(L"%ProgramW6432%", pwsh_pathW, MAX_PATH+1)) goto failed; /* win32 only apparently, not supported... */
     if(!ExpandEnvironmentStringsW(L"%SystemDrive%", conemu_pathW, MAX_PATH+1)) goto failed;
@@ -129,23 +130,19 @@ int start(void)
         GetTempPathW( MAX_PATH, tmpW ); bufW[0] = 0; _wsplitpath( argv[0], drive, dir, filenameW, NULL );
         CreateProcessW( pwsh_pathW, wcscat( wcscat( wcscat( wcscat( wcscat ( wcscat( wcscat( wcscat( bufW, L" -file " ), drive ), L"\\" ), dir ), L"choc_install.ps1 " ), drive ), L"\\" ), dir ), 0, 0, 0, HIGH_PRIORITY_CLASS, 0, 0, &si, &pi);
         WaitForSingleObject( pi.hProcess, INFINITE ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );
-        
+        LocalFree(argv);
         return 0;  /* End download and install */    
     } 
     /* I can also act as a dummy program if my exe-name is not powershell, allows to replace a system exe (like wusa.exe, or any exe really) by a function in profile.ps1 */
     if ( _wcsnicmp( filenameW , L"powershell" , 10 ) )
-    {   
-        WCHAR *ptr = argv[0];
-        while( *ptr ) { 
-            if( *ptr=='/' ) { *ptr='\\'; } ptr++; } /* some programs call like 'c:\\windows/system32/setx' so we replace forward with back slashes */
-        wcscat( wcscat( cmdlineW, L" -c QPR." ) , argv[0] ); /* add some prefix to the executable, so we can query for program replacement in profile.ps1 */
-        if ( _wcsnicmp ( &argv[0][ wcslen(argv[0]) - 4 ] , L".exe" , 4 ) ) wcscat( cmdlineW, L".exe" ); /* and add '.exe' if necessary */
-        for( i = 1; i < argc; i++ ) { /* concatenate the rest of the arguments into the new cmdline */
-            wcscat( wcscat( wcscat( cmdlineW, L" '\"" )  , argv[i] ), L"\"'" ); }
-        SetEnvironmentVariableW( L"QPRCMDLINE", GetCommandLineW() ); /* option to track the complete commandline via $env:QPRCMDLINE */
-        CreateProcessW( pwsh_pathW, cmdlineW , 0, 0, 0, 0, 0, 0, &si, &pi ); /* send the new commandline to pwsh.exe */
+    {   /* add some prefix to the exe and execute it through pwsh , so we can query for program replacement in profile.ps1 */
+        wcscat( wcscat( wcscat( cmdlineW, pwsh_pathW), L" -c \"QPR." ) , wcsstr( GetCommandLineW(), filenameW ) );
+        SetEnvironmentVariableW( L"QPRCMDLINE", GetCommandLineW() );          /* option to track the complete commandline via $env:QPRCMDLINE */
+
+        CreateProcessW( 0 , cmdlineW , 0, 0, 0, 0, 0, 0, &si, &pi ); /* send the new commandline to pwsh.exe */
         WaitForSingleObject( pi.hProcess, INFINITE ); GetExitCodeProcess( pi.hProcess, &exitcode ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );    
-        return ( GetEnvironmentVariableW( L"QPREXITCODE", bufW, MAX_PATH + 1 ) ? wcstoul( bufW, NULL, 10 ) : exitcode );
+        LocalFree( argv );
+        exit( exitcode ); /* note: set desired exitcode in the function in profile.ps1 */ 
     }
     /* by setting this env variable, there's a possibility to execute the cmd through rudimentary windows powershell 5.1, requires 'winetricks ps51' first */
     if ( GetEnvironmentVariableW( L"PS51", bufW, MAX_PATH + 1 ) && !wcscmp( bufW, L"1") )
@@ -160,9 +157,9 @@ int start(void)
     for (i = 1;  argv[i] &&  !wcsncmp(  argv[i], L"-" , 1 ); i++ ) { if ( !is_single_or_last_option ( argv[i] ) ) i++; if(!argv[i]) break;} /* Search for 1st argument after options */
     for (j = 1; j < i ; j++ ) /* concatenate options into new cmdline, meanwhile working around some incompabilities */ 
     { 
-        if ( !wcscmp( L"-", argv[j] ) ) {read_from_stdin = TRUE; continue;} /* hyphen handled later on */
+        if ( !wcscmp( L"-", argv[j] ) ) {read_from_stdin = TRUE; continue;}   /* hyphen handled later on */
         if ( !_wcsnicmp(  argv[j], L"-ve", 3 ) ) {j++;  continue;}            /* -Version, exclude from new cmdline, incompatible... */
-        if ( !_wcsnicmp( argv[j], L"-nop", 4 ) ) continue;                   /* -NoProfile, also exclude to always enable profile.ps1 to work around possible incompatibilities */   
+        if ( !_wcsnicmp( argv[j], L"-nop", 4 ) ) continue;                    /* -NoProfile, also exclude to always enable profile.ps1 to work around possible incompatibilities */   
         wcscat( wcscat( cmdlineW, L" " ), argv[j] );
     }
     /* now insert a '-c' (if necessary) */
@@ -171,26 +168,23 @@ int start(void)
     /* concatenate the rest of the arguments into the new cmdline */
     for( j = i; j < argc; j++ ) wcscat( wcscat( cmdlineW, L" " ), argv[j] );
     /* support pipeline to handle something like " '$(get-date) | powershell - ' */
-    /* following code for reading console is shamelessly stolen and adapted from wine/programs/find/find.c */
        if( read_from_stdin ) {
         WCHAR *line;
-
         HANDLE input = GetStdHandle(STD_INPUT_HANDLE);
         DWORD type = GetFileType(input);
+
         if ( type == FILE_TYPE_CHAR ) goto exec; /* not redirected (FILE_TYPE_PIPE or FILE_TYPE_DISK) */
         if( !wcscmp(argv[argc-1], L"-" ) && _wcsnicmp(argv[argc-2], L"-c", 2 ) ) wcscat(cmdlineW, L" -c ");
         wcscat(cmdlineW, L" \"& {"); /* embed cmdline in scriptblock */
-        while ((line = read_line_from_handle(input)) != NULL) wcscat( cmdlineW, line); 
+        while ((line = read_line_from_handle( input )) != NULL) wcscat( cmdlineW, line); 
         wcscat(cmdlineW, L"}\"");
     } /* end support pipeline */ 
 exec: 
-    //if ( GetEnvironmentVariableW( L"PWSHVERBOSE", bufW, MAX_PATH + 1 ) ) 
-    //{ fwprintf( stderr, L"\033[1;35m" ); fwprintf( stderr, L"\n command line is %ls \n", cmdlineW ); fwprintf( stderr, L"\033[0m\n" ); }
     bufW[0] = 0; /* Execute the command through pwsh.exe (or start PSconsole via ConEmu if no command found) */
     CreateProcessW( pwsh_pathW, !( (i == argc ) && !read_from_stdin ) ? cmdlineW : wcscat( wcscat ( wcscat( wcscat( wcscat( \
                     bufW, L" -c " ) , conemu_pathW ) , L" -NoUpdate -LoadRegistry -run "), pwsh_pathW ), cmdlineW ), 0, 0, 0, 0, 0, 0, &si, &pi );
     WaitForSingleObject( pi.hProcess, INFINITE ); GetExitCodeProcess( pi.hProcess, &exitcode ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );    
-
+    LocalFree(argv);
     return ( GetEnvironmentVariableW( L"FAKESUCCESS", bufW, MAX_PATH + 1 ) ? 0 : exitcode ); 
 
 failed:  
