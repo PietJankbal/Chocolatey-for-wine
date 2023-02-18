@@ -12,12 +12,15 @@ REGEDIT4
 "d3dcompiler_47"="native"
 "d3dcompiler_43"="native"
 "wusa.exe"="native"
+"findstr.exe"="native"
 "tasklist.exe"="native"
 "schtasks.exe"="native"
+"setx.exe"="native"
 "taskschd"="native"
 "robocopy.exe"="native"
 "systeminfo.exe"="native"
 "wmic.exe"="native"
+"ngen.exe"="native"
 
 [HKEY_CURRENT_USER\Software\Wine\AppDefaults\conemu64.exe]
 "Version"="win81"
@@ -60,7 +63,7 @@ REGEDIT4
 "Install"=dword:0x00000001
 
 [HKEY_CURRENT_USER\Software\Microsoft\Avalon.Graphics]
-"DisableHWAcceleration"=dword:00000000
+"DisableHWAcceleration"=dword:00000001
 
 [HKEY_LOCAL_MACHINE\SOFTWARE\Classes\CLSID\{0A29FF9E-7F9C-4437-8B11-F424491E3931}\InprocServer32]
 @="C:\\Windows\\System32\\mscoree.dll"
@@ -260,49 +263,51 @@ function winetricks {
 }
 
 # Query program replacement for wusa.exe; Do not remove or change, it will break Chocolatey
-Set-Alias "QPR.$env:systemroot\system32\wusa.exe" QPR_wusa; Set-Alias QPR.wusa.exe QPR_wusa; Set-Alias QPR.wusa QPR_wusa
-function QPR_wusa { <# wusa.exe replacement #>
+function QPR.wusa.exe { <# wusa.exe replacement #>
      Write-Host "This is wusa dummy doing nothing..."
      exit 0;
 }
 
 # Note: Following overrides wine(-staging)`s tasklist so remove stuff below if you don`t want that, and remove native override in winecfg 
-Set-Alias "QPR.$env:systemroot\system32\tasklist.exe" QPR_tl; Set-Alias QPR.tasklist.exe QPR_tl; Set-Alias QPR.tasklist QPR_tl
-function QPR_tl { <# tasklist.exe replacement #>
-    $(ps) |  ft  -autosize -property  Name, id, sessionid, @{Name="Mem Usage(MB)";Expression={[math]::round($_.ws / 1mb)}} 
+
+Set-Alias "QPR.tasklist" "QPR.tasklist.exe"; Set-Alias "QPR.$env:systemroot\system32\tasklist.exe" "QPR.tasklist.exe";
+function QPR.tasklist.exe { <# tasklist.exe replacement #>
+    $(ps) |  ft  -autosize -property  Name, id, sessionid, @{Name="Mem Usage(MB)";Expression={[math]::round($_.ws / 1mb)}} |out-string -stream
 }
 
 # Note: Visual Studio calls this, not sure if this is really needed by it... 
-Set-Alias "QPR.$env:systemroot\system32\getmac.exe" QPR_gm; Set-Alias QPR.getmac.exe QPR_gm; Set-Alias QPR.getmac QPR_gm
-function QPR_gm { <# getmac.exe replacement #>
+function QPR.getmac.exe { <# getmac.exe replacement #>
     Get-WmiObject win32_networkadapterconfiguration | Format-Table @{L=’Physical address’;E={$_.macaddress}}
 }
 
-Set-Alias "QPR.$env:systemroot\system32\setx.exe" QPR_stx; Set-Alias QPR.setx.exe QPR_stx; Set-Alias QPR.setx QPR_stx
-function QPR_stx { <# setx.exe replacement #>
+Set-Alias "QPR.setx" "QPR.setx.exe";
+function QPR.setx.exe { <# setx.exe replacement #>
     <# FIXME, only setting env. variable handled atm. #>
-    New-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Session Manager\\Environment' -force -Name $args[0] -Value $args[1] -PropertyType 'String' 
-    New-ItemProperty -Path 'HKCU:\\Environment' -force -Name $args[0] -Value $args[1] -PropertyType 'String' 
-    $env:QPREXITCODE=0;
+    <# https://stackoverflow.com/questions/50368246/splitting-a-string-on-spaces-but-ignore-section-between-double-quotes #>
+    $argv = ($env:QPRCMDLINE| select-string '("[^"]*"|\S)+' -AllMatches | % matches | % value) -replace '"'
+
+    New-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Session Manager\\Environment' -force -Name $argv[1] -Value $argv[2] -PropertyType 'String' 
+    New-ItemProperty -Path 'HKCU:\\Environment' -force -Name $argv[1] -Value $argv[2] -PropertyType 'String' 
+    exit 0
 }
 
-function use_google_as_browser { <# replace winebrowser with google chrome to open webpages #>
-    if (!([System.IO.File]::Exists("$env:ProgramFiles\Google\Chrome\Application\Chrome.exe"))){ choco install googlechrome}
+Set-Alias "QPR.findstr" "QPR.findstr.exe"; Set-Alias "findstr.exe" "QPR.findstr.exe"; Set-Alias "findstr" "QPR.findstr.exe"
+function QPR.findstr.exe { <# findstr.exe replacement #>
 
-$regkey = @"
-REGEDIT4
-[HKEY_CLASSES_ROOT\https\shell\open\command]
-@="\"%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe\" \"%1\""
-[HKEY_CLASSES_ROOT\http\shell\open\command]
-@="\"%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe\" \"%1\""
-"@
-    $regkey | Out-File -FilePath $env:TEMP\\regkey.reg
-    reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:64;
-    reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:32;
+begin { $count = 0 }
+
+process	{
+        if(-not $args[1]){
+            $found = Select-String -Inputobject $_ -Pattern $args[0].Replace(" ","") <#.Split("|").Trim("'").Trim(" ")#>; if ($found) {Write-Host $found; $count++}}
+        else {
+            foreach($i in (cat $args[1])) {
+                $found = Select-String -Inputobject $i -Pattern $args[0]; if ($found) {Write-Host $found; $count++}}}}
+
+end { if ($count) {return 0 |out-null}
+      else {return 1 |out-null }}
 }
 
-Set-Alias "QPR.$env:systemroot\system32\systeminfo.exe" QPR_si; Set-Alias QPR.systeminfo.exe QPR_si; Set-Alias QPR.systeminfo QPR_si
-function QPR_si { <# systeminfo replacement #>
+function QPR.systeminfo.exe { <# systeminfo replacement #>
     $result = [System.Collections.ArrayList]::new() ;  $p=[System.Collections.ArrayList]::new() 
 
     foreach ($i in 'operatingsystem', 'computersystem', 'processor', 'bios', 'QuickFixEngineering', 'PageFileUsage', 'videocontroller') {
@@ -328,20 +333,19 @@ function QPR_si { <# systeminfo replacement #>
     return $result 
 }
 
-Set-Alias Get-ComputerInfo QPR_si
+Set-Alias Get-ComputerInfo QPR.systeminfo.exe
 
 #If passing back (manipulated) arguments back to the same program, make sure to backup a copy (here QPR.schtasks.exe, copied during installation)
-Set-Alias "QPR.$env:systemroot\system32\schtasks.exe" QPR_stsk; Set-Alias QPR.schtasks.exe QPR_stsk
-function QPR_stsk { <# schtasks.exe replacement #>
+function QPR.schtasks.exe { <# schtasks.exe replacement #>
     $cmdline = $env:QPRCMDLINE
 
     $cmdline = $cmdline -replace '/create', '-create' -replace '/tn', '-tn' -replace "/tr", "-tr" <#-replace "'", "'`"'"#>  <# escape quotes (??) #> `
                         -replace "/sc", "-sc" -replace "/run", "-run" -replace "/delete", "-delete"
     $cmdline
-    iex  -Command ('_schtasks ' + $cmdline)
+    iex  -Command ('QPR_schtasks ' + $cmdline)
 }
 
-function _schtasks { <# _schtasks replacement #>
+function QPR_schtasks { <# schtasks replacement #>
    # [CmdletBinding()]
     Param([switch]$create, [string]$tn, [string]$tr, [string]$sc, [switch]$run, [switch]$delete,
     [parameter(ValueFromRemainingArguments=$true)]$vargs)
@@ -353,8 +357,7 @@ function _schtasks { <# _schtasks replacement #>
        Start-Process -NoNewWindow QPR.schtasks.exe -argumentlist "$cmdline" }
 }
 
-Set-Alias "QPR.$env:systemroot\system32\wbem\wmic.exe" QPR_wmic; Set-Alias QPR.wmic.exe QPR_wmic
-function QPR_wmic { <# wmic replacement, this part only rebuilds the arguments #>
+function QPR.wmic.exe { <# wmic replacement, this part only rebuilds the arguments #>
     $cmdline = $env:QPRCMDLINE 
     $hash = @{
         'os' = "-class win32_operatingsystem"
@@ -367,10 +370,10 @@ function QPR_wmic { <# wmic replacement, this part only rebuilds the arguments #
    
     $cmdline = $cmdline -replace 'get', '-property' -replace 'where', '-where' -replace "/path", "-class" -replace "'", "'`"'"  <# escape quotes (??) #>
 
-    iex  -Command ('_wmic ' + $cmdline)
+    iex  -Command ('QPR_wmic ' + $cmdline)
 }
 
-function _wmic { <# wmic replacement #>
+function QPR_wmic { <# wmic replacement #>
     [CmdletBinding()]
     Param([parameter(Position=0)][string]$class, [string[]]$property="*",
     [string]$where, [parameter(ValueFromRemainingArguments=$true)]$vargs)
@@ -382,11 +385,28 @@ function _wmic { <# wmic replacement #>
     <#                                                                              -Stream: break up in lines  skip seperatorline(---) remove blank lines #>
     (Get-WMIObject -query $query |ft ($property |sort-object) -autosize |Out-string -Stream | Select-Object    -skipindex (2)|          ?{$_.trim() -ne ""}) } 
 }
+
+function use_google_as_browser { <# replace winebrowser with google chrome to open webpages #>
+    if (!([System.IO.File]::Exists("$env:ProgramFiles\Google\Chrome\Application\Chrome.exe"))){ choco install googlechrome}
+
+$regkey = @"
+REGEDIT4
+[HKEY_CLASSES_ROOT\https\shell\open\command]
+@="\"%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe\" \"--no-sandbox\" \"%1\""
+[HKEY_CLASSES_ROOT\http\shell\open\command]
+@="\"%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe\" \"--no-sandbox\" \"%1\""
+"@
+    $regkey | Out-File -FilePath $env:TEMP\\regkey.reg
+    reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:64;
+    reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:32;
+}
+
 #Easy access to the C# compiler
 Set-Alias csc c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
 
 function handy_apps { choco install explorersuite reactos-paint}
 '@
+
 ################################################################################################################################ 
 #                                                                                                                              #
 #  Install dotnet48, ConEmu, Chocolatey, 7z, arial, d3dcompiler_47 and a few extras (wine robocopy + wine taskschd)                   #
@@ -642,7 +662,7 @@ function handy_apps { choco install explorersuite reactos-paint}
     ForEach ($file in "schtasks.exe") {
         Copy-Item -Path "$env:windir\\SysWOW64\\$file" -Destination "$env:windir\\SysWOW64\\QPR.$file" -Force
         Copy-Item -Path "$env:winsysdir\\$file" -Destination "$env:winsysdir\\QPR.$file" -Force}
-    ForEach ($file in "wusa.exe","tasklist.exe","schtasks.exe","systeminfo.exe","getmac.exe","setx.exe","wbem\\wmic.exe") {
+    ForEach ($file in "wusa.exe","tasklist.exe","schtasks.exe","systeminfo.exe","getmac.exe","setx.exe","wbem\\wmic.exe", "findstr.exe") {
         Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\$file" -Force
         Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\$file" -Force}
     <# It seems some programs need this dir?? #>
@@ -661,5 +681,5 @@ d3d9.shaderModel = 1
 "@
     $dxvkconf | Out-File -FilePath $env:ProgramData\\dxvk.conf
 
-    #Start-Process $env:systemroot\Microsoft.NET\Framework64\v4.0.30319\ngen.exe -NoNewWindow -Wait -ArgumentList  "eqi"
-    #Start-Process $env:systemroot\Microsoft.NET\Framework\v4.0.30319\ngen.exe -NoNewWindow -Wait -ArgumentList "eqi"
+#    Start-Process $env:systemroot\Microsoft.NET\Framework64\v4.0.30319\ngen.exe -NoNewWindow -Wait -ArgumentList  "eqi"
+#    Start-Process $env:systemroot\Microsoft.NET\Framework\v4.0.30319\ngen.exe -NoNewWindow -Wait -ArgumentList "eqi"
