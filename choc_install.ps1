@@ -303,8 +303,10 @@ process	{
             foreach($i in (cat $args[1])) {
                 $found = Select-String -Inputobject $i -Pattern $args[0]; if ($found) {Write-Host $found; $count++}}}}
 
-end { if ($count) {return 0 |out-null}
-      else {return 1 |out-null }}
+end {
+      if ($count) {  if($env:QPRCMDLINE)  {exit 0} }  
+      else        {  if($env:QPRCMDLINE)  {exit 1} }
+ }
 }
 
 function QPR.systeminfo.exe { <# systeminfo replacement #>
