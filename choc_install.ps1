@@ -166,9 +166,9 @@ Function Get-WmiObject([parameter(mandatory=$true, position = 0, parametersetnam
 
 Set-Alias gwmi Get-WmiObject
 
-Function Get-CIMInstance ( [parameter(mandatory)] [string]$classname, [string[]]$property="*")
+Function Get-CIMInstance ( [parameter(mandatory)] [string]$classname, [string[]]$property="*", [string]$filter)
 {
-     Get-WMIObject $classname -property $property
+     Get-WMIObject $classname -property $property -filter $filter
 } 
   
 #Example (works on windows,requires admin rights): Set-WmiInstance -class win32_operatingsystem -arguments @{"description" = "MyDescription"}
@@ -263,6 +263,7 @@ function winetricks {
 }
 
 # Query program replacement for wusa.exe; Do not remove or change, it will break Chocolatey
+Set-Alias "QPR.wusa" "QPR.wusa.exe";
 function QPR.wusa.exe { <# wusa.exe replacement #>
      Write-Host "This is wusa dummy doing nothing..."
      exit 0;
@@ -270,12 +271,13 @@ function QPR.wusa.exe { <# wusa.exe replacement #>
 
 # Note: Following overrides wine(-staging)`s tasklist so remove stuff below if you don`t want that, and remove native override in winecfg 
 
-Set-Alias "QPR.tasklist" "QPR.tasklist.exe"; Set-Alias "QPR.$env:systemroot\system32\tasklist.exe" "QPR.tasklist.exe";
+Set-Alias "QPR.tasklist" "QPR.tasklist.exe";
 function QPR.tasklist.exe { <# tasklist.exe replacement #>
     $(ps) |  ft  -autosize -property  Name, id, sessionid, @{Name="Mem Usage(MB)";Expression={[math]::round($_.ws / 1mb)}} |out-string -stream
 }
 
-# Note: Visual Studio calls this, not sure if this is really needed by it... 
+# Note: Visual Studio calls this, not sure if this is really needed by it...
+Set-Alias "QPR.getmac" "QPR.getmac.exe";
 function QPR.getmac.exe { <# getmac.exe replacement #>
     Get-WmiObject win32_networkadapterconfiguration | Format-Table @{L=’Physical address’;E={$_.macaddress}}
 }
@@ -309,6 +311,7 @@ end {
  }
 }
 
+Set-Alias "QPR.systeminfo" "QPR.systeminfo.exe";
 function QPR.systeminfo.exe { <# systeminfo replacement #>
     $result = [System.Collections.ArrayList]::new() ;  $p=[System.Collections.ArrayList]::new() 
 
@@ -338,6 +341,7 @@ function QPR.systeminfo.exe { <# systeminfo replacement #>
 Set-Alias Get-ComputerInfo QPR.systeminfo.exe
 
 #If passing back (manipulated) arguments back to the same program, make sure to backup a copy (here QPR.schtasks.exe, copied during installation)
+Set-Alias "QPR.schtasks" "QPR.schtasks.exe";
 function QPR.schtasks.exe { <# schtasks.exe replacement #>
     $cmdline = $env:QPRCMDLINE
 
@@ -359,6 +363,7 @@ function QPR_schtasks { <# schtasks replacement #>
        Start-Process -NoNewWindow QPR.schtasks.exe -argumentlist "$cmdline" }
 }
 
+Set-Alias "QPR.wmic" "QPR.wmic.exe";
 function QPR.wmic.exe { <# wmic replacement, this part only rebuilds the arguments #>
     $cmdline = $env:QPRCMDLINE 
     $hash = @{
