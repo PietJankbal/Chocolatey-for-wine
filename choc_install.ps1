@@ -678,6 +678,7 @@ function handy_apps { choco install explorersuite reactos-paint}
     New-Item -Path "$env:Public" -Name "Downloads" -ItemType "directory" -ErrorAction SilentlyContinue
     <# a game launcher tried to open this key, i think it should be present (?) #>
     reg.exe COPY "HKLM\SYSTEM\CurrentControlSet" "HKLM\SYSTEM\ControlSet001" /s /f
+    
     <# dxvk (if installed) doesn't work well with WPF, add workaround from dxvk site  #>
 $dxvkconf = @"
 [pwsh.exe]
