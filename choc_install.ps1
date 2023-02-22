@@ -273,7 +273,8 @@ function QPR.wusa.exe { <# wusa.exe replacement #>
 
 Set-Alias "QPR.tasklist" "QPR.tasklist.exe";
 function QPR.tasklist.exe { <# tasklist.exe replacement #>
-    $(ps) |  ft  -autosize -property  Name, id, sessionid, @{Name="Mem Usage(MB)";Expression={[math]::round($_.ws / 1mb)}} |out-string -stream
+    $(ps) |  ft  -autosize -property  Name, id, sessionid, @{Name="Mem Usage(MB)";Expression={[math]::round($_.ws / 1mb)}} #|out-string -stream
+    exit 0
 }
 
 # Note: Visual Studio calls this, not sure if this is really needed by it...
@@ -296,19 +297,33 @@ function QPR.setx.exe { <# setx.exe replacement #>
 Set-Alias "QPR.findstr" "QPR.findstr.exe"; Set-Alias "findstr.exe" "QPR.findstr.exe"; Set-Alias "findstr" "QPR.findstr.exe"
 function QPR.findstr.exe { <# findstr.exe replacement #>
 
-begin { $count = 0 }
+begin { $count = 0 
+        $new = $env:QPRPIPE 
 
+        if($args[1]) {
+            foreach($i in (cat $args[1])) {
+                $found = Select-String -Inputobject $i -Pattern $args[0]; if ($found) {Write-Host $found; $count++}}
+         }
+
+        foreach($i in $new -split "`n") {
+            $found = Select-String -Inputobject $i  -Pattern $args[0].Replace(" ","") <#.Split("|").Trim("'").Trim(" ")#>; if ($found) {Write-Host $found; $count++}
+        }       
+
+        if ($count) {  if($env:QPRCMDLINE)  {exit 0} }  
+        else        {  if($env:QPRCMDLINE)  {exit 1} }
+}
 process	{
         if(-not $args[1]){
             $found = Select-String -Inputobject $_ -Pattern $args[0].Replace(" ","") <#.Split("|").Trim("'").Trim(" ")#>; if ($found) {Write-Host $found; $count++}}
         else {
             foreach($i in (cat $args[1])) {
-                $found = Select-String -Inputobject $i -Pattern $args[0]; if ($found) {Write-Host $found; $count++}}}}
+                $found = Select-String -Inputobject $i -Pattern $args[0]; if ($found) {Write-Host $found; $count++}}}
+}
 
 end {
       if ($count) {  if($env:QPRCMDLINE)  {exit 0} }  
       else        {  if($env:QPRCMDLINE)  {exit 1} }
- }
+}
 }
 
 Set-Alias "QPR.systeminfo" "QPR.systeminfo.exe";
@@ -669,7 +684,7 @@ function handy_apps { choco install explorersuite reactos-paint}
     ForEach ($file in "schtasks.exe") {
         Copy-Item -Path "$env:windir\\SysWOW64\\$file" -Destination "$env:windir\\SysWOW64\\QPR.$file" -Force
         Copy-Item -Path "$env:winsysdir\\$file" -Destination "$env:winsysdir\\QPR.$file" -Force}
-    ForEach ($file in "wusa.exe","tasklist.exe","schtasks.exe","systeminfo.exe","getmac.exe","setx.exe","wbem\\wmic.exe", "findstr.exe") {
+    ForEach ($file in "wusa.exe","tasklist.exe","schtasks.exe","systeminfo.exe","getmac.exe","setx.exe","wbem\\wmic.exe", "findstr.exe", "cmd.exe") {
         Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\$file" -Force
         Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\$file" -Force}
     <# It seems some programs need this dir?? #>
@@ -678,7 +693,6 @@ function handy_apps { choco install explorersuite reactos-paint}
     New-Item -Path "$env:Public" -Name "Downloads" -ItemType "directory" -ErrorAction SilentlyContinue
     <# a game launcher tried to open this key, i think it should be present (?) #>
     reg.exe COPY "HKLM\SYSTEM\CurrentControlSet" "HKLM\SYSTEM\ControlSet001" /s /f
-    
     <# dxvk (if installed) doesn't work well with WPF, add workaround from dxvk site  #>
 $dxvkconf = @"
 [pwsh.exe]
