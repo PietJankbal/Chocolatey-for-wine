@@ -1,5 +1,4 @@
-/*
- * Installs PowerShell Core, wraps powershell`s commandline into correct syntax for pwsh.exe, 
+/* Installs PowerShell Core, wraps powershell`s commandline into correct syntax for pwsh.exe, 
  * and some code that allows calls to an exe (like wusa.exe) to be replaced by a function in profile.ps1 
  *
  * This library is free software; you can redistribute it and/or
@@ -17,13 +16,14 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Compile: // For fun I changed code from standard main(argc,*argv[]) to something like https://nullprogram.com/blog/2016/01/31/)
- * x86_64-w64-mingw32-gcc -O1 -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -falign-functions=1 -mpreferred-stack-boundary=4 -falign-jumps=1\
- * -falign-loops=1 -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x100000,0x100000 -nostdlib  -Wall -Wextra -ffreestanding  mainv1.c -lurlmon -lkernel32 -lucrtbase -luser32 -nostdlib -lshell32 --entry=start -s -o ChoCinstaller_0.5s.703.exe
- * i686-w64-mingw32-gcc -O1 -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -falign-functions=1 -mpreferred-stack-boundary=2 -falign-jumps=1\
- * -falign-loops=1 -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x100000,0x100000 -nostdlib  -Wall -Wextra -ffreestanding mainv1.c -lurlmon -lkernel32 -lucrtbase -luser32 -nostdlib -lshell32 --entry=_start  -s -o powershell32.exe
+ * x86_64-w64-mingw32-gcc -O1 -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -falign-functions=1 -mpreferred-stack-boundary=4 -falign-jumps=1 -falign-loops=1\
+ -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x100000,0x100000 -nostdlib  -Wall -Wextra -ffreestanding  mainv1.c -lurlmon -lkernel32 -lucrtbase -luser32 -nostdlib -lshell32 -lntdll --entry=start -s -o ChoCinstaller_0.5u.703.exe
+ * i686-w64-mingw32-gcc -O1 -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -falign-functions=1 -mpreferred-stack-boundary=2 -falign-jumps=1 -falign-loops=1\
+ -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x100000,0x100000 -nostdlib  -Wall -Wextra -ffreestanding mainv1.c -lurlmon -lkernel32 -lucrtbase -luser32 -nostdlib -lshell32 -lntdll --entry=_start  -s -o powershell32.exe
  * Btw: The included binaries are compressed with upx to make them even smaller (choco install upx):
  */
 #include <windows.h>
+#include <winternl.h> 
 
 BOOL is_single_or_last_option (WCHAR *opt)
 {
@@ -46,7 +46,7 @@ BOOL read_char_from_handle(HANDLE handle, char *char_out)
     return TRUE;
 }
 /* Read a line from a handle, returns NULL if the end is reached */
-WCHAR* read_line_from_handle(HANDLE handle)
+WCHAR* read_line_from_handle(HANDLE handle, BOOL replace_cr)
 {
     int line_max = 4096, length = 0, line_converted_length;
     WCHAR *line_converted;
@@ -56,7 +56,7 @@ WCHAR* read_line_from_handle(HANDLE handle)
     for (;;)
     {
         char c;
-        success = read_char_from_handle(handle, &c);
+        success = read_char_from_handle(handle, &c); //MessageBoxW(0, tmpp , 0, 0);
         /* Check for EOF */
         if (!success) { if (length == 0) return NULL; else break; }
         if (c == '\n') break;
@@ -67,7 +67,7 @@ WCHAR* read_line_from_handle(HANDLE handle)
         }
         if (c == '"')  line[length++] = '\\';    /* escape the double quotes so they won`t get lost */
         //if (c == '\'') line[length++] = '\'';  /* escape the single quote so they won`t get lost */
-        if (c == '\r') c = ';';                  /* carriage return replacement */
+        if (c == '\r' && replace_cr) c = ';';    /* carriage return replacement */
         line[length++] = c;   
     }
     line[length] = 0; /* Strip \r of windows line endings */
@@ -95,6 +95,7 @@ int start(void)
 
     argv = CommandLineToArgvW ( GetCommandLineW(), &argc);
     _wsplitpath( argv[0], drive, dir, filenameW, NULL );
+
     /* Download and Install */
     memset( &si, 0, sizeof( STARTUPINFO )); si.cb = sizeof( STARTUPINFO ); memset( &pi, 0, sizeof( PROCESS_INFORMATION ) );
     if ( !wcsncmp( filenameW , L"ChoCinstaller_" , 14 ) )
@@ -135,12 +136,29 @@ int start(void)
     } 
     /* I can also act as a dummy program if my exe-name is not powershell, allows to replace a system exe (like wusa.exe, or any exe really) by a function in profile.ps1 */
     if ( _wcsnicmp( filenameW , L"powershell" , 10 ) )
-    {   /* add some prefix to the exe and execute it through pwsh , so we can query for program replacement in profile.ps1 */
-        wcscat( wcscat( wcscat( cmdlineW, pwsh_pathW), L" -c \"QPR." ) , wcsstr( GetCommandLineW(), filenameW ) );
-        SetEnvironmentVariableW( L"QPRCMDLINE", GetCommandLineW() );          /* option to track the complete commandline via $env:QPRCMDLINE */
+   {   /* add some prefix to the exe and execute it through pwsh , so we can query for program replacement in profile.ps1 */
+        wcscat( wcscat( cmdlineW, L" -c QPR." ) , filenameW );
+        for( i = 1; i < argc; i++ ) { /* concatenate the rest of the arguments into the new cmdline */
+            wcscat( wcscat( wcscat( cmdlineW, L" '\"" )  , argv[i] ), L"\"'" ); }
 
-        CreateProcessW( 0 , cmdlineW , 0, 0, 0, 0, 0, 0, &si, &pi ); /* send the new commandline to pwsh.exe */
+        HANDLE input = GetStdHandle(STD_INPUT_HANDLE); /* try handle pipe with ugly hack */
+        FILE_FS_DEVICE_INFORMATION info;
+        IO_STATUS_BLOCK io;
+
+        NtQueryVolumeInformationFile( input, &io, &info, sizeof(info), FileFsDeviceInformation ); 
+
+        if(info.DeviceType == 8 ) {
+            WCHAR *line=0, pipeW[32767] = L"\"\n";
+
+            while ( (line = read_line_from_handle( input, FALSE ) ) != NULL) { wcscat( pipeW, line); wcscat( pipeW,L"\n"); }
+            wcscat( pipeW, L"\"");
+            SetEnvironmentVariableW( L"QPRPIPE", pipeW ); /* FIXME, very ugly, store pipe in envvar; */
+        } /* end handle pipe */
+  
+        SetEnvironmentVariableW( L"QPRCMDLINE", GetCommandLineW() );          /* option to track the complete commandline via $env:QPRCMDLINE */
+        CreateProcessW( pwsh_pathW , cmdlineW , 0, 0, 0, 0, 0, 0, &si, &pi ); /* send the new commandline to pwsh.exe */
         WaitForSingleObject( pi.hProcess, INFINITE ); GetExitCodeProcess( pi.hProcess, &exitcode ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );    
+
         LocalFree( argv );
         exit( exitcode ); /* note: set desired exitcode in the function in profile.ps1 */ 
     }
@@ -170,13 +188,13 @@ int start(void)
     /* support pipeline to handle something like " '$(get-date) | powershell - ' */
        if( read_from_stdin ) {
         WCHAR *line;
-        HANDLE input = GetStdHandle(STD_INPUT_HANDLE);
+        HANDLE input = GetStdHandle(STD_INPUT_HANDLE); /* handle pipe */
         DWORD type = GetFileType(input);
 
         if ( type == FILE_TYPE_CHAR ) goto exec; /* not redirected (FILE_TYPE_PIPE or FILE_TYPE_DISK) */
         if( !wcscmp(argv[argc-1], L"-" ) && _wcsnicmp(argv[argc-2], L"-c", 2 ) ) wcscat(cmdlineW, L" -c ");
         wcscat(cmdlineW, L" \"& {"); /* embed cmdline in scriptblock */
-        while ((line = read_line_from_handle( input )) != NULL) wcscat( cmdlineW, line); 
+        while ((line = read_line_from_handle( input, TRUE )) != NULL) wcscat( cmdlineW, line); 
         wcscat(cmdlineW, L"}\"");
     } /* end support pipeline */ 
 exec: 
