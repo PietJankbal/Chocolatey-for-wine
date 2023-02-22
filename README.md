@@ -49,7 +49,7 @@ c:\\Program Files\Powershell\7\profile.ps1. Or add system programs that are miss
 If programs fail because of insufficient mature or missing system programs one could write a 
 function to return whatever the program expects. 
 Like in profile.ps1 I added (amongst others) a wmic.exe that supports a bit more options,
-and a basic findstr.exe and setx.exe.
+and a basic findstr.exe , systeminfo.exe and basic setx.exe.
 Or you could just manipulate the arguments passed to the system program. See profile.ps1 and choc_install.ps1.
 No garantuee this works for more complex programs as well... 
  
