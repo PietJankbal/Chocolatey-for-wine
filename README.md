@@ -2,7 +2,7 @@
 Chocolatey packagemanager automatic installer in wine, handy to install quickly programs in wine
 
 Install :
-- Download and unzip the release zip-file and do 'wine ChoCinstaller_0.5s.703.exe' (takes about a minute to complete)
+- Download and unzip the release zip-file and do 'wine ChoCinstaller_0.5u.703.exe' (takes about a minute to complete)
 
 Optional:
 - Check if things went well: "choco install chromium" and  "start chrome.exe --no-sandbox" 
@@ -14,7 +14,7 @@ Optional:
 
 Updates:
 
-- Update 1: As I was bored during lock-down I wrote a custom winetricks(.ps1) with some verbs I find handy. 
+- Update : As I was bored during lock-down I wrote a custom winetricks(.ps1) with some verbs I find handy. 
 
 About PowerShell:
 
@@ -40,7 +40,7 @@ About ConEmu:
 
 ConEmu console suffers from a few wine-bugs:
   - Ctrl^C to quit a program that doesn't return to the console doesn`t work. Use Shift^Ctrl^C instead.
-  - Selecting text in the ConEmu window (for copy/paste) doesn`t highlight the selection. Included is a very sad hack       against recent wine versions that works around this, so highlighting should just work now.
+  - Selecting text in the ConEmu window (for copy/paste) doesn't highlight the selection. Included is a very sad hack       against recent wine versions that works around this, so highlighting should just work now.
    
 About system programs:
 
@@ -49,7 +49,7 @@ c:\\Program Files\Powershell\7\profile.ps1. Or add system programs that are miss
 If programs fail because of insufficient mature or missing system programs one could write a 
 function to return whatever the program expects. 
 Like in profile.ps1 I added (amongst others) a wmic.exe that supports a bit more options,
-and a basic findstr.exe.
+and a basic findstr.exe and setx.exe.
 Or you could just manipulate the arguments passed to the system program. See profile.ps1 and choc_install.ps1.
 No garantuee this works for more complex programs as well... 
  
@@ -65,7 +65,7 @@ About winetricks(.ps1):
 - A rudimentary Powershell 5.1.
 - experimental dotnet481 installation
 - Also included a few powershell scripts adapted from codesnippets found on the internet:
-- How to embed an exe in a powershell script (it won't show up in tasklist)
+- How to embed an exe in a powershell script via Invoke-ReflectivePEInjection (the exe won't show up in tasklist)
 - How to make fancy messageboxes
 - Convert a powershell script (ps1) into an exe.
 - And a few other
@@ -81,5 +81,5 @@ Notes:
 Compile:
   - If you want to compile yourself instead of downloading binaries: see compilation instructions in mainv1.c  
   - Then copy choc_install.ps1 into the same directory
-  - Then do 'wine ChoCinstaller_0.5s.703.exe'
+  - Then do 'wine ChoCinstaller_0.5u.703.exe'
   
