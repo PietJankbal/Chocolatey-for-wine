@@ -390,7 +390,11 @@ function QPR.wmic.exe { <# wmic replacement, this part only rebuilds the argumen
     foreach ($key in $hash.keys) {
         if( $cmdline |select-string "\b$key\b" ) { $cmdline = $cmdline -replace $key, $hash[$key]; break }    }
    
-    $cmdline = $cmdline -replace 'get', '-property' -replace 'where', '-where' -replace "/path", "-class" -replace "'", "'`"'"  <# escape quotes (??) #>
+    $cmdline = $cmdline -replace 'get', '-property' -replace 'where', '-where' -replace "/path", "-class"
+
+    <# Hack: if command like  'wmic logicaldisk where 'deviceid="c:"' get freespace' is ran from PS-console, somehow (double) quotes get lost so escape them #>
+    if ( $(Get-Process wmic).Parent.name -eq 'pwsh') <# check whether cmd is ran from PS-console #>
+        { $cmdline = $cmdline -replace "`'", "```'"   -replace "`"", "```""}
 
     iex  -Command ('QPR_wmic ' + $cmdline)
 }
