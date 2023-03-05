@@ -180,7 +180,7 @@ int mainCRTStartup(void)
         while ((line = read_line_from_handle( input, TRUE )) != NULL) wcscat( cmdlineW, line); 
         wcscat(cmdlineW, L"}\"");
     } /* end support pipeline */
-    if ( i == argc) ps_console = TRUE;
+    if ( i == argc && !read_from_stdin ) ps_console = TRUE;
 exec: 
     bufW[0] = 0; /* Execute the command through pwsh.exe (or start PSconsole via ConEmu if no command found) */
     CreateProcessW( pwsh_pathW, !ps_console ? cmdlineW : wcscat( wcscat ( wcscat( wcscat( wcscat( \
