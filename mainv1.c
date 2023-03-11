@@ -132,7 +132,8 @@ int mainCRTStartup(void)
         for( i = 1; i < argc; i++ ) { /* concatenate the rest of the arguments into the new cmdline */
             wcscat( wcscat( wcscat( cmdlineW, L" '\"" )  , argv[i] ), L"\"'" ); }
 
-        FILE_FS_DEVICE_INFORMATION info; IO_STATUS_BLOCK io; HANDLE input = GetStdHandle(STD_INPUT_HANDLE); /* try handle pipe with ugly hack */
+        FILE_FS_DEVICE_INFORMATION info; IO_STATUS_BLOCK io;
+        HANDLE input = GetStdHandle(STD_INPUT_HANDLE); /* try handle pipe with ugly hack */
 
         NtQueryVolumeInformationFile( input, &io, &info, sizeof(info), FileFsDeviceInformation ); 
 
@@ -146,17 +147,17 @@ int mainCRTStartup(void)
         SetEnvironmentVariableW( L"QPRCMDLINE", GetCommandLineW() ); /* option to track the complete commandline via $env:QPRCMDLINE */
         goto exec;
     }  /* note: set desired exitcode in the function in profile.ps1 */ 
+    /* Main program: wrap the original powershell-commandline into correct syntax, and send it to pwsh.exe */ 
+    /* pwsh requires a command option "-c" , powershell doesn`t, so we have to insert it somewhere e.g. 'powershell -nologo 2+1' should go into 'powershell -nologo -c 2+1'*/ 
+    for (i = 1;  argv[i] &&  !wcsncmp(  argv[i], L"-" , 1 ); i++ ) { if ( !is_single_or_last_option ( argv[i] ) ) i++; if(!argv[i]) break;} /* Search for 1st argument after options */
     /* by setting this env variable, there's a possibility to execute the cmd through rudimentary windows powershell 5.1, requires 'winetricks ps51' first */
-    else if ( GetEnvironmentVariableW( L"PS51", bufW, MAX_PATH + 1 ) && !wcscmp( bufW, L"1") )
+    if ( GetEnvironmentVariableW( L"PS51", bufW, MAX_PATH + 1 ) && !wcscmp( bufW, L"1") )
     {   /* Note: when run from bash, escape special char $ with single quotes and backtick e.g. PS51=1 wine powershell '`SPSVersionTable' */
+        if( i == argc) ps_console = TRUE;
         wcscat( cmdlineW, L" -c ps51 " );
         for ( i = 1 ; argv[i] ; i++) wcscat( wcscat( cmdlineW, L" " ), argv[i] ); 
         goto exec;
     }
-    /* Main program: wrap the original powershell-commandline into correct syntax, and send it to pwsh.exe */ 
-    /* pwsh requires a command option "-c" , powershell doesn`t, so we have to insert it somewhere e.g. 'powershell -nologo 2+1' should go into 'powershell -nologo -c 2+1'*/ 
-    if ( !argv[1] ) { ps_console = TRUE; goto exec; }
-    for (i = 1;  argv[i] &&  !wcsncmp(  argv[i], L"-" , 1 ); i++ ) { if ( !is_single_or_last_option ( argv[i] ) ) i++; if(!argv[i]) break;} /* Search for 1st argument after options */
     for (j = 1; j < i ; j++ ) /* concatenate options into new cmdline, meanwhile working around some incompabilities */ 
     { 
         if ( !wcscmp( L"-", argv[j] ) ) {read_from_stdin = TRUE; continue;}   /* hyphen handled later on */
@@ -170,7 +171,7 @@ int mainCRTStartup(void)
     /* concatenate the rest of the arguments into the new cmdline */
     for( j = i; j < argc; j++ ) wcscat( wcscat( cmdlineW, L" " ), argv[j] );
     /* support pipeline to handle something like " '$(get-date) | powershell - ' */
-       if( read_from_stdin ) {
+    if( read_from_stdin ) {
         WCHAR *line;
         HANDLE input = GetStdHandle(STD_INPUT_HANDLE); DWORD type = GetFileType(input);
         /* handle pipe */
@@ -187,5 +188,6 @@ exec:
                     bufW, L" -c " ) , conemu_pathW ) , L" -NoUpdate -LoadRegistry -run "), pwsh_pathW ), cmdlineW ), 0, 0, 0, 0, 0, 0, &si, &pi );
     WaitForSingleObject( pi.hProcess, INFINITE ); GetExitCodeProcess( pi.hProcess, &exitcode ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );    
     LocalFree(argv);
+
     return ( exitcode ); 
 }
