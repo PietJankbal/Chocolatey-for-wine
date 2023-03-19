@@ -1,0 +1,9 @@
+Somehow setting apisetschema to native does't work, so try another workaround:
+Apply patch below and rename sas.dll to ext-ms-win-dxcore-l1-1-0.dll and copy it to the sysdirs
+
+a/dlls/sas/sas.spec b/dlls/sas/sas.spec
+--- a/dlls/sas/sas.spec	2022-05-08 09:55:37.205108835 +0200
++++ b/dlls/sas/sas.spec	2023-03-12 14:40:48.586546536 +0100
+@@ -1 +1 @@
+-@ stub SendSAS
++@ stdcall DXCoreCreateAdapterFactory(ptr ptr) dxcore.DXCoreCreateAdapterFactory
