@@ -63,7 +63,7 @@ REGEDIT4
 "Install"=dword:0x00000001
 
 [HKEY_CURRENT_USER\Software\Microsoft\Avalon.Graphics]
-"DisableHWAcceleration"=dword:00000001
+"DisableHWAcceleration"=dword:00000000
 
 [HKEY_LOCAL_MACHINE\SOFTWARE\Classes\CLSID\{0A29FF9E-7F9C-4437-8B11-F424491E3931}\InprocServer32]
 @="C:\\Windows\\System32\\mscoree.dll"
