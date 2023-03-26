@@ -9,7 +9,7 @@ function validate_param
         [Parameter(Mandatory=$false)]
         [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'd2d1',`
                      'dxvk1103', 'dxvk20', 'hnetcfg', 'msi', 'sapi', 'ps51', 'ps51_ise', 'crypt32', 'oleaut32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'uxtheme', 'comctl32', 'wsh57',`
-                     'nocrashdialog', 'renderer=vulkan', 'renderer=gl', 'app_paths', 'vs19','sharpdx', 'dotnet481' ,'cef', 'd3dx','sspicli', 'dshow', 'findstr', 'wpf_xaml', 'wpf_msgbox', 'wpf_routedevents', 'embed-exe-in-psscript', 'vulkansamples', 'ps2exe')]
+                     'nocrashdialog', 'renderer=vulkan', 'renderer=gl', 'app_paths', 'vs19','sharpdx', 'dotnet481' ,'cef', 'd3dx','sspicli', 'dshow', 'findstr', 'affinity_requirements', 'winmetadata', 'wintypes', 'dxcore', 'wpf_xaml', 'wpf_msgbox', 'wpf_routedevents', 'embed-exe-in-psscript', 'vulkansamples', 'ps2exe')]
         [string[]]$verb
       )
 }
@@ -56,6 +56,10 @@ $custom_array = @() # Creating an empty array to populate data in
                "sspicli", "dangerzone, only for testing, might break things, only use on a per app base",
                "dshow", "directshow dlls: qdvd qcap etc.",
                "findstr", "findstr.exe",
+               "affinity_requirements", "install and configure stuff to get affinity v2 started",
+               "winmetadata", "various *.winmd files",
+               "wintypes", "wine wintypes patched (from ElementalWarrior) for Affinity, https://forum.affinity.serif.com/index.php?/topic/182758-affinity-suite-v204-on-linux-wine/page/1/",
+               "dxcore", "wine dxcore, patch (from ElementalWarrior) for Affinity, https://forum.affinity.serif.com/index.php?/topic/182758-affinity-suite-v204-on-linux-wine/page/1/",
                "dotnet481", "dotnet481",
                "sharpdx", "directX with powershell (spinning cube), test if your d3d11 works, further rather useless verb for now ;)",
                "vulkansamples", "51 vulkan samples to test if your vulkan works, do shift-ctrl^c if you wanna leave earlier ;)",
@@ -440,6 +444,28 @@ function func_msi <# wine msi with some hacks faking success #>
         7z e $cachedir\\\\$dldir\\wine_msi.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1]); quit?('7z') }
     foreach($i in 'msi') { dlloverride 'native' $i }
 } <# end msi #>
+
+function func_wintypes <# wintypes #>
+{
+    $dldir = "wintypes"
+    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_wintypes.7z" "wine_wintypes.7z"
+
+    foreach ($i in 'wintypes.dll'){
+        7z e $cachedir\\$dldir\\wine_wintypes.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
+        7z e $cachedir\\\\$dldir\\wine_wintypes.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
+    foreach($i in 'wintypes') { dlloverride 'native' $i }
+} <# end wintypes #>
+
+function func_dxcore <# dxcore #>
+{
+    $dldir = "dxcore"
+    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_dxcore.7z" "wine_dxcore.7z"
+    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_ext-ms-win-dxcore-l1-1-0.7z" "wine_ext-ms-win-dxcore-l1-1-0.7z"
+
+    foreach ($i in 'dxcore.dll', 'ext-ms-win-dxcore-l1-1-0.dll'){
+        7z e $cachedir\\$dldir\\wine_$($i.split('.')[0]).7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
+        7z e $cachedir\\\\$dldir\\wine_$($i.split('.')[0]).7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
+} <# end dxcore #>
 
 function func_dxvk1103
 {
@@ -1749,6 +1775,76 @@ function func_dotnet481
     #Start-Process -FilePath $env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.3031\\ngen.exe -NoNewWindow -ArgumentList "eqi"
     #Start-Process -FilePath $env:SystemRoot\\Microsoft.NET\\Framework\\v4.0.3031\\ngen.exe -NoNewWindow -ArgumentList "eqi"
 } <# end dotnet481 #>
+
+function func_affinity_requirements
+{
+winecfg /v win11
+func_renderer=vulkan
+func_winmetadata
+func_dxcore
+func_wintypes
+}
+
+function func_winmetadata <# winmetadata #>
+{   
+    $url = "https://catalog.s.download.windowsupdate.com/c/msdownload/update/software/updt/2018/08/windows10.0-kb4343893-x64_bdae9c9c28d4102a673a24d37c371ed73d053338.msu"
+    $cab = "Windows10.0-KB4343893-x64.cab"
+    $sourcefile = @(`
+'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.web.winmd',
+'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.foundation.winmd',
+'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.graphics.winmd',
+'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.services.winmd',
+'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.data.winmd',
+'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.media.winmd',
+'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.system.winmd',
+'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.ui.winmd',
+'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.security.winmd',
+'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.globalization.winmd',
+'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.management.winmd',
+'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.devices.winmd',
+'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.perception.winmd',
+'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.storage.winmd',
+'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.ui.xaml.winmd',
+'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.gaming.winmd',
+'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.applicationmodel.winmd',
+'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.networking.winmd',
+'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.web.winmd',
+'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.foundation.winmd',
+'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.graphics.winmd',
+'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.services.winmd',
+'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.data.winmd',
+'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.media.winmd',
+'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.system.winmd',
+'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.ui.winmd',
+'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.security.winmd',
+'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.globalization.winmd',
+'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.management.winmd',
+'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.devices.winmd',
+'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.perception.winmd',
+'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.storage.winmd',
+'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.ui.xaml.winmd',
+'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.gaming.winmd',
+'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.applicationmodel.winmd',
+'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.networking.winmd'`
+    )
+
+    New-Item -Path $env:systemroot\\system32\\winmetadata -Type Directory -force -erroraction silentlycontinue
+    New-Item -Path $env:systemroot\\syswow64\\winmetadata -Type Directory -force -erroraction silentlycontinue
+
+    check_msu_sanity $url $cab; $dldir = $($url.split('/')[-1]) -replace '.msu',''    
+
+    foreach ($i in $sourcefile) {
+        if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
+                    if( $i.SubString(0,3) -eq 'amd' ) {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) }
+                    if( $i.SubString(0,3) -eq 'wow' ) {<# Nothing to do #>}  }  }
+
+    foreach ($i in $sourcefile) {
+        if( $i.SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" -destination $env:systemroot\\system32\\winmetadata\\$($i.split('/')[-1]) }
+        if( $i.SubString(0,3) -eq 'wow' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\syswow64\\winmetadata\\$($i.split('/')[-1]) } } 
+
+    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }
+
+} <# end winmetadata #>
 
 <# Main function #>
     $result = ($args.count) ? ($args) : ($custom_array  | select name,description | Out-GridView  -PassThru  -Title 'Make a  selection')
