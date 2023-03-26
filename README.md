@@ -77,6 +77,7 @@ Notes:
     If you need to install stuff via winetricks for programs, do NOT use any of the dotnet* verbs. 
     BTW 'Arial' and 'd3dcompiler_47' verbs are already installed by default.
   - WINEARCH=win32 is _not_ supported!
+  - Updating from a previous version is for now not (yet) supported, maybe later
 
 Compile:
   - If you want to compile yourself instead of downloading binaries: see compilation instructions in mainv1.c  
