@@ -2,10 +2,10 @@
 Chocolatey packagemanager automatic installer in wine, handy to install quickly programs in wine
 
 Install :
-- Download and unzip the release zip-file and do 'wine ChoCinstaller_0.5u.703.exe' (takes about a minute to complete)
+- Download and unzip the release zip-file and do 'wine ChoCinstaller_0.5w.703.exe' (takes about a minute to complete)
 
 Optional:
-- Check if things went well: "choco install chromium" and  "start chrome.exe --no-sandbox" 
+- Check if things went well: "choco install chromium" and  "start chrome.exe (--no-sandbox not needed anymore as of wine-8,4)" 
   
   Or if you like to install via GUI: "choco install ChocolateyGUI" and "start chocolateygui.exe"
   
