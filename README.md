@@ -61,14 +61,18 @@ About winetricks(.ps1):
 - If you don't call it ('winetricks' in powershell-console) , nothing gets downloadeded so no overhead there. 
 - A lot of verbs (like powershell 5.1) need a few essential files to extract stuff from msu packages. Installing these essential files requires first huge download (gigs of diskspace), and takes lots of time (5 minutes) during 1st time usage. But after things are cached it goes quickly 
 - Hopefully some better 64-bit support for some verbs
-- Possibility to extract msu files. See winetricks(.ps1) howto. 
+- Possibility to extract msu files. Do 'winetricks install_dll_from_msu' to see how.
 - A rudimentary Powershell 5.1.
-- experimental dotnet481 installation
+- experimental dotnet481 installation, and dotnet35 (might be needed by apps not satisfied with current dotnet48     installation.
+- Autotab-completion. Note: while using multiple verbs from command line they have to be seperated by a comma
+  from now on (this is how powershell handles multiple arguments)
+  So 'winetricks riched20 gdiplus' won't work anymore, use 'winetricks riched20,gdiplus' instead
+- A special verb to install requirements to get Affinity Photo/Designer started.
 - Also included a few powershell scripts adapted from codesnippets found on the internet:
-- How to embed an exe in a powershell script via Invoke-ReflectivePEInjection (the exe won't show up in tasklist)
-- How to make fancy messageboxes
-- Convert a powershell script (ps1) into an exe.
-- And a few other
+    - How to embed an exe in a powershell script via Invoke-ReflectivePEInjection (the exe won't show up in tasklist)
+    - How to make fancy messageboxes
+    - Convert a powershell script (ps1) into an exe.
+    - And a few other
 
 Notes:
 
