@@ -7,7 +7,6 @@ $misc_reg = @'
 REGEDIT4
 
 [HKEY_CURRENT_USER\Software\Wine\DllOverrides]
-"mscorwks"="native"
 "mscoree"="native"
 "d3dcompiler_47"="native"
 "d3dcompiler_43"="native"
@@ -85,7 +84,7 @@ REGEDIT4
 "Arial Italic (TrueType)"="ariali.ttf"
 
 [HKEY_CURRENT_USER\Software\Wine\Debug]
-"RelayExclude"="user32.CharNextA;KERNEL32.GetProcessHeap;KERNEL32.GetCurrentThreadId;KERNEL32.TlsGetValue;KERNEL32.GetCurrentThreadId;KERNEL32.TlsSetValue;ntdll.RtlEncodePointer;ntdll.RtlDecodePointer;ntdll.RtlEnterCriticalSection;ntdll.RtlLeaveCriticalSection;kernel32.94;kernel32.95;kernel32.96;kernel32.97;kernel32.98;KERNEL32.TlsGetValue;KERNEL32.FlsGetValue;ntdll.RtlFreeHeap;ntdll.RtlAllocateHeap;KERNEL32.InterlockedDecrement;KERNEL32.InterlockedCompareExchange;ntdll.RtlTryEnterCriticalSection;KERNEL32.InitializeCriticalSection;ntdll.RtlDeleteCriticalSection;KERNEL32.InterlockedExchange;KERNEL32.InterlockedIncrement;KERNEL32.LocalFree;Kernel32.LocalAlloc;ntdll.RtlReAllocateHeap;KERNEL32.VirtualAlloc;Kernel32.VirtualFree;Kernel32.HeapFree;KERNEL32.QueryPerformanceCounter;KERNEL32.QueryThreadCycleTime;ntdll.RtlFreeHeap;ntdll.memmove;ntdll.memcmp;KERNEL32.GetTickCount"
+"RelayExclude"="user32.CharNextA;KERNEL32.GetProcessHeap;KERNEL32.GetCurrentThreadId;KERNEL32.TlsGetValue;KERNEL32.GetCurrentThreadId;KERNEL32.TlsSetValue;ntdll.RtlEncodePointer;ntdll.RtlDecodePointer;ntdll.RtlEnterCriticalSection;ntdll.RtlLeaveCriticalSection;kernel32.94;kernel32.95;kernel32.96;kernel32.97;kernel32.98;KERNEL32.TlsGetValue;KERNEL32.FlsGetValue;ntdll.RtlFreeHeap;ntdll.RtlAllocateHeap;KERNEL32.InterlockedDecrement;KERNEL32.InterlockedCompareExchange;ntdll.RtlTryEnterCriticalSection;KERNEL32.InitializeCriticalSection;ntdll.RtlDeleteCriticalSection;KERNEL32.InterlockedExchange;KERNEL32.InterlockedIncrement;KERNEL32.LocalFree;Kernel32.LocalAlloc;ntdll.RtlReAllocateHeap;KERNEL32.VirtualAlloc;Kernel32.VirtualFree;Kernel32.HeapFree;KERNEL32.QueryPerformanceCounter;KERNEL32.QueryThreadCycleTime;ntdll.RtlFreeHeap;ntdll.memmove;ntdll.memcmp;KERNEL32.GetTickCount;kernelbase.InitializeCriticalSectionEx;ntdll.RtlInitializeCriticalSectionEx;ntdll.RtlInitializeCriticalSection;kernelbase.FlsGetValue"
 "RelayFromExclude"="winex11.drv;user32;gdi32;advapi32;kernel32"
 
 '@
@@ -105,15 +104,21 @@ REGEDIT4
 $profile_ps1 = @'
 #Put workarounds/hacks here.../Adjust to your own needs. It goes into c:\\Program Files\\Powershell\\7\\profile.ps1
 
-#Remove ~/Documents/Powershell/Modules from modulepath; it becomes a mess because it`s not removed when one deletes the wineprefix... 
-$path = $env:PSModulePath -split ';'
-$env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -join ';'
+$host.ui.RawUI.WindowTitle = 'This is Powershell Core (pwsh.exe), not (!) powershell.exe'
 
 $profile = '$env:ProgramFiles\PowerShell\7\profile.ps1'
 
-$host.ui.RawUI.WindowTitle = 'This is Powershell Core (pwsh.exe), not (!) powershell.exe'
-
-#Set-PSReadlineKeyHandler -Key Tab -Function MenuComplete
+. "$env:ProgramData\\Chocolatey-for-wine\\profile_essentials.ps1"
+. "$env:ProgramData\\Chocolatey-for-wine\\profile_winetricks_caller.ps1"
+. "$env:ProgramData\\Chocolatey-for-wine\\profile_miscellaneous.ps1"
+'@
+################################################################################################################################ 
+#                                                                                                                              #
+#  profile_essentials_ps1.ps1                   #
+#                                                                                                                              #
+################################################################################################################################   
+$profile_essentials_ps1 = @'
+<# This contains essential functions/settings for Chocolatey-for-wine to work properly, do not remove or change #>
 
 $env:DXVK_CONFIG_FILE=("$env:WINECONFIGDIR" + "\" + "drive_c" + "\" + ($env:ProgramData |split-path -leaf) + "\" + "dxvk.conf").substring(6) -replace "\\","/"
 
@@ -143,10 +148,6 @@ if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' )
 else {
      $null = New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ConEmu64.exe\\DllOverrides' -force -Name 'user32' -Value 'native' -PropertyType 'String'}
 <# end update ConEmu hack #>
-#Register-WMIEvent not available in PS Core, so for now just change into noop
-function Register-WMIEvent {
-    exit 0
-}
 
 #Examples of usage: Get-WmiObject win32_operatingsystem version or $(Get-WmiObject win32_videocontroller).name etc.
 Function Get-WmiObject([parameter(mandatory=$true, position = 0, parametersetname = 'class')] [string]$class, `
@@ -169,7 +170,59 @@ Set-Alias gwmi Get-WmiObject
 Function Get-CIMInstance ( [parameter(mandatory)] [string]$classname, [string[]]$property="*", [string]$filter)
 {
      Get-WMIObject $classname -property $property -filter $filter
-} 
+}
+
+# Query program replacement for wusa.exe; Do not remove or change, it will break Chocolatey
+Set-Alias "QPR.wusa" "QPR.wusa.exe";
+function QPR.wusa.exe { <# wusa.exe replacement #>
+     Write-Host "This is wusa dummy doing nothing..."
+     exit 0;
+}
+'@
+################################################################################################################################ 
+#                                                                                                                              #
+#  profile_winetricks_caller.ps1                   #
+#                                                                                                                              #
+################################################################################################################################   
+$profile_winetricks_caller_ps1 = @'
+<# Because this function might be updated/changed more frequently, it has been put in a seperate file #>
+
+<# To support auto-tabcompletion only a comma seperated is supported from now on when calling winetricks with multiple arguments, e.g. 'winetricks gdiplus,riched20' #>
+function winetricks {
+[CmdletBinding()]
+ Param(
+        [Parameter(Mandatory=$false)]
+        [ArgumentCompletions('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'd2d1',`
+                     'dxvk1103', 'dxvk20', 'hnetcfg', 'msi', 'sapi', 'ps51', 'ps51_ise', 'crypt32', 'oleaut32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'uxtheme', 'comctl32', 'wsh57',`
+                     'nocrashdialog', 'renderer=vulkan', 'renderer=gl', 'app_paths', 'vs19','sharpdx', 'dotnet35', 'dotnet481' ,'cef', 'd3dx','sspicli', 'dshow', 'findstr', 'affinity_requirements',`
+                     'winmetadata', 'wintypes', 'dxcore', 'install_dll_from_msu', 'wpf_xaml', 'wpf_msgbox', 'wpf_routedevents', 'embed-exe-in-psscript', 'vulkansamples', 'ps2exe')]
+        [string[]]$verb
+      )
+
+     if (!([System.IO.File]::Exists("$env:ProgramData\\Chocolatey-for-wine\\winetricks.ps1"))){
+         Add-Type -AssemblyName PresentationCore,PresentationFramework;
+         [System.Windows.MessageBox]::Show("winetricks script is missing`nplease reinstall it in c:\\ProgramData\\Chocolatey-for-wine",'Congrats','ok','exclamation')
+     }
+
+     pwsh -f  $( Join-Path $("$env:ProgramData\\Chocolatey-for-wine") "winetricks.ps1")   $verb
+}
+'@
+################################################################################################################################ 
+#                                                                                                                              #
+#  profile_miscellaneous.ps1                   #
+#                                                                                                                              #
+################################################################################################################################   
+$profile_miscellaneous_ps1 = @'
+<# Stuff you might want to throw away / change ... #>
+
+#Remove ~/Documents/Powershell/Modules from modulepath; it becomes a mess because it`s not removed when one deletes the wineprefix... 
+$path = $env:PSModulePath -split ';'
+$env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -join ';'
+
+#Register-WMIEvent not available in PS Core, so for now just change into noop
+function Register-WMIEvent {
+    exit 0
+}
   
 #Example (works on windows,requires admin rights): Set-WmiInstance -class win32_operatingsystem -arguments @{"description" = "MyDescription"}
 #Based on https://devblogs.microsoft.com/scripting/use-the-set-wmiinstance-powershell-cmdlet-to-ease-configuration/
@@ -253,21 +306,6 @@ function df   { check_busybox; Busybox64.exe df $args}
 function wget { check_busybox; Busybox64.exe wget $args}
 function grep { check_busybox; Busybox64.exe grep $args}
 function bash { check_busybox; Busybox64.exe bash $args}
-
-function winetricks {
-     if (!([System.IO.File]::Exists("$env:ProgramData\\winetricks.ps1"))){
-         Add-Type -AssemblyName PresentationCore,PresentationFramework;
-         [System.Windows.MessageBox]::Show("winetricks script is missing`nplease reinstall it in c:\\ProgramData",'Congrats','ok','exclamation')
-     }
-     pwsh -f  $( Join-Path ${env:\\ProgramData} "winetricks.ps1")   $args
-}
-
-# Query program replacement for wusa.exe; Do not remove or change, it will break Chocolatey
-Set-Alias "QPR.wusa" "QPR.wusa.exe";
-function QPR.wusa.exe { <# wusa.exe replacement #>
-     Write-Host "This is wusa dummy doing nothing..."
-     exit 0;
-}
 
 # Note: Following overrides wine(-staging)`s tasklist so remove stuff below if you don`t want that, and remove native override in winecfg 
 
@@ -432,7 +470,6 @@ Set-Alias csc c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
 
 function handy_apps { choco install explorersuite reactos-paint}
 '@
-
 ################################################################################################################################ 
 #                                                                                                                              #
 #  Install dotnet48, ConEmu, Chocolatey, 7z, arial, d3dcompiler_47 and a few extras (wine robocopy + wine taskschd)                   #
@@ -447,7 +484,7 @@ function handy_apps { choco install explorersuite reactos-paint}
         Copy-Item -Path "$env:WINEHOMEDIR\.cache\choc_install_files\7z2201-x64.exe".substring(4) -Destination "$env:TEMP" -Force }
 
     iex "$(Join-Path "$env:TEMP" '7z2201-x64.exe') /S"; while(!(Test-Path -Path "$env:ProgramW6432\\7-zip\\7z.exe") ) {Sleep 0.25}
-    New-Item -Path "$env:systemroot" -Name "assembly" -ItemType "directory" -ErrorAction SilentlyContinue
+    New-Item -Path "$env:ProgramData" -Name "Chocolatey-for-wine" -ItemType "directory" -ErrorAction SilentlyContinue
 
     <# fragile test... If install files already present skip downloads. Run choc_installer once with 'SAVEINSTALLFILES=1' to cache downloads #>
     if (!(Test-Path -Path "$env:WINEHOMEDIR\.cache\choc_install_files\ndp48-x86-x64-allos-enu.exe".substring(4) -PathType Leaf)) { <# First download/extract/install dotnet48 as job, this takes most time #>
@@ -483,6 +520,9 @@ function handy_apps { choco install explorersuite reactos-paint}
     $misc_reg | Out-File $env:TEMP\\misc.reg
     $profile_ps1 | Out-File $env:TEMP\\profile.ps1
     $profile_ps1 | Out-File $(Join-Path $(Split-Path -Path (Get-Process -Id $pid).Path) "profile.ps1") <# Write profile.ps1 to Powershell directory #>
+    $profile_winetricks_caller_ps1 | Out-File $env:ProgramData\\Chocolatey-for-wine\\profile_winetricks_caller.ps1
+    $profile_essentials_ps1 | Out-File $env:ProgramData\\Chocolatey-for-wine\\profile_essentials.ps1
+    $profile_miscellaneous_ps1 | Out-File $env:ProgramData\\Chocolatey-for-wine\\profile_miscellaneous.ps1
 
     <# Install Chocolatey #>
     Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
@@ -657,9 +697,9 @@ function handy_apps { choco install explorersuite reactos-paint}
 ###################################################################################################################
     <# easy access to 7z #>
     iex "$env:ProgramData\\chocolatey\\tools\\shimgen.exe --output=`"$env:ProgramData`"\\chocolatey\\bin\\7z.exe --path=`"$env:ProgramW6432`"\\7-zip\\7z.exe"
-    <# put winetricks.ps1 and codesnippets in ProgramData #>
-    Copy-Item -Path "$(Join-Path $args[0] 'winetricks.ps1')" "$env:ProgramData"
-    Copy-Item -Path "$(Join-Path $args[0] 'EXTRAS' 'powershell_collected_codesnippets_examples.ps1')" "$env:ProgramData"
+    <# put winetricks.ps1 and codesnippets in ProgramData\\Chocolatey-for-wine #>
+    Copy-Item -Path "$(Join-Path $args[0] 'winetricks.ps1')" "$env:ProgramData\\Chocolatey-for-wine"
+    Copy-Item -Path "$(Join-Path $args[0] 'EXTRAS' 'powershell_collected_codesnippets_examples.ps1')" "$env:ProgramData\\Chocolatey-for-wine"
     <# This makes Astro Photography Tool happy #>
     foreach($i in 'regasm.exe') { 
         Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\$i
