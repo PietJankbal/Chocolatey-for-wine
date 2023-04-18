@@ -61,7 +61,7 @@ About winetricks(.ps1):
 - If you don't call it ('winetricks' in powershell-console) , nothing gets downloadeded so no overhead there. 
 - A lot of verbs (like powershell 5.1) need a few essential files to extract stuff from msu packages. Installing these essential files requires first huge download (gigs of diskspace), and takes lots of time (5 minutes) during 1st time usage. But after things are cached it goes quickly 
 - Hopefully some better 64-bit support for some verbs
-- Possibility to extract msu files. Do 'winetricks install_dll_from_msu' to see how.
+- Possibility to extract a file and (try) install from an msu file. Do 'winetricks install_dll_from_msu' to see how.
 - A rudimentary Powershell 5.1.
 - experimental dotnet481 installation, and dotnet35 (might be needed by apps not satisfied with current dotnet48     installation.
 - Autotab-completion. Note: while using multiple verbs from command line they have to be seperated by a comma
@@ -86,5 +86,5 @@ Notes:
 Compile:
   - If you want to compile yourself instead of downloading binaries: see compilation instructions in mainv1.c  
   - Then copy choc_install.ps1 into the same directory
-  - Then do 'wine ChoCinstaller_0.5u.703.exe'
+  - Then do 'wine ChoCinstaller_0.5y.703.exe'
   
