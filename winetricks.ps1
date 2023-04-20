@@ -110,10 +110,8 @@ function check_msu_sanity <# some sanity checks before extracting from msu, like
     if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:systemroot, "system32", "dpx.dll")  ))
        {Write-Host 'Extracting some files needed for expansion' ; func_expand;}
 
-    w_download_to $dldir $url $msu
-
     if (![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $dldir,  $cab) ) )
-       {Write-Host file seems missing, re-extracting; 7z e $cachedir\\$dldir\\$msu "-o$cachedir\\$dldir" -y; quit?('7z')}
+       {Write-Host file seems missing, re-extracting;  w_download_to $dldir $url $msu; 7z e $cachedir\\$dldir\\$msu "-o$cachedir\\$dldir" -y; quit?('7z')}
 
     foreach ($i in 'cabinet', 'expand.exe') { dlloverride 'native' $i } 
 }
@@ -123,18 +121,19 @@ function check_aik_sanity <# some sanity checks to see if cached files from wind
     $cab = "KB3AIK_EN.iso"
     $dldir = "aik70"
     $url = "https://download.microsoft.com/download/8/E/9/8E9BBC64-E6F8-457C-9B8D-F6C9A16E6D6A/$cab"
-    w_download_to $dldir $url $cab
 
-    if ( -not(Test-Path $cachedir\\$dldir\\WinPE.cab -PathType Leaf) -or -not(Test-Path $cachedir\\$dldir\\Neutral.cab -PathType Leaf)){
-        7z x $cachedir\\$dldir\\$cab 7z x Neutral.cab WinPE.cab "-o$cachedir\\$dldir" -y; quit?('7z')} 
-
-    if ( -not(Test-Path $cachedir\\$dldir\\F1_WINPE.WIM -PathType Leaf) ){ #fragile test...
-        7z x $cachedir\\$dldir\\WinPE.cab F1_WINPE.WIM F3_WINPE.WIM "-o$cachedir\\$dldir" -y; quit?('7z')}
-
-    if ( -not(Test-Path $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB -PathType Leaf) ){ #fragile test...
-        7z x $cachedir\\$dldir\\Neutral.cab F_WINPEOC_AMD64__WINPE_WINPE_SCRIPTING.CAB F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB `
-        F_WINPEOC_AMD64__WINPE_WINPE_HTA.CAB F_WINPEOC_X86__WINPE_WINPE_SCRIPTING.CAB F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB `
-        F_WINPEOC_AMD64__WINPE_WINPE_HTA.CAB "-o$cachedir\\$dldir\\" -y; quit?('7z')}
+    foreach($i in 'F_WINPEOC_AMD64__WINPE_WINPE_SCRIPTING.CAB', 'F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB', 'F_WINPEOC_AMD64__WINPE_WINPE_HTA.CAB', 'F1_WINPE.WIM', `
+                  'F_WINPEOC_X86__WINPE_WINPE_SCRIPTING.CAB', 'F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB', 'F_WINPEOC_X86__WINPE_WINPE_HTA.CAB', 'F3_WINPE.WIM' ) {
+        if(![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ) { #assuming all cached files are gone, re-extract everything
+            w_download_to $dldir $url $cab
+            7z x $cachedir\\$dldir\\$cab 7z x Neutral.cab WinPE.cab "-o$cachedir\\$dldir" -y; quit?('7z')
+            7z x $cachedir\\$dldir\\WinPE.cab F1_WINPE.WIM F3_WINPE.WIM "-o$cachedir\\$dldir" -y; quit?('7z')
+            7z x $cachedir\\$dldir\\Neutral.cab F_WINPEOC_AMD64__WINPE_WINPE_SCRIPTING.CAB F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB `
+            F_WINPEOC_AMD64__WINPE_WINPE_HTA.CAB F_WINPEOC_X86__WINPE_WINPE_SCRIPTING.CAB F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB `
+            F_WINPEOC_X86__WINPE_WINPE_HTA.CAB "-o$cachedir\\$dldir" -y; quit?('7z')
+            break;
+        }
+    }
 }
 
 function dlloverride
@@ -320,7 +319,6 @@ REGEDIT4
 [HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsRuntime\ActivatableClassId\Windows.UI.Xaml.Application]
 "DllPath"="c:\\\\windows\\\\system32\\\\Windows.UI.Xaml.dll"
 "@
-
     reg_edit $regkey
 	  
     foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i } 
