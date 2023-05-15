@@ -62,7 +62,7 @@ About winetricks(.ps1):
 - Hopefully some better 64-bit support for some verbs
 - Possibility to extract a file and (try) install from an msu file. Do 'winetricks install_dll_from_msu' to see how.
 - A rudimentary Powershell 5.1.
-- experimental dotnet481 installation, and dotnet35 (might be needed by apps not satisfied with current dotnet48     installation.
+- experimental dotnet481 installation, and dotnet35 (might be needed by apps not satisfied with current dotnet48     installation).
 - Autotab-completion. Note: while using multiple verbs from command line they have to be seperated by a comma
   from now on (this is how powershell handles multiple arguments)
   So 'winetricks riched20 gdiplus' won't work anymore, use 'winetricks riched20,gdiplus' instead
