@@ -8,7 +8,7 @@ function validate_param
  Param(
         [Parameter(Mandatory=$false)]
         [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'd2d1',`
-                     'dxvk1103', 'dxvk20', 'hnetcfg', 'msi', 'sapi', 'ps51', 'ps51_ise', 'crypt32', 'oleaut32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'uxtheme', 'comctl32', 'wsh57',`
+                     'dxvk1103', 'dxvk20', 'hnetcfg', 'msi', 'wintrust', 'sapi', 'ps51', 'ps51_ise', 'crypt32', 'oleaut32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'uxtheme', 'comctl32', 'wsh57',`
                      'nocrashdialog', 'renderer=vulkan', 'renderer=gl', 'app_paths', 'vs19','sharpdx', 'dotnet35', 'dotnet481' ,'cef', 'd3dx','sspicli', 'dshow', 'findstr', 'affinity_requirements', 'winmetadata', 'wintypes', 'dxcore', 'install_dll_from_msu', 'wpf_xaml', 'wpf_msgbox', 'wpf_routedevents', 'embed-exe-in-psscript', 'vulkansamples', 'ps2exe')]
         [string[]]$verb
       )
@@ -21,17 +21,18 @@ $custom_array = @() # Creating an empty array to populate data in
 
 [array]$Qenu = "gdiplus","GDI+, todo: check if this version works",`
                "msxml3","msxml3 + msxml3r",`
-	       "msxml6","msxml6 + msxml6r",`
+               "msxml6","msxml6 + msxml6r",`
                "mfc42","mfc42(u)",`
                "riched20","riched20",`
-	       "msado15","some minimal mdac dlls",`
-	       "expand", "native expand.exe",`
+               "msado15","some minimal mdac dlls",`
+               "expand", "native expand.exe, it's renamed to expnd_.exe to not interfere with wine's expand",`
                "wmp", "some wmp (windows media player) dlls, makes e-Sword start",`
-	       "ucrtbase", "ucrtbase from vcrun2015",`
-	       "vcrun2019", "vcredist2019",`
-	       "mshtml", "experimental, dangerzone, might break things, only use on a per app base",`
+               "ucrtbase", "ucrtbase from vcrun2015",`
+               "vcrun2019", "vcredist2019",`
+               "mshtml", "experimental, dangerzone, might break things, only use on a per app base",`
                "hnetcfg", "hnetcfg with fix for https://bugs.winehq.org/show_bug.cgi?id=45432",`
                "msi", "if an msi installer fails, might wanna try this msi, just faking success for a few actions... Might also result in broken installation ;)",`
+               "wintrust", "wine wintrust faking success for WinVerifyTrust",`
                "dxvk1103", "dxvk 1.10.3, latest compatible with Kepler (Nvidia GT 470) ??? )",`
                "dxvk20", "dxvk 2.0",`
                "crypt32", "experimental, dangerzone, might break things, only use on a per app base",`
@@ -111,9 +112,7 @@ function check_msu_sanity <# some sanity checks before extracting from msu, like
        {Write-Host 'Extracting some files needed for expansion' ; func_expand;}
 
     if (![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $dldir,  $cab) ) )
-       {Write-Host file seems missing, re-extracting;  w_download_to $dldir $url $msu; 7z e $cachedir\\$dldir\\$msu "-o$cachedir\\$dldir" -y; quit?('7z')}
-
-    foreach ($i in 'cabinet', 'expand.exe') { dlloverride 'native' $i } 
+       {Write-Host file seems missing, re-extracting;  w_download_to $dldir $url $msu; 7z e $cachedir\\$dldir\\$msu "-o$cachedir\\$dldir" $cab -y; quit?('7z')}
 }
 
 function check_aik_sanity <# some sanity checks to see if cached files from windows kits 7 are present #>
@@ -253,14 +252,13 @@ function func_gdiplus
     check_msu_sanity $url $cab; $dldir = $($url.split('/')[-1]) -replace '.msu',''
 
     foreach ($i in $sourcefile) {
-        if( $i.SubString(0,3) -eq 'amd' ) {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $env:TEMP }
+        if( $i.SubString(0,3) -eq 'amd' ) {expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $env:TEMP }
         if( $i.SubString(0,3) -eq 'x86' ) {<# Nothing to do #>}                                                                          } 
 
     foreach ($i in $sourcefile) {
         if( $i.SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose "$env:TEMP\\$i" -destination $env:systemroot\\system32\\$($i.split('/')[-1]) }
         if( $i.SubString(0,3) -eq 'x86' ) {Copy-Item -force -verbose "$env:TEMP\\$i" $env:systemroot\\syswow64\\$($i.split('/')[-1]) } } 
 		  
-    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }
     foreach($i in 'gdiplus') { dlloverride 'native' $i }  
 } <# end gdiplus #>
 
@@ -277,14 +275,13 @@ function func_d2d1
 
     foreach ($i in $sourcefile) {
         if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
-                    if( $i.SubString(0,3) -eq 'amd' ) {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) }
+                    if( $i.SubString(0,3) -eq 'amd' ) {expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) }
                     if( $i.SubString(0,3) -eq 'x86' ) {<# Nothing to do #>}  }  }
 
     foreach ($i in $sourcefile) {
         if( $i.SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" -destination $env:systemroot\\system32\\$($i.split('/')[-1]) }
         if( $i.SubString(0,3) -eq 'x86' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\syswow64\\$($i.split('/')[-1]) } } 
 
-    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }
     foreach($i in 'd2d1') { dlloverride 'native' $i }  
 } <# end d2d1 #>
 
@@ -304,7 +301,7 @@ function func_windows.ui.xaml <# experimental... #>
     check_msu_sanity $url $cab; $dldir = $($url.split('/')[-1]) -replace '.msu',''    
 
     foreach ($i in $sourcefile) {
-        if( $i.SubString(0,3) -eq 'amd' ) {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $env:TEMP }
+        if( $i.SubString(0,3) -eq 'amd' ) {expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $env:TEMP }
         if( $i.SubString(0,3) -eq 'wow' ) {<# Nothing to do #>}                                                                          } 
 
     foreach ($i in $sourcefile) {
@@ -321,7 +318,6 @@ REGEDIT4
 "@
     reg_edit $regkey
 	  
-    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i } 
 } <# end windows.ui.xaml #>
 
 function func_ucrtbase
@@ -443,9 +439,20 @@ function func_msi <# wine msi with some hacks faking success #>
 
     foreach ($i in 'msi.dll'){
         7z e $cachedir\\$dldir\\wine_msi.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
-        7z e $cachedir\\\\$dldir\\wine_msi.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1]); quit?('7z') }
+        7z e $cachedir\\\\$dldir\\wine_msi.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
     foreach($i in 'msi') { dlloverride 'native' $i }
 } <# end msi #>
+
+function func_wintrust <# wine wintrust with some hacks faking success #>
+{
+    $dldir = "wintrust"
+    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_wintrust.7z" "wine_wintrust.7z"
+
+    foreach ($i in 'wintrust.dll'){
+        7z e $cachedir\\$dldir\\wine_wintrust.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
+        7z e $cachedir\\\\$dldir\\wine_wintrust.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
+    foreach($i in 'wintrust') { dlloverride 'native' $i }
+} <# end wintrust #>
 
 function func_wintypes <# wintypes #>
 {
@@ -670,18 +677,47 @@ REGEDIT4
 function func_expand
 {
     check_aik_sanity; $dldir = "aik70"
-    $expdlls = @( 'amd64_microsoft-windows-basic-misc-tools_31bf3856ad364e35_6.1.7600.16385_none_7351a917d91c961e/expand.exe', `
-                  'x86_microsoft-windows-basic-misc-tools_31bf3856ad364e35_6.1.7600.16385_none_17330d9420bf24e8/expand.exe',
-                  'amd64_microsoft-windows-deltapackageexpander_31bf3856ad364e35_6.1.7600.16385_none_c5d387d64eb8e1f2/dpx.dll',
-                  'x86_microsoft-windows-deltapackageexpander_31bf3856ad364e35_6.1.7600.16385_none_69b4ec52965b70bc/dpx.dll',
+    $exp     = @( 'amd64_microsoft-windows-basic-misc-tools_31bf3856ad364e35_6.1.7600.16385_none_7351a917d91c961e/expand.exe')
+                  
+    $dlls =    @( 'amd64_microsoft-windows-deltapackageexpander_31bf3856ad364e35_6.1.7600.16385_none_c5d387d64eb8e1f2/dpx.dll',
                   'amd64_microsoft-windows-cabinet_31bf3856ad364e35_6.1.7600.16385_none_933442c3fb9cbaed/cabinet.dll',
-                  'x86_microsoft-windows-cabinet_31bf3856ad364e35_6.1.7600.16385_none_3715a740433f49b7/cabinet.dll',
-                  'amd64_microsoft-windows-deltacompressionengine_31bf3856ad364e35_6.1.7600.16385_none_9c2159bf9f702069/msdelta.dll',
-                  'x86_microsoft-windows-deltacompressionengine_31bf3856ad364e35_6.1.7600.16385_none_4002be3be712af33/msdelta.dll' )
-		  
-    foreach ($i in $expdlls) {
-            if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
-            if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])}} quit?('7z')
+                  'amd64_microsoft-windows-deltacompressionengine_31bf3856ad364e35_6.1.7600.16385_none_9c2159bf9f702069/msdelta.dll' )
+
+        if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $exp) ) ) {
+            7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$([IO.Path]::Combine($cachedir,  $dldir,  $exp.Split('/')[0]))" Windows/winsxs/$exp -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
+        }
+    #Rename expand.exe to expnd_.exe to not interfere with wine`s expand; also rename it inside the binary
+    #https://stackoverflow.com/questions/73790902/replace-string-in-a-binary-clipboard-dump-from-onenote
+    # Read the file *as a byte array*.
+    $data = Get-Content -AsByteStream -ReadCount 0  $([IO.Path]::Combine($cachedir,  $dldir,  $exp))
+    # Convert the array to a "hex string" in the form "nn-nn-nn-...",  where nn represents a two-digit hex representation of each byte,
+    # e.g. '41-42' for 0x41, 0x42, which, if interpreted as a single-byte encoding (ASCII), is 'AB'.
+    $dataAsHexString = [BitConverter]::ToString($data)
+    # Define the search and replace strings, and convert them into "hex strings" too, using their UTF-8 byte representation.
+    $search = 'Expand.'
+    $replacement = 'expnd_.'
+    $searchAsHexString = [BitConverter]::ToString([Text.Encoding]::UTF8.GetBytes($search))
+    $replaceAsHexString = [BitConverter]::ToString([Text.Encoding]::UTF8.GetBytes($replacement))
+    # Perform the replacement.
+    $dataAsHexString = $dataAsHexString.Replace($searchAsHexString, $replaceAsHexString)
+    # Convert he modified "hex string" back to a byte[] array.
+    $modifiedData = [byte[]] ($dataAsHexString -split '-' -replace '^', '0x')
+    # Save the byte array back to the file.
+    Set-Content -AsByteStream "$env:SystemRoot\\system32\\expnd_.exe" -Value $modifiedData -verbose
+
+    foreach ($i in $dlls) {
+        if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ) {
+            7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$([IO.Path]::Combine($cachedir,  $dldir,  $i.Split('/')[0]))" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
+        }
+    }
+
+    foreach ($i in $dlls) {
+       Copy-Item -force -verbose "$([IO.Path]::Combine($cachedir,  $dldir,  $i))" -destination $env:systemroot\\system32\\$($i.split('/')[-1])
+    }
+  
+  if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\expnd_.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expnd_.exe'}
+  if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\expnd_.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expnd_.exe\\DllOverrides'}
+  New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expnd_.exe\\DllOverrides' -Name 'cabinet' -Value 'native' -PropertyType 'String' -force
 } <# end expand #>
 
 function func_xmllite
@@ -749,7 +785,7 @@ function func_wmp
 
     foreach ($i in $sourcefile) {
         if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
-                    if( $i.SubString(0,3) -eq 'amd' ) {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) }
+                    if( $i.SubString(0,3) -eq 'amd' ) {expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) }
                     if( $i.SubString(0,3) -eq 'x86' ) {<# Nothing to do #>}
                     if( $i.SubString(0,3) -eq 'wow' ) {<# Nothing to do #>}  }  }
 
@@ -758,7 +794,6 @@ function func_wmp
         if( $i.SubString(0,3) -eq 'x86' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\syswow64\\$($i.split('/')[-1]) }
         if( $i.SubString(0,3) -eq 'wow' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\syswow64\\$($i.split('/')[-1]) } } 
 	  
-    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }
     foreach($i in 'wmp') { dlloverride 'native' $i }
 
     foreach($i in 'wmp', 'wmpdxm') {
@@ -875,14 +910,12 @@ function func_sapi <# Speech api #>
 
     foreach ($i in $sourcefile) {
         if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
-                    if( $i.SubString(0,3) -eq 'amd' ) {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) }
+                    if( $i.SubString(0,3) -eq 'amd' ) {expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) }
                     if( $i.SubString(0,3) -eq 'x86' ) {<# Nothing to do #>}  }  }
 
     foreach ($i in $sourcefile) {
         if( $i.SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" -destination $env:systemroot\\system32\\Speech\\Common\\$($i.split('/')[-1]) }
         if( $i.SubString(0,3) -eq 'x86' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\syswow64\\Speech\\Common\\$($i.split('/')[-1]) } } 
-
-    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }  
 
     reg.exe DELETE "HKLM\SOFTWARE\Microsoft\Speech\Voices\Tokens\Wine Default Voice" /f /reg:64
     reg.exe DELETE "HKLM\SOFTWARE\Microsoft\Speech\Voices\Tokens\Wine Default Voice" /f /reg:32
@@ -909,12 +942,8 @@ function func_sapi <# Speech api #>
     reg.exe COPY "HKLM\Software\MicroSoft\Speech Server\v11.0" "HKLM\Software\MicroSoft\Speech" /s /f /reg:64
     reg.exe COPY "HKLM\Software\MicroSoft\Speech Server\v11.0" "HKLM\Software\MicroSoft\Speech" /s /f /reg:32
 
-$test = @"
-CreateObject("SAPI.SpVoice").Speak" This is mostly a bunch of crap. Please improve me"
-"@
-
-    $test | Out-File $env:SystemRoot\\test.vbs
-    iex "cscript.exe $env:SystemRoot\\test.vbs"      
+    $voice = new-object -com SAPI.SpVoice
+    $voice.Speak("This is mostly a bunch of crap. Please improve me", 2)
 } <# end sapi #>
 
 function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
@@ -954,16 +983,15 @@ function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
     )
     <# fragile test... #>
     if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:systemroot, "system32", "dpx.dll")  ) ) { func_expand }
-    foreach ($i in 'cabinet', 'expand.exe') { dlloverride 'native' $i } 
 
     foreach ($i in $sourcefile) {
         if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
-            expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) } 
+            expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) } 
         Copy-Item -force "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\system32\\WindowsPowerShell\v1.0\\$($i.split('/')[-1])}
 
     foreach ($i in $psrootfiles) {
         if (![System.IO.File]::Exists(  $(Join-Path $cachedir  $dldir  $i[0]) ) ){  
-            if( $i[0].SubString(0,3) -eq 'amd' ) {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i[0].split('/')[-1]) $(Join-Path $cachedir $dldir) }
+            if( $i[0].SubString(0,3) -eq 'amd' ) {expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i[0].split('/')[-1]) $(Join-Path $cachedir $dldir) }
             if( $i[0].SubString(0,3) -eq 'x86' ) {<# Nothing to do #>}     
             if( $i[0].SubString(0,3) -eq 'wow' ) {<# Nothing to do #>}  }  }  
 
@@ -974,7 +1002,7 @@ function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
 
     foreach ($i in $modfiles) {
         if (![System.IO.File]::Exists(  $(Join-Path $cachedir  $dldir  $i[0]) ) ){  
-            if( $i[0].SubString(0,3) -eq 'amd' ) {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i[0].split('/')[-1]) $(Join-Path $cachedir $dldir) }
+            if( $i[0].SubString(0,3) -eq 'amd' ) {expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i[0].split('/')[-1]) $(Join-Path $cachedir $dldir) }
             if( $i[0].SubString(0,3) -eq 'wow' ) {<# Nothing to do #>}  }  }  
 
     foreach ($i in $modfiles) {
@@ -1029,11 +1057,11 @@ if (!(Get-process -Name powershell_ise -erroraction silentlycontinue)) {
 
     function winetricks
     {
-         if (!([System.IO.File]::Exists("`$env:ProgramData\\winetricks.ps1"))){
+         if (!([System.IO.File]::Exists("`$env:ProgramData\\Chocolatey-for-wine\\winetricks.ps1"))){
              Add-Type -AssemblyName PresentationCore,PresentationFramework;
-             [System.Windows.MessageBox]::Show("winetricks script is missing`nplease reinstall it in c:\\ProgramData",'Congrats','ok','exclamation')
+             [System.Windows.MessageBox]::Show("winetricks script is missing`nplease reinstall it in c:\\ProgramData\\Chocolatey-for-wine",'Congrats','ok','exclamation')
          }
-         pwsh -f `$( Join-Path `${env:\\ProgramData} "winetricks.ps1") `$args
+         pwsh -f `$( Join-Path `$env:ProgramData\\Chocolatey-for-wine "winetricks.ps1") `$args
     }
 }
 "@
@@ -1051,8 +1079,6 @@ if (!(Get-process -Name powershell_ise -erroraction silentlycontinue)) {
     Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.powershell.commands.utility.dll" -Destination (New-item -Name "Microsoft.PowerShell.Commands.Utility\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
     Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.powershell.consolehost.dll" -Destination (New-item -Name "Microsoft.PowerShell.ConsoleHost\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
     Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.powershell.commands.diagnostics.dll" -Destination (New-item -Name "Microsoft.PowerShell.Commands.Diagnostics\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
-
-    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }      
 } <# end ps51 #>
 
 function func_ps51_ise <# Powershell 5.1 Integrated Scripting Environment #>
@@ -1083,16 +1109,15 @@ function func_ps51_ise <# Powershell 5.1 Integrated Scripting Environment #>
 
     <# fragile test... #>
     if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:systemroot, "system32", "dpx.dll")  ) ) { func_expand }
-    foreach ($i in 'cabinet', 'expand.exe') { dlloverride 'native' $i } 
 
     foreach ($i in $sourcefile) {
         if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
-            expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) } 
+            expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) } 
         Copy-Item -force $(Join-Path $cachedir $dldir $i) $env:systemroot\\system32\\WindowsPowerShell\v1.0\\$($i.split('/')[-1])}
 
     foreach ($i in $modfiles) {
         if (![System.IO.File]::Exists(  $(Join-Path $cachedir  $dldir  $i[0]) ) ){  
-                    if( $i[0].SubString(0,3) -eq 'amd' ) {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i[0].split('/')[-1]) $(Join-Path $cachedir $dldir) }
+                    if( $i[0].SubString(0,3) -eq 'amd' ) {expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i[0].split('/')[-1]) $(Join-Path $cachedir $dldir) }
                     if( $i[0].SubString(0,3) -eq 'wow' ) {<# Nothing to do #>}  }  }  
 
     foreach ($i in $modfiles) {
@@ -1105,8 +1130,6 @@ REGEDIT4
 "Lucida Console"="Arial"
 "@
     reg_edit $regkey_ise
-
-    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i } 
 
     powershell_ise.exe     
 } <# end ps51_ise #>
@@ -1123,10 +1146,8 @@ function func_msvbvm60 <# msvbvm60 #>
 
     foreach ($i in $sourcefile) {
         if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
-            expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) } 
+            expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) } 
         Copy-Item -force "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\syswow64\\$($i.split('/')[-1])}
-
-    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }      
 } <# end msvbvm60 #>
 
 function func_nocrashdialog <# nocrashdialog #>
@@ -1192,422 +1213,16 @@ set-executionpolicy bypass
 
 }
 
-function func_sharpdx
-{
-    $dldir = "sharpdx"
-
-    foreach( $i in '.direct3d11', '.dxgi', '.d3dcompiler', '.mathematics', '.direct3d9', '.desktop', '' <# =sharpdx core #> )
-    {
-        w_download_to $dldir "https://globalcdn.nuget.org/packages/sharpdx$i.4.2.0.nupkg" "sharpdx$i.4.2.0.nupkg"
-        if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:systemroot, "system32", "WindowsPowerShell", "v1.0", "SharpDX$i.dll")  )){
-           7z e $cachedir\\$dldir\\sharpdx$i.4.2.0.nupkg "-o$env:systemroot\\system32\\WindowsPowerShell\\v1.0" lib/net45/SharpDX$i.dll -y 
-        }
-    }
-
-$MiniCube=  @"
-    struct VS_IN 
-    {
-	    float4 pos : POSITION;
-	    float4 col : COLOR;
-    };
-
-    struct PS_IN
-    {
-	    float4 pos : SV_POSITION;
-	    float4 col : COLOR;
-    };
-
-    float4x4 worldViewProj;
-
-    PS_IN VS( VS_IN input )
-    {
-	    PS_IN output = (PS_IN)0;
-	
-	    output.pos = mul(input.pos, worldViewProj);
-	    output.col = input.col;
-	
-	    return output;
-    }
-
-    float4 PS( PS_IN input ) : SV_Target
-    {
-	    return input.col;
-    }
-"@
-    $MiniCube | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\MiniCube.fx
-
-Add-Type -path "$env:systemroot\\system32\\WindowsPowerShell\\v1.0\\SharpDX.dll"
-Add-Type -path "$env:systemroot\\system32\\WindowsPowerShell\\v1.0\\SharpDX.Direct3D11.dll"
-Add-Type -path "$env:systemroot\\system32\\WindowsPowerShell\\v1.0\\SharpDX.Mathematics.dll"
-Add-Type -path "$env:systemroot\\system32\\WindowsPowerShell\\v1.0\\SharpDX.D3DCompiler.dll"
-Add-Type -path "$env:systemroot\\system32\\WindowsPowerShell\\v1.0\\SharpDX.Dxgi.dll"
-Add-Type -path "$env:systemroot\\system32\\WindowsPowerShell\\v1.0\\SharpDX.Desktop.dll"
-
-Add-Type @'
-
-// Copyright (c) 2010-2013 SharpDX - Alexandre Mutel
-// 
-// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-// 
-// The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-// 
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-using System;
-using System.Diagnostics;
-using System.Windows.Forms;
-
-using SharpDX;
-using SharpDX.D3DCompiler;
-using SharpDX.Direct3D;
-using SharpDX.Direct3D11;
-using SharpDX.DXGI;
-using SharpDX.Windows;
-using Buffer = SharpDX.Direct3D11.Buffer;
-using Device = SharpDX.Direct3D11.Device;
-
-namespace MiniCube5
-{
-    /// <summary>
-    /// SharpDX MiniCube Direct3D 11 Sample
-    /// </summary>
-    public class Program
-    {
-  //      [STAThread]
-        public void Main()
-        {
-            var form = new RenderForm("SharpDX - MiniCube Direct3D11 Sample");
-
-            // SwapChain description
-            var desc = new SwapChainDescription()
-            {
-                BufferCount = 1,
-                ModeDescription =
-                    new ModeDescription(form.ClientSize.Width, form.ClientSize.Height,
-                                        new Rational(60, 1), Format.R8G8B8A8_UNorm),
-                IsWindowed = true,
-                OutputHandle = form.Handle,
-                SampleDescription = new SampleDescription(1, 0),
-                SwapEffect = SwapEffect.Discard,
-                Usage = Usage.RenderTargetOutput
-            };
-
-            // Used for debugging dispose object references
-            // Configuration.EnableObjectTracking = true;
-
-            // Disable throws on shader compilation errors
-            //Configuration.ThrowOnShaderCompileError = false;
-
-            // Create Device and SwapChain
-            Device device;
-            SwapChain swapChain;
-            Device.CreateWithSwapChain(DriverType.Hardware, DeviceCreationFlags.None, desc, out device, out swapChain);
-            var context = device.ImmediateContext;
-
-            // Ignore all windows events
-            var factory = swapChain.GetParent<Factory>();
-            factory.MakeWindowAssociation(form.Handle, WindowAssociationFlags.IgnoreAll);
-
-            // Compile Vertex and Pixel shaders
-            var vertexShaderByteCode = ShaderBytecode.CompileFromFile(Environment.SystemDirectory + "\\WindowsPowerShell\\v1.0\\MiniCube.fx", "VS", "vs_4_0");
-            var vertexShader = new VertexShader(device, vertexShaderByteCode);
-
-            var pixelShaderByteCode = ShaderBytecode.CompileFromFile(Environment.SystemDirectory + "\\WindowsPowerShell\\v1.0\\MiniCube.fx", "PS", "ps_4_0");
-            var pixelShader = new PixelShader(device, pixelShaderByteCode);
-
-            var signature = ShaderSignature.GetInputSignature(vertexShaderByteCode);
-            // Layout from VertexShader input signature
-            var layout = new InputLayout(device, signature, new[]
-                    {
-                        new InputElement("POSITION", 0, Format.R32G32B32A32_Float, 0, 0),
-                        new InputElement("COLOR", 0, Format.R32G32B32A32_Float, 16, 0)
-                    });
-
-            // Instantiate Vertex buiffer from vertex data
-            var vertices = Buffer.Create(device, BindFlags.VertexBuffer, new[]
-                                  {
-                                      new Vector4(-1.0f, -1.0f, -1.0f, 1.0f), new Vector4(1.0f, 0.0f, 0.0f, 1.0f), // Front
-                                      new Vector4(-1.0f,  1.0f, -1.0f, 1.0f), new Vector4(1.0f, 0.0f, 0.0f, 1.0f),
-                                      new Vector4( 1.0f,  1.0f, -1.0f, 1.0f), new Vector4(1.0f, 0.0f, 0.0f, 1.0f),
-                                      new Vector4(-1.0f, -1.0f, -1.0f, 1.0f), new Vector4(1.0f, 0.0f, 0.0f, 1.0f),
-                                      new Vector4( 1.0f,  1.0f, -1.0f, 1.0f), new Vector4(1.0f, 0.0f, 0.0f, 1.0f),
-                                      new Vector4( 1.0f, -1.0f, -1.0f, 1.0f), new Vector4(1.0f, 0.0f, 0.0f, 1.0f),
-
-                                      new Vector4(-1.0f, -1.0f,  1.0f, 1.0f), new Vector4(0.0f, 1.0f, 0.0f, 1.0f), // BACK
-                                      new Vector4( 1.0f,  1.0f,  1.0f, 1.0f), new Vector4(0.0f, 1.0f, 0.0f, 1.0f),
-                                      new Vector4(-1.0f,  1.0f,  1.0f, 1.0f), new Vector4(0.0f, 1.0f, 0.0f, 1.0f),
-                                      new Vector4(-1.0f, -1.0f,  1.0f, 1.0f), new Vector4(0.0f, 1.0f, 0.0f, 1.0f),
-                                      new Vector4( 1.0f, -1.0f,  1.0f, 1.0f), new Vector4(0.0f, 1.0f, 0.0f, 1.0f),
-                                      new Vector4( 1.0f,  1.0f,  1.0f, 1.0f), new Vector4(0.0f, 1.0f, 0.0f, 1.0f),
-
-                                      new Vector4(-1.0f, 1.0f, -1.0f,  1.0f), new Vector4(0.0f, 0.0f, 1.0f, 1.0f), // Top
-                                      new Vector4(-1.0f, 1.0f,  1.0f,  1.0f), new Vector4(0.0f, 0.0f, 1.0f, 1.0f),
-                                      new Vector4( 1.0f, 1.0f,  1.0f,  1.0f), new Vector4(0.0f, 0.0f, 1.0f, 1.0f),
-                                      new Vector4(-1.0f, 1.0f, -1.0f,  1.0f), new Vector4(0.0f, 0.0f, 1.0f, 1.0f),
-                                      new Vector4( 1.0f, 1.0f,  1.0f,  1.0f), new Vector4(0.0f, 0.0f, 1.0f, 1.0f),
-                                      new Vector4( 1.0f, 1.0f, -1.0f,  1.0f), new Vector4(0.0f, 0.0f, 1.0f, 1.0f),
-
-                                      new Vector4(-1.0f,-1.0f, -1.0f,  1.0f), new Vector4(1.0f, 1.0f, 0.0f, 1.0f), // Bottom
-                                      new Vector4( 1.0f,-1.0f,  1.0f,  1.0f), new Vector4(1.0f, 1.0f, 0.0f, 1.0f),
-                                      new Vector4(-1.0f,-1.0f,  1.0f,  1.0f), new Vector4(1.0f, 1.0f, 0.0f, 1.0f),
-                                      new Vector4(-1.0f,-1.0f, -1.0f,  1.0f), new Vector4(1.0f, 1.0f, 0.0f, 1.0f),
-                                      new Vector4( 1.0f,-1.0f, -1.0f,  1.0f), new Vector4(1.0f, 1.0f, 0.0f, 1.0f),
-                                      new Vector4( 1.0f,-1.0f,  1.0f,  1.0f), new Vector4(1.0f, 1.0f, 0.0f, 1.0f),
-
-                                      new Vector4(-1.0f, -1.0f, -1.0f, 1.0f), new Vector4(1.0f, 0.0f, 1.0f, 1.0f), // Left
-                                      new Vector4(-1.0f, -1.0f,  1.0f, 1.0f), new Vector4(1.0f, 0.0f, 1.0f, 1.0f),
-                                      new Vector4(-1.0f,  1.0f,  1.0f, 1.0f), new Vector4(1.0f, 0.0f, 1.0f, 1.0f),
-                                      new Vector4(-1.0f, -1.0f, -1.0f, 1.0f), new Vector4(1.0f, 0.0f, 1.0f, 1.0f),
-                                      new Vector4(-1.0f,  1.0f,  1.0f, 1.0f), new Vector4(1.0f, 0.0f, 1.0f, 1.0f),
-                                      new Vector4(-1.0f,  1.0f, -1.0f, 1.0f), new Vector4(1.0f, 0.0f, 1.0f, 1.0f),
-
-                                      new Vector4( 1.0f, -1.0f, -1.0f, 1.0f), new Vector4(0.0f, 1.0f, 1.0f, 1.0f), // Right
-                                      new Vector4( 1.0f,  1.0f,  1.0f, 1.0f), new Vector4(0.0f, 1.0f, 1.0f, 1.0f),
-                                      new Vector4( 1.0f, -1.0f,  1.0f, 1.0f), new Vector4(0.0f, 1.0f, 1.0f, 1.0f),
-                                      new Vector4( 1.0f, -1.0f, -1.0f, 1.0f), new Vector4(0.0f, 1.0f, 1.0f, 1.0f),
-                                      new Vector4( 1.0f,  1.0f, -1.0f, 1.0f), new Vector4(0.0f, 1.0f, 1.0f, 1.0f),
-                                      new Vector4( 1.0f,  1.0f,  1.0f, 1.0f), new Vector4(0.0f, 1.0f, 1.0f, 1.0f),
-                            });
-
-            // Create Constant Buffer
-            var contantBuffer = new Buffer(device, Utilities.SizeOf<Matrix>(), ResourceUsage.Default, BindFlags.ConstantBuffer, CpuAccessFlags.None, ResourceOptionFlags.None, 0);
-
-            // Prepare All the stages
-            context.InputAssembler.InputLayout = layout;
-            context.InputAssembler.PrimitiveTopology = PrimitiveTopology.TriangleList;
-            context.InputAssembler.SetVertexBuffers(0, new VertexBufferBinding(vertices, Utilities.SizeOf<Vector4>() * 2, 0));
-            context.VertexShader.SetConstantBuffer(0, contantBuffer);
-            context.VertexShader.Set(vertexShader);
-            context.PixelShader.Set(pixelShader);
-
-            // Prepare matrices
-            var view = Matrix.LookAtLH(new Vector3(0, 0, -5), new Vector3(0, 0, 0), Vector3.UnitY);
-            Matrix proj = Matrix.Identity;
-
-            // Use clock
-            var clock = new Stopwatch();
-            clock.Start();
-
-            // Declare texture for rendering
-            bool userResized = true;
-            Texture2D backBuffer = null;
-            RenderTargetView renderView = null;
-            Texture2D depthBuffer = null;
-            DepthStencilView depthView = null;
-
-            // Setup handler on resize form
-            form.UserResized += (sender, args) => userResized = true;
-
-            // Setup full screen mode change F5 (Full) F4 (Window)
-            form.KeyUp += (sender, args) =>
-                {
-                    if (args.KeyCode == Keys.F5)
-                        swapChain.SetFullscreenState(true, null);
-                    else if (args.KeyCode == Keys.F4)
-                        swapChain.SetFullscreenState(false, null);
-                    else if (args.KeyCode == Keys.Escape)
-                        form.Close();
-                };
-
-            // Main loop
-            RenderLoop.Run(form, () =>
-            {
-                // If Form resized
-                if (userResized)
-                {
-                    // Dispose all previous allocated resources
-                    Utilities.Dispose(ref backBuffer);
-                    Utilities.Dispose(ref renderView);
-                    Utilities.Dispose(ref depthBuffer);
-                    Utilities.Dispose(ref depthView);
-
-                    // Resize the backbuffer
-                    swapChain.ResizeBuffers(desc.BufferCount, form.ClientSize.Width, form.ClientSize.Height, Format.Unknown, SwapChainFlags.None);
-
-                    // Get the backbuffer from the swapchain
-                    backBuffer = Texture2D.FromSwapChain<Texture2D>(swapChain, 0);
-
-                    // Renderview on the backbuffer
-                    renderView = new RenderTargetView(device, backBuffer);
-
-                    // Create the depth buffer
-                    depthBuffer = new Texture2D(device, new Texture2DDescription()
-                    {
-                        Format = Format.D32_Float_S8X24_UInt,
-                        ArraySize = 1,
-                        MipLevels = 1,
-                        Width = form.ClientSize.Width,
-                        Height = form.ClientSize.Height,
-                        SampleDescription = new SampleDescription(1, 0),
-                        Usage = ResourceUsage.Default,
-                        BindFlags = BindFlags.DepthStencil,
-                        CpuAccessFlags = CpuAccessFlags.None,
-                        OptionFlags = ResourceOptionFlags.None
-                    });
-
-                    // Create the depth buffer view
-                    depthView = new DepthStencilView(device, depthBuffer);
-
-                    // Setup targets and viewport for rendering
-                    context.Rasterizer.SetViewport(new Viewport(0, 0, form.ClientSize.Width, form.ClientSize.Height, 0.0f, 1.0f));
-                    context.OutputMerger.SetTargets(depthView, renderView);
-
-                    // Setup new projection matrix with correct aspect ratio
-                    proj = Matrix.PerspectiveFovLH((float)Math.PI / 4.0f, form.ClientSize.Width / (float)form.ClientSize.Height, 0.1f, 100.0f);
-
-                    // We are done resizing
-                    userResized = false;
-                }
-
-                var time = clock.ElapsedMilliseconds / 400.0f;
-
-                var viewProj = Matrix.Multiply(view, proj);
-
-                // Clear views
-                context.ClearDepthStencilView(depthView, DepthStencilClearFlags.Depth, 1.0f, 0);
-                context.ClearRenderTargetView(renderView, Color.Black);
-
-                // Update WorldViewProj Matrix
-                var worldViewProj = Matrix.RotationX(time) * Matrix.RotationY(time * 2) * Matrix.RotationZ(time * .7f) * viewProj;
-                worldViewProj.Transpose();
-                context.UpdateSubresource(ref worldViewProj, contantBuffer);
-
-                // Draw the cube
-                context.Draw(36, 0);
-
-                // Present!
-                swapChain.Present(0, PresentFlags.None);
-            });
-
-            // Release all resources
-            signature.Dispose();
-            vertexShaderByteCode.Dispose();
-            vertexShader.Dispose();
-            pixelShaderByteCode.Dispose();
-            pixelShader.Dispose();
-            vertices.Dispose();
-            layout.Dispose();
-            contantBuffer.Dispose();
-            depthBuffer.Dispose();
-            depthView.Dispose();
-            renderView.Dispose();
-            backBuffer.Dispose();
-            context.ClearState();
-            context.Flush();
-            device.Dispose();
-            context.Dispose();
-            swapChain.Dispose();
-            factory.Dispose();
-        }
-    }
-}
-'@ -ReferencedAssemblies System.Runtime.Extensions,System,SharpDX,SharpDX.Direct3D11,SharpDX.D3DCompiler,SharpDX.DXGI,SharpDX.Mathematics,SharpDX.Desktop,System.Windows.Forms,System.Diagnostics.Tools,System.ComponentModel.Primitives,mscorlib,System.Drawing.Primitives,System.Threading.Thread
-
-    $env:DXVK_HUD="fps,memory"
-
-    [MiniCube5.Program]::new().Main()
-}
-
 function func_cef
 {
-$dldir = "cef"
+    . "$env:ProgramData\Chocolatey-for-wine\powershell_collected_codesnippets_examples.ps1"
+    func_cef2
+}
 
-New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\pwsh.exe\\DllOverrides' -force -Name 'dwmapi' -Value 'builtin' -PropertyType 'String'
-
-w_download_to $dldir "https://www.nuget.org/api/v2/package/CefSharp.Common/102.0.90" "CefSharp.Common_102.0.90.nupkg"
-
-w_download_to $dldir "https://www.nuget.org/api/v2/package/CefSharp.Wpf/102.0.90" "CefSharp.Wpf_102.0.90.nupkg"
-
-w_download_to $dldir "https://www.nuget.org/api/v2/package/CefSharp.WinForms/102.0.90" "CefSharp.WinForms_102.0.90.nupkg"
-
-w_download_to $dldir "https://www.nuget.org/api/v2/package/cef.redist.x64/102.0.9" "cef.redist.x64_102.0.9.nupkg"
-
-
-
-
-
-7z e $cachedir\\$dldir\\cef.redist.x64_102.0.9.nupkg "-o$env:systemroot\\system32\\WindowsPowerShell\\v1.0" -y
-
-
-7z e $cachedir\\$dldir\\CefSharp.Common_102.0.90.nupkg "-o$env:systemroot\\system32\\WindowsPowerShell\\v1.0" lib/net452/*.dll -y 
-
-
-7z e $cachedir\\$dldir\\CefSharp.Common_102.0.90.nupkg "-o$env:systemroot\\system32\\WindowsPowerShell\\v1.0" CefSharp/x64/*.dll -y 
-
-7z e $cachedir\\$dldir\\CefSharp.Common_102.0.90.nupkg "-o$env:systemroot\\system32\\WindowsPowerShell\\v1.0" CefSharp/x64/*.exe -y 
-
-7z e $cachedir\\$dldir\\CefSharp.Wpf_102.0.90.nupkg "-o$env:systemroot\\system32\\WindowsPowerShell\\v1.0" lib/net452/*.dll -y 
-
-
-7z e $cachedir\\$dldir\\CefSharp.WinForms_102.0.90.nupkg "-o$env:systemroot\\system32\\WindowsPowerShell\\v1.0" lib/net452/*.dll -y 
-
-
-
-
-
-#https://www.nuget.org/api/v2/package/CefSharp.Common/102.0.90
-
-#https://www.nuget.org/api/v2/package/CefSharp.Wpf/102.0.90
-
-#https://www.nuget.org/api/v2/package/CefSharp.WinForms/102.0.90
-
-
-#https://www.nuget.org/api/v2/package/cef.redist.x64/102.0.9
-
-Add-Type -Path $env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\System.ServiceModel.dll
-
-
-
-Add-Type -Path "$env:SystemRoot\system32\WindowsPowerShell\v1.0\CefSharp.Core.dll"
-Add-Type -Path "$env:SystemRoot\system32\WindowsPowerShell\v1.0\\CefSharp.WinForms.dll"
-Add-Type -Path "$env:SystemRoot\system32\WindowsPowerShell\v1.0\\CefSharp.dll"
-
-Add-Type -AssemblyName System.Windows.Forms
-
-# WinForm Setup
-$mainForm = New-Object System.Windows.Forms.Form
-#$mainForm.Font = "Comic Sans MS,9"
-$mainForm.ForeColor = [System.Drawing.Color]::White
-$mainForm.BackColor = [System.Drawing.Color]::DarkSlateBlue
-$mainForm.Text = "CefSharp"
-$mainForm.Width = 960
-$mainForm.Height = 700
-
-[CefSharp.WinForms.ChromiumWebBrowser] $browser = New-Object CefSharp.WinForms.ChromiumWebBrowser "www.google.com"
-$mainForm.Controls.Add($browser)
-
-[void] $mainForm.ShowDialog()
-
-
-if(1) {
-
-    Add-Type -Path "$env:SystemRoot\system32\WindowsPowerShell\v1.0\\CefSharp.Wpf.dll"
-
-    #Add-Type -AssemblyName System.Windows.Forms
-
-    Add-Type -AssemblyName PresentationFramework
-
-    [xml]$xaml = @'
-    <Window
-            xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-            xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-            xmlns:local="clr-namespace:WebBrowserTest"
-            xmlns:cef="clr-namespace:CefSharp.Wpf;assembly=CefSharp.Wpf"
-            Title="test" Height="480" Width="640">
-        <Grid>
-            <cef:ChromiumWebBrowser Address="https://www.google.co.jp" />
-        </Grid>
-    </Window>
-'@
-
-    $reader = New-Object System.Xml.XmlNodeReader $xaml
-    $frame = [System.Windows.Markup.XamlReader]::Load($reader)
-
-    $frame.ShowDialog()
-    }
+function func_sharpdx
+{
+    . "$env:ProgramData\Chocolatey-for-wine\powershell_collected_codesnippets_examples.ps1"
+    func_sharpdx2
 }
 
 function func_wpf_xaml
@@ -3331,7 +2946,7 @@ function func_install_dll_from_msu
 
     foreach ($i in $sourcefile) {
         if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
-                    if( $i.SubString(0,3) -eq 'amd' ) {& "$env:systemroot\system32\expand" $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) }  }  }
+                    if( $i.SubString(0,3) -eq 'amd' ) {& "$env:systemroot\system32\expnd_" $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) }  }  }
 
     foreach ($i in $sourcefile) {
         if( $i.SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" -destination $env:systemroot\\system32\\$($i.split('/')[-1]) } } 
@@ -3346,25 +2961,33 @@ function func_install_dll_from_msu
     if ( $FileBrowser.ShowDialog() -eq 'Cancel' ) {exit}
     $dest = $(ls $FileBrowser.FileName).BaseName
 
-    7z x  $FileBrowser.FileName "-o$env:TEMP\\$dest"-aoa
+    7z x "-x!WSUSSCAN.cab" $FileBrowser.FileName "-o$env:TEMP\\$dest"-aoa; quit?(7z)
 
     $custom_array = New-Object System.Collections.ArrayList
 
+    foreach($i in "$(ls $env:TEMP\\$dest\\*.cab)") {
+        if( $( expnd_.exe -d $i ) |select-string 'cabinet.cablist.ini') {# newer msu's apparently contain several cabs, so need another trip around for extraction  
+            7z x $i "-x!WSUSSCAN.cab" "-o$env:TEMP\\$dest" -aoa 
+            Move-Item $i $i.Replace('.cab','.1cab')
+        }
+
+    }
+    quit?(7z)
+    
     Write-Host -ForegroundColor green '****************************************************************'
     Write-Host -ForegroundColor green '*   Patience please! Getting list of files takes a while!      *'
     Write-Host -ForegroundColor green '****************************************************************'
 
-    foreach($i in "$env:TEMP\\$dest\\*.cab") {
-        $out = $( expand.exe -d $i )
-        foreach ( $j in ($out |select-string -notMatch '.manifest', '.cat', '.mum').Line  |Sort-Object  -Unique ) { 
-            $custom_array.Add(@{ name = $j }) > $null 
-        }
-    }
-    <# Main function #>
+     $out = $( expnd_.exe -d $env:TEMP\\$dest\\*.cab )
+     foreach ( $j in ($out |select-string -notMatch '.manifest', '.cat', '.mum').Line  |Sort-Object  -Unique ) { 
+         $custom_array.Add(@{ name = $j }) > $null 
+     }
+   
+    <# create the selection dialog #>
     $result = ($custom_array  | select name | Out-GridView  -PassThru  -Title 'Make a  selection')
 
     foreach ($i in $result) { #https://stackoverflow.com/questions/8097354/how-do-i-capture-the-output-into-a-variable-from-an-external-process-in-powershe/35980675
-        [array]$verboseoutput = $( & "$env:systemroot\system32\expand" $i.Name.Split(': ')[0] -F:$i.Name.Split(': ')[1] "$env:TEMP\\$dest") 
+        [array]$verboseoutput = $( expnd_.exe $i.Name.Split(': ')[0] -F:$i.Name.Split(': ')[1] "$env:TEMP\\$dest") 
         foreach($n in $verboseoutput) { if($n -match 'Queue') {[array]$output += $n + " from $($i.Name.Split(': ')[0])" } } 
     }
     $output
@@ -3372,7 +2995,7 @@ function func_install_dll_from_msu
     foreach($j in $output  ) {
         $file = [System.IO.FileInfo]$j.Split(' ')[1]
         $manifestfile = $file.DirectoryName.Split('\')[-1] + '.manifest'
-        [array]$verbosemanifestoutput += $( & "$env:systemroot\system32\expand" $j.Split('from ')[-1] -F:$manifestfile "$env:TEMP\\$dest") 
+        [array]$verbosemanifestoutput += $(expnd_ $j.Split('from ')[-1] -F:$manifestfile "$env:TEMP\\$dest") 
     }
 
     foreach($n in $verbosemanifestoutput ) { if($n -match 'Queue') {[array]$verbose += $n}} 
@@ -3381,7 +3004,8 @@ function func_install_dll_from_msu
     for($n=0 ; $n -lt $output.count; $n++) {
         install_from_manifest $($([System.IO.FileInfo]$verbose[$n].Split(' ')[1]).FullName) $([System.IO.FileInfo]$output[$n].Split(' ')[1]).FullName
     }
-    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }
+    
+    Remove-Item -force  $env:TEMP\\$dest\\*.cab; Remove-Item -force  $env:TEMP\\$dest\\*.1cab
 }
 
 function func_affinity_requirements
@@ -3443,14 +3067,12 @@ function func_winmetadata <# winmetadata #>
 
     foreach ($i in $sourcefile) {
         if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
-                    if( $i.SubString(0,3) -eq 'amd' ) {expand.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) }
+                    if( $i.SubString(0,3) -eq 'amd' ) {expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) }
                     if( $i.SubString(0,3) -eq 'wow' ) {<# Nothing to do #>}  }  }
 
     foreach ($i in $sourcefile) {
         if( $i.SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" -destination $env:systemroot\\system32\\winmetadata\\$($i.split('/')[-1]) }
         if( $i.SubString(0,3) -eq 'wow' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\syswow64\\winmetadata\\$($i.split('/')[-1]) } } 
-
-    foreach($i in 'cabinet', 'expand.exe') { dlloverride 'builtin' $i }
 
 } <# end winmetadata #>
 
