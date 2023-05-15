@@ -85,5 +85,5 @@ Notes:
 Compile:
   - If you want to compile yourself instead of downloading binaries: see compilation instructions in mainv1.c  
   - Then copy choc_install.ps1 into the same directory
-  - Then do 'wine ChoCinstaller_0.5y.703.exe'
+  - Then do 'wine ChoCinstaller_0.5a.715.exe'
   
