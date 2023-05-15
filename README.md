@@ -44,17 +44,16 @@ ConEmu console suffers from a few wine-bugs:
    
 About system programs:
 
-Feature is added to replace simple system programs like for example tasklist.exe by a function in
+Feature is added to replace simple system programs like for example systeminfo.exe by a function in
 c:\\Program Files\Powershell\7\profile.ps1. Or add system programs that are missing like getmac.exe.
 If programs fail because of insufficient mature or missing system programs one could write a 
 function to return whatever the program expects. 
 Like in profile.ps1 I added (amongst others) a wmic.exe that supports a bit more options,
-and a basic findstr.exe , systeminfo.exe and basic setx.exe.
+and a basic systeminfo.exe and setx.exe.
 Or you could just manipulate the arguments passed to the system program. See profile.ps1 and choc_install.ps1.
 No garantuee this works for more complex programs as well... 
  
-
-![Screenshot from 2022-11-05 17-59-32](https://user-images.githubusercontent.com/26839562/200132126-d3fbec4b-081d-440c-9ef9-341572ad7787.png)
+![screenshot](https://github.com/PietJankbal/Chocolatey-for-wine/assets/26839562/7732da99-e215-4df6-bb60-d55ddb8d9d63)
 
 About winetricks(.ps1):
 
