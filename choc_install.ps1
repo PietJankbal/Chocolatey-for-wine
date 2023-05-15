@@ -11,8 +11,7 @@ REGEDIT4
 "d3dcompiler_47"="native"
 "d3dcompiler_43"="native"
 "wusa.exe"="native"
-"findstr.exe"="native"
-"tasklist.exe"="native"
+"mscorsvw.exe"=""
 "schtasks.exe"="native"
 "setx.exe"="native"
 "taskschd"="native"
@@ -193,7 +192,7 @@ function winetricks {
  Param(
         [Parameter(Mandatory=$false)]
         [ArgumentCompletions('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'd2d1',`
-                     'dxvk1103', 'dxvk20', 'hnetcfg', 'msi', 'sapi', 'ps51', 'ps51_ise', 'crypt32', 'oleaut32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'uxtheme', 'comctl32', 'wsh57',`
+                     'dxvk1103', 'dxvk20', 'hnetcfg', 'msi', 'wintrust', 'sapi', 'ps51', 'ps51_ise', 'crypt32', 'oleaut32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'uxtheme', 'comctl32', 'wsh57',`
                      'nocrashdialog', 'renderer=vulkan', 'renderer=gl', 'app_paths', 'vs19','sharpdx', 'dotnet35', 'dotnet481' ,'cef', 'd3dx','sspicli', 'dshow', 'findstr', 'affinity_requirements',`
                      'winmetadata', 'wintypes', 'dxcore', 'install_dll_from_msu', 'wpf_xaml', 'wpf_msgbox', 'wpf_routedevents', 'embed-exe-in-psscript', 'vulkansamples', 'ps2exe')]
         [string[]]$verb
@@ -313,14 +312,6 @@ function wget { check_busybox; Busybox64.exe wget $args}
 function grep { check_busybox; Busybox64.exe grep $args}
 function bash { check_busybox; Busybox64.exe bash $args}
 
-# Note: Following overrides wine(-staging)`s tasklist so remove stuff below if you don`t want that, and remove native override in winecfg 
-
-Set-Alias "QPR.tasklist" "QPR.tasklist.exe";
-function QPR.tasklist.exe { <# tasklist.exe replacement #>
-    $(ps) |  ft  -autosize -property  Name, id, sessionid, @{Name="Mem Usage(MB)";Expression={[math]::round($_.ws / 1mb)}} #|out-string -stream
-    exit 0
-}
-
 # Note: Visual Studio calls this, not sure if this is really needed by it...
 Set-Alias "QPR.getmac" "QPR.getmac.exe";
 function QPR.getmac.exe { <# getmac.exe replacement #>
@@ -338,37 +329,37 @@ function QPR.setx.exe { <# setx.exe replacement #>
     exit 0
 }
 
-Set-Alias "QPR.findstr" "QPR.findstr.exe"; Set-Alias "findstr.exe" "QPR.findstr.exe"; Set-Alias "findstr" "QPR.findstr.exe"
-function QPR.findstr.exe { <# findstr.exe replacement #>
-
-begin { $count = 0 
-        $new = $env:QPRPIPE 
-
-        if($args[1]) {
-            foreach($i in (cat $args[1])) {
-                $found = Select-String -Inputobject $i -Pattern $args[0]; if ($found) {Write-Host $found; $count++}}
-         }
-
-        foreach($i in $new -split "`n") {
-            $found = Select-String -Inputobject $i  -Pattern $args[0].Replace(" ","") <#.Split("|").Trim("'").Trim(" ")#>; if ($found) {Write-Host $found; $count++}
-        }       
-
-        if ($count) {  if($env:QPRCMDLINE)  {exit 0} }  
-        else        {  if($env:QPRCMDLINE)  {exit 1} }
-}
-process	{
-        if(-not $args[1]){
-            $found = Select-String -Inputobject $_ -Pattern $args[0].Replace(" ","") <#.Split("|").Trim("'").Trim(" ")#>; if ($found) {Write-Host $found; $count++}}
-        else {
-            foreach($i in (cat $args[1])) {
-                $found = Select-String -Inputobject $i -Pattern $args[0]; if ($found) {Write-Host $found; $count++}}}
-}
-
-end {
-      if ($count) {  if($env:QPRCMDLINE)  {exit 0} }  
-      else        {  if($env:QPRCMDLINE)  {exit 1} }
-}
-}
+#Set-Alias "QPR.findstr" "QPR.findstr.exe"; Set-Alias "findstr.exe" "QPR.findstr.exe"; Set-Alias "findstr" "QPR.findstr.exe"
+#function QPR.findstr.exe { <# findstr.exe replacement #>
+#
+#begin { $count = 0 
+#        $new = $env:QPRPIPE 
+#
+#        if($args[1]) {
+#            foreach($i in (cat $args[1])) {
+#                $found = Select-String -Inputobject $i -Pattern $args[0]; if ($found) {Write-Host $found; $count++}}
+#         }
+#
+#        foreach($i in $new -split "`n") {
+#            $found = Select-String -Inputobject $i  -Pattern $args[0].Replace(" ","") <#.Split("|").Trim("'").Trim(" ")#>; if ($found) {Write-Host $found; $count++}
+#        }       
+#
+#        if ($count) {  if($env:QPRCMDLINE)  {exit 0} }  
+#        else        {  if($env:QPRCMDLINE)  {exit 1} }
+#}
+#process	{
+#        if(-not $args[1]){
+#            $found = Select-String -Inputobject $_ -Pattern $args[0].Replace(" ","") <#.Split("|").Trim("'").Trim(" ")#>; if ($found) {Write-Host $found; $count++}}
+#        else {
+#            foreach($i in (cat $args[1])) {
+#                $found = Select-String -Inputobject $i -Pattern $args[0]; if ($found) {Write-Host $found; $count++}}}
+#}
+#
+#end {
+#      if ($count) {  if($env:QPRCMDLINE)  {exit 0} }  
+#      else        {  if($env:QPRCMDLINE)  {exit 1} }
+#}
+#}
 
 Set-Alias "QPR.systeminfo" "QPR.systeminfo.exe";
 function QPR.systeminfo.exe { <# systeminfo replacement #>
@@ -721,7 +712,7 @@ function handy_apps { choco install explorersuite reactos-paint}
     <# Backup files if wanted #>
     if (Test-Path 'env:SAVEINSTALLFILES') { 
         New-Item -Path "$env:WINEHOMEDIR\.cache\".substring(4) -Name "choc_install_files" -ItemType "directory" -ErrorAction SilentlyContinue
-        foreach($i in 'ndp48-x86-x64-allos-enu.exe', 'PowerShell-7.0.3-win-x64.msi', 'arial32.exe', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2201-x64.exe', 'sevenzipextractor.1.0.17.nupkg') {
+        foreach($i in 'ndp48-x86-x64-allos-enu.exe', 'PowerShell-7.1.5-win-x64.msi', 'arial32.exe', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2201-x64.exe', 'sevenzipextractor.1.0.17.nupkg') {
             Copy-Item -Path $env:TEMP\\$i -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4)  -force }
     }
     <# install wine robocopy and (custom) wine tasksch.dll #>
@@ -734,7 +725,7 @@ function handy_apps { choco install explorersuite reactos-paint}
     ForEach ($file in "schtasks.exe") {
         Copy-Item -Path "$env:windir\\SysWOW64\\$file" -Destination "$env:windir\\SysWOW64\\QPR.$file" -Force
         Copy-Item -Path "$env:winsysdir\\$file" -Destination "$env:winsysdir\\QPR.$file" -Force}
-    ForEach ($file in "wusa.exe","tasklist.exe","schtasks.exe","systeminfo.exe","getmac.exe","setx.exe","wbem\\wmic.exe", "findstr.exe", "ie4uinit.exe") {
+    ForEach ($file in "wusa.exe","schtasks.exe","systeminfo.exe","getmac.exe","setx.exe","wbem\\wmic.exe", "ie4uinit.exe") {
         Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\$file" -Force
         Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\$file" -Force}
     <# It seems some programs need this dir?? #>
@@ -744,6 +735,7 @@ function handy_apps { choco install explorersuite reactos-paint}
     <# a game launcher tried to open this key, i think it should be present (?) #>
     reg.exe COPY "HKLM\SYSTEM\CurrentControlSet" "HKLM\SYSTEM\ControlSet001" /s /f
     <# dxvk (if installed) doesn't work well with WPF, add workaround from dxvk site  #>
+    
 $dxvkconf = @"
 [pwsh.exe]
 d3d9.shaderModel = 1
