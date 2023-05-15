@@ -8177,3 +8177,421 @@ if ($requireAdmin -or $DPIAware -or $supportOS -or $longPaths)
 
   start-process -nonewwindow ps51.exe  $env:Temp\\win-ps2exe.ps1 
 }
+
+function func_sharpdx2
+{
+    $dldir = "sharpdx"
+
+    foreach( $i in '.direct3d11', '.dxgi', '.d3dcompiler', '.mathematics', '.direct3d9', '.desktop', '' <# =sharpdx core #> )
+    {
+        w_download_to $dldir "https://globalcdn.nuget.org/packages/sharpdx$i.4.2.0.nupkg" "sharpdx$i.4.2.0.nupkg"
+        if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:systemroot, "system32", "WindowsPowerShell", "v1.0", "SharpDX$i.dll")  )){
+           7z e $cachedir\\$dldir\\sharpdx$i.4.2.0.nupkg "-o$env:systemroot\\system32\\WindowsPowerShell\\v1.0" lib/net45/SharpDX$i.dll -y 
+        }
+    }
+
+$MiniCube=  @"
+    struct VS_IN 
+    {
+	    float4 pos : POSITION;
+	    float4 col : COLOR;
+    };
+
+    struct PS_IN
+    {
+	    float4 pos : SV_POSITION;
+	    float4 col : COLOR;
+    };
+
+    float4x4 worldViewProj;
+
+    PS_IN VS( VS_IN input )
+    {
+	    PS_IN output = (PS_IN)0;
+	
+	    output.pos = mul(input.pos, worldViewProj);
+	    output.col = input.col;
+	
+	    return output;
+    }
+
+    float4 PS( PS_IN input ) : SV_Target
+    {
+	    return input.col;
+    }
+"@
+    $MiniCube | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\MiniCube.fx
+
+Add-Type -path "$env:systemroot\\system32\\WindowsPowerShell\\v1.0\\SharpDX.dll"
+Add-Type -path "$env:systemroot\\system32\\WindowsPowerShell\\v1.0\\SharpDX.Direct3D11.dll"
+Add-Type -path "$env:systemroot\\system32\\WindowsPowerShell\\v1.0\\SharpDX.Mathematics.dll"
+Add-Type -path "$env:systemroot\\system32\\WindowsPowerShell\\v1.0\\SharpDX.D3DCompiler.dll"
+Add-Type -path "$env:systemroot\\system32\\WindowsPowerShell\\v1.0\\SharpDX.Dxgi.dll"
+Add-Type -path "$env:systemroot\\system32\\WindowsPowerShell\\v1.0\\SharpDX.Desktop.dll"
+
+Add-Type @'
+
+// Copyright (c) 2010-2013 SharpDX - Alexandre Mutel
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+using System;
+using System.Diagnostics;
+using System.Windows.Forms;
+
+using SharpDX;
+using SharpDX.D3DCompiler;
+using SharpDX.Direct3D;
+using SharpDX.Direct3D11;
+using SharpDX.DXGI;
+using SharpDX.Windows;
+using Buffer = SharpDX.Direct3D11.Buffer;
+using Device = SharpDX.Direct3D11.Device;
+
+namespace MiniCube5
+{
+    /// <summary>
+    /// SharpDX MiniCube Direct3D 11 Sample
+    /// </summary>
+    public class Program
+    {
+  //      [STAThread]
+        public void Main()
+        {
+            var form = new RenderForm("SharpDX - MiniCube Direct3D11 Sample");
+
+            // SwapChain description
+            var desc = new SwapChainDescription()
+            {
+                BufferCount = 1,
+                ModeDescription =
+                    new ModeDescription(form.ClientSize.Width, form.ClientSize.Height,
+                                        new Rational(60, 1), Format.R8G8B8A8_UNorm),
+                IsWindowed = true,
+                OutputHandle = form.Handle,
+                SampleDescription = new SampleDescription(1, 0),
+                SwapEffect = SwapEffect.Discard,
+                Usage = Usage.RenderTargetOutput
+            };
+
+            // Used for debugging dispose object references
+            // Configuration.EnableObjectTracking = true;
+
+            // Disable throws on shader compilation errors
+            //Configuration.ThrowOnShaderCompileError = false;
+
+            // Create Device and SwapChain
+            Device device;
+            SwapChain swapChain;
+            Device.CreateWithSwapChain(DriverType.Hardware, DeviceCreationFlags.None, desc, out device, out swapChain);
+            var context = device.ImmediateContext;
+
+            // Ignore all windows events
+            var factory = swapChain.GetParent<Factory>();
+            factory.MakeWindowAssociation(form.Handle, WindowAssociationFlags.IgnoreAll);
+
+            // Compile Vertex and Pixel shaders
+            var vertexShaderByteCode = ShaderBytecode.CompileFromFile(Environment.SystemDirectory + "\\WindowsPowerShell\\v1.0\\MiniCube.fx", "VS", "vs_4_0");
+            var vertexShader = new VertexShader(device, vertexShaderByteCode);
+
+            var pixelShaderByteCode = ShaderBytecode.CompileFromFile(Environment.SystemDirectory + "\\WindowsPowerShell\\v1.0\\MiniCube.fx", "PS", "ps_4_0");
+            var pixelShader = new PixelShader(device, pixelShaderByteCode);
+
+            var signature = ShaderSignature.GetInputSignature(vertexShaderByteCode);
+            // Layout from VertexShader input signature
+            var layout = new InputLayout(device, signature, new[]
+                    {
+                        new InputElement("POSITION", 0, Format.R32G32B32A32_Float, 0, 0),
+                        new InputElement("COLOR", 0, Format.R32G32B32A32_Float, 16, 0)
+                    });
+
+            // Instantiate Vertex buiffer from vertex data
+            var vertices = Buffer.Create(device, BindFlags.VertexBuffer, new[]
+                                  {
+                                      new Vector4(-1.0f, -1.0f, -1.0f, 1.0f), new Vector4(1.0f, 0.0f, 0.0f, 1.0f), // Front
+                                      new Vector4(-1.0f,  1.0f, -1.0f, 1.0f), new Vector4(1.0f, 0.0f, 0.0f, 1.0f),
+                                      new Vector4( 1.0f,  1.0f, -1.0f, 1.0f), new Vector4(1.0f, 0.0f, 0.0f, 1.0f),
+                                      new Vector4(-1.0f, -1.0f, -1.0f, 1.0f), new Vector4(1.0f, 0.0f, 0.0f, 1.0f),
+                                      new Vector4( 1.0f,  1.0f, -1.0f, 1.0f), new Vector4(1.0f, 0.0f, 0.0f, 1.0f),
+                                      new Vector4( 1.0f, -1.0f, -1.0f, 1.0f), new Vector4(1.0f, 0.0f, 0.0f, 1.0f),
+
+                                      new Vector4(-1.0f, -1.0f,  1.0f, 1.0f), new Vector4(0.0f, 1.0f, 0.0f, 1.0f), // BACK
+                                      new Vector4( 1.0f,  1.0f,  1.0f, 1.0f), new Vector4(0.0f, 1.0f, 0.0f, 1.0f),
+                                      new Vector4(-1.0f,  1.0f,  1.0f, 1.0f), new Vector4(0.0f, 1.0f, 0.0f, 1.0f),
+                                      new Vector4(-1.0f, -1.0f,  1.0f, 1.0f), new Vector4(0.0f, 1.0f, 0.0f, 1.0f),
+                                      new Vector4( 1.0f, -1.0f,  1.0f, 1.0f), new Vector4(0.0f, 1.0f, 0.0f, 1.0f),
+                                      new Vector4( 1.0f,  1.0f,  1.0f, 1.0f), new Vector4(0.0f, 1.0f, 0.0f, 1.0f),
+
+                                      new Vector4(-1.0f, 1.0f, -1.0f,  1.0f), new Vector4(0.0f, 0.0f, 1.0f, 1.0f), // Top
+                                      new Vector4(-1.0f, 1.0f,  1.0f,  1.0f), new Vector4(0.0f, 0.0f, 1.0f, 1.0f),
+                                      new Vector4( 1.0f, 1.0f,  1.0f,  1.0f), new Vector4(0.0f, 0.0f, 1.0f, 1.0f),
+                                      new Vector4(-1.0f, 1.0f, -1.0f,  1.0f), new Vector4(0.0f, 0.0f, 1.0f, 1.0f),
+                                      new Vector4( 1.0f, 1.0f,  1.0f,  1.0f), new Vector4(0.0f, 0.0f, 1.0f, 1.0f),
+                                      new Vector4( 1.0f, 1.0f, -1.0f,  1.0f), new Vector4(0.0f, 0.0f, 1.0f, 1.0f),
+
+                                      new Vector4(-1.0f,-1.0f, -1.0f,  1.0f), new Vector4(1.0f, 1.0f, 0.0f, 1.0f), // Bottom
+                                      new Vector4( 1.0f,-1.0f,  1.0f,  1.0f), new Vector4(1.0f, 1.0f, 0.0f, 1.0f),
+                                      new Vector4(-1.0f,-1.0f,  1.0f,  1.0f), new Vector4(1.0f, 1.0f, 0.0f, 1.0f),
+                                      new Vector4(-1.0f,-1.0f, -1.0f,  1.0f), new Vector4(1.0f, 1.0f, 0.0f, 1.0f),
+                                      new Vector4( 1.0f,-1.0f, -1.0f,  1.0f), new Vector4(1.0f, 1.0f, 0.0f, 1.0f),
+                                      new Vector4( 1.0f,-1.0f,  1.0f,  1.0f), new Vector4(1.0f, 1.0f, 0.0f, 1.0f),
+
+                                      new Vector4(-1.0f, -1.0f, -1.0f, 1.0f), new Vector4(1.0f, 0.0f, 1.0f, 1.0f), // Left
+                                      new Vector4(-1.0f, -1.0f,  1.0f, 1.0f), new Vector4(1.0f, 0.0f, 1.0f, 1.0f),
+                                      new Vector4(-1.0f,  1.0f,  1.0f, 1.0f), new Vector4(1.0f, 0.0f, 1.0f, 1.0f),
+                                      new Vector4(-1.0f, -1.0f, -1.0f, 1.0f), new Vector4(1.0f, 0.0f, 1.0f, 1.0f),
+                                      new Vector4(-1.0f,  1.0f,  1.0f, 1.0f), new Vector4(1.0f, 0.0f, 1.0f, 1.0f),
+                                      new Vector4(-1.0f,  1.0f, -1.0f, 1.0f), new Vector4(1.0f, 0.0f, 1.0f, 1.0f),
+
+                                      new Vector4( 1.0f, -1.0f, -1.0f, 1.0f), new Vector4(0.0f, 1.0f, 1.0f, 1.0f), // Right
+                                      new Vector4( 1.0f,  1.0f,  1.0f, 1.0f), new Vector4(0.0f, 1.0f, 1.0f, 1.0f),
+                                      new Vector4( 1.0f, -1.0f,  1.0f, 1.0f), new Vector4(0.0f, 1.0f, 1.0f, 1.0f),
+                                      new Vector4( 1.0f, -1.0f, -1.0f, 1.0f), new Vector4(0.0f, 1.0f, 1.0f, 1.0f),
+                                      new Vector4( 1.0f,  1.0f, -1.0f, 1.0f), new Vector4(0.0f, 1.0f, 1.0f, 1.0f),
+                                      new Vector4( 1.0f,  1.0f,  1.0f, 1.0f), new Vector4(0.0f, 1.0f, 1.0f, 1.0f),
+                            });
+
+            // Create Constant Buffer
+            var contantBuffer = new Buffer(device, Utilities.SizeOf<Matrix>(), ResourceUsage.Default, BindFlags.ConstantBuffer, CpuAccessFlags.None, ResourceOptionFlags.None, 0);
+
+            // Prepare All the stages
+            context.InputAssembler.InputLayout = layout;
+            context.InputAssembler.PrimitiveTopology = PrimitiveTopology.TriangleList;
+            context.InputAssembler.SetVertexBuffers(0, new VertexBufferBinding(vertices, Utilities.SizeOf<Vector4>() * 2, 0));
+            context.VertexShader.SetConstantBuffer(0, contantBuffer);
+            context.VertexShader.Set(vertexShader);
+            context.PixelShader.Set(pixelShader);
+
+            // Prepare matrices
+            var view = Matrix.LookAtLH(new Vector3(0, 0, -5), new Vector3(0, 0, 0), Vector3.UnitY);
+            Matrix proj = Matrix.Identity;
+
+            // Use clock
+            var clock = new Stopwatch();
+            clock.Start();
+
+            // Declare texture for rendering
+            bool userResized = true;
+            Texture2D backBuffer = null;
+            RenderTargetView renderView = null;
+            Texture2D depthBuffer = null;
+            DepthStencilView depthView = null;
+
+            // Setup handler on resize form
+            form.UserResized += (sender, args) => userResized = true;
+
+            // Setup full screen mode change F5 (Full) F4 (Window)
+            form.KeyUp += (sender, args) =>
+                {
+                    if (args.KeyCode == Keys.F5)
+                        swapChain.SetFullscreenState(true, null);
+                    else if (args.KeyCode == Keys.F4)
+                        swapChain.SetFullscreenState(false, null);
+                    else if (args.KeyCode == Keys.Escape)
+                        form.Close();
+                };
+
+            // Main loop
+            RenderLoop.Run(form, () =>
+            {
+                // If Form resized
+                if (userResized)
+                {
+                    // Dispose all previous allocated resources
+                    Utilities.Dispose(ref backBuffer);
+                    Utilities.Dispose(ref renderView);
+                    Utilities.Dispose(ref depthBuffer);
+                    Utilities.Dispose(ref depthView);
+
+                    // Resize the backbuffer
+                    swapChain.ResizeBuffers(desc.BufferCount, form.ClientSize.Width, form.ClientSize.Height, Format.Unknown, SwapChainFlags.None);
+
+                    // Get the backbuffer from the swapchain
+                    backBuffer = Texture2D.FromSwapChain<Texture2D>(swapChain, 0);
+
+                    // Renderview on the backbuffer
+                    renderView = new RenderTargetView(device, backBuffer);
+
+                    // Create the depth buffer
+                    depthBuffer = new Texture2D(device, new Texture2DDescription()
+                    {
+                        Format = Format.D32_Float_S8X24_UInt,
+                        ArraySize = 1,
+                        MipLevels = 1,
+                        Width = form.ClientSize.Width,
+                        Height = form.ClientSize.Height,
+                        SampleDescription = new SampleDescription(1, 0),
+                        Usage = ResourceUsage.Default,
+                        BindFlags = BindFlags.DepthStencil,
+                        CpuAccessFlags = CpuAccessFlags.None,
+                        OptionFlags = ResourceOptionFlags.None
+                    });
+
+                    // Create the depth buffer view
+                    depthView = new DepthStencilView(device, depthBuffer);
+
+                    // Setup targets and viewport for rendering
+                    context.Rasterizer.SetViewport(new Viewport(0, 0, form.ClientSize.Width, form.ClientSize.Height, 0.0f, 1.0f));
+                    context.OutputMerger.SetTargets(depthView, renderView);
+
+                    // Setup new projection matrix with correct aspect ratio
+                    proj = Matrix.PerspectiveFovLH((float)Math.PI / 4.0f, form.ClientSize.Width / (float)form.ClientSize.Height, 0.1f, 100.0f);
+
+                    // We are done resizing
+                    userResized = false;
+                }
+
+                var time = clock.ElapsedMilliseconds / 400.0f;
+
+                var viewProj = Matrix.Multiply(view, proj);
+
+                // Clear views
+                context.ClearDepthStencilView(depthView, DepthStencilClearFlags.Depth, 1.0f, 0);
+                context.ClearRenderTargetView(renderView, Color.Black);
+
+                // Update WorldViewProj Matrix
+                var worldViewProj = Matrix.RotationX(time) * Matrix.RotationY(time * 2) * Matrix.RotationZ(time * .7f) * viewProj;
+                worldViewProj.Transpose();
+                context.UpdateSubresource(ref worldViewProj, contantBuffer);
+
+                // Draw the cube
+                context.Draw(36, 0);
+
+                // Present!
+                swapChain.Present(0, PresentFlags.None);
+            });
+
+            // Release all resources
+            signature.Dispose();
+            vertexShaderByteCode.Dispose();
+            vertexShader.Dispose();
+            pixelShaderByteCode.Dispose();
+            pixelShader.Dispose();
+            vertices.Dispose();
+            layout.Dispose();
+            contantBuffer.Dispose();
+            depthBuffer.Dispose();
+            depthView.Dispose();
+            renderView.Dispose();
+            backBuffer.Dispose();
+            context.ClearState();
+            context.Flush();
+            device.Dispose();
+            context.Dispose();
+            swapChain.Dispose();
+            factory.Dispose();
+        }
+    }
+}
+'@ -IgnoreWarnings -WarningAction Continue -ReferencedAssemblies System.Runtime.Extensions,System,SharpDX,SharpDX.Direct3D11,SharpDX.D3DCompiler,SharpDX.DXGI,SharpDX.Mathematics,SharpDX.Desktop,System.Windows.Forms,System.Diagnostics.Tools,System.ComponentModel.Primitives,mscorlib,System.Drawing.Primitives,System.Threading.Thread
+
+    $env:DXVK_HUD="fps,memory"
+
+    [MiniCube5.Program]::new().Main()
+}
+
+function func_cef2
+{
+$dldir = "cef"
+
+New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\pwsh.exe\\DllOverrides' -force -Name 'dwmapi' -Value 'builtin' -PropertyType 'String'
+
+w_download_to $dldir "https://www.nuget.org/api/v2/package/CefSharp.Common/102.0.90" "CefSharp.Common_102.0.90.nupkg"
+
+w_download_to $dldir "https://www.nuget.org/api/v2/package/CefSharp.Wpf/102.0.90" "CefSharp.Wpf_102.0.90.nupkg"
+
+w_download_to $dldir "https://www.nuget.org/api/v2/package/CefSharp.WinForms/102.0.90" "CefSharp.WinForms_102.0.90.nupkg"
+
+w_download_to $dldir "https://www.nuget.org/api/v2/package/cef.redist.x64/102.0.9" "cef.redist.x64_102.0.9.nupkg"
+
+
+
+
+
+7z e $cachedir\\$dldir\\cef.redist.x64_102.0.9.nupkg "-o$env:systemroot\\system32\\WindowsPowerShell\\v1.0" -y
+
+
+7z e $cachedir\\$dldir\\CefSharp.Common_102.0.90.nupkg "-o$env:systemroot\\system32\\WindowsPowerShell\\v1.0" lib/net452/*.dll -y 
+
+
+7z e $cachedir\\$dldir\\CefSharp.Common_102.0.90.nupkg "-o$env:systemroot\\system32\\WindowsPowerShell\\v1.0" CefSharp/x64/*.dll -y 
+
+7z e $cachedir\\$dldir\\CefSharp.Common_102.0.90.nupkg "-o$env:systemroot\\system32\\WindowsPowerShell\\v1.0" CefSharp/x64/*.exe -y 
+
+7z e $cachedir\\$dldir\\CefSharp.Wpf_102.0.90.nupkg "-o$env:systemroot\\system32\\WindowsPowerShell\\v1.0" lib/net452/*.dll -y 
+
+
+7z e $cachedir\\$dldir\\CefSharp.WinForms_102.0.90.nupkg "-o$env:systemroot\\system32\\WindowsPowerShell\\v1.0" lib/net452/*.dll -y 
+
+
+
+
+
+#https://www.nuget.org/api/v2/package/CefSharp.Common/102.0.90
+
+#https://www.nuget.org/api/v2/package/CefSharp.Wpf/102.0.90
+
+#https://www.nuget.org/api/v2/package/CefSharp.WinForms/102.0.90
+
+
+#https://www.nuget.org/api/v2/package/cef.redist.x64/102.0.9
+
+Add-Type -Path $env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\System.ServiceModel.dll
+
+
+
+Add-Type -Path "$env:SystemRoot\system32\WindowsPowerShell\v1.0\CefSharp.Core.dll"
+Add-Type -Path "$env:SystemRoot\system32\WindowsPowerShell\v1.0\\CefSharp.WinForms.dll"
+Add-Type -Path "$env:SystemRoot\system32\WindowsPowerShell\v1.0\\CefSharp.dll"
+
+Add-Type -AssemblyName System.Windows.Forms
+
+# WinForm Setup
+$mainForm = New-Object System.Windows.Forms.Form
+#$mainForm.Font = "Comic Sans MS,9"
+$mainForm.ForeColor = [System.Drawing.Color]::White
+$mainForm.BackColor = [System.Drawing.Color]::DarkSlateBlue
+$mainForm.Text = "CefSharp"
+$mainForm.Width = 960
+$mainForm.Height = 700
+
+[CefSharp.WinForms.ChromiumWebBrowser] $browser = New-Object CefSharp.WinForms.ChromiumWebBrowser "www.google.com"
+$mainForm.Controls.Add($browser)
+
+[void] $mainForm.ShowDialog()
+
+
+if(1) {
+
+    Add-Type -Path "$env:SystemRoot\system32\WindowsPowerShell\v1.0\\CefSharp.Wpf.dll"
+
+    #Add-Type -AssemblyName System.Windows.Forms
+
+    Add-Type -AssemblyName PresentationFramework
+
+    [xml]$xaml = @'
+    <Window
+            xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+            xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+            xmlns:local="clr-namespace:WebBrowserTest"
+            xmlns:cef="clr-namespace:CefSharp.Wpf;assembly=CefSharp.Wpf"
+            Title="test" Height="480" Width="640">
+        <Grid>
+            <cef:ChromiumWebBrowser Address="https://www.google.co.jp" />
+        </Grid>
+    </Window>
+'@
+
+    $reader = New-Object System.Xml.XmlNodeReader $xaml
+    $frame = [System.Windows.Markup.XamlReader]::Load($reader)
+
+    $frame.ShowDialog()
+    }
+}
