@@ -83,7 +83,7 @@ __attribute__((externally_visible))  /* for -fwhole-program */
 int mainCRTStartup(void)
 {
     BOOL read_from_stdin = FALSE, ps_console = FALSE;
-    wchar_t conemu_pathW[MAX_PATH]=L"", cmdlineW[MAX_PATH]=L"", pwsh_pathW[MAX_PATH] =L"", bufW[MAX_PATH] = L"", drive[MAX_PATH] , dir[_MAX_FNAME], filenameW[_MAX_FNAME], **argv;;
+    wchar_t conemu_pathW[MAX_PATH]=L"", cmdlineW[4096]=L"", pwsh_pathW[MAX_PATH] =L"", bufW[MAX_PATH] = L"", drive[MAX_PATH] , dir[_MAX_FNAME], filenameW[_MAX_FNAME], **argv;;
     DWORD exitcode;       
     STARTUPINFOW si = {0};
     PROCESS_INFORMATION pi = {0};
