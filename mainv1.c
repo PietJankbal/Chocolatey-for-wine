@@ -154,7 +154,8 @@ int mainCRTStartup(void)
     if ( GetEnvironmentVariableW( L"PS51", bufW, MAX_PATH + 1 ) && !wcscmp( bufW, L"1") )
     {   /* Note: when run from bash, escape special char $ with single quotes and backtick e.g. PS51=1 wine powershell '`SPSVersionTable' */
         if( i == argc) ps_console = TRUE;
-        wcscat( cmdlineW, L" -c ps51 " );
+        //wcscat( cmdlineW, L" -c ps51 " );
+        ExpandEnvironmentStringsW( L"%SystemRoot%\\system32\\WindowsPowershell\\v1.0\\ps51.exe ", pwsh_pathW, MAX_PATH + 1 ); 
         for ( i = 1 ; argv[i] ; i++) wcscat( wcscat( cmdlineW, L" " ), argv[i] ); 
         goto exec;
     }
