@@ -3088,7 +3088,6 @@ function func_winmetadata <# winmetadata #>
     foreach ($i in $sourcefile) {
         if( $i.SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" -destination $env:systemroot\\system32\\winmetadata\\$($i.split('/')[-1]) }
         if( $i.SubString(0,3) -eq 'wow' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\syswow64\\winmetadata\\$($i.split('/')[-1]) } } 
-
 } <# end winmetadata #>
 
 <# Main function #>
