@@ -2,7 +2,7 @@
 Chocolatey packagemanager automatic installer in wine, handy to install quickly programs in wine
 
 Install :
-- Download and unzip the release zip-file and do 'wine ChoCinstaller_0.5y.703.exe' (takes about a minute to complete)
+- Download and unzip the release zip-file and do 'wine ChoCinstaller_0.5e.715.exe' (takes about a minute to complete)
 
 Optional:
 - Check if things went well: "choco install chromium" and  "start chrome.exe (--no-sandbox not needed anymore as of wine-8,4)" 
@@ -68,7 +68,7 @@ About winetricks(.ps1):
   So 'winetricks riched20 gdiplus' won't work anymore, use 'winetricks riched20,gdiplus' instead
 - A special verb to install requirements to get Affinity Photo/Designer started.
 - Also included a few powershell scripts adapted from codesnippets found on the internet:
-    - How to embed an exe in a powershell script via Invoke-ReflectivePEInjection (the exe won't show up in tasklist)
+    - How to embed an exe in a powershell script via Invoke-ReflectivePEInjection (the exe won't show up in tasklist).
     - How to make fancy messageboxes
     - Convert a powershell script (ps1) into an exe.
     - And a few other
@@ -85,5 +85,5 @@ Notes:
 Compile:
   - If you want to compile yourself instead of downloading binaries: see compilation instructions in mainv1.c  
   - Then copy choc_install.ps1 into the same directory
-  - Then do 'wine ChoCinstaller_0.5a.715.exe'
+  - Then do 'wine ChoCinstaller_0.5e.715.exe'
   
