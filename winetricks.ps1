@@ -156,8 +156,8 @@ function func_msxml3
     $dlls = @('msxml3.dll','msxml3r.dll'); check_aik_sanity; $dldir = "aik70"
 
     foreach ($i in $dlls) {
-        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
-        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -y| Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
+        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])
+        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -y| Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
     foreach($i in 'msxml3') { dlloverride 'native' $i }
 } <# end msxml3 #>
 
@@ -166,8 +166,8 @@ function func_msxml6
     $dlls = @('msxml6.dll', 'msxml6r.dll'); check_aik_sanity; $dldir = "aik70"
 
     foreach ($i in $dlls) {
-        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
-        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -y| Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
+        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])
+        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -y| Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
     foreach($i in 'msxml6') { dlloverride 'native' $i }
 } <# end msxml6 #>
 
@@ -176,8 +176,8 @@ function func_mfc42
     $dlls = @('mfc42.dll', 'mfc42u.dll'); check_aik_sanity; $dldir = "aik70"
 
     foreach ($i in $dlls) {
-        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
-        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -y| Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
+        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])
+        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -y| Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
 } <# end mfc42 #>
 
 function func_riched20
@@ -185,8 +185,8 @@ function func_riched20
     $dlls = @('riched20.dll','msls31.dll'); check_aik_sanity; $dldir = "aik70"
 
     foreach ($i in $dlls) {
-        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
-        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -y| Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
+        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])
+        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -y| Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
     foreach($i in 'riched20') { dlloverride 'native' $i }
 } <# end riched20 #>
 
@@ -195,8 +195,8 @@ function func_crypt32
     $dlls = @('crypt32.dll','msasn1.dll'); check_aik_sanity; $dldir = "aik70"
 
     foreach ($i in $dlls) {
-        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
-        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -y| Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
+        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])
+        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -y| Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
     foreach($i in 'crypt32') { dlloverride 'native' $i }
 }  <# end crypt32 #>
 
@@ -205,8 +205,8 @@ function func_oleaut32
     $dlls = @('oleaut32.dll'); check_aik_sanity; $dldir = "aik70"
 
     foreach ($i in $dlls) {
-        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
-        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -y| Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
+        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])
+        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -y| Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
     #foreach($i in 'oleaut32') { dlloverride 'native' $i }
 }  <# end oleaut32 #>
 
@@ -427,8 +427,8 @@ function func_hnetcfg <# fix for https://bugs.winehq.org/show_bug.cgi?id=45432 #
     w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_hnetcfg.7z" "wine_hnetcfg.7z"
 
     foreach ($i in 'hnetcfg.dll'){
-        7z e $cachedir\\$dldir\\wine_hnetcfg.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
-        7z e $cachedir\\\\$dldir\\wine_hnetcfg.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1]); quit?('7z') }
+        7z e $cachedir\\$dldir\\wine_hnetcfg.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
+        7z e $cachedir\\\\$dldir\\wine_hnetcfg.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1]); quit?('7z') }
     foreach($i in 'hnetcfg') { dlloverride 'native' $i }
 } <# end hnetcfg #>
 
@@ -438,8 +438,8 @@ function func_msi <# wine msi with some hacks faking success #>
     w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_msi.7z" "wine_msi.7z"
 
     foreach ($i in 'msi.dll'){
-        7z e $cachedir\\$dldir\\wine_msi.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
-        7z e $cachedir\\\\$dldir\\wine_msi.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
+        7z e $cachedir\\$dldir\\wine_msi.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
+        7z e $cachedir\\\\$dldir\\wine_msi.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
     foreach($i in 'msi') { dlloverride 'native' $i }
 } <# end msi #>
 
@@ -449,8 +449,8 @@ function func_wintrust <# wine wintrust with some hacks faking success #>
     w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_wintrust.7z" "wine_wintrust.7z"
 
     foreach ($i in 'wintrust.dll'){
-        7z e $cachedir\\$dldir\\wine_wintrust.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
-        7z e $cachedir\\\\$dldir\\wine_wintrust.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
+        7z e $cachedir\\$dldir\\wine_wintrust.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
+        7z e $cachedir\\\\$dldir\\wine_wintrust.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
     foreach($i in 'wintrust') { dlloverride 'native' $i }
 } <# end wintrust #>
 
@@ -460,8 +460,8 @@ function func_wintypes <# wintypes #>
     w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_wintypes.7z" "wine_wintypes.7z"
 
     foreach ($i in 'wintypes.dll'){
-        7z e $cachedir\\$dldir\\wine_wintypes.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
-        7z e $cachedir\\\\$dldir\\wine_wintypes.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
+        7z e $cachedir\\$dldir\\wine_wintypes.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
+        7z e $cachedir\\\\$dldir\\wine_wintypes.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
     foreach($i in 'wintypes') { dlloverride 'native' $i }
 } <# end wintypes #>
 
@@ -472,8 +472,8 @@ function func_dxcore <# dxcore #>
     w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_ext-ms-win-dxcore-l1-1-0.7z" "wine_ext-ms-win-dxcore-l1-1-0.7z"
 
     foreach ($i in 'dxcore.dll', 'ext-ms-win-dxcore-l1-1-0.dll'){
-        7z e $cachedir\\$dldir\\wine_$($i.split('.')[0]).7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
-        7z e $cachedir\\\\$dldir\\wine_$($i.split('.')[0]).7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
+        7z e $cachedir\\$dldir\\wine_$($i.split('.')[0]).7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
+        7z e $cachedir\\\\$dldir\\wine_$($i.split('.')[0]).7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
 } <# end dxcore #>
 
 function func_dxvk1103
@@ -568,8 +568,8 @@ function func_msado15
                   'x86_microsoft-windows-m..nents-mdac-ado15-rh_31bf3856ad364e35_6.1.7600.16385_none_33ac69f3afeb0325/msadrh15.dll')
 
     foreach ($i in $adodlls) {
-            if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB "-o$env:CommonProgramFiles\\System\\ADO" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
-            if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB "-o${env:CommonProgramFiles`(x86`)}\\System\\ADO" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}} quit?('7z')
+            if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB "-o$env:CommonProgramFiles\\System\\ADO" $i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}
+            if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB "-o${env:CommonProgramFiles`(x86`)}\\System\\ADO" $i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}} quit?('7z')
 
     $oledlls = @( 'amd64_microsoft-windows-m..ents-mdac-oledb-dll_31bf3856ad364e35_6.1.7600.16385_none_4e1fa9e216eb782f/oledb32.dll', `
                   'x86_microsoft-windows-m..ents-mdac-oledb-dll_31bf3856ad364e35_6.1.7600.16385_none_f2010e5e5e8e06f9/oledb32.dll', `
@@ -577,8 +577,8 @@ function func_msado15
                   'x86_microsoft-windows-m..ents-mdac-oledb-rll_31bf3856ad364e35_6.1.7600.16385_none_f83672e25a90465b/oledb32r.dll' )
 
     foreach ($i in $oledlls) {
-            if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB "-o$env:CommonProgramFiles\\System\\OLE DB" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
-            if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB "-o${env:CommonProgramFiles`(x86`)}\\System\\OLE DB" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}} quit?('7z')
+            if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB "-o$env:CommonProgramFiles\\System\\OLE DB" $i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}
+            if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB "-o${env:CommonProgramFiles`(x86`)}\\System\\OLE DB" $i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}} quit?('7z')
 
     $adcdlls = @( 'amd64_microsoft-windows-m..nts-mdac-rds-ce-rll_31bf3856ad364e35_6.1.7600.16385_none_bd4e87525be1bd8b/msadcer.dll', `
                   'x86_microsoft-windows-m..nts-mdac-rds-ce-rll_31bf3856ad364e35_6.1.7600.16385_none_612febcea3844c55/msadcer.dll', `
@@ -586,8 +586,8 @@ function func_msado15
                   'x86_microsoft-windows-m..nts-mdac-rds-ce-dll_31bf3856ad364e35_6.1.7600.16385_none_61c74ab6a312c527/msadce.dll' )
 
     foreach ($i in $adcdlls) {
-            if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB "-o$env:CommonProgramFiles\\System\\MSADC" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
-            if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB "-o${env:CommonProgramFiles`(x86`)}\\System\\MSADC" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}} quit?('7z')
+            if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB "-o$env:CommonProgramFiles\\System\\MSADC" $i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}
+            if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB "-o${env:CommonProgramFiles`(x86`)}\\System\\MSADC" $i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}} quit?('7z')
 
 
     $dlls = @( 'amd64_microsoft-windows-m..ponents-mdac-msdart_31bf3856ad364e35_6.1.7600.16385_none_42074b3f2553d5bd/msdart.dll', `
@@ -597,8 +597,8 @@ function func_msado15
 #              'x86_microsoft-windows-m..mponents-jetintlerr_31bf3856ad364e35_6.1.7600.16385_none_0f472a3521bdcfd4/msjter40.dll' )
 		 
     foreach ($i in $dlls) {
-            if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB "-o$env:systemroot\\system32" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
-            if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB "-o$env:systemroot\\syswow64" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}} quit?('7z')
+            if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB "-o$env:systemroot\\system32" $i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}
+            if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB "-o$env:systemroot\\syswow64" $i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}} quit?('7z')
 
     foreach($i in 'msado15', 'oledb32') { dlloverride 'native' $i }
 
@@ -684,7 +684,7 @@ function func_expand
                   'amd64_microsoft-windows-deltacompressionengine_31bf3856ad364e35_6.1.7600.16385_none_9c2159bf9f702069/msdelta.dll' )
 
         if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $exp) ) ) {
-            7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$([IO.Path]::Combine($cachedir,  $dldir,  $exp.Split('/')[0]))" Windows/winsxs/$exp -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
+            7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$([IO.Path]::Combine($cachedir,  $dldir,  $exp.Split('/')[0]))" Windows/winsxs/$exp -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])
         }
     #Rename expand.exe to expnd_.exe to not interfere with wine`s expand; also rename it inside the binary
     #https://stackoverflow.com/questions/73790902/replace-string-in-a-binary-clipboard-dump-from-onenote
@@ -707,7 +707,7 @@ function func_expand
 
     foreach ($i in $dlls) {
         if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ) {
-            7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$([IO.Path]::Combine($cachedir,  $dldir,  $i.Split('/')[0]))" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
+            7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$([IO.Path]::Combine($cachedir,  $dldir,  $i.Split('/')[0]))" Windows/winsxs/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])
         }
     }
 
@@ -727,8 +727,8 @@ function func_xmllite
                   'x86_microsoft-windows-servicingstack_31bf3856ad364e35_6.1.7600.16385_none_0935b76c289e0fd5/xmllite.dll' )
 		  
     foreach ($i in $expdlls) {
-        if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
-        if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])}} quit?('7z')
+        if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}
+        if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])}} quit?('7z')
 
     foreach($i in 'xmllite') { dlloverride 'native' $i }
 } <# end xmllite #>
@@ -740,8 +740,8 @@ function func_comctl32
                  'x86_microsoft.windows.common-controls_6595b64144ccf1df_6.0.7600.16385_none_421189da2b7fabfc/comctl32.dll') ` 
 
     foreach ($i in $60dlls) {
-        if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
-        if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])}} quit?('7z')
+        if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}
+        if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])}} quit?('7z')
 
 $regkey = @"
 REGEDIT4
@@ -816,8 +816,8 @@ function func_mshtml
                 )
 
     foreach ($i in $iedlls) {
-            if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_HTA.CAB "-o$env:systemroot\\system32" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
-            if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_HTA.CAB "-o$env:systemroot\\syswow64" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}} quit?('7z')
+            if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_HTA.CAB "-o$env:systemroot\\system32" $i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}
+            if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_HTA.CAB "-o$env:systemroot\\syswow64" $i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}} quit?('7z')
 
     $sxsdlls = @( 'amd64_microsoft-windows-msls31_31bf3856ad364e35_6.1.7600.16385_none_27f4c55dbc24c492/msls31.dll', `
                   'x86_microsoft-windows-msls31_31bf3856ad364e35_6.1.7600.16385_none_cbd629da03c7535c/msls31.dll', `
@@ -829,21 +829,21 @@ function func_mshtml
                   'x86_microsoft-windows-shlwapi_31bf3856ad364e35_6.1.7600.16385_none_f9b00828060280bb/shlwapi.dll')
 
     foreach ($i in $sxsdlls) {
-            if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
-            if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])}} quit?('7z')
+            if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}
+            if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])}} quit?('7z')
 
     $scrdlls = @( 'amd64_microsoft-windows-scripting-jscript_31bf3856ad364e35_8.0.7600.16385_none_f98f217587d75631/jscript.dll',`
                   'x86_microsoft-windows-scripting-jscript_31bf3856ad364e35_8.0.7600.16385_none_9d7085f1cf79e4fb/jscript.dll')
 
     foreach ($i in $scrdlls) {
-            if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_SCRIPTING.CAB "-o$env:systemroot\\system32" $i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])}
-            if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_SCRIPTING.CAB "-o$env:systemroot\\syswow64" $i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])}} quit?('7z')
+            if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_SCRIPTING.CAB "-o$env:systemroot\\system32" $i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}
+            if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_SCRIPTING.CAB "-o$env:systemroot\\syswow64" $i -y | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])}} quit?('7z')
 
     $dlls = @('urlmon.dll' <# ,'iertutil.dll' #>)
 
     foreach ($i in $dlls) {
-        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 64-bit $($i.split('/')[-1])
-        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\syswow64" Windows/System32/$i -y | Select-String 'ok' && Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
+        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])
+        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\syswow64" Windows/System32/$i -y | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
 
     foreach($i in 'mshtml', 'ieframe', 'urlmon', 'jscript', 'wininet', 'shlwapi') { dlloverride 'native' $i }
     foreach($i in 'msimtf') { dlloverride 'builtin' $i }
@@ -983,7 +983,18 @@ function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
     @('amd64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_77331ae862faf7ef/microsoft.powershell.utility.psd1',    'Modules\\microsoft.powershell.utility'),`
     @('wow64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_8187c53a975bb9ea/microsoft.powershell.utility.psd1',    'Modules\\microsoft.powershell.utility'),`
     @('amd64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_77331ae862faf7ef/microsoft.powershell.utility.psm1',    'Modules\\microsoft.powershell.utility'),`
-    @('wow64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_8187c53a975bb9ea/microsoft.powershell.utility.psm1',    'Modules\\microsoft.powershell.utility')`
+    @('wow64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_8187c53a975bb9ea/microsoft.powershell.utility.psm1',    'Modules\\microsoft.powershell.utility'),`
+#    
+    @('amd64_microsoft.powershell.archive_31bf3856ad364e35_7.3.7601.16384_none_f7ab4242f320bef0/microsoft.powershell.archive.psm1',                  'Modules\\microsoft.powershell.archive'),`
+    @('amd64_microsoft.powershell.archive_31bf3856ad364e35_7.3.7601.16384_none_f7ab4242f320bef0/microsoft.powershell.archive.psd1',                  'Modules\\microsoft.powershell.archive'),`
+    @('wow64_microsoft.powershell.archive_31bf3856ad364e35_7.3.7601.16384_none_01ffec95278180eb/microsoft.powershell.archive.psm1',                  'Modules\\microsoft.powershell.archive'),`
+    @('wow64_microsoft.powershell.archive_31bf3856ad364e35_7.3.7601.16384_none_01ffec95278180eb/microsoft.powershell.archive.psd1',                  'Modules\\microsoft.powershell.archive'),`
+#
+    @('amd64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_77331ae862faf7ef/microsoft.powershell.diagnostics.psd1',    'Modules\\microsoft.powershell.diagnostics'),`
+    @('wow64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_8187c53a975bb9ea/microsoft.powershell.diagnostics.psd1',    'Modules\\microsoft.powershell.diagnostics'),`
+#    
+    @('amd64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_77331ae862faf7ef/microsoft.powershell.security.psd1',       'Modules\\microsoft.powershell.security'),`
+    @('wow64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_8187c53a975bb9ea/microsoft.powershell.security.psd1',       'Modules\\microsoft.powershell.security')`
     )
     <# fragile test... #>
     if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:systemroot, "system32", "dpx.dll")  ) ) { func_expand }
@@ -1037,7 +1048,12 @@ REGEDIT4
 <# add a custom profile file for powershell 5.1 ; escape dollarsign with back-tick here to write it correctly to profile file! #>
 $profile51 = @"
 <# PowerShell 5.1 profile #>
-`$env:PSModulepath = 'c:\windows\system32\WindowsPowershell\v1.0\Modules' + `$env:PSModulepath
+#FIXME: following causes a hang when running pwsh from ps51 console:
+#`$env:PSModulepath = 'c:\windows\system32\WindowsPowershell\v1.0\Modules' + `$env:PSModulepath
+
+Import-Module `$env:SystemRoot\system32\WindowsPowerShell\v1.0\Modules\microsoft.powershell.utility\microsoft.powershell.utility.psm1
+
+`$env:PS51 = 1
 
 function Get-CIMInstance ( [parameter(position=0)] [string]`$classname, [string[]]`$property="*")
 {
@@ -1051,25 +1067,20 @@ if (!(Get-process -Name powershell_ise -erroraction silentlycontinue)) {
  
     Set-ExecutionPolicy ByPass
  
-    Import-Module PSReadLine
+#    Import-Module PSReadLine
 
     function prompt  
     {  
         `$ESC = [char]27
          "`$ESC[93mPS 51! `$(`$executionContext.SessionState.Path.CurrentLocation)`$(' `$' * (`$nestedPromptLevel + 1)) `$ESC[0m"  
     }
-
-    function winetricks
-    {
-         if (!([System.IO.File]::Exists("`$env:ProgramData\\Chocolatey-for-wine\\winetricks.ps1"))){
-             Add-Type -AssemblyName PresentationCore,PresentationFramework;
-             [System.Windows.MessageBox]::Show("winetricks script is missing`nplease reinstall it in c:\\ProgramData\\Chocolatey-for-wine",'Congrats','ok','exclamation')
-         }
-         pwsh -f `$( Join-Path `$env:ProgramData\\Chocolatey-for-wine "winetricks.ps1") `$args
-    }
 }
+
+. "`$env:ProgramData\Chocolatey-for-wine\profile_winetricks_caller.ps1"
+
 "@
     $profile51 | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\profile.ps1
+    $profile51 | Out-File $env:SystemRoot\\syswow64\\WindowsPowerShell\v1.0\\profile.ps1
 
 #    Copy-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\system.management.automation.dll" -Destination (New-item -Name "System.Management.Automation\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
     Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\system.management.automation.dll" -Destination (New-item -Name "System.Management.Automation\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
@@ -1083,6 +1094,8 @@ if (!(Get-process -Name powershell_ise -erroraction silentlycontinue)) {
     Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.powershell.commands.utility.dll" -Destination (New-item -Name "Microsoft.PowerShell.Commands.Utility\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
     Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.powershell.consolehost.dll" -Destination (New-item -Name "Microsoft.PowerShell.ConsoleHost\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
     Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.powershell.commands.diagnostics.dll" -Destination (New-item -Name "Microsoft.PowerShell.Commands.Diagnostics\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
+
+    ps51.exe
 } <# end ps51 #>
 
 function func_ps51_ise <# Powershell 5.1 Integrated Scripting Environment #>
@@ -2872,8 +2885,12 @@ function install_from_manifest ( [parameter(position=0)] [string] $manifestfile,
                 $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.windows)')),"$env:systemroot" -replace ([Regex]::Escape('$(runtime.inf)')),"$env:systemroot\\inf"
 
                 if (-not (Test-Path -Path $finalpath )) { New-Item -Path $finalpath -ItemType directory -Force }
-
-                Copy-Item -Path $($manifestfile.Replace('.manifest','\') + ( ($file) ? $(([System.IO.FileInfo]$file).Name) : '*' ) ) -Destination $finalpath -Force -verbose #-ErrorAction SilentlyContinue  
+                if($file) {
+                    Copy-Item -Path $($manifestfile.Replace('.manifest','\') +  $(([System.IO.FileInfo]$file).Name) ) -Destination $finalpath -Force -verbose #-ErrorAction SilentlyContinue  
+                }
+                else {
+                    Copy-Item -Path $($manifestfile.Replace('.manifest','\') + '*' ) -Destination $finalpath -Force -verbose #-ErrorAction SilentlyContinue  
+                }
             } 
         }
     ############  Also copy 'links' #########################
@@ -2907,7 +2924,7 @@ function install_from_manifest ( [parameter(position=0)] [string] $manifestfile,
             if (-not (Test-Path -Path $finalpath )) { New-Item -Path $finalpath -ItemType directory -Force }
             Copy-Item -Path $file -Destination $finalpath -Force  -verbose # -ErrorAction SilentlyContinue 
         }
-        else { ($file) ? (Write-Host -foregroundcolor yellow "***  No way found to install the file, copy it manually from location $file  ***") : ($null)<#FIXME#>}
+        else { if($file) { Write-Host -foregroundcolor yellow "***  No way found to install the file, copy it manually from location $file  ***" } else {Write-Host $null}<#FIXME#>}
 } <# end function install_from_manifest #>
 
 function func_dotnet481
@@ -3077,5 +3094,5 @@ function func_winmetadata <# winmetadata #>
 } <# end winmetadata #>
 
 <# Main function #>
-    $result = ($args.count) ? ($args) : ($custom_array  | select name,description | Out-GridView  -PassThru  -Title 'Make a  selection')
-    foreach ($i in $result) { $call = ($args.count) ? ($i) : ($i.Name); & $('func_' + $call); }
+    if ( $args.count ) { $result =  $args } else { $result = $custom_array  | select name,description | Out-GridView  -PassThru  -Title 'Make a  selection'}
+    foreach ($i in $result) { if ( $args.count ) { $call = $i } else { $call = $i.Name }; & $('func_' + $call); }
