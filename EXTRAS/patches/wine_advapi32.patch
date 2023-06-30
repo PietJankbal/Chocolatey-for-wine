@@ -1,0 +1,198 @@
+From 01e297aba3b56bb56f24308fe0817f72d1b8c0df Mon Sep 17 00:00:00 2001
+From: llde <lorenzofersteam@live.it>
+Date: Tue, 23 May 2023 00:07:04 +0200
+Subject: [PATCH] add implementation of PerfSetULongCounterValue and
+ PerfSetULongLongCounterValue (for VS)
+
+
+I've put the changes from the author above and for RegLoadAppKey (patch from Roman Pisl) into advapi32 as this dll will not change much (in contrary to kernelbase)
+See https://bugs.winehq.org/show_bug.cgi?id=48023
+
+diff --git a/dlls/advapi32/advapi.c b/dlls/advapi32/advapi.c
+index 6b3ffe2ea25..dbcab6291e1 100644
+--- a/dlls/advapi32/advapi.c
++++ b/dlls/advapi32/advapi.c
+@@ -17,12 +17,20 @@
+  * License along with this library; if not, write to the Free Software
+  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+  */
++#define COBJMACROS
++
++#include "ntstatus.h"
+ 
+ #include <errno.h>
+ #include <stdio.h>
+ #include <string.h>
+ #include <stdarg.h>
+ 
++#define WIN32_NO_STATUS
++#include "windows.h"
++#include "appmodel.h"
++#include "shlwapi.h"
++#include "winternl.h"
+ #include "windef.h"
+ #include "winbase.h"
+ #include "winnls.h"
+@@ -33,12 +41,45 @@
+ #include "wct.h"
+ #include "perflib.h"
+ 
++
++
+ #include "wine/debug.h"
+ 
++#include "wine/heap.h"
++#include "wine/list.h"
++
++
+ #include "advapi32_misc.h"
+ 
+ WINE_DEFAULT_DEBUG_CHANNEL(advapi);
+ 
++struct perf_provider
++{
++    GUID guid;
++    PERFLIBREQUEST callback;
++    struct counterset_template **countersets;
++    unsigned int counterset_count;
++
++    struct list instance_list;
++};
++
++static struct perf_provider *perf_provider_from_handle(HANDLE prov)
++{
++    return (struct perf_provider *)prov;
++}
++
++struct counterset_template
++{
++    PERF_COUNTERSET_INFO counterset;
++    PERF_COUNTER_INFO counter[1];
++};
++
++struct counterset_instance
++{
++    struct list entry;
++    struct counterset_template *template;
++    PERF_COUNTERSET_INSTANCE instance;
++};
+ /******************************************************************************
+  * GetUserNameA [ADVAPI32.@]
+  */
+@@ -361,3 +402,90 @@ ULONG WINAPI PerfQueryCounterData( HANDLE query, PERF_DATA_HEADER *data, DWORD d
+ 
+     return ERROR_SUCCESS;
+ }
++
++
++/******************************************************************************
++ * RegLoadAppKeyA (kernelbase.@)
++ *
++ */
++LSTATUS WINAPI RegLoadAppKeyA(const char *file, HKEY *result, REGSAM sam, DWORD options, DWORD reserved)
++{
++    FIXME("%s %p %lu %lu %lu: stub\n", wine_dbgstr_a(file), result, sam, options, reserved);
++
++    if (!file || reserved)
++        return ERROR_INVALID_PARAMETER;
++
++    return RegOpenKeyExA(HKEY_CURRENT_USER, "", KEY_ALL_ACCESS, 0, result);
++}
++
++/******************************************************************************
++ * RegLoadAppKeyW (kernelbase.@)
++ *
++ */
++LSTATUS WINAPI RegLoadAppKeyW(const WCHAR *file, HKEY *result, REGSAM sam, DWORD options, DWORD reserved)
++{
++    FIXME("%s %p %lu %lu %lu: stub\n", wine_dbgstr_w(file), result, sam, options, reserved);
++
++    if (!file || reserved)
++        return ERROR_INVALID_PARAMETER;
++
++    return RegOpenKeyExW(HKEY_CURRENT_USER, L"", KEY_ALL_ACCESS, 0, result);
++}
++
++/***********************************************************************
++ *           PerfSetULongCounterValue   (KERNELBASE.@)
++ */
++ULONG WINAPI PerfSetULongCounterValue(HANDLE provider, PERF_COUNTERSET_INSTANCE *instance,
++                                    ULONG counterid, ULONG value)
++{
++    struct perf_provider *prov = perf_provider_from_handle( provider );
++    struct counterset_template *template;
++    struct counterset_instance *inst;
++    unsigned int i;
++
++    FIXME( "provider %p, instance %p, counterid %lu, address %lu semi-stub.\n",
++           provider, instance, counterid, value );
++
++    if (!prov || !instance) return ERROR_INVALID_PARAMETER;
++
++    inst = CONTAINING_RECORD(instance, struct counterset_instance, instance);
++    template = inst->template;
++
++    for (i = 0; i < template->counterset.NumCounters; ++i)
++        if (template->counter[i].CounterId == counterid) break;
++
++    if (i == template->counterset.NumCounters) return ERROR_NOT_FOUND;
++    
++    *(ULONG*)((BYTE *)&inst->instance + sizeof(PERF_COUNTERSET_INSTANCE) + template->counter[i].Offset) = value;
++
++    return STATUS_SUCCESS;
++}
++/***********************************************************************
++ *           PerfSetULongLongCounterValue   (KERNELBASE.@)
++ */
++ULONG WINAPI PerfSetULongLongCounterValue(HANDLE provider, PERF_COUNTERSET_INSTANCE *instance,
++                                    ULONG counterid, ULONGLONG value)
++{
++    struct perf_provider *prov = perf_provider_from_handle( provider );
++    struct counterset_template *template;
++    struct counterset_instance *inst;
++    unsigned int i;
++
++    FIXME( "provider %p, instance %p, counterid %lu, address %lu semi-stub.\n",
++           provider, instance, counterid, value );
++
++    if (!prov || !instance) return ERROR_INVALID_PARAMETER;
++
++    inst = CONTAINING_RECORD(instance, struct counterset_instance, instance);
++    template = inst->template;
++
++    for (i = 0; i < template->counterset.NumCounters; ++i)
++        if (template->counter[i].CounterId == counterid) break;
++
++    if (i == template->counterset.NumCounters) return ERROR_NOT_FOUND;
++    
++    *(ULONGLONG*)((BYTE *)&inst->instance + sizeof(PERF_COUNTERSET_INSTANCE) + template->counter[i].Offset) = value;
++
++    return STATUS_SUCCESS;
++}
++
+diff --git a/dlls/advapi32/advapi32.spec b/dlls/advapi32/advapi32.spec
+index b69186d07a7..58153fe54f7 100644
+--- a/dlls/advapi32/advapi32.spec
++++ b/dlls/advapi32/advapi32.spec
+@@ -577,8 +577,8 @@
+ # @ stub PerfRegSetValue
+ @ stdcall -import PerfSetCounterRefValue(long ptr long ptr)
+ @ stdcall -import PerfSetCounterSetInfo(long ptr long)
+-# @ stub PerfSetULongCounterValue
+-# @ stub PerfSetULongLongCounterValue
++@ stdcall PerfSetULongCounterValue(long ptr long long)
++@ stdcall PerfSetULongLongCounterValue(long ptr long int64)
+ @ stdcall -import PerfStartProvider(ptr ptr ptr)
+ @ stdcall -import PerfStartProviderEx(ptr ptr ptr)
+ @ stdcall -import PerfStopProvider(long)
+@@ -650,8 +650,8 @@
+ @ stdcall -import RegGetKeySecurity(long long ptr ptr)
+ @ stdcall -import RegGetValueA(long str str long ptr ptr ptr)
+ @ stdcall -import RegGetValueW(long wstr wstr long ptr ptr ptr)
+-@ stdcall -import RegLoadAppKeyA(str ptr long long long)
+-@ stdcall -import RegLoadAppKeyW(wstr ptr long long long)
++@ stdcall RegLoadAppKeyA(str ptr long long long)
++@ stdcall RegLoadAppKeyW(wstr ptr long long long)
+ @ stdcall -import RegLoadKeyA(long str str)
+ @ stdcall -import RegLoadKeyW(long wstr wstr)
+ @ stdcall -import RegLoadMUIStringA(long str str long ptr long str)
