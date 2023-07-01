@@ -454,6 +454,36 @@ function func_wintrust <# wine wintrust with some hacks faking success #>
     foreach($i in 'wintrust') { dlloverride 'native' $i }
 } <# end wintrust #>
 
+function func_advapi32 <# wine advapi32 with some hacks #>
+{
+    $dldir = "advapi32"
+    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_advapi32.7z" "wine_advapi32.7z"
+
+    foreach ($i in 'advapi32.dll'){
+        7z e $cachedir\\$dldir\\wine_advapi32.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
+        7z e $cachedir\\\\$dldir\\wine_advapi32.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
+} <# end advapi32 #>
+
+function func_ole32 <# wine ole32 with some hacks  #>
+{
+    $dldir = "ole32"
+    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_ole32.7z" "wine_ole32.7z"
+
+    foreach ($i in 'ole32.dll'){
+        7z e $cachedir\\$dldir\\wine_ole32.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
+        7z e $cachedir\\\\$dldir\\wine_ole32.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
+} <# end ole32 #>
+
+function func_combase <# wine combase with some hacks #>
+{
+    $dldir = "combase"
+    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_combase.7z" "wine_combase.7z"
+
+    foreach ($i in 'combase.dll'){
+        7z e $cachedir\\$dldir\\wine_combase.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
+        7z e $cachedir\\\\$dldir\\wine_combase.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
+} <# end combase #>
+
 function func_wintypes <# wintypes #>
 {
     $dldir = "wintypes"
@@ -1206,9 +1236,9 @@ function func_app_paths
 function func_vs19
 {
 func_msxml6
-func_msxml3
-func_vcrun2019
-func_xmllite
+#func_msxml3
+#func_vcrun2019
+#func_xmllite
 
 winecfg /v win7
 
@@ -1217,10 +1247,22 @@ winecfg /v win7
 7z x $env:TMP\\installer "-o$env:TMP\\opc" -y ;quit?('7z')
 
 set-executionpolicy bypass
- 
- Start-Process  "$env:TMP\\opc\\Contents\\vs_installer.exe" -Verb RunAs -ArgumentList "install --channelId VisualStudio.16.Release --channelUri `"https://aka.ms/vs/16/release/channel`" --productId Microsoft.VisualStudio.Product.Community --add Microsoft.VisualStudio.Workload.VCTools --add `"Microsoft.VisualStudio.Component.VC.Tools.x86.x64`" --add `"Microsoft.VisualStudio.Component.VC.CoreIde`"  --add `"Microsoft.VisualStudio.Component.Windows10SDK.16299`"           --includeRecommended --quiet"
+
+Start-Process  "$env:TMP\\opc\\Contents\\vs_installer.exe" -Verb RunAs -ArgumentList "install --channelId VisualStudio.16.Release --channelUri `"https://aka.ms/vs/16/release/channel`" --productId Microsoft.VisualStudio.Product.Community --add Microsoft.VisualStudio.Workload.VCTools --add `"Microsoft.VisualStudio.Component.VC.Tools.x86.x64`" --add `"Microsoft.VisualStudio.Component.VC.CoreIde`"             --includeRecommended --quiet" 
+# Start-Process  "$env:TMP\\opc\\Contents\\vs_installer.exe" -Verb RunAs -ArgumentList "install --channelId VisualStudio.16.Release --channelUri `"https://aka.ms/vs/16/release/channel`" --productId Microsoft.VisualStudio.Product.Community --add Microsoft.VisualStudio.Workload.VCTools --add `"Microsoft.VisualStudio.Component.VC.Tools.x86.x64`" --add `"Microsoft.VisualStudio.Component.VC.CoreIde`"  --add `"Microsoft.VisualStudio.Component.Windows10SDK.16299`"           --includeRecommended --quiet"
 
 #cl.exe -I"c:\Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/um/"     -I"c:\Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/Shared/"   -I"c:\Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/ucrt/"   -I"c:\Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/include/" .\mainv1.c /link /LIBPATH:"c:/Program Files (x86)/Windows Kits/10/Lib/10.0.16299.0/um/x64/" /LIBPATH:"c:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/lib/x64/" /LIBPATH:"c:/Program Files (x86)/Windows Kits/10/Lib/10.0.16299.0/ucrt/x64/"  "c:/Program Files (x86)/Windows Kits/10/Lib/10.0.16299.0/um/x64/urlmon.lib"  "c:/Program Files (x86)/Windows Kits/10/Lib/10.0.16299.0/um/x64/shlwapi.lib"
+
+
+  func_advapi32
+  func_ole32
+  func_combase
+
+  if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe'}
+  if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides'}
+  New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'advapi32' -Value 'native' -PropertyType 'String' -force
+  New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'ole32' -Value 'native' -PropertyType 'String' -force
+  New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'combase' -Value 'native' -PropertyType 'String' -force
 
 }
 
