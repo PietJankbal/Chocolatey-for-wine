@@ -1236,6 +1236,7 @@ function func_app_paths
 function func_vs19
 {
 func_msxml6
+#func_wintrust
 #func_msxml3
 #func_vcrun2019
 #func_xmllite
@@ -1257,6 +1258,7 @@ Start-Process  "$env:TMP\\opc\\Contents\\vs_installer.exe" -Verb RunAs -Argument
   func_advapi32
   func_ole32
   func_combase
+  
 
   if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe'}
   if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides'}
