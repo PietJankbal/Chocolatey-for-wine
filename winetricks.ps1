@@ -9,7 +9,7 @@ function validate_param
         [Parameter(Mandatory=$false)]
         [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'd2d1',`
                      'dxvk1103', 'dxvk20', 'hnetcfg', 'msi', 'wintrust', 'sapi', 'ps51', 'ps51_ise', 'crypt32', 'oleaut32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'uxtheme', 'comctl32', 'wsh57',`
-                     'nocrashdialog', 'renderer=vulkan', 'renderer=gl', 'app_paths', 'vs19','sharpdx', 'dotnet35', 'dotnet481' ,'cef', 'd3dx','sspicli', 'dshow', 'findstr', 'affinity_requirements', 'winmetadata', 'wintypes', 'dxcore', 'install_dll_from_msu', 'wpf_xaml', 'wpf_msgbox', 'wpf_routedevents', 'embed-exe-in-psscript', 'vulkansamples', 'ps2exe')]
+                     'nocrashdialog', 'renderer=vulkan', 'renderer=gl', 'app_paths', 'vs19','git.portable','sharpdx', 'dotnet35', 'dotnet481' ,'cef', 'd3dx','sspicli', 'dshow', 'findstr', 'affinity_requirements', 'winmetadata', 'wintypes', 'dxcore', 'install_dll_from_msu', 'wpf_xaml', 'wpf_msgbox', 'wpf_routedevents', 'embed-exe-in-psscript', 'vulkansamples', 'ps2exe')]
         [string[]]$verb
       )
 }
@@ -53,6 +53,7 @@ $custom_array = @() # Creating an empty array to populate data in
                "renderer=gl", "renderer=gl",`
                "app_paths", "start new shell with app paths added to the path (permanently), invoke from powershell console!",
                "vs19", "Visual Studio 2019, only install, devenv doesn't work ",
+               "git.portable","Access to several unix-commands like tar, file, sed etc. etc.",
                "d3dx", "d3x9*, d3dx10*, d3dx11*, xactengine*, xapofx* x3daudio*, xinput* and d3dcompiler",
                "sspicli", "dangerzone, only for testing, might break things, only use on a per app base",
                "dshow", "directshow dlls: qdvd qcap etc.",
@@ -454,7 +455,7 @@ function func_wintrust <# wine wintrust with some hacks faking success #>
     foreach($i in 'wintrust') { dlloverride 'native' $i }
 } <# end wintrust #>
 
-function func_advapi32 <# wine advapi32 with some hacks #>
+function func_advapi32 <# wine advapi32 with some hacks faking success #>
 {
     $dldir = "advapi32"
     w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_advapi32.7z" "wine_advapi32.7z"
@@ -464,7 +465,7 @@ function func_advapi32 <# wine advapi32 with some hacks #>
         7z e $cachedir\\\\$dldir\\wine_advapi32.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
 } <# end advapi32 #>
 
-function func_ole32 <# wine ole32 with some hacks  #>
+function func_ole32 <# wine ole32 with some hacks faking success #>
 {
     $dldir = "ole32"
     w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_ole32.7z" "wine_ole32.7z"
@@ -474,7 +475,7 @@ function func_ole32 <# wine ole32 with some hacks  #>
         7z e $cachedir\\\\$dldir\\wine_ole32.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
 } <# end ole32 #>
 
-function func_combase <# wine combase with some hacks #>
+function func_combase <# wine combase with some hacks faking success #>
 {
     $dldir = "combase"
     w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_combase.7z" "wine_combase.7z"
@@ -483,6 +484,16 @@ function func_combase <# wine combase with some hacks #>
         7z e $cachedir\\$dldir\\wine_combase.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
         7z e $cachedir\\\\$dldir\\wine_combase.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
 } <# end combase #>
+
+function func_shell32 <# wine shell32 with some hacks faking success #>
+{
+    $dldir = "shell32"
+    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_shell32.7z" "wine_shell32.7z"
+
+    foreach ($i in 'shell32.dll'){
+        7z e $cachedir\\$dldir\\wine_shell32.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
+        7z e $cachedir\\\\$dldir\\wine_shell32.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
+} <# end shell32 #>
 
 function func_wintypes <# wintypes #>
 {
@@ -1236,10 +1247,15 @@ function func_app_paths
 function func_vs19
 {
 func_msxml6
-#func_wintrust
 #func_msxml3
-#func_vcrun2019
+func_vcrun2019
 #func_xmllite
+
+  func_advapi32
+  func_ole32
+  func_combase
+  func_shell32
+
 
 winecfg /v win7
 
@@ -1249,23 +1265,67 @@ winecfg /v win7
 
 set-executionpolicy bypass
 
-Start-Process  "$env:TMP\\opc\\Contents\\vs_installer.exe" -Verb RunAs -ArgumentList "install --channelId VisualStudio.16.Release --channelUri `"https://aka.ms/vs/16/release/channel`" --productId Microsoft.VisualStudio.Product.Community --add Microsoft.VisualStudio.Workload.VCTools --add `"Microsoft.VisualStudio.Component.VC.Tools.x86.x64`" --add `"Microsoft.VisualStudio.Component.VC.CoreIde`"             --includeRecommended --quiet" 
+ Start-Process  "$env:TMP\\opc\\Contents\\vs_installer.exe" -Verb RunAs -ArgumentList "install --channelId VisualStudio.16.Release --channelUri `"https://aka.ms/vs/16/release/channel`" --productId Microsoft.VisualStudio.Product.Community --add Microsoft.VisualStudio.Workload.NativeDesktop;includeRecommended  --quiet" 
+
+
+
+
 # Start-Process  "$env:TMP\\opc\\Contents\\vs_installer.exe" -Verb RunAs -ArgumentList "install --channelId VisualStudio.16.Release --channelUri `"https://aka.ms/vs/16/release/channel`" --productId Microsoft.VisualStudio.Product.Community --add Microsoft.VisualStudio.Workload.VCTools --add `"Microsoft.VisualStudio.Component.VC.Tools.x86.x64`" --add `"Microsoft.VisualStudio.Component.VC.CoreIde`"  --add `"Microsoft.VisualStudio.Component.Windows10SDK.16299`"           --includeRecommended --quiet"
 
 #cl.exe -I"c:\Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/um/"     -I"c:\Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/Shared/"   -I"c:\Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/ucrt/"   -I"c:\Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/include/" .\mainv1.c /link /LIBPATH:"c:/Program Files (x86)/Windows Kits/10/Lib/10.0.16299.0/um/x64/" /LIBPATH:"c:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/lib/x64/" /LIBPATH:"c:/Program Files (x86)/Windows Kits/10/Lib/10.0.16299.0/ucrt/x64/"  "c:/Program Files (x86)/Windows Kits/10/Lib/10.0.16299.0/um/x64/urlmon.lib"  "c:/Program Files (x86)/Windows Kits/10/Lib/10.0.16299.0/um/x64/shlwapi.lib"
 
 
-  func_advapi32
-  func_ole32
-  func_combase
-  
+
+
 
   if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe'}
   if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides'}
   New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'advapi32' -Value 'native' -PropertyType 'String' -force
   New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'ole32' -Value 'native' -PropertyType 'String' -force
   New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'combase' -Value 'native' -PropertyType 'String' -force
+  New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'shell32' -Value 'native' -PropertyType 'String' -force
 
+
+quit?('vs_installer'); quit?('VSFinalizer'); quit?('devenv')
+<# FIXME: frequently mpc are not written to registry (wine bug?), do it manually #>
+ & "${env:ProgramFiles`(x86`)}\Microsoft` Visual` Studio\2019\Community\Common7\IDE\DDConfigCA.exe" | & "${env:ProgramFiles`(x86`)}\Microsoft` Visual` Studio\2019\Community\Common7\IDE\StorePID.exe" 09299
+
+}
+
+function func_git.portable
+{
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:systemdrive,'tools','git','usr','bin','msys-2.0.dll') ) ) {
+        choco install git.portable
+
+        Write-Host 'Performing some tweaks; Patience please...'
+        
+        #Get rid of the warning 'Cygwin WARNING:  Couldn't compute FAST_CWD pointer'
+
+        #https://stackoverflow.com/questions/73790902/replace-string-in-a-binary-clipboard-dump-from-onenote
+        # Read the file *as a byte array*.
+        $data = Get-Content -AsByteStream -ReadCount 0  "$env:SystemDrive\tools\git\usr\bin\msys-2.0.dll"
+        # Convert the array to a "hex string" in the form "nn-nn-nn-...",  where nn represents a two-digit hex representation of each byte,
+        # e.g. '41-42' for 0x41, 0x42, which, if interpreted as a single-byte encoding (ASCII), is 'AB'.
+        $dataAsHexString = [BitConverter]::ToString($data)
+        # Define the search and replace strings, and convert them into "hex strings" too, using their UTF-8 byte representation.
+        $search =      "Cygwin WARNING:`n  Couldn't compute FAST_CWD pointer.  This typically occurs if you're using`n  an older Cygwin version on a newer Windows.  Please update to the latest`n  available Cygwin version from https://cygwin.com/.  If the problem persists,`n  please see https://cygwin.com/problems.html`n`n"
+        $replacement = "`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0`0"
+
+        $searchAsHexString = [BitConverter]::ToString([Text.Encoding]::UTF8.GetBytes($search))
+        $replaceAsHexString = [BitConverter]::ToString([Text.Encoding]::UTF8.GetBytes($replacement))
+        # Perform the replacement.
+        $dataAsHexString = $dataAsHexString.Replace($searchAsHexString, $replaceAsHexString)
+        # Convert he modified "hex string" back to a byte[] array.
+        $modifiedData = [byte[]] ($dataAsHexString -split '-' -replace '^', '0x')
+        # Save the byte array back to the file.
+        Set-Content -AsByteStream "$env:SystemDrive\tools\git\usr\bin\msys-2.0.dll" -Value $modifiedData -verbose
+ 
+        $pathvar=[System.Environment]::GetEnvironmentVariable('PATH')
+
+        [System.Environment]::SetEnvironmentVariable("PATH", $pathvar + ';C:\tools\git\usr\bin' + ';C:\tools\git\mingw64\bin','Machine')
+                
+ 	Write-Host -foregroundcolor yellow 'Do "refreshenv" to add several unix commands to current session!'
+    }
 }
 
 function func_cef
