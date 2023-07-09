@@ -190,7 +190,7 @@ $profile_winetricks_caller_ps1 = @'
 
 $verblist = ('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'd2d1',`
                      'dxvk1103', 'dxvk20', 'hnetcfg', 'msi', 'wintrust', 'sapi', 'ps51', 'ps51_ise', 'crypt32', 'oleaut32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'uxtheme', 'comctl32', 'wsh57',`
-                     'nocrashdialog', 'renderer=vulkan', 'renderer=gl', 'app_paths', 'vs19','sharpdx', 'dotnet35', 'dotnet481' ,'cef', 'd3dx','sspicli', 'dshow', 'findstr', 'affinity_requirements',`
+                     'nocrashdialog', 'renderer=vulkan', 'renderer=gl', 'app_paths', 'vs19','git.portable','sharpdx', 'dotnet35', 'dotnet481' ,'cef', 'd3dx','sspicli', 'dshow', 'findstr', 'affinity_requirements',`
                      'winmetadata', 'wintypes', 'dxcore', 'install_dll_from_msu', 'wpf_xaml', 'wpf_msgbox', 'wpf_routedevents', 'embed-exe-in-psscript', 'vulkansamples', 'ps2exe')
 
 function winetricks {
@@ -319,12 +319,6 @@ function check_busybox {
     if (!([System.IO.File]::Exists("$env:systemdrive\\ProgramData\\chocolatey\\bin\\busybox64.exe "))){ choco install Busybox -y }
 }
 
-<# A few Unix commands I find handy, just remove stuff below if you don`t want it #>
-function du   { check_busybox; Busybox64.exe du $args}
-function df   { check_busybox; Busybox64.exe df $args}
-function wget { check_busybox; Busybox64.exe wget $args}
-function grep { check_busybox; Busybox64.exe grep $args}
-function bash { check_busybox; Busybox64.exe bash $args}
 
 # Note: Visual Studio calls this, not sure if this is really needed by it...
 Set-Alias "QPR.getmac" "QPR.getmac.exe";
