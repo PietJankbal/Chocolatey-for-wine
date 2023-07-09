@@ -2,7 +2,7 @@
 Chocolatey packagemanager automatic installer in wine, handy to install quickly programs in wine
 
 Install :
-- Download and unzip the release zip-file and do 'wine ChoCinstaller_0.5e.715.exe' (takes about a minute to complete)
+- Download and unzip the release zip-file and do 'wine ChoCinstaller_0.5g.715.exe' (takes about a minute to complete)
 
 Optional:
 - Check if things went well: "choco install chromium" and  "start chrome.exe (--no-sandbox not needed anymore as of wine-8,4)" 
@@ -31,7 +31,7 @@ About PowerShell:
 - by setting environment variable "$env:PS51=1" you can start a new powershell 5.1 console by just "powershell" 
   (or from linux bash: "PS51=1 wine powershell")
 - or you could work in graphical PowerShell 5.1 Integrated Scripting Environment with 'winetricks ps51_ise' 
-- If you really hate Windows you could also start bash (via Busybox) from the PowerShell Core console by just "bash"
+
 
 ![Screenshot from 2022-09-10 19-36-30](https://user-images.githubusercontent.com/26839562/189495238-2b4893ba-09d1-4e60-bb4c-f326d4939482.png)
 
@@ -85,5 +85,5 @@ Notes:
 Compile:
   - If you want to compile yourself instead of downloading binaries: see compilation instructions in mainv1.c  
   - Then copy choc_install.ps1 into the same directory
-  - Then do 'wine ChoCinstaller_0.5e.715.exe'
+  - Then do 'wine ChoCinstaller_0.5g.715.exe'
   
