@@ -67,6 +67,9 @@ About winetricks(.ps1):
   from now on (this is how powershell handles multiple arguments)
   So 'winetricks riched20 gdiplus' won't work anymore, use 'winetricks riched20,gdiplus' instead
 - A special verb to install requirements to get Affinity Photo/Designer started.
+- Special verb (winetricks vs19)to install a working Visual Studio Community 2019 (see screenshot, >10 mins to install and requires approx. 10GB!, after install start devenv.exe from directory c:\Program\ Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE/)
+  ![screenshot](https://github.com/PietJankbal/Chocolatey-for-wine/assets/26839562/d576a619-c752-4eb1-81c2-6f6b66b50ff6)
+- Special verb to get access to various unix commands like grep,sed, file, less etc. etc. (winetricks git.portable, Disclaimer: some commands do not yet work due to wine bugs)
 - Also included a few powershell scripts adapted from codesnippets found on the internet:
     - How to embed an exe in a powershell script via Invoke-ReflectivePEInjection (the exe won't show up in tasklist).
     - How to make fancy messageboxes
