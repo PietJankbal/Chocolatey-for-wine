@@ -1,8 +1,8 @@
 diff --git a/dlls/sppc/sppc.c b/dlls/sppc/sppc.c
-index 8819961d7c6..645d3fde636 100644
+index 8819961d7c6..a6587aa8114 100644
 --- a/dlls/sppc/sppc.c
 +++ b/dlls/sppc/sppc.c
-@@ -67,3 +67,55 @@ HRESULT WINAPI SLPersistApplicationPolicies(const SLID *app, const SLID *product
+@@ -67,3 +67,61 @@ HRESULT WINAPI SLPersistApplicationPolicies(const SLID *app, const SLID *product
  
      return S_OK;
  }
@@ -56,10 +56,17 @@ index 8819961d7c6..645d3fde636 100644
 +HRESULT WINAPI SLGetPolicyInformation( HSLC  h,  PCWSTR  name, SLDATATYPE *type,  UINT *size,  PBYTE *val)
 +{
 +    FIXME("stub\n");
-+    return 0xC004F012; //SL_E_VALUE_NOT_FOUND    //0xC004F013 SL_E_RIGHT_NOT_GRANTED
++    return 0xC004F013; // SL_E_RIGHT_NOT_GRANTED   0xC004F012; //SL_E_VALUE_NOT_FOUND    
 +}
++
++HRESULT WINAPI SLUnloadApplicationPolicies( HSLP  ctx, DWORD flags)
++{
++    FIXME("stub\n");
++    return 0;
++}
+\ No newline at end of file
 diff --git a/dlls/sppc/sppc.spec b/dlls/sppc/sppc.spec
-index 6926d4d8b6d..679817d0d9b 100644
+index 6926d4d8b6d..0c4c34517fa 100644
 --- a/dlls/sppc/sppc.spec
 +++ b/dlls/sppc/sppc.spec
 @@ -18,7 +18,7 @@
@@ -71,7 +78,7 @@ index 6926d4d8b6d..679817d0d9b 100644
  @ stub SLDepositMigrationBlob
  @ stub SLDepositOfflineConfirmationId
  @ stub SLDepositOfflineConfirmationIdEx
-@@ -41,23 +41,23 @@
+@@ -41,27 +41,27 @@
  @ stdcall SLGetLicensingStatusInformation(ptr ptr ptr wstr ptr ptr)
  @ stub SLGetPKeyId
  @ stub SLGetPKeyInformation
@@ -100,3 +107,8 @@ index 6926d4d8b6d..679817d0d9b 100644
  @ stub SLSetCurrentProductKey
  @ stub SLSetGenuineInformation
  @ stub SLUninstallLicense
+ @ stub SLUninstallProofOfPurchase
+-@ stub SLUnloadApplicationPolicies
++@ stdcall SLUnloadApplicationPolicies(ptr long)
+ @ stub SLUnregisterEvent
+ @ stub SLUnregisterPlugin
