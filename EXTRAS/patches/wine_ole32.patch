@@ -1,0 +1,30 @@
+From b1b58f909f4cb2cf3c96d6e1920b52bc6cf9cd0a Mon Sep 17 00:00:00 2001
+From: llde <lorenzofersteam@live.it>
+Date: Tue, 23 May 2023 01:32:21 +0200
+Subject: [PATCH] unmarshal rot provided moniker outside the CS
+
+---
+ dlls/ole32/moniker.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/dlls/ole32/moniker.c b/dlls/ole32/moniker.c
+index f2668a1edbf..ac9a6f61ecc 100644
+--- a/dlls/ole32/moniker.c
++++ b/dlls/ole32/moniker.c
+@@ -541,13 +541,13 @@ RunningObjectTableImpl_GetObject( IRunningObjectTable* iface,
+         {
+             IStream *pStream;
+             hr = create_stream_on_mip_ro(rot_entry->object, &pStream);
++            LeaveCriticalSection(This->lock);
+             if (hr == S_OK)
+             {
+                 hr = CoUnmarshalInterface(pStream, &IID_IUnknown, (void **)ppunkObject);
+                 IStream_Release(pStream);
+             }
+ 
+-            LeaveCriticalSection(This->lock);
+             HeapFree(GetProcessHeap(), 0, moniker_data);
+ 
+             return hr;
+-- 
+2.40.1

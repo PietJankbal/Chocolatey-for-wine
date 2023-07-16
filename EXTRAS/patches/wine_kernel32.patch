@@ -1,0 +1,29 @@
+diff --git a/dlls/kernel32/file.c b/dlls/kernel32/file.c
+index fab914898ec..8cd66d76219 100644
+--- a/dlls/kernel32/file.c
++++ b/dlls/kernel32/file.c
+@@ -533,3 +533,11 @@ error:  /* We get here if there was an error opening the file */
+     WARN("(%s): return = HFILE_ERROR error= %d\n", name,ofs->nErrCode );
+     return HFILE_ERROR;
+ }
++
++DWORD WINAPI GetFinalPathNameByHandleW (HANDLE a , LPWSTR path, DWORD a1, DWORD a2)
++{
++FIXME("\n");
++SetLastError(ERROR_PATH_NOT_FOUND);
++return 0;
++}
++
+diff --git a/dlls/kernel32/kernel32.spec b/dlls/kernel32/kernel32.spec
+index e51cef57638..40167cccd1d 100644
+--- a/dlls/kernel32/kernel32.spec
++++ b/dlls/kernel32/kernel32.spec
+@@ -692,7 +692,7 @@
+ @ stdcall -import GetFileTime(long ptr ptr ptr)
+ @ stdcall -import GetFileType(long)
+ @ stdcall -import GetFinalPathNameByHandleA(long ptr long long)
+-@ stdcall -import GetFinalPathNameByHandleW(long ptr long long)
++@ stdcall GetFinalPathNameByHandleW(long ptr long long)
+ @ stdcall GetFirmwareEnvironmentVariableA(str str ptr long)
+ @ stdcall GetFirmwareEnvironmentVariableW(wstr wstr ptr long)
+ @ stdcall GetFirmwareType(ptr)
