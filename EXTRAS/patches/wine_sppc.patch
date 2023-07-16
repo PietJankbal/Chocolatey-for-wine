@@ -1,0 +1,102 @@
+diff --git a/dlls/sppc/sppc.c b/dlls/sppc/sppc.c
+index 8819961d7c6..645d3fde636 100644
+--- a/dlls/sppc/sppc.c
++++ b/dlls/sppc/sppc.c
+@@ -67,3 +67,55 @@ HRESULT WINAPI SLPersistApplicationPolicies(const SLID *app, const SLID *product
+ 
+     return S_OK;
+ }
++
++typedef enum _tagSLIDTYPE {
++  SL_ID_APPLICATION = 0,
++  SL_ID_PRODUCT_SKU,
++  SL_ID_LICENSE_FILE,
++  SL_ID_LICENSE,
++  SL_ID_PKEY,
++  SL_ID_ALL_LICENSES,
++  SL_ID_ALL_LICENSE_FILES,
++  SL_ID_STORE_TOKEN,
++  SL_ID_LAST
++} SLIDTYPE;
++
++
++typedef PVOID HSLP;
++
++HRESULT WINAPI SLInstallLicense(HSLC hSLC, UINT size, const BYTE *blob, SLID  *id)
++{
++    FIXME("stub\n");
++    return 0;
++}
++
++HRESULT WINAPI SLGetSLIDList(  HSLC h, SLIDTYPE  a, const SLID *id,SLIDTYPE type, UINT *num, SLID **ids)
++{
++    FIXME("stub\n");
++    *num = 0;
++    return 0;
++}
++
++HRESULT WINAPI SLLoadApplicationPolicies(  const SLID *id, const SLID *skuid, DWORD  flags, HSLP  *ctx)
++{
++    FIXME("stub\n");
++    return 0xC004F072; //SL_E_APPLICATION_POLICIES_MISSING
++}
++
++HRESULT WINAPI SLSetAuthenticationData( HSLC  h, UINT size, const BYTE *val)
++{
++    FIXME("stub\n");
++    return 0; 
++}
++
++HRESULT WINAPI SLConsumeRight( HSLC h,  const SLID *id, const SLID *skuid, PCWSTR   name,  PVOID res)
++{
++    FIXME("stub\n");
++    return 0; //SL_E_APPLICATION_POLICIES_MISSING
++}
++
++HRESULT WINAPI SLGetPolicyInformation( HSLC  h,  PCWSTR  name, SLDATATYPE *type,  UINT *size,  PBYTE *val)
++{
++    FIXME("stub\n");
++    return 0xC004F012; //SL_E_VALUE_NOT_FOUND    //0xC004F013 SL_E_RIGHT_NOT_GRANTED
++}
+diff --git a/dlls/sppc/sppc.spec b/dlls/sppc/sppc.spec
+index 6926d4d8b6d..679817d0d9b 100644
+--- a/dlls/sppc/sppc.spec
++++ b/dlls/sppc/sppc.spec
+@@ -18,7 +18,7 @@
+ @ stub SLpTriggerServiceWorker
+ @ stub SLpVLActivateProduct
+ @ stdcall SLClose(ptr)
+-@ stub SLConsumeRight
++@ stdcall SLConsumeRight(ptr ptr ptr wstr ptr)
+ @ stub SLDepositMigrationBlob
+ @ stub SLDepositOfflineConfirmationId
+ @ stub SLDepositOfflineConfirmationIdEx
+@@ -41,23 +41,23 @@
+ @ stdcall SLGetLicensingStatusInformation(ptr ptr ptr wstr ptr ptr)
+ @ stub SLGetPKeyId
+ @ stub SLGetPKeyInformation
+-@ stub SLGetPolicyInformation
++@ stdcall SLGetPolicyInformation(ptr wstr ptr ptr ptr)
+ @ stub SLGetPolicyInformationDWORD
+ @ stub SLGetProductSkuInformation
+-@ stub SLGetSLIDList
++@ stdcall SLGetSLIDList(ptr long ptr long long ptr)
+ @ stub SLGetServiceInformation
+-@ stub SLInstallLicense
++@ stdcall SLInstallLicense(ptr long ptr ptr)
+ @ stub SLInstallProofOfPurchase
+ @ stub SLInstallProofOfPurchaseEx
+ @ stub SLIsGenuineLocalEx
+-@ stub SLLoadApplicationPolicies
++@ stdcall SLLoadApplicationPolicies(ptr ptr long ptr)
+ @ stdcall SLOpen(ptr)
+ @ stdcall SLPersistApplicationPolicies(ptr ptr long)
+ @ stub SLPersistRTSPayloadOverride
+ @ stub SLReArm
+ @ stub SLRegisterEvent
+ @ stub SLRegisterPlugin
+-@ stub SLSetAuthenticationData
++@ stdcall SLSetAuthenticationData(ptr long ptr)
+ @ stub SLSetCurrentProductKey
+ @ stub SLSetGenuineInformation
+ @ stub SLUninstallLicense

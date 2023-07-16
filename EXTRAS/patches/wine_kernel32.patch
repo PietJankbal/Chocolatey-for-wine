@@ -1,0 +1,13 @@
+diff --git a/dlls/kernelbase/file.c b/dlls/kernelbase/file.c
+index 29d005e0e28..b1d420de85c 100644
+--- a/dlls/kernelbase/file.c
++++ b/dlls/kernelbase/file.c
+@@ -1770,7 +1770,7 @@ DWORD WINAPI DECLSPEC_HOTPATCH GetFinalPathNameByHandleW( HANDLE file, LPWSTR pa
+     if (flags & FILE_NAME_OPENED)
+     {
+         FIXME("FILE_NAME_OPENED not supported\n");
+-        flags &= ~FILE_NAME_OPENED;
++        flags &= ~FILE_NAME_OPENED;         SetLastError( ERROR_PATH_NOT_FOUND );return 0;
+     }
+ 
+     /* Get information required for VOLUME_NAME_NONE, VOLUME_NAME_GUID and VOLUME_NAME_NT */
