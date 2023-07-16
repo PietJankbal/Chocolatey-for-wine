@@ -1,114 +1,94 @@
-diff --git a/dlls/sppc/sppc.c b/dlls/sppc/sppc.c
-index 8819961d7c6..a6587aa8114 100644
---- a/dlls/sppc/sppc.c
-+++ b/dlls/sppc/sppc.c
-@@ -67,3 +67,61 @@ HRESULT WINAPI SLPersistApplicationPolicies(const SLID *app, const SLID *product
- 
-     return S_OK;
- }
-+
-+typedef enum _tagSLIDTYPE {
-+  SL_ID_APPLICATION = 0,
-+  SL_ID_PRODUCT_SKU,
-+  SL_ID_LICENSE_FILE,
-+  SL_ID_LICENSE,
-+  SL_ID_PKEY,
-+  SL_ID_ALL_LICENSES,
-+  SL_ID_ALL_LICENSE_FILES,
-+  SL_ID_STORE_TOKEN,
-+  SL_ID_LAST
-+} SLIDTYPE;
-+
-+
-+typedef PVOID HSLP;
-+
-+HRESULT WINAPI SLInstallLicense(HSLC hSLC, UINT size, const BYTE *blob, SLID  *id)
-+{
-+    FIXME("stub\n");
-+    return 0;
-+}
-+
-+HRESULT WINAPI SLGetSLIDList(  HSLC h, SLIDTYPE  a, const SLID *id,SLIDTYPE type, UINT *num, SLID **ids)
-+{
-+    FIXME("stub\n");
-+    *num = 0;
-+    return 0;
-+}
-+
-+HRESULT WINAPI SLLoadApplicationPolicies(  const SLID *id, const SLID *skuid, DWORD  flags, HSLP  *ctx)
-+{
-+    FIXME("stub\n");
-+    return 0xC004F072; //SL_E_APPLICATION_POLICIES_MISSING
-+}
-+
-+HRESULT WINAPI SLSetAuthenticationData( HSLC  h, UINT size, const BYTE *val)
-+{
-+    FIXME("stub\n");
-+    return 0; 
-+}
-+
-+HRESULT WINAPI SLConsumeRight( HSLC h,  const SLID *id, const SLID *skuid, PCWSTR   name,  PVOID res)
-+{
-+    FIXME("stub\n");
-+    return 0; //SL_E_APPLICATION_POLICIES_MISSING
-+}
-+
-+HRESULT WINAPI SLGetPolicyInformation( HSLC  h,  PCWSTR  name, SLDATATYPE *type,  UINT *size,  PBYTE *val)
-+{
-+    FIXME("stub\n");
-+    return 0xC004F013; // SL_E_RIGHT_NOT_GRANTED   0xC004F012; //SL_E_VALUE_NOT_FOUND    
-+}
-+
-+HRESULT WINAPI SLUnloadApplicationPolicies( HSLP  ctx, DWORD flags)
-+{
-+    FIXME("stub\n");
-+    return 0;
-+}
-\ No newline at end of file
-diff --git a/dlls/sppc/sppc.spec b/dlls/sppc/sppc.spec
-index 6926d4d8b6d..0c4c34517fa 100644
---- a/dlls/sppc/sppc.spec
-+++ b/dlls/sppc/sppc.spec
-@@ -18,7 +18,7 @@
- @ stub SLpTriggerServiceWorker
- @ stub SLpVLActivateProduct
- @ stdcall SLClose(ptr)
--@ stub SLConsumeRight
-+@ stdcall SLConsumeRight(ptr ptr ptr wstr ptr)
- @ stub SLDepositMigrationBlob
- @ stub SLDepositOfflineConfirmationId
- @ stub SLDepositOfflineConfirmationIdEx
-@@ -41,27 +41,27 @@
- @ stdcall SLGetLicensingStatusInformation(ptr ptr ptr wstr ptr ptr)
- @ stub SLGetPKeyId
- @ stub SLGetPKeyInformation
--@ stub SLGetPolicyInformation
-+@ stdcall SLGetPolicyInformation(ptr wstr ptr ptr ptr)
- @ stub SLGetPolicyInformationDWORD
- @ stub SLGetProductSkuInformation
--@ stub SLGetSLIDList
-+@ stdcall SLGetSLIDList(ptr long ptr long long ptr)
- @ stub SLGetServiceInformation
--@ stub SLInstallLicense
-+@ stdcall SLInstallLicense(ptr long ptr ptr)
- @ stub SLInstallProofOfPurchase
- @ stub SLInstallProofOfPurchaseEx
- @ stub SLIsGenuineLocalEx
--@ stub SLLoadApplicationPolicies
-+@ stdcall SLLoadApplicationPolicies(ptr ptr long ptr)
- @ stdcall SLOpen(ptr)
- @ stdcall SLPersistApplicationPolicies(ptr ptr long)
- @ stub SLPersistRTSPayloadOverride
- @ stub SLReArm
- @ stub SLRegisterEvent
- @ stub SLRegisterPlugin
--@ stub SLSetAuthenticationData
-+@ stdcall SLSetAuthenticationData(ptr long ptr)
- @ stub SLSetCurrentProductKey
- @ stub SLSetGenuineInformation
- @ stub SLUninstallLicense
- @ stub SLUninstallProofOfPurchase
--@ stub SLUnloadApplicationPolicies
-+@ stdcall SLUnloadApplicationPolicies(ptr long)
- @ stub SLUnregisterEvent
- @ stub SLUnregisterPlugin
+/*
+ *
+ * Copyright 2008 Alistair Leslie-Hughes
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+#include <stdarg.h>
+
+#include "ntstatus.h"
+#define WIN32_NO_STATUS
+#include "windef.h"
+#include "winbase.h"
+#include "winternl.h"
+#include "wine/debug.h"
+
+#include "slpublic.h"
+#include "slerror.h"
+
+WINE_DEFAULT_DEBUG_CHANNEL(slc);
+
+HRESULT WINAPI SLGetLicensingStatusInformation(HSLC handle, const SLID *app, const SLID *product,
+                                               LPCWSTR name, UINT *count, SL_LICENSING_STATUS **status)
+{
+    FIXME("(%p %p %p %s %p %p) stub\n", handle, app, product, debugstr_w(name), count, status );
+
+    return SL_E_RIGHT_NOT_CONSUMED;
+}
+
+HRESULT WINAPI SLOpen(HSLC *handle)
+{ 
+    FIXME("(%p) stub\n", handle );
+
+    if (!handle)
+        return E_INVALIDARG;
+
+    *handle = (HSLC)0xdeadbeef;
+
+    return S_OK;
+}
+
+HRESULT WINAPI SLClose(HSLC handle)
+{
+    FIXME("(%p) stub\n", handle );
+
+    return S_OK;
+}
+
+HRESULT WINAPI SLPersistApplicationPolicies(const SLID *app, const SLID *product, DWORD flags)
+{
+    FIXME("(%s,%s,%lx) stub\n", wine_dbgstr_guid(app), wine_dbgstr_guid(product), flags);
+
+    if (!app)
+        return E_INVALIDARG;
+
+    return S_OK;
+}
+
+
+
+typedef PVOID HSLP;
+
+
+
+HRESULT WINAPI SLLoadApplicationPolicies(  const SLID *id, const SLID *skuid, DWORD  flags, HSLP  *ctx)
+{
+    FIXME("stub\n");
+    return 0xC004F072; //SL_E_APPLICATION_POLICIES_MISSING
+}
+
+HRESULT WINAPI SLSetAuthenticationData( HSLC  h, UINT size, const BYTE *val)
+{
+    FIXME("stub\n");
+    return 0x8007000D;//ERROR_INVALID_DATA
+}
+
+HRESULT WINAPI SLConsumeRight( HSLC h,  const SLID *id, const SLID *skuid, PCWSTR   name,  PVOID res)
+{
+    FIXME("stub\n");
+    return 0xC004F013; //SL_E_RIGHT_NOT_GRANTED
+}
+
