@@ -1,0 +1,55 @@
+diff --git a/dlls/wbemprox/builtin.c b/dlls/wbemprox/builtin.c
+index 3703fd0cca5..91d4ec6452c 100644
+--- a/dlls/wbemprox/builtin.c
++++ b/dlls/wbemprox/builtin.c
+@@ -331,6 +331,10 @@ static const struct column col_process[] =
+     { L"Create",          CIM_FLAG_ARRAY|COL_FLAG_METHOD },
+     { L"GetOwner",        CIM_FLAG_ARRAY|COL_FLAG_METHOD },
+ };
++static const struct column col_serverfeature[] =
++{
++    { L"Name", CIM_STRING },
++};
+ static const struct column col_processor[] =
+ {
+     { L"AddressWidth",              CIM_UINT16 },
+@@ -830,6 +834,10 @@ struct record_rawsmbiostables
+ {
+     const struct array *smbiosdata;
+ };
++struct record_serverfeature
++{
++    const WCHAR *name;
++};
+ struct record_service
+ {
+     int          accept_pause;
+@@ -943,6 +951,8 @@ struct record_volume
+     const WCHAR *driveletter;
+ };
+ 
++
++
+ struct record_winsat
+ {
+     FLOAT        cpuscore;
+@@ -1042,6 +1052,11 @@ static const struct record_qualifier data_qualifier[] =
+     { L"__WIN32_PROCESS_GETOWNER_OUT", L"Domain", CIM_SINT32, FLAVOR_ID, L"ID", 1 }
+ };
+ 
++static const struct record_serverfeature data_serverfeature[] =
++{
++    { L"Desktop Experience", },
++};
++
+ static const struct record_quickfixengineering data_quickfixengineering[] =
+ {
+     { L"http://winehq.org", L"Update", L"KB1234567", L"", L"22/2/2022" },
+@@ -4353,6 +4368,7 @@ static struct table cimv2_builtin_classes[] =
+     { L"Win32_QuickFixEngineering", C(col_quickfixengineering), D(data_quickfixengineering) },
+     { L"Win32_SID", C(col_sid), 0, 0, NULL, fill_sid },
+     { L"Win32_Service", C(col_service), 0, 0, NULL, fill_service },
++    { L"Win32_ServerFeature", C(col_serverfeature), D(data_serverfeature) },
+     { L"Win32_SoundDevice", C(col_sounddevice), 0, 0, NULL, fill_sounddevice },
+     { L"Win32_SystemEnclosure", C(col_systemenclosure), 0, 0, NULL, fill_systemenclosure },
+     { L"Win32_VideoController", C(col_videocontroller), 0, 0, NULL, fill_videocontroller },
