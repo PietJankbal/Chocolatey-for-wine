@@ -13,6 +13,7 @@ Optional:
 
 - Run the installer like 'SAVEINSTALLFILES=1 wine ChoCinstaller_0.5i.715.exe' , then the install files (like Powershell.msi and dotnet48) are saved in
   '$HOME/.cache/choc_install_files' and they don't need to be downloaded again if you create a new prefix)
+  
 ![Screenshot from 2022-08-26 12-31-18](https://user-images.githubusercontent.com/26839562/186885380-d5a617c4-9cf4-4831-a475-2bd85a3b5784.png)
 
 Updates:
