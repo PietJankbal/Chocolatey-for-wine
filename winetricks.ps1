@@ -1,79 +1,8 @@
 $cachedir = ("$env:WINEHOMEDIR" + "\.cache\winetrickxs").substring(4)
 
-if (!(Test-Path -Path "$env:ProgramW6432\7-Zip\7z.exe" -PathType Leaf)) { choco install 7zip -y }
+$expand_exe = "$env:systemroot\system32\expnd\expand.exe"
 
-function validate_param
-{
-[CmdletBinding()]
- Param(
-        [Parameter(Mandatory=$false)]
-        [ValidateSet('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'd2d1',`
-                     'dxvk1103', 'dxvk20', 'hnetcfg', 'msi', 'wintrust', 'sapi', 'ps51', 'ps51_ise', 'crypt32', 'oleaut32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'uxtheme', 'comctl32', 'wsh57',`
-                     'nocrashdialog', 'renderer=vulkan', 'renderer=gl', 'app_paths', 'vs19','git.portable','sharpdx', 'dotnet35', 'dotnet481' ,'cef', 'd3dx','sspicli', 'dshow', 'findstr', 'affinity_requirements', 'winmetadata', 'wintypes', 'dxcore', 'install_dll_from_msu', 'wpf_xaml', 'wpf_msgbox', 'wpf_routedevents', 'embed-exe-in-psscript', 'vulkansamples', 'ps2exe')]
-        [string[]]$verb
-      )
-}
-
-try {validate_param $args}
-catch [System.Management.Automation.ParameterBindingException] {Write-Host "Error: [$_.Exception.Message]" -ForegroundColor Red; exit}
-
-$custom_array = @() # Creating an empty array to populate data in
-
-[array]$Qenu = "gdiplus","GDI+, todo: check if this version works",`
-               "msxml3","msxml3 + msxml3r",`
-               "msxml6","msxml6 + msxml6r",`
-               "mfc42","mfc42(u)",`
-               "riched20","riched20",`
-               "msado15","some minimal mdac dlls",`
-               "expand", "native expand.exe, it's renamed to expnd_.exe to not interfere with wine's expand",`
-               "wmp", "some wmp (windows media player) dlls, makes e-Sword start",`
-               "ucrtbase", "ucrtbase from vcrun2015",`
-               "vcrun2019", "vcredist2019",`
-               "mshtml", "experimental, dangerzone, might break things, only use on a per app base",`
-               "hnetcfg", "hnetcfg with fix for https://bugs.winehq.org/show_bug.cgi?id=45432",`
-               "msi", "if an msi installer fails, might wanna try this msi, just faking success for a few actions... Might also result in broken installation ;)",`
-               "wintrust", "wine wintrust faking success for WinVerifyTrust",`
-               "dxvk1103", "dxvk 1.10.3, latest compatible with Kepler (Nvidia GT 470) ??? )",`
-               "dxvk20", "dxvk 2.0",`
-               "crypt32", "experimental, dangerzone, might break things, only use on a per app base",`
-               "oleaut32", "experimental, dangerzone, will likely break things (!), only use on a per app base",`
-               "sapi", "Speech api, experimental, makes Balabolka work",`
-               "ps51", "rudimentary PowerShell 5.1 (downloads yet another huge amount of Mb`s!)",`
-               "ps51_ise", "PowerShell 5.1 Integrated Scripting Environment",`
-               "msvbvm60", "msvbvm60",`
-               "xmllite", "xmllite",`
-               "windowscodecs", "windowscodecs",`
-               "uxtheme", "uxtheme",`
-               "wsh57", "MS Windows Script Host",`
-               "comctl32", "dangerzone, only for testing, might break things, only use on a per app base",`
-               "d2d1", "dangerzone, only for testing, might break things, only use on a per app base",`
-               "windows.ui.xaml", "windows.ui.xaml, experimental...",`
-               "nocrashdialog", "Disable graphical crash dialog",`
-               "renderer=vulkan", "renderer=vulkan",`
-               "renderer=gl", "renderer=gl",`
-               "app_paths", "start new shell with app paths added to the path (permanently), invoke from powershell console!",
-               "vs19", "Visual Studio 2019, only install, devenv doesn't work ",
-               "git.portable","Access to several unix-commands like tar, file, sed etc. etc.",
-               "d3dx", "d3x9*, d3dx10*, d3dx11*, xactengine*, xapofx* x3daudio*, xinput* and d3dcompiler",
-               "sspicli", "dangerzone, only for testing, might break things, only use on a per app base",
-               "dshow", "directshow dlls: qdvd qcap etc.",
-               "findstr", "findstr.exe",
-               "affinity_requirements", "install and configure stuff to get affinity v2 started",
-               "winmetadata", "various *.winmd files",
-               "wintypes", "wine wintypes patched (from ElementalWarrior) for Affinity, https://forum.affinity.serif.com/index.php?/topic/182758-affinity-suite-v204-on-linux-wine/page/1/",
-               "dxcore", "wine dxcore, patch (from ElementalWarrior) for Affinity, https://forum.affinity.serif.com/index.php?/topic/182758-affinity-suite-v204-on-linux-wine/page/1/",
-               "dotnet35", "dotnet35",
-               "dotnet481", "dotnet481",
-               "install_dll_from_msu","extract and install a dll/file from an msu file (installation in right place might or might not work ;) )",
-               "sharpdx", "directX with powershell (spinning cube), test if your d3d11 works, further rather useless verb for now ;)",
-               "vulkansamples", "51 vulkan samples to test if your vulkan works, do shift-ctrl^c if you wanna leave earlier ;)",
-               "wpf_xaml", "codesnippets from around the internet: how to use wpf+xaml in powershell",
-               "wpf_msgbox", "codesnippets from around the internet: some fancy messageboxes (via wpf) in powershell",
-               "wpf_routedevents", "codesnippets from around the internet: how to use wpf+xaml+routedevents in powershell",
-               "cef", "codesnippets from around the internet: how to use cef / test cef",
-               "embed-exe-in-psscript", "codesnippets from around the internet: samplescript howto embed and run an exe into a powershell-scripts (vkcube.exe)",
-               "ps2exe", "convert a ps1-script into an executable; requires powershell 5.1, so 1st time usage may take very long time!!!"
-
+$custom_array = @() # Creating an empty array to populate data in; verbs can be found in c:\ProgramData\Chocolatey-for-wine\profile_winetricks_caller.ps1
 
 for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) { 
     $custom_array += New-Object PSObject -Property @{ # Setting up custom array utilizing a PSObject
@@ -81,6 +10,8 @@ for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) {
         Description = $Qenu[$j+1]
     }
 }
+
+if (!(Test-Path -Path "$env:ProgramW6432\7-Zip\7z.exe" -PathType Leaf)) { choco install 7zip -y }
 
 function quit?([string] $process)  <# wait for a process to quit #>
 {
@@ -90,47 +21,54 @@ function quit?([string] $process)  <# wait for a process to quit #>
 function w_download_to
 {
     Param ($dldir, $w_url, $w_file)
-    $path = "$env:WINEHOMEDIR" + "\\.cache\\winetrickxs\\$dldir"
 
-    if (![System.IO.Directory]::Exists($path.substring(4))){ [System.IO.Directory]::CreateDirectory($path.substring(4))}
+    if (![System.IO.Directory]::Exists("$env:WINEHOMEDIR\\.cache\\winetrickxs\\$dldir".substring(4))){ [System.IO.Directory]::CreateDirectory("$env:WINEHOMEDIR\\.cache\\winetrickxs\\$dldir".substring(4))}
 
-    $f = $path.substring(4) + "\\$w_file"
-    if (-not(Test-Path $f -PathType Leaf)){
-        Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('First time usage of this custom `
-        winetricks takes VERY long time and eats up gigs of disk space,due to huge download and decompressing things. Loads of gigabytes `
-        will be squashed into directory ~/.cache/winetrickxs ','Warning','ok','exclamation')
+    if (![System.IO.File]::Exists("$env:WINEHOMEDIR\\.cache\\winetrickxs\\$dldir\\$w_file".substring(4))){
+        Write-Host -foregroundcolor yellow "**********************************************************"
+        Write-Host -foregroundcolor yellow "*                                                        *"
+        Write-Host -foregroundcolor yellow "*        Downloading file(s) and extracting might        *"
+        Write-Host -foregroundcolor yellow "*        take several minutes!                           *"
+        Write-Host -foregroundcolor yellow "*        Patience please!                                *"
+        Write-Host -foregroundcolor yellow "*                                                        *"
+        Write-Host -foregroundcolor yellow "**********************************************************"
 
-        (New-Object System.Net.WebClient).DownloadFile($w_url, $f)}
+        (New-Object System.Net.WebClient).DownloadFile($w_url, "$env:WINEHOMEDIR\\.cache\\winetrickxs\\$dldir\\$w_file".substring(4))}
 }
 
-function check_msu_sanity <# some sanity checks before extracting from msu, like if cached files are present etc. #>
+function check_msu_sanity <# some sanity checks before extracting from msu, like if dlls needed for expansion and the msu are present etc. #>
 {
     Param ($url, $cab)
 
-    $msu = $url.split('/')[-1]; <# -1 is last array element... #> $dldir = $($url.split('/')[-1]) -replace '.msu',''
+    $msu = $url.split('/')[-1]; <# -1 is last array element... #> $dldir = $((Get-PSCallStack)[1].Command).replace('func_', '')
     <# fragile test #>
     if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:systemroot, "system32", "dpx.dll")  ))
-       {Write-Host 'Extracting some files needed for expansion' ; func_expand;}
+       {Write-Host 'Downloading and extracting some files needed for expansion' ; func_expand;
+    }
 
-    if (![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $dldir,  $cab) ) )
-       {Write-Host file seems missing, re-extracting;  w_download_to $dldir $url $msu; 7z e $cachedir\\$dldir\\$msu "-o$cachedir\\$dldir" $cab -y; quit?('7z')}
+    if (![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $dldir,  $msu) ) ) {
+        w_download_to $dldir $url $msu; quit?('7z');
+    }
+    7z e "$cachedir\$dldir\$msu" "-o$cachedir\$dldir" "$cab" -y; 
+    Remove-Item "$cachedir\$dldir\$msu" 
 }
 
 function check_aik_sanity <# some sanity checks to see if cached files from windows kits 7 are present #>
 {
-    $cab = "KB3AIK_EN.iso"
-    $dldir = "aik70"
-    $url = "https://download.microsoft.com/download/8/E/9/8E9BBC64-E6F8-457C-9B8D-F6C9A16E6D6A/$cab"
+    $url = "https://download.microsoft.com/download/8/E/9/8E9BBC64-E6F8-457C-9B8D-F6C9A16E6D6A/KB3AIK_EN.iso"
 
     foreach($i in 'F_WINPEOC_AMD64__WINPE_WINPE_SCRIPTING.CAB', 'F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB', 'F_WINPEOC_AMD64__WINPE_WINPE_HTA.CAB', 'F1_WINPE.WIM', `
                   'F_WINPEOC_X86__WINPE_WINPE_SCRIPTING.CAB', 'F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB', 'F_WINPEOC_X86__WINPE_WINPE_HTA.CAB', 'F3_WINPE.WIM' ) {
-        if(![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ) { #assuming all cached files are gone, re-extract everything
-            w_download_to $dldir $url $cab
-            7z x $cachedir\\$dldir\\$cab 7z x Neutral.cab WinPE.cab "-o$cachedir\\$dldir" -y; quit?('7z')
-            7z x $cachedir\\$dldir\\WinPE.cab F1_WINPE.WIM F3_WINPE.WIM "-o$cachedir\\$dldir" -y; quit?('7z')
-            7z x $cachedir\\$dldir\\Neutral.cab F_WINPEOC_AMD64__WINPE_WINPE_SCRIPTING.CAB F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB `
-            F_WINPEOC_AMD64__WINPE_WINPE_HTA.CAB F_WINPEOC_X86__WINPE_WINPE_SCRIPTING.CAB F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB `
-            F_WINPEOC_X86__WINPE_WINPE_HTA.CAB "-o$cachedir\\$dldir" -y; quit?('7z')
+        if(![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  "aik70",  $i) ) ) { #assuming all cached files are gone, re-extract everything
+            w_download_to "aik70" "$url" "KB3AIK_EN.iso"
+            7z x "$cachedir\aik70\KB3AIK_EN.iso" "Neutral.cab" "WinPE.cab" "-o$cachedir\aik70" -y; quit?('7z')
+            Remove-Item -Force "$cachedir\aik70\KB3AIK_EN.iso" 
+            7z x "$cachedir\aik70\WinPE.cab" "F1_WINPE.WIM" "F3_WINPE.WIM" "-o$cachedir\aik70" -y; quit?('7z')
+            Remove-Item -Force "$cachedir\aik70\WinPE.cab" 
+            7z x "$cachedir\aik70\Neutral.cab" "F_WINPEOC_AMD64__WINPE_WINPE_SCRIPTING.CAB" "F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB" `
+            "F_WINPEOC_AMD64__WINPE_WINPE_HTA.CAB" "F_WINPEOC_X86__WINPE_WINPE_SCRIPTING.CAB" "F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB" `
+            "F_WINPEOC_X86__WINPE_WINPE_HTA.CAB" "-o$cachedir\aik70" -y; quit?('7z')
+            Remove-Item -Force "$cachedir\aik70\Neutral.cab" 
             break;
         }
     }
@@ -146,398 +84,132 @@ function reg_edit
 {
     param ($regvalues)
 
-    $regfile = $((Get-PSCallStack)[1].FunctionName).replace('func', 'reg') + '.reg'
+    $regfile = $((Get-PSCallStack)[1].Command).replace('func', 'reg') + '.reg'
     $regvalues | Out-File -FilePath $env:TEMP\\$regfile
     reg.exe IMPORT $env:TEMP\\$regfile /reg:64;
     reg.exe IMPORT $env:TEMP\\$regfile /reg:32;
 }
 
+function verb { return $((Get-PSCallStack)[1].Command).replace('func_', '') }
+
 function func_msxml3
 {
-    $dlls = @('msxml3.dll','msxml3r.dll'); check_aik_sanity; $dldir = "aik70"
+    $dlls = @('msxml3.dll','msxml3r.dll'); check_aik_sanity;
 
     foreach ($i in $dlls) {
-        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])
-        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -y| Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
+        7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
+        7z e "$cachedir\aik70\F1_WINPE.WIM" "-o$env:systemroot\syswow64" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z') 
     foreach($i in 'msxml3') { dlloverride 'native' $i }
 } <# end msxml3 #>
 
 function func_msxml6
 {
-    $dlls = @('msxml6.dll', 'msxml6r.dll'); check_aik_sanity; $dldir = "aik70"
+    $dlls = @('msxml6.dll', 'msxml6r.dll'); check_aik_sanity;
 
     foreach ($i in $dlls) {
-        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])
-        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -y| Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
+        7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
+        7z e "$cachedir\aik70\F1_WINPE.WIM" "-o$env:systemroot\syswow64" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z')
     foreach($i in 'msxml6') { dlloverride 'native' $i }
 } <# end msxml6 #>
 
 function func_mfc42
 {
-    $dlls = @('mfc42.dll', 'mfc42u.dll'); check_aik_sanity; $dldir = "aik70"
+    $dlls = @('mfc42.dll', 'mfc42u.dll'); check_aik_sanity;
 
     foreach ($i in $dlls) {
-        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])
-        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -y| Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
+        7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
+        7z e "$cachedir\aik70\F1_WINPE.WIM" "-o$env:systemroot\syswow64" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z')
 } <# end mfc42 #>
 
 function func_riched20
 {
-    $dlls = @('riched20.dll','msls31.dll'); check_aik_sanity; $dldir = "aik70"
+    $dlls = @('riched20.dll','msls31.dll'); check_aik_sanity;
 
     foreach ($i in $dlls) {
-        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])
-        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -y| Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
+        7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
+        7z e "$cachedir\aik70\F1_WINPE.WIM" "-o$env:systemroot\syswow64" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z') 
     foreach($i in 'riched20') { dlloverride 'native' $i }
 } <# end riched20 #>
 
 function func_crypt32
 {
-    $dlls = @('crypt32.dll','msasn1.dll'); check_aik_sanity; $dldir = "aik70"
+    $dlls = @('crypt32.dll','msasn1.dll'); check_aik_sanity;
 
     foreach ($i in $dlls) {
-        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])
-        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -y| Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
+        7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
+        7z e "$cachedir\aik70\F1_WINPE.WIM" "-o$env:systemroot\syswow64" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z') 
     foreach($i in 'crypt32') { dlloverride 'native' $i }
 }  <# end crypt32 #>
 
-function func_oleaut32
-{
-    $dlls = @('oleaut32.dll'); check_aik_sanity; $dldir = "aik70"
-
-    foreach ($i in $dlls) {
-        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])
-        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -y| Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
-    #foreach($i in 'oleaut32') { dlloverride 'native' $i }
-}  <# end oleaut32 #>
-
 function func_windowscodecs
 {
-    $dlls = @('windowscodecs.dll'); check_aik_sanity; $dldir = "aik70"
+    $dlls = @('windowscodecs.dll'); check_aik_sanity;
 
     foreach ($i in $dlls) {
-        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -aoa; 
-        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -aoa } quit?('7z')
+        7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
+        7z e "$cachedir\aik70\F1_WINPE.WIM" "-o$env:systemroot\syswow64" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z') 
     foreach($i in 'windowscodecs') { dlloverride 'native' $i }
 }  <# end windowscodecs #>
 
 function func_uxtheme
 {
-    $dlls = @('uxtheme.dll'); check_aik_sanity; $dldir = "aik70"
+    $dlls = @('uxtheme.dll'); check_aik_sanity;
 
     foreach ($i in $dlls) {
-        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -aoa; 
-        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -aoa } quit?('7z')
+        7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
+        7z e "$cachedir\aik70\F1_WINPE.WIM" "-o$env:systemroot\syswow64" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z') 
     foreach($i in 'uxtheme') { dlloverride 'native' $i }
 }  <# end uxtheme #>
 
 function func_sspicli
 {
-    $dlls = @('sspicli.dll'); check_aik_sanity; $dldir = "aik70"
+    $dlls = @('sspicli.dll'); check_aik_sanity;
 
     foreach ($i in $dlls) {
-        7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -aoa; 
-        7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/System32/$i -aoa } quit?('7z')
+        7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
+        7z e "$cachedir\aik70\F1_WINPE.WIM" "-o$env:systemroot\syswow64" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z') 
     foreach($i in 'sspicli') { dlloverride 'native' $i }
 }  <# end sspicli #>
 
-function func_gdiplus
+function func_xmllite
 {
-    $url = "https://download.microsoft.com/download/3/5/C/35C470D8-802B-457A-9890-F1AFC277C907/Windows6.1-KB2834886-x64.msu"
-    $cab = "Windows6.1-KB2834886-x64.cab"
-    $sourcefile = @(`
-    'amd64_microsoft.windows.gdiplus_6595b64144ccf1df_1.1.7601.22290_none_145f0c928b8d0397/gdiplus.dll',`
-    'x86_microsoft.windows.gdiplus_6595b64144ccf1df_1.1.7601.22290_none_5c0c4369a0092c9d/gdiplus.dll'`
-   )
-
-    check_msu_sanity $url $cab; $dldir = $($url.split('/')[-1]) -replace '.msu',''
-
-    foreach ($i in $sourcefile) {
-        if( $i.SubString(0,3) -eq 'amd' ) {expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $env:TEMP }
-        if( $i.SubString(0,3) -eq 'x86' ) {<# Nothing to do #>}                                                                          } 
-
-    foreach ($i in $sourcefile) {
-        if( $i.SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose "$env:TEMP\\$i" -destination $env:systemroot\\system32\\$($i.split('/')[-1]) }
-        if( $i.SubString(0,3) -eq 'x86' ) {Copy-Item -force -verbose "$env:TEMP\\$i" $env:systemroot\\syswow64\\$($i.split('/')[-1]) } } 
+    check_aik_sanity; $dldir = "aik70"
+    $expdlls = @( 'amd64_microsoft-windows-servicingstack_31bf3856ad364e35_6.1.7600.16385_none_655452efe0fb810b/xmllite.dll', `
+                  'x86_microsoft-windows-servicingstack_31bf3856ad364e35_6.1.7600.16385_none_0935b76c289e0fd5/xmllite.dll' )
 		  
-    foreach($i in 'gdiplus') { dlloverride 'native' $i }  
-} <# end gdiplus #>
+    foreach ($i in $expdlls) {
+        if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}
+        if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])}} quit?('7z')
 
-function func_d2d1
+    foreach($i in 'xmllite') { dlloverride 'native' $i }
+} <# end xmllite #>
+
+function func_comctl32
 {
-    $url = "http://download.windowsupdate.com/d/msdownload/update/software/updt/2016/05/windows6.1-kb3125574-v4-x64_2dafb1d203c8964239af3048b5dd4b1264cd93b9.msu"
-    $cab = "Windows6.1-KB3125574-v4-x64.cab"
-    $sourcefile = @(`
-    'amd64_microsoft-windows-d2d_31bf3856ad364e35_7.1.7601.23403_none_f7c6a38a168dcfb8/d2d1.dll',`
-    'x86_microsoft-windows-d2d_31bf3856ad364e35_7.1.7601.23403_none_9ba808065e305e82/d2d1.dll'`
-   )
+    check_aik_sanity; $dldir = "aik70" <# There`s also other version 5.8 ?? #>
+    $60dlls = @( 'amd64_microsoft.windows.common-controls_6595b64144ccf1df_6.0.7600.16385_none_fa645303170382f6/comctl32.dll', `
+                 'x86_microsoft.windows.common-controls_6595b64144ccf1df_6.0.7600.16385_none_421189da2b7fabfc/comctl32.dll') ` 
 
-    check_msu_sanity $url $cab; $dldir = $($url.split('/')[-1]) -replace '.msu',''
+    foreach ($i in $60dlls) {
+        if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}
+        if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])}} quit?('7z')
 
-    foreach ($i in $sourcefile) {
-        if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
-                    if( $i.SubString(0,3) -eq 'amd' ) {expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) }
-                    if( $i.SubString(0,3) -eq 'x86' ) {<# Nothing to do #>}  }  }
-
-    foreach ($i in $sourcefile) {
-        if( $i.SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" -destination $env:systemroot\\system32\\$($i.split('/')[-1]) }
-        if( $i.SubString(0,3) -eq 'x86' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\syswow64\\$($i.split('/')[-1]) } } 
-
-    foreach($i in 'd2d1') { dlloverride 'native' $i }  
-} <# end d2d1 #>
-
-function func_windows.ui.xaml <# experimental... #>
-{
-    $url = "http://download.windowsupdate.com/c/msdownload/update/software/updt/2016/11/windows10.0-kb3205436-x64_45c915e7a85a7cc7fc211022ecd38255297049c3.msu"
-    $cab = "Windows10.0-KB3205436-x64.cab"
-    $sourcefile = @(`
-        'wow64_microsoft-onecore-coremessaging_31bf3856ad364e35_10.0.10240.17146_none_59cb7df4b29f7881/coremessaging.dll', `
-        'amd64_microsoft-onecore-coremessaging_31bf3856ad364e35_10.0.10240.17146_none_4f76d3a27e3eb686/coremessaging.dll', `
-        'amd64_microsoft-windows-directui_31bf3856ad364e35_10.0.10240.17184_none_bee994db894d335a/windows.ui.xaml.dll', `
-        'wow64_microsoft-windows-directui_31bf3856ad364e35_10.0.10240.17184_none_c93e3f2dbdadf555/windows.ui.xaml.dll', `
-        'amd64_microsoft-windows-bcp47languages_31bf3856ad364e35_10.0.10240.17113_none_a25e8c81718a36ce/bcp47langs.dll', `
-        'wow64_microsoft-windows-bcp47languages_31bf3856ad364e35_10.0.10240.17113_none_acb336d3a5eaf8c9/bcp47langs.dll' `
-    )
-
-    check_msu_sanity $url $cab; $dldir = $($url.split('/')[-1]) -replace '.msu',''    
-
-    foreach ($i in $sourcefile) {
-        if( $i.SubString(0,3) -eq 'amd' ) {expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $env:TEMP }
-        if( $i.SubString(0,3) -eq 'wow' ) {<# Nothing to do #>}                                                                          } 
-
-    foreach ($i in $sourcefile) {
-        if( $i.SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose "$env:TEMP\\$i" $env:systemroot\\system32\\$($i.split('/')[-1]) }
-        if( $i.SubString(0,3) -eq 'wow' ) {Copy-Item -force -verbose "$env:TEMP\\$i" $env:systemroot\\syswow64\\$($i.split('/')[-1]) } } 
-	
 $regkey = @"
 REGEDIT4
-[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion]
-"CurrentBuild"="17134"
-"CurrentBuildNumber"="17134"
-[HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsRuntime\ActivatableClassId\Windows.UI.Xaml.Application]
-"DllPath"="c:\\\\windows\\\\system32\\\\Windows.UI.Xaml.dll"
+[HKEY_CURRENT_USER\Software\Wine\AppDefaults\explorer.exe\DllOverrides]
+"comctl32"="builtin"
+[HKEY_CURRENT_USER\Software\Wine\AppDefaults\winecfg.exe\DllOverrides]
+"comctl32"="builtin"
+[HKEY_CURRENT_USER\Software\Wine\AppDefaults\regedit.exe\DllOverrides]
+"comctl32"="builtin"
 "@
     reg_edit $regkey
-	  
-} <# end windows.ui.xaml #>
 
-function func_ucrtbase
-{
-    $dldir = "vcredist2015"
-    w_download_to "$dldir\\64" "https://aka.ms/vs/15/release/vc_redist.x64.exe" "VC_redist.x64.exe"
-    w_download_to "$dldir\\32" "https://aka.ms/vs/15/release/vc_redist.x86.exe" VC__redist.x86.exe
-    7z -t# x $cachedir\\$dldir\\64\\VC_redist.x64.exe "-o$env:TEMP\\$dldir\\64" 4.cab -y | Select-String 'ok' ; quit?('7z')
-    7z -t# x $cachedir\\$dldir\\32\\VC__redist.x86.exe "-o$env:TEMP\\$dldir\\32" 4.cab -y | Select-String 'ok' ; quit?('7z')
-    7z e $env:TEMP\\$dldir\\64\\4.cab "-o$env:TEMP\\$dldir\\64" a10 -y | Select-String 'ok' ; quit?('7z')
-    7z e $env:TEMP\\$dldir\\32\\4.cab "-o$env:TEMP\\$dldir\\32" a10 -y | Select-String 'ok' ; quit?('7z')
+    Remove-Item -Force $env:systemroot\winsxs\manifests\amd64_microsoft.windows.common-controls_6595b64144ccf1df_6.0.2600.2982_none_deadbeef.manifest -ErrorAction SilentlyContinue
+    Remove-Item -Force $env:systemroot\winsxs\manifests\x86_microsoft.windows.common-controls_6595b64144ccf1df_6.0.2600.2982_none_deadbeef.manifest -ErrorAction SilentlyContinue
 
-    foreach ($i in 'ucrtbase.dll'){
-        7z e $env:TEMP\\$dldir\\64\\a10 "-o$env:systemroot\system32" $i -aoa | Select-String 'ok'; quit?('7z')
-        7z e $env:TEMP\\$dldir\\32\\a10 "-o$env:systemroot\syswow64" $i -aoa | Select-String 'ok'; quit?('7z') }
-    foreach($i in 'ucrtbase') { dlloverride 'native' $i }
-} <# end ucrtbase #>
-
-function func_dshow
-{
-    $dldir = "win7sp1"
-    w_download_to "$dldir" "http://download.windowsupdate.com/msdownload/update/software/svpk/2011/02/windows6.1-kb976932-x64_74865ef2562006e51d7f9333b4a8d45b7a749dab.exe" "windows6.1-kb976932-x64_74865ef2562006e51d7f9333b4a8d45b7a749dab.exe"
-    if ( ![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $dldir, "191.cab" ) ) ) {
-        7z -t# x $cachedir\\$dldir\\windows6.1-kb976932-x64_74865ef2562006e51d7f9333b4a8d45b7a749dab.exe "-o$cachedir\\$dldir" 191.cab -y  ; quit?('7z') }
-
-    foreach ($i in 
-        'amd64_microsoft-windows-directshow-other_31bf3856ad364e35_6.1.7601.17514_none_6b778d68f75a1a54/amstream.dll',
-        'x86_microsoft-windows-directshow-other_31bf3856ad364e35_6.1.7601.17514_none_0f58f1e53efca91e/amstream.dll',
-        'wow64_microsoft-windows-directshow-asf_31bf3856ad364e35_6.1.7601.17514_none_83382f97498abe19/qasf.dll',
-        'amd64_microsoft-windows-directshow-asf_31bf3856ad364e35_6.1.7601.17514_none_78e385451529fc1e/qasf.dll',
-        'x86_microsoft-windows-directshow-capture_31bf3856ad364e35_6.1.7601.17514_none_bae08d1e7dcccf2a/qcap.dll',
-        'amd64_microsoft-windows-directshow-capture_31bf3856ad364e35_6.1.7601.17514_none_16ff28a2362a4060/qcap.dll',
-        'x86_microsoft-windows-directshow-dvdsupport_31bf3856ad364e35_6.1.7601.17514_none_562994bd321aac67/qdvd.dll',
-        'amd64_microsoft-windows-directshow-dvdsupport_31bf3856ad364e35_6.1.7601.17514_none_b2483040ea781d9d/qdvd.dll',
-        'wow64_microsoft-windows-qedit_31bf3856ad364e35_6.1.7601.17514_none_c3168c6e9267a403/qedit.dll',
-        'amd64_microsoft-windows-qedit_31bf3856ad364e35_6.1.7601.17514_none_b8c1e21c5e06e208/qedit.dll',
-        'wow64_microsoft-windows-directshow-core_31bf3856ad364e35_6.1.7601.17514_none_0eeae7a238e677c8/quartz.dll',
-        'amd64_microsoft-windows-directshow-core_31bf3856ad364e35_6.1.7601.17514_none_04963d500485b5cd/quartz.dll') {
-        if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\191.cab "-o$env:systemroot\system32" $i -aoa ; quit?('7z') }
-        if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\191.cab "-o$env:systemroot\syswow64" $i -aoa ; quit?('7z') }
-        if( $i.SubString(0,3) -eq 'wow' ) {7z e $cachedir\\$dldir\\191.cab "-o$env:systemroot\syswow64" $i -aoa ; quit?('7z') } }
-
-    foreach($i in 'amstream', 'qasf', 'qcap', 'qdvd', 'qedit' , 'quartz') { dlloverride 'native' $i }
-
-    foreach($i in  'amstream.dll', 'qasf.dll', 'qcap.dll', 'qdvd.dll', 'qedit.dll' , 'quartz.dll') {
-        & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\$i"
-        & "$env:systemroot\\system32\\regsvr32"  "$env:systemroot\\system32\\$i" }
-} <# end dshow #>
-
-function func_findstr
-{
-    $dldir = "win7sp1"
-    w_download_to "$dldir" "http://download.windowsupdate.com/msdownload/update/software/svpk/2011/02/windows6.1-kb976932-x64_74865ef2562006e51d7f9333b4a8d45b7a749dab.exe" "windows6.1-kb976932-x64_74865ef2562006e51d7f9333b4a8d45b7a749dab.exe"
-    if ( ![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $dldir, "191.cab" ) ) ) {
-        7z -t# x $cachedir\\$dldir\\windows6.1-kb976932-x64_74865ef2562006e51d7f9333b4a8d45b7a749dab.exe "-o$cachedir\\$dldir" 191.cab -y  ; quit?('7z') }
-
-    foreach ($i in 
-        'x86_microsoft-windows-findstr_31bf3856ad364e35_6.1.7601.17514_none_2936f54db7f6c08f/findstr.exe',
-        'amd64_microsoft-windows-findstr_31bf3856ad364e35_6.1.7601.17514_none_855590d1705431c5/findstr.exe') {
-        if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\191.cab "-o$env:systemroot\system32" $i -aoa ; quit?('7z') }
-        if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\191.cab "-o$env:systemroot\syswow64" $i -aoa ; quit?('7z') }
-        if( $i.SubString(0,3) -eq 'wow' ) {7z e $cachedir\\$dldir\\191.cab "-o$env:systemroot\syswow64" $i -aoa ; quit?('7z') } }
-
-    foreach($i in 'findstr.exe') { dlloverride 'native' $i }
-} <# end findstr #>
-
-function func_d3dx
-{
-    $dldir = "d3dx"
-     #w_download_to "$dldir" "https://globalcdn.nuget.org/packages/microsoft.dxsdk.d3dx.9.29.952.8.nupkg" "microsoft.dxsdk.d3dx.9.29.952.8.nupkg" 
-     w_download_to "$dldir" "https://download.microsoft.com/download/c/c/2/cc291a37-2ebd-4ac2-ba5f-4c9124733bf1/UAPSignedBinary_Microsoft.DirectX.x64.appx" "UAPSignedBinary_Microsoft.DirectX.x64.appx"
-     #7z x $cachedir\\$dldir\\microsoft.dxsdk.d3dx.9.29.952.8.nupkg "-o$env:TEMP\\$dldir\\d3dx" -y #this one has 'D3DCompiler_43.dll', 'd3dx10_43.dll', 'd3dx11_43.dll', 'D3DX9_43.dll'
-     7z x $cachedir\\$dldir\\UAPSignedBinary_Microsoft.DirectX.x64.appx "-o$env:SystemRoot\\system32" -y
-
-     w_download_to "$dldir" "https://download.microsoft.com/download/c/c/2/cc291a37-2ebd-4ac2-ba5f-4c9124733bf1/UAPSignedBinary_Microsoft.DirectX.x86.appx" "UAPSignedBinary_Microsoft.DirectX.x86.appx" 
-     7z x $cachedir\\$dldir\\UAPSignedBinary_Microsoft.DirectX.x86.appx "-o$env:SystemRoot\\syswow64" -y
-} <# end d3dx #>
-
-function func_vcrun2019
-{
-    func_ucrtbase
-    $dldir = "vcredist140"
-
-    if ( ![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $dldir,  "64", "VC_redist.x64.exe" ) ) -or 
-         ![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $dldir,  "32", "VC__redist.x86.exe") ) ) {
-        choco install vcredist140 -n
-        . $env:ProgramData\\chocolatey\\lib\\vcredist140\\tools\\data.ps1  #source the file via dot operator
-        w_download_to "vcredist140\\64" $installData64.url64 "VC_redist.x64.exe"
-        w_download_to "vcredist140\\32" $installData32.url VC__redist.x86.exe }
-    
-    7z -t# x $cachedir\\$dldir\\64\\VC_redist.x64.exe "-o$env:TEMP\\$dldir\\64" 4.cab -y | Select-String 'ok'; quit?('7z')
-    7z -t# x $cachedir\\$dldir\\32\\VC__redist.x86.exe "-o$env:TEMP\\$dldir\\32" 4.cab -y | Select-String 'ok'; quit?('7z')
-    7z e $env:TEMP\\$dldir\\64\\4.cab "-o$env:TEMP\\$dldir\\64" a12 -y | Select-String 'ok' ;quit?('7z')
-    7z e $env:TEMP\\$dldir\\64\\4.cab "-o$env:TEMP\\$dldir\\64" a13 -y | Select-String 'ok'; quit?('7z')
-    7z e $env:TEMP\\$dldir\\32\\4.cab "-o$env:TEMP\\$dldir\\32" a10 -y | Select-String 'ok'; quit?('7z')
-    7z e $env:TEMP\\$dldir\\32\\4.cab "-o$env:TEMP\\$dldir\\32" a11 -y | Select-String 'ok'; quit?('7z')
-    7z e $env:TEMP\\$dldir\\64\\a12 "-o$env:systemroot\\system32" -y | Select-String 'ok';
-    7z e $env:TEMP\\$dldir\\64\\a13 "-o$env:systemroot\\system32" -y | Select-String 'ok';
-    7z e $env:TEMP\\$dldir\\32\\a10 "-o$env:systemroot\\syswow64" -y | Select-String 'ok';
-    7z e $env:TEMP\\$dldir\\32\\a11 "-o$env:systemroot\\syswow64" -y | Select-String 'ok'; quit?('7z')
-    foreach($i in 'concrt140', 'msvcp140', 'msvcp140_1', 'msvcp140_2', 'vcruntime140', 'vcruntime140_1') { dlloverride 'native' $i }
-} <# end vcrun2019 #>
-
-function func_hnetcfg <# fix for https://bugs.winehq.org/show_bug.cgi?id=45432 #>
-{
-    $dldir = "hnetcfg"
-    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_hnetcfg.7z" "wine_hnetcfg.7z"
-
-    foreach ($i in 'hnetcfg.dll'){
-        7z e $cachedir\\$dldir\\wine_hnetcfg.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
-        7z e $cachedir\\\\$dldir\\wine_hnetcfg.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1]); quit?('7z') }
-    foreach($i in 'hnetcfg') { dlloverride 'native' $i }
-} <# end hnetcfg #>
-
-function func_msi <# wine msi with some hacks faking success #>
-{
-    $dldir = "msi"
-    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_msi.7z" "wine_msi.7z"
-
-    foreach ($i in 'msi.dll'){
-        7z e $cachedir\\$dldir\\wine_msi.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
-        7z e $cachedir\\\\$dldir\\wine_msi.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
-    foreach($i in 'msi') { dlloverride 'native' $i }
-} <# end msi #>
-
-function func_wintrust <# wine wintrust with some hacks faking success #>
-{
-    $dldir = "wintrust"
-    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_wintrust.7z" "wine_wintrust.7z"
-
-    foreach ($i in 'wintrust.dll'){
-        7z e $cachedir\\$dldir\\wine_wintrust.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
-        7z e $cachedir\\\\$dldir\\wine_wintrust.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
-    foreach($i in 'wintrust') { dlloverride 'native' $i }
-} <# end wintrust #>
-
-function func_advapi32 <# wine advapi32 with some hacks faking success #>
-{
-    $dldir = "advapi32"
-    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_advapi32.7z" "wine_advapi32.7z"
-
-    foreach ($i in 'advapi32.dll'){
-        7z e $cachedir\\$dldir\\wine_advapi32.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
-        7z e $cachedir\\\\$dldir\\wine_advapi32.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
-} <# end advapi32 #>
-
-function func_ole32 <# wine ole32 with some hacks faking success #>
-{
-    $dldir = "ole32"
-    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_ole32.7z" "wine_ole32.7z"
-
-    foreach ($i in 'ole32.dll'){
-        7z e $cachedir\\$dldir\\wine_ole32.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
-        7z e $cachedir\\\\$dldir\\wine_ole32.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
-} <# end ole32 #>
-
-function func_combase <# wine combase with some hacks faking success #>
-{
-    $dldir = "combase"
-    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_combase.7z" "wine_combase.7z"
-
-    foreach ($i in 'combase.dll'){
-        7z e $cachedir\\$dldir\\wine_combase.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
-        7z e $cachedir\\\\$dldir\\wine_combase.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
-} <# end combase #>
-
-function func_shell32 <# wine shell32 with some hacks faking success #>
-{
-    $dldir = "shell32"
-    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_shell32.7z" "wine_shell32.7z"
-
-    foreach ($i in 'shell32.dll'){
-        7z e $cachedir\\$dldir\\wine_shell32.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
-        7z e $cachedir\\\\$dldir\\wine_shell32.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
-} <# end shell32 #>
-
-function func_wintypes <# wintypes #>
-{
-    $dldir = "wintypes"
-    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_wintypes.7z" "wine_wintypes.7z"
-
-    foreach ($i in 'wintypes.dll'){
-        7z e $cachedir\\$dldir\\wine_wintypes.7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
-        7z e $cachedir\\\\$dldir\\wine_wintypes.7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
-    foreach($i in 'wintypes') { dlloverride 'native' $i }
-} <# end wintypes #>
-
-function func_dxcore <# dxcore #>
-{
-    $dldir = "dxcore"
-    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_dxcore.7z" "wine_dxcore.7z"
-    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_ext-ms-win-dxcore-l1-1-0.7z" "wine_ext-ms-win-dxcore-l1-1-0.7z"
-
-    foreach ($i in 'dxcore.dll', 'ext-ms-win-dxcore-l1-1-0.dll'){
-        7z e $cachedir\\$dldir\\wine_$($i.split('.')[0]).7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
-        7z e $cachedir\\\\$dldir\\wine_$($i.split('.')[0]).7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
-} <# end dxcore #>
-
-function func_dxvk1103
-{
-    $dldir = "dxvk1103"
-    w_download_to "dxvk1103" "https://github.com/doitsujin/dxvk/releases/download/v1.10.3/dxvk-1.10.3.tar.gz" "dxvk-1.10.3.tar.gz"
-
-    7z x -y $cachedir\\$dldir\\dxvk-1.10.3.tar.gz "-o$env:TEMP";quit?('7z') 
-    7z e $env:TEMP\\dxvk-1.10.3.tar "-o$env:systemroot\\system32" dxvk-1.10.3/x64 -y;
-    7z e $env:TEMP\\dxvk-1.10.3.tar "-o$env:systemroot\\syswow64" dxvk-1.10.3/x32 -y;
-    foreach($i in 'dxgi', 'd3d9', 'd3d10_1', 'd3d10core', 'd3d10', 'd3d11') { dlloverride 'native' $i }
-} <# end dxvk1101 #>
-
-function func_dxvk20
-{
-    $dldir = "dxvk20"
-    w_download_to "dxvk20" "https://github.com/doitsujin/dxvk/releases/download/v2.0/dxvk-2.0.tar.gz" "dxvk-2.0.tar.gz"
-
-    7z x -y $cachedir\\$dldir\\dxvk-2.0.tar.gz "-o$env:TEMP";quit?('7z') 
-    7z e $env:TEMP\\dxvk-2.0.tar "-o$env:systemroot\\system32" dxvk-2.0/x64 -y;
-    7z e $env:TEMP\\dxvk-2.0.tar "-o$env:systemroot\\syswow64" dxvk-2.0/x32 -y;
-    foreach($i in 'dxgi', 'd3d9', 'd3d10_1', 'd3d10core', 'd3d10', 'd3d11') { dlloverride 'native' $i }
-} <# end dxvk20 #>
+    foreach($i in 'comctl32') { dlloverride 'native' $i }
+} <# end comctl32 #>
 
 function func_wsh57
 {
@@ -717,131 +389,27 @@ REGEDIT4
 
 function func_expand
 {
-    check_aik_sanity; $dldir = "aik70"
-    $exp     = @( 'amd64_microsoft-windows-basic-misc-tools_31bf3856ad364e35_6.1.7600.16385_none_7351a917d91c961e/expand.exe')
+    check_aik_sanity;
                   
     $dlls =    @( 'amd64_microsoft-windows-deltapackageexpander_31bf3856ad364e35_6.1.7600.16385_none_c5d387d64eb8e1f2/dpx.dll',
                   'amd64_microsoft-windows-cabinet_31bf3856ad364e35_6.1.7600.16385_none_933442c3fb9cbaed/cabinet.dll',
-                  'amd64_microsoft-windows-deltacompressionengine_31bf3856ad364e35_6.1.7600.16385_none_9c2159bf9f702069/msdelta.dll' )
+                  'amd64_microsoft-windows-deltacompressionengine_31bf3856ad364e35_6.1.7600.16385_none_9c2159bf9f702069/msdelta.dll',
+                  'amd64_microsoft-windows-basic-misc-tools_31bf3856ad364e35_6.1.7600.16385_none_7351a917d91c961e/expand.exe' )
 
-        if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $exp) ) ) {
-            7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$([IO.Path]::Combine($cachedir,  $dldir,  $exp.Split('/')[0]))" Windows/winsxs/$exp -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])
+    if (![System.IO.File]::Exists( $expand_exe ) ) { <# fragile test #>
+        foreach ($i in $dlls) {
+            7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32\expnd" Windows/winsxs/$i -y 
         }
-    #Rename expand.exe to expnd_.exe to not interfere with wine`s expand; also rename it inside the binary
-    #https://stackoverflow.com/questions/73790902/replace-string-in-a-binary-clipboard-dump-from-onenote
-    # Read the file *as a byte array*.
-    $data = Get-Content -AsByteStream -ReadCount 0  $([IO.Path]::Combine($cachedir,  $dldir,  $exp))
-    # Convert the array to a "hex string" in the form "nn-nn-nn-...",  where nn represents a two-digit hex representation of each byte,
-    # e.g. '41-42' for 0x41, 0x42, which, if interpreted as a single-byte encoding (ASCII), is 'AB'.
-    $dataAsHexString = [BitConverter]::ToString($data)
-    # Define the search and replace strings, and convert them into "hex strings" too, using their UTF-8 byte representation.
-    $search = 'Expand.'
-    $replacement = 'expnd_.'
-    $searchAsHexString = [BitConverter]::ToString([Text.Encoding]::UTF8.GetBytes($search))
-    $replaceAsHexString = [BitConverter]::ToString([Text.Encoding]::UTF8.GetBytes($replacement))
-    # Perform the replacement.
-    $dataAsHexString = $dataAsHexString.Replace($searchAsHexString, $replaceAsHexString)
-    # Convert he modified "hex string" back to a byte[] array.
-    $modifiedData = [byte[]] ($dataAsHexString -split '-' -replace '^', '0x')
-    # Save the byte array back to the file.
-    Set-Content -AsByteStream "$env:SystemRoot\\system32\\expnd_.exe" -Value $modifiedData -verbose
 
-    foreach ($i in $dlls) {
-        if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ) {
-            7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$([IO.Path]::Combine($cachedir,  $dldir,  $i.Split('/')[0]))" Windows/winsxs/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])
-        }
+        func_msdelta
     }
 
-    foreach ($i in $dlls) {
-       Copy-Item -force -verbose "$([IO.Path]::Combine($cachedir,  $dldir,  $i))" -destination $env:systemroot\\system32\\$($i.split('/')[-1])
-    }
-  
-  if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\expnd_.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expnd_.exe'}
-  if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\expnd_.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expnd_.exe\\DllOverrides'}
-  New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expnd_.exe\\DllOverrides' -Name 'cabinet' -Value 'native' -PropertyType 'String' -force
+    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe'}
+    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe\\DllOverrides'}
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe\\DllOverrides' -Name 'cabinet' -Value 'native,builtin' -PropertyType 'String' -force
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe\\DllOverrides' -Name 'msdelta' -Value 'native,builtin' -PropertyType 'String' -force
 } <# end expand #>
 
-function func_xmllite
-{
-    check_aik_sanity; $dldir = "aik70"
-    $expdlls = @( 'amd64_microsoft-windows-servicingstack_31bf3856ad364e35_6.1.7600.16385_none_655452efe0fb810b/xmllite.dll', `
-                  'x86_microsoft-windows-servicingstack_31bf3856ad364e35_6.1.7600.16385_none_0935b76c289e0fd5/xmllite.dll' )
-		  
-    foreach ($i in $expdlls) {
-        if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}
-        if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])}} quit?('7z')
-
-    foreach($i in 'xmllite') { dlloverride 'native' $i }
-} <# end xmllite #>
-
-function func_comctl32
-{
-    check_aik_sanity; $dldir = "aik70" <# There`s also other version 5.8 ?? #>
-    $60dlls = @( 'amd64_microsoft.windows.common-controls_6595b64144ccf1df_6.0.7600.16385_none_fa645303170382f6/comctl32.dll', `
-                 'x86_microsoft.windows.common-controls_6595b64144ccf1df_6.0.7600.16385_none_421189da2b7fabfc/comctl32.dll') ` 
-
-    foreach ($i in $60dlls) {
-        if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}
-        if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])}} quit?('7z')
-
-$regkey = @"
-REGEDIT4
-[HKEY_CURRENT_USER\Software\Wine\AppDefaults\explorer.exe\DllOverrides]
-"comctl32"="builtin"
-[HKEY_CURRENT_USER\Software\Wine\AppDefaults\winecfg.exe\DllOverrides]
-"comctl32"="builtin"
-[HKEY_CURRENT_USER\Software\Wine\AppDefaults\regedit.exe\DllOverrides]
-"comctl32"="builtin"
-"@
-    reg_edit $regkey
-
-    Remove-Item -Force $env:systemroot\winsxs\manifests\amd64_microsoft.windows.common-controls_6595b64144ccf1df_6.0.2600.2982_none_deadbeef.manifest -ErrorAction SilentlyContinue
-    Remove-Item -Force $env:systemroot\winsxs\manifests\x86_microsoft.windows.common-controls_6595b64144ccf1df_6.0.2600.2982_none_deadbeef.manifest -ErrorAction SilentlyContinue
-
-    foreach($i in 'comctl32') { dlloverride 'native' $i }
-} <# end comctl32 #>
-
-function func_wmp
-{
-    $url = "https://download.microsoft.com/download/7/A/D/7AD12930-3AA6-4040-81CF-350BF1E99076/Windows6.2-KB2703761-x64.msu"
-    $cab = "Windows6.2-KB2703761-x64.cab"
-    $sourcefile = @(`
-    'x86_microsoft-windows-mediaplayer-wmasf_31bf3856ad364e35_6.2.9200.16384_none_a460fc8111ced20d/wmasf.dll',`
-    'amd64_microsoft-windows-mediaplayer-wmasf_31bf3856ad364e35_6.2.9200.16384_none_007f9804ca2c4343/wmasf.dll',`
-    'x86_microsoft-windows-mediaplayer-wmvcore_31bf3856ad364e35_6.2.9200.16384_none_03dd8faea73e4600/wmvcore.dll',`
-    'amd64_microsoft-windows-mediaplayer-wmvcore_31bf3856ad364e35_6.2.9200.16384_none_5ffc2b325f9bb736/wmvcore.dll',`
-    'amd64_microsoft-windows-mediaplayer-wmnetmgr_31bf3856ad364e35_6.2.9200.16384_none_a00f9d7b48661606/wmnetmgr.dll',`
-    'wow64_microsoft-windows-mediaplayer-wmnetmgr_31bf3856ad364e35_6.2.9200.16384_none_aa6447cd7cc6d801/wmnetmgr.dll',`
-    'amd64_microsoft-windows-mfplat_31bf3856ad364e35_6.2.9200.16384_none_4f744011dd398719/mfplat.dll',`
-    'x86_microsoft-windows-mfplat_31bf3856ad364e35_6.2.9200.16384_none_f355a48e24dc15e3/mfplat.dll',`
-    'wow64_microsoft-windows-mediaplayer-wmpdxm_31bf3856ad364e35_6.2.9200.16384_none_07567510e5f08109/wmpdxm.dll',`
-    'amd64_microsoft-windows-mediaplayer-wmpdxm_31bf3856ad364e35_6.2.9200.16384_none_fd01cabeb18fbf0e/wmpdxm.dll',`
-    'wow64_microsoft-windows-mediaplayer-core_31bf3856ad364e35_6.2.9200.16384_none_6e8814d60d3eb187/wmp.dll',`
-    'amd64_microsoft-windows-mediaplayer-core_31bf3856ad364e35_6.2.9200.16384_none_64336a83d8ddef8c/wmp.dll',`
-    'wow64_microsoft-windows-mediaplayer-core_31bf3856ad364e35_6.2.9200.16384_none_6e8814d60d3eb187/wmploc.dll',`
-    'amd64_microsoft-windows-mediaplayer-core_31bf3856ad364e35_6.2.9200.16384_none_64336a83d8ddef8c/wmploc.dll'`
-    )
-
-    check_msu_sanity $url $cab; $dldir = $($url.split('/')[-1]) -replace '.msu',''
-
-    foreach ($i in $sourcefile) {
-        if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
-                    if( $i.SubString(0,3) -eq 'amd' ) {expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) }
-                    if( $i.SubString(0,3) -eq 'x86' ) {<# Nothing to do #>}
-                    if( $i.SubString(0,3) -eq 'wow' ) {<# Nothing to do #>}  }  }
-
-    foreach ($i in $sourcefile) {
-        if( $i.SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" -destination $env:systemroot\\system32\\$($i.split('/')[-1]) }
-        if( $i.SubString(0,3) -eq 'x86' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\syswow64\\$($i.split('/')[-1]) }
-        if( $i.SubString(0,3) -eq 'wow' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\syswow64\\$($i.split('/')[-1]) } } 
-	  
-    foreach($i in 'wmp') { dlloverride 'native' $i }
-
-    foreach($i in 'wmp', 'wmpdxm') {
-        & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\$i"
-        & "$env:systemroot\\system32\\regsvr32"  "$env:systemroot\\system32\\$i" }
-} <# end wmp #>
- 
 function func_mshtml
 {
     check_aik_sanity; $dldir = "aik70"
@@ -938,25 +506,135 @@ REGEDIT4
     reg_edit $regkey
 } <# end mshtml #>
 
+function func_gdiplus
+{
+    $url = "https://download.microsoft.com/download/3/5/C/35C470D8-802B-457A-9890-F1AFC277C907/Windows6.1-KB2834886-x64.msu"
+    $cab = "Windows6.1-KB2834886-x64.cab"
+    $sourcefile = @('gdiplus.dll')
+
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
+        check_msu_sanity $url $cab;
+        foreach ($i in $sourcefile) { &$expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\amd64_microsoft.windows.gdiplus_6595b64144ccf1df_1.1.7601.22290_none_145f0c928b8d0397" "$cachedir\$(verb)\x86_microsoft.windows.gdiplus_6595b64144ccf1df_1.1.7601.22290_none_5c0c4369a0092c9d" ; quit?('7z')
+    }
+
+    foreach($i in "$cab", "amd64", "x86", "wow64") { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" -Erroraction SilentlyContinue }
+
+    7z e "$cachedir\$(verb)\$(verb).7z" "amd64*\*" -o"$env:systemroot\\system32" -aoa
+    7z e "$cachedir\$(verb)\$(verb).7z" "x86*\*" -o"$env:systemroot\\syswow64" -aoa
+		  
+    foreach($i in 'gdiplus') { dlloverride 'native' $i }  
+} <# end gdiplus #>
+
+function func_d2d1
+{
+    $url = "http://download.windowsupdate.com/d/msdownload/update/software/updt/2016/05/windows6.1-kb3125574-v4-x64_2dafb1d203c8964239af3048b5dd4b1264cd93b9.msu"
+    $cab = "Windows6.1-KB3125574-v4-x64.cab"
+    $sourcefile = @('d2d1.dll')
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
+        check_msu_sanity $url $cab;
+        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\amd64_microsoft-windows-d2d_31bf3856ad364e35_7.1.7601.23403_none_f7c6a38a168dcfb8" "$cachedir\$(verb)\x86_microsoft-windows-d2d_31bf3856ad364e35_7.1.7601.23403_none_9ba808065e305e82" ; quit?('7z')
+    }
+
+    foreach($i in "$cab", "amd64", "x86", "wow64") { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" -Erroraction SilentlyContinue }
+
+    7z e "$cachedir\$(verb)\$(verb).7z" "amd64*\*" -o"$env:systemroot\\system32" -aoa
+    7z e "$cachedir\$(verb)\$(verb).7z" "x86*\*" -o"$env:systemroot\\syswow64" -aoa
+
+    foreach($i in 'd2d1') { dlloverride 'native' $i }  
+} <# end d2d1 #>
+
+function func_dinput8
+{
+    $url = "https://catalog.s.download.windowsupdate.com/c/msdownload/update/software/updt/2018/08/windows10.0-kb4343893-x64_bdae9c9c28d4102a673a24d37c371ed73d053338.msu"
+    $cab = "Windows10.0-KB4343893-x64.cab"
+    $sourcefile = @('dinput8.dll')
+
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
+        check_msu_sanity $url $cab;
+        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\amd64*" "$cachedir\$(verb)\x86*" ; quit?('7z')
+
+        foreach($i in 'amd64', 'x86', 'wow64') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" }
+    }
+
+    Remove-Item -Force "$cachedir\$(verb)\$cab" -ErrorAction SilentlyContinue
+
+    7z e "$cachedir\$(verb)\$(verb).7z" "amd64*\*" -o"$env:systemroot\\system32" -aoa
+    7z e "$cachedir\$(verb)\$(verb).7z" "x86*\*" -o"$env:systemroot\\syswow64" -aoa
+
+    foreach($i in 'dinput8') { dlloverride 'native' $i }  
+} <# end dinput8 #>
+
+function func_wmp
+{
+    $url = "https://download.microsoft.com/download/7/A/D/7AD12930-3AA6-4040-81CF-350BF1E99076/Windows6.2-KB2703761-x64.msu"
+    $cab = "Windows6.2-KB2703761-x64.cab"
+    $sourcefile = @('wmasf.dll', 'wmvcore.dll', 'wmnetmgr.dll', 'mfplat.dll', 'wmpdxm.dll', 'wmp.dll', 'wmploc.dll')
+
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
+        check_msu_sanity $url $cab;
+        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\amd64*" "$cachedir\$(verb)\x86*" "$cachedir\$(verb)\amd64*" "$cachedir\$(verb)\wow64*"; quit?('7z')
+
+        foreach($i in 'amd64', 'x86', 'wow64') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" }
+    }
+
+    Remove-Item -Force "$cachedir\$(verb)\$cab" -ErrorAction SilentlyContinue
+
+    7z e "$cachedir\$(verb)\$(verb).7z" amd64_microsoft-windows-directx-directinput_31bf3856ad364e35_10.0.16299.461_none_2b0b3955768ab66e\* -o"$env:systemroot\\system32" -aoa
+    7z e "$cachedir\$(verb)\$(verb).7z" x86_microsoft-windows-directx-directinput_31bf3856ad364e35_10.0.16299.461_none_ceec9dd1be2d4538\* -o"$env:systemroot\\syswow64" -aoa ; quit?('7z')
+  
+    foreach($i in 'wmp') { dlloverride 'native' $i }
+
+    foreach($i in 'wmp', 'wmpdxm') {
+        & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\$i"
+        & "$env:systemroot\\system32\\regsvr32"  "$env:systemroot\\system32\\$i" }
+} <# end wmp #>
+ 
+function func_msdelta <#  msdelta and dpx from windows 10 #>
+{
+    $url = "https://catalog.s.download.windowsupdate.com/c/msdownload/update/software/updt/2018/08/windows10.0-kb4343893-x64_bdae9c9c28d4102a673a24d37c371ed73d053338.msu"
+    $cab = "Windows10.0-KB4343893-x64.cab"
+    $sourcefile = @('msdelta.dll','dpx.dll')
+ 
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z" ) ) ){
+        check_msu_sanity $url $cab;
+        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\amd64_microsoft-windows-i..p-media-legacy-base_31bf3856ad364e35_10.0.16299.547_none_7f0fdb243374c0d2"  ; quit?('7z')
+
+        foreach($i in 'amd64', 'x86', 'wow64') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" }
+    }
+
+    Remove-Item -Force "$cachedir\$(verb)\$cab" -Erroraction SilentlyContinue
+    
+    if ((Get-PSCallStack)[1].Command -eq 'func_expand') {
+        7z e "$cachedir\$(verb)\$(verb).7z" amd64_microsoft-windows-i..p-media-legacy-base_31bf3856ad364e35_10.0.16299.547_none_7f0fdb243374c0d2\* -o"$env:systemroot\\system32\\expnd" -aoa ; quit?('7z')
+    }
+    else {
+        7z e "$cachedir\$(verb)\$(verb).7z" amd64_microsoft-windows-i..p-media-legacy-base_31bf3856ad364e35_10.0.16299.547_none_7f0fdb243374c0d2\* -o"$env:systemroot\\system32" -aoa ; quit?('7z')
+    }
+} <# end msdelta #>
+
 function func_sapi <# Speech api #>
 {   
     $url = "http://download.windowsupdate.com/c/msdownload/update/software/updt/2016/11/windows10.0-kb3205436-x64_45c915e7a85a7cc7fc211022ecd38255297049c3.msu"
     $cab = "Windows10.0-KB3205436-x64.cab"
-    $sourcefile = @(`
-        'amd64_microsoft-windows-speechcommon_31bf3856ad364e35_10.0.10240.17184_none_ddf5e9c56d621922/sapi.dll',
-        'x86_microsoft-windows-speechcommon_31bf3856ad364e35_10.0.10240.17184_none_81d74e41b504a7ec/sapi.dll' `
-    )
+    $sourcefile = @( 'sapi.dll' )
 
-    check_msu_sanity $url $cab; $dldir = $($url.split('/')[-1]) -replace '.msu',''    
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb), "$(verb).7z") ) ) {
+        check_msu_sanity $url $cab;
+        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\amd64*" "$cachedir\$(verb)\x86*" ; quit?('7z')
 
-    foreach ($i in $sourcefile) {
-        if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
-                    if( $i.SubString(0,3) -eq 'amd' ) {expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) }
-                    if( $i.SubString(0,3) -eq 'x86' ) {<# Nothing to do #>}  }  }
+        foreach($i in 'amd64', 'x86', 'wow64') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*)" }
+    }
 
-    foreach ($i in $sourcefile) {
-        if( $i.SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" -destination $env:systemroot\\system32\\Speech\\Common\\$($i.split('/')[-1]) }
-        if( $i.SubString(0,3) -eq 'x86' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\syswow64\\Speech\\Common\\$($i.split('/')[-1]) } } 
+    Remove-Item -Force "$cachedir\$(verb)\$cab" -ErrorAction SilentlyContinue
+
+    7z e "$cachedir\$(verb)\$(verb).7z" "amd64*\*" -o"$env:systemroot\\system32\\Speech\\Common" -aoa
+    7z e "$cachedir\$(verb)\$(verb).7z" "x86*\*" -o"$env:systemroot\\syswow64\\Speech\\Common" -aoa; quit?('7z')
 
     reg.exe DELETE "HKLM\SOFTWARE\Microsoft\Speech\Voices\Tokens\Wine Default Voice" /f /reg:64
     reg.exe DELETE "HKLM\SOFTWARE\Microsoft\Speech\Voices\Tokens\Wine Default Voice" /f /reg:32
@@ -987,84 +665,97 @@ function func_sapi <# Speech api #>
     $voice.Speak("This is mostly a bunch of crap. Please improve me", 2)
 } <# end sapi #>
 
-function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
+function func_winmetadata <# winmetadata #>
 {   
-    $dldir = "ps51"
-    if ( ![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $dldir, "Windows6.1-KB3191566-x64.cab" ) ) ) {
-        w_download_to $dldir "https://download.microsoft.com/download/6/F/5/6F5FF66C-6775-42B0-86C4-47D41F2DA187/Win7AndW2K8R2-KB3191566-x64.zip" Win7AndW2K8R2-KB3191566-x64.zip
-        7z e $cachedir\\$dldir\\Win7AndW2K8R2-KB3191566-x64.zip "-o$cachedir\\$dldir" Win7AndW2K8R2-KB3191566-x64.msu -y | Select-String 'ok'; quit?('7z')
-        7z e $cachedir\\$dldir\\Win7AndW2K8R2-KB3191566-x64.msu "-o$cachedir\\$dldir" Windows6.1-KB3191566-x64.cab -y | Select-String 'ok'; quit?('7z')}
-
-    $cab = "Windows6.1-KB3191566-x64.cab"
+    $url = "https://catalog.s.download.windowsupdate.com/c/msdownload/update/software/updt/2018/08/windows10.0-kb4343893-x64_bdae9c9c28d4102a673a24d37c371ed73d053338.msu"
+    $cab = "Windows10.0-KB4343893-x64.cab"
     $sourcefile = @(`
-    'msil_system.management.automation_31bf3856ad364e35_7.3.7601.16384_none_85266a48f56bfafc/system.management.automation.dll',`
-    'msil_microsoft.powershel..ommands.diagnostics_31bf3856ad364e35_7.3.7601.16384_none_3cbfce2c3881d318/microsoft.powershell.commands.diagnostics.dll',`
-    'msil_microsoft.powershell.commands.utility_31bf3856ad364e35_7.3.7601.16384_none_d96091fd5568ce18/microsoft.powershell.commands.utility.dll',`
-    'msil_microsoft.powershell.consolehost_31bf3856ad364e35_7.3.7601.16384_none_8634e813855724c9/microsoft.powershell.consolehost.dll',`
-    'msil_microsoft.powershell.commands.management_31bf3856ad364e35_7.3.7601.16384_none_c1a0335546714b23/microsoft.powershell.commands.management.dll',`
-    'msil_microsoft.management.infrastructure_31bf3856ad364e35_7.3.7601.16384_none_8310156aa31a52f1/microsoft.management.infrastructure.dll',`
-    'msil_microsoft.powershell.security_31bf3856ad364e35_7.3.7601.16384_none_64c18e3e0eafee92/microsoft.powershell.security.dll',`
-    'msil_microsoft.wsman.runtime_31bf3856ad364e35_7.3.7601.16384_none_a19b148df40272fb/microsoft.wsman.runtime.dll',`
-    'msil_microsoft.wsman.management_31bf3856ad364e35_7.3.7601.16384_none_60964e40b40fafee/microsoft.wsman.management.dll',`
-    'msil_microsoft.powershell.graphicalhost_31bf3856ad364e35_7.3.7601.16384_none_c32121af2a1808d4/microsoft.powershell.graphicalhost.dll'`
+    'windows.web.winmd', 'windows.foundation.winmd', 'windows.graphics.winmd', 'windows.services.winmd', 'windows.data.winmd', 'windows.media.winmd',
+    'windows.system.winmd', 'windows.ui.winmd', 'windows.security.winmd', 'windows.globalization.winmd', 'windows.management.winmd', 'windows.devices.winmd',
+    'windows.perception.winmd', 'windows.storage.winmd', 'windows.ui.xaml.winmd', 'windows.gaming.winmd', 'windows.applicationmodel.winmd', 'windows.networking.winmd'`
     )
 
-    <# Following files have to go into $env:systemroot\\system32\\WindowsPowerShell\v1.0\\ #>
-    $psrootfiles = @(` <# sourcefile #>                                                                                                                        <# destination file #>
-    @('wow64_microsoft-windows-powershell-exe_31bf3856ad364e35_7.3.7601.16384_none_531328cc15e8fa79/powershell.exe',                                           'ps51.exe'),`
-    @('amd64_microsoft-windows-powershell-exe_31bf3856ad364e35_7.3.7601.16384_none_48be7e79e188387e/powershell.exe',                                           'ps51.exe'),`
-    @('x86_microsoft.managemen..frastructure.native_31bf3856ad364e35_7.3.7601.16384_none_d262ac3e9809d109/microsoft.management.infrastructure.native.dll',     'microsoft.management.infrastructure.native.dll'),`
-    @('amd64_microsoft.managemen..frastructure.native_31bf3856ad364e35_7.3.7601.16384_none_8ab57567838da803/microsoft.management.infrastructure.native.dll',   'microsoft.management.infrastructure.native.dll')`
-    )
+    New-Item -Path $env:systemroot\\system32\\winmetadata -Type Directory -force -erroraction silentlycontinue
+    New-Item -Path $env:systemroot\\syswow64\\winmetadata -Type Directory -force -erroraction silentlycontinue
 
-    <# Following files have to go into their right directories like on Windows (like e.g. $env:systemroot\\system32\\WindowsPowerShell\v1.0\\Modules\\microsoft.powershell.management etc.) #>
-    $modfiles = @(` <# sourcefile #>                                                                                                             <# destination directory #>
-    @('amd64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_77331ae862faf7ef/microsoft.powershell.management.psd1', 'Modules\\microsoft.powershell.management'),`
-    @('wow64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_8187c53a975bb9ea/microsoft.powershell.management.psd1', 'Modules\\microsoft.powershell.management'),`
-    @('amd64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_77331ae862faf7ef/microsoft.powershell.utility.psd1',    'Modules\\microsoft.powershell.utility'),`
-    @('wow64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_8187c53a975bb9ea/microsoft.powershell.utility.psd1',    'Modules\\microsoft.powershell.utility'),`
-    @('amd64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_77331ae862faf7ef/microsoft.powershell.utility.psm1',    'Modules\\microsoft.powershell.utility'),`
-    @('wow64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_8187c53a975bb9ea/microsoft.powershell.utility.psm1',    'Modules\\microsoft.powershell.utility'),`
-#    
-    @('amd64_microsoft.powershell.archive_31bf3856ad364e35_7.3.7601.16384_none_f7ab4242f320bef0/microsoft.powershell.archive.psm1',                  'Modules\\microsoft.powershell.archive'),`
-    @('amd64_microsoft.powershell.archive_31bf3856ad364e35_7.3.7601.16384_none_f7ab4242f320bef0/microsoft.powershell.archive.psd1',                  'Modules\\microsoft.powershell.archive'),`
-    @('wow64_microsoft.powershell.archive_31bf3856ad364e35_7.3.7601.16384_none_01ffec95278180eb/microsoft.powershell.archive.psm1',                  'Modules\\microsoft.powershell.archive'),`
-    @('wow64_microsoft.powershell.archive_31bf3856ad364e35_7.3.7601.16384_none_01ffec95278180eb/microsoft.powershell.archive.psd1',                  'Modules\\microsoft.powershell.archive'),`
-#
-    @('amd64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_77331ae862faf7ef/microsoft.powershell.diagnostics.psd1',    'Modules\\microsoft.powershell.diagnostics'),`
-    @('wow64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_8187c53a975bb9ea/microsoft.powershell.diagnostics.psd1',    'Modules\\microsoft.powershell.diagnostics'),`
-#    
-    @('amd64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_77331ae862faf7ef/microsoft.powershell.security.psd1',       'Modules\\microsoft.powershell.security'),`
-    @('wow64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_8187c53a975bb9ea/microsoft.powershell.security.psd1',       'Modules\\microsoft.powershell.security')`
-    )
-    <# fragile test... #>
-    if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:systemroot, "system32", "dpx.dll")  ) ) { func_expand }
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
+        check_msu_sanity $url $cab;
+        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb" "$cachedir\$(verb)\wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6" ; quit?('7z')
+        foreach($i in 'amd64', 'x86', 'wow64') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" }
+    }
 
-    foreach ($i in $sourcefile) {
-        if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
-            expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) } 
-        Copy-Item -force "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\system32\\WindowsPowerShell\v1.0\\$($i.split('/')[-1])}
+    Remove-Item -Force "$cachedir\$(verb)\$cab" -Erroraction SilentlyContinue
 
-    foreach ($i in $psrootfiles) {
-        if (![System.IO.File]::Exists(  $(Join-Path $cachedir  $dldir  $i[0]) ) ){  
-            if( $i[0].SubString(0,3) -eq 'amd' ) {expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i[0].split('/')[-1]) $(Join-Path $cachedir $dldir) }
-            if( $i[0].SubString(0,3) -eq 'x86' ) {<# Nothing to do #>}     
-            if( $i[0].SubString(0,3) -eq 'wow' ) {<# Nothing to do #>}  }  }  
+    7z e "$cachedir\$(verb)\$(verb).7z" "amd64*\*" -o"$env:systemroot\\system32\\winmetadata" -aoa
+    7z e "$cachedir\$(verb)\$(verb).7z" "wow64*\*" -o"$env:systemroot\\syswow64\\winmetadata" -aoa
 
-    foreach ($i in $psrootfiles) {
-        if( $i[0].SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose $(Join-Path $cachedir $dldir $i[0]) -destination  $(Join-Path $env:systemroot\\system32\\WindowsPowerShell\\v1.0 $i[1] ) }
-        if( $i[0].SubString(0,3) -eq 'x86' ) {Copy-Item -force -verbose $(Join-Path $cachedir $dldir $i[0]) -destination  $(Join-Path $env:systemroot\\syswow64\\WindowsPowerShell\\v1.0 $i[1] ) }
-        if( $i[0].SubString(0,3) -eq 'wow' ) {Copy-Item -force -verbose $(Join-Path $cachedir $dldir $i[0]) -destination  $(Join-Path $env:systemroot\\syswow64\\WindowsPowerShell\\v1.0 $i[1] ) } }
+} <# end winmetadata #>
 
-    foreach ($i in $modfiles) {
-        if (![System.IO.File]::Exists(  $(Join-Path $cachedir  $dldir  $i[0]) ) ){  
-            if( $i[0].SubString(0,3) -eq 'amd' ) {expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i[0].split('/')[-1]) $(Join-Path $cachedir $dldir) }
-            if( $i[0].SubString(0,3) -eq 'wow' ) {<# Nothing to do #>}  }  }  
+function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
+{
+    $url = "/Win7AndW2K8R2-KB3191566-x64.msu" <# download is zip file, so no download url of the msu #>
+    $cab = "Windows6.1-KB3191566-x64.cab"
 
-    foreach ($i in $modfiles) {
-        if( $i[0].SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose $(Join-Path $cachedir $dldir $i[0]) -destination (New-Item -Path $(Join-Path $env:systemroot\\system32\\WindowsPowerShell\\v1.0 $i[1] ) -Type Directory -force) }
-        if( $i[0].SubString(0,3) -eq 'wow' ) {Copy-Item -force -verbose $(Join-Path $cachedir $dldir $i[0]) -destination (New-Item -Path $(Join-Path $env:systemroot\\syswow64\\WindowsPowerShell\\v1.0 $i[1] ) -Type Directory -force) } } 
+    $sourcefile = @('system.management.automation.dll', 'microsoft.powershell.commands.diagnostics.dll', 'microsoft.powershell.commands.utility.dll',`
+                    'microsoft.powershell.consolehost.dll', 'microsoft.powershell.commands.management.dll', 'microsoft.management.infrastructure.dll',`
+                    'microsoft.powershell.security.dll', 'microsoft.wsman.runtime.dll', 'microsoft.wsman.management.dll', 'microsoft.powershell.graphicalhost.dll',`
+                    'powershell.exe', 'microsoft.management.infrastructure.native.dll', 'microsoft.powershell.management.psd1', 'microsoft.powershell.utility.psd1',`
+                    'microsoft.powershell.utility.psm1', 'microsoft.powershell.archive.psm1', 'microsoft.powershell.archive.psd1', 'microsoft.powershell.diagnostics.psd1',`
+                    'microsoft.powershell.security.psd1')
+   
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb), "$(verb).7z") ) ) {
 
+        if ( ![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $(verb), "Win7AndW2K8R2-KB3191566-x64.zip" ) ) ) {
+            w_download_to $(verb) "https://download.microsoft.com/download/6/F/5/6F5FF66C-6775-42B0-86C4-47D41F2DA187/Win7AndW2K8R2-KB3191566-x64.zip" "Win7AndW2K8R2-KB3191566-x64.zip"
+            7z e "$cachedir\$(verb)\Win7AndW2K8R2-KB3191566-x64.zip" "-o$cachedir\$(verb)" "Win7AndW2K8R2-KB3191566-x64.msu" -y | Select-String 'ok'; quit?('7z')
+            check_msu_sanity $url $cab;
+        }
+
+        Remove-Item -Force $([IO.Path]::Combine($cachedir,  $(verb), "Win7AndW2K8R2-KB3191566-x64.zip") ) -ErrorAction SilentlyContinue
+
+        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
+
+        Remove-Item -Force "$cachedir\$(verb)\$cab" -ErrorAction SilentlyContinue
+
+        foreach ($i in (gci "$cachedir\$(verb)\msil_*\*").FullName ) {
+         
+            $assembly=[System.Reflection.AssemblyName]::GetAssemblyName($i)
+            $publickeytoken = ($assembly.GetPublicKeyToken() |ForEach-Object ToString x2) -join '' 
+      
+            $destdir = "$env:SystemRoot" + "\" + "Microsoft.NET\assembly\GAC_MSIL\" + $assembly.Name + '\' + 'v4.0_' + $assembly.Version.ToString() + '__' + $publickeytoken
+        
+            7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" $i; quit?('7z')
+            7z rn "$cachedir\$(verb)\$(verb).7z" "$(([System.IO.FileInfo]$i).Name)" "$destdir\$(([System.IO.FileInfo]$i).Name)" ; quit?('7z')
+        }
+
+        foreach ($i in 'powershell.exe', 'microsoft.management.infrastructure.native.dll' ) {
+ 
+            foreach ($j in (gci "$cachedir\$(verb)\*\$i" ).FullName) {
+                if( $(([System.IO.FileInfo]$j).Directory).Name.SubString(0,3) -eq 'amd' ) {$arch = 'system32'} else {$arch = 'syswow64'}
+                if( $(([System.IO.FileInfo]$j).Name) -eq 'powershell.exe') {$destfile = 'ps51.exe'} else {$destfile = $(([System.IO.FileInfo]$j).Name)}
+
+                7z a -spf -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" $j; quit?('7z')
+                7z rn "$cachedir\$(verb)\$(verb).7z" "$j" "$env:SystemRoot\$arch\WindowsPowershell\v1.0\$destfile" ; quit?('7z')
+            } 
+         }
+
+         foreach ($i in 'microsoft.powershell.management.psd1', 'microsoft.powershell.utility.psd1', 'microsoft.powershell.utility.psm1',`
+                 'microsoft.powershell.archive.psm1', 'microsoft.powershell.archive.psd1', 'microsoft.powershell.diagnostics.psd1', 'microsoft.powershell.security.psd1' ) {
+ 
+             foreach ($j in (gci "$cachedir\$(verb)\*\$i" ).FullName) {
+                  7z a -spf -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" $j; quit?('7z')
+
+                  if( $(([System.IO.FileInfo]$j).Directory).Name.SubString(0,3) -eq 'amd' ) {$arch = 'system32'} else {$arch = 'syswow64'}
+                  7z rn "$cachedir\$(verb)\$(verb).7z" "$j" "$env:SystemRoot\$arch\WindowsPowershell\v1.0\Modules\$(([System.IO.FileInfo]$j).BaseName)\$(([System.IO.FileInfo]$j).Name)" ; quit?('7z')
+             }
+         }
+    }
+
+    foreach($i in 'amd64', 'x86', 'wow64', 'msil') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" }
+
+    7z x -spf "$cachedir\$(verb)\$(verb).7z" -aoa
+    
 $regkey51 = @"
 REGEDIT4
 
@@ -1103,10 +794,10 @@ function Get-CIMInstance ( [parameter(position=0)] [string]`$classname, [string[
 
 Set-Alias -Name gcim -Value Get-CIMInstance
 
+Set-ExecutionPolicy ByPass
+
 if (!(Get-process -Name powershell_ise -erroraction silentlycontinue)) {
     (Get-Host).ui.RawUI.WindowTitle='This is Powershell 5.1!'
- 
-    Set-ExecutionPolicy ByPass
  
 #    Import-Module PSReadLine
 
@@ -1119,69 +810,132 @@ if (!(Get-process -Name powershell_ise -erroraction silentlycontinue)) {
 
 . "`$env:ProgramData\Chocolatey-for-wine\profile_winetricks_caller.ps1"
 
+#https://blog.ironmansoftware.com/using-powershell-7-in-the-windows-powershell-ise/
+
+if ((Get-process -Name powershell_ise -erroraction silentlycontinue)) {
+#`$psISE.CurrentPowerShellTab.AddOnsMenu.Submenus.Clear()
+`$psISE.CurrentPowerShellTab.AddOnsMenu.Submenus.Add("Switch to PowerShell 7", { 
+        function New-OutOfProcRunspace {
+            param(`$ProcessId)
+
+            `$ci = New-Object -TypeName System.Management.Automation.Runspaces.NamedPipeConnectionInfo -ArgumentList @(`$ProcessId)
+            `$tt = [System.Management.Automation.Runspaces.TypeTable]::LoadDefaultTypeFiles()
+
+            `$Runspace = [System.Management.Automation.Runspaces.RunspaceFactory]::CreateRunspace(`$ci, `$Host, `$tt)
+
+            `$Runspace.Open()
+            `$Runspace
+        }
+
+
+
+        `$PowerShell = Start-Process PWSH -ArgumentList @("-NoExit") -PassThru -WindowStyle Hidden 
+        `$Runspace = New-OutOfProcRunspace -ProcessId `$PowerShell.Id 
+        `$Host.PushRunspace(`$Runspace) 
+        
+
+
+        
+}, "ALT+F5") | Out-Null 
+
+`$psISE.CurrentPowerShellTab.AddOnsMenu.Submenus.Add("Switch to Windows PowerShell", { 
+       `$Host.PopRunspace()
+       
+        `$searcher = [wmisearcher]"Select * From Win32_Process where ParentProcessID=`$PID"
+`       `$searcher.scope.path = "\\.\root\cimv2"
+
+         `$child = `$searcher.get()
+
+   # `$Child =  Get-WmiObject -Class win32_process | where {`$_.ParentProcessId -eq `$Pid}
+   # $child
+    `$Child | ForEach-Object { Stop-Process -Id `$_.ProcessId } 
+ 
+
+   
+}, "ALT+F6") | Out-Null
+
+
+}
+
 "@
     $profile51 | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\profile.ps1
     $profile51 | Out-File $env:SystemRoot\\syswow64\\WindowsPowerShell\v1.0\\profile.ps1
 
-#    Copy-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\system.management.automation.dll" -Destination (New-item -Name "System.Management.Automation\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
-    Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\system.management.automation.dll" -Destination (New-item -Name "System.Management.Automation\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
-    Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.wsman.runtime.dll" -Destination (New-item -Name "Microsoft.WSMan.Runtime\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
-    Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.wsman.management.dll" -Destination (New-item -Name "Microsoft.WSMan.Management\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
-    Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.powershell.security.dll" -Destination (New-item -Name "Microsoft.PowerShell.Security\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
-    Copy-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.management.infrastructure.native.dll" -Destination (New-item -Name "Microsoft.Management.Infrastructure\v4.0_1.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_64" -Force) -Force -Verbose
-    Copy-Item -Path "$env:systemroot\syswow64\WindowsPowershell\v1.0\microsoft.management.infrastructure.native.dll" -Destination (New-item -Name "Microsoft.Management.Infrastructure\v4.0_1.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_32" -Force) -Force -Verbose
-    Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.management.infrastructure.dll" -Destination (New-item -Name "Microsoft.Management.Infrastructure\v4.0_1.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
-    Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.powershell.commands.management.dll" -Destination (New-item -Name "Microsoft.PowerShell.Commands.Management\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
-    Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.powershell.commands.utility.dll" -Destination (New-item -Name "Microsoft.PowerShell.Commands.Utility\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
-    Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.powershell.consolehost.dll" -Destination (New-item -Name "Microsoft.PowerShell.ConsoleHost\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
-    Move-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.powershell.commands.diagnostics.dll" -Destination (New-item -Name "Microsoft.PowerShell.Commands.Diagnostics\v4.0_3.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_MSIL" -Force) -Force -Verbose
+    Copy-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.management.infrastructure.native.dll" -Destination (New-item -Name "Microsoft.Management.Infrastructure\v4.0_1.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_64" -Force) -Force 
+    Copy-Item -Path "$env:systemroot\syswow64\WindowsPowershell\v1.0\microsoft.management.infrastructure.native.dll" -Destination (New-item -Name "Microsoft.Management.Infrastructure\v4.0_1.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_32" -Force) -Force 
+
+    if ((Get-PSCallStack)[1].Command -ne 'func_ps51_ise') { ps51 }
+
 } <# end ps51 #>
 
 function func_ps51_ise <# Powershell 5.1 Integrated Scripting Environment #>
 {   
+    $url = "/Win7AndW2K8R2-KB3191566-x64.msu" <# download is zip file, so no download url of the msu #>
     $cab = "Windows6.1-KB3191566-x64.cab"
-    $sourcefile = @(`
-    'msil_microsoft.powershell.isecommon_31bf3856ad364e35_7.3.7601.16384_none_a33e3db6b35267f1/microsoft.powershell.isecommon.dll',`
-    'msil_microsoft.powershell.gpowershell_31bf3856ad364e35_7.3.7601.16384_none_4ae744e0977d3ba7/microsoft.powershell.gpowershell.dll',`
-    'msil_microsoft.powershell.editor_31bf3856ad364e35_7.3.7601.16384_none_63323f1238aa80de/microsoft.powershell.editor.dll'`
-    )
-    <# Following files have to go into their right directories like on Windows (like e.g. $env:systemroot\\system32\\WindowsPowerShell\v1.0\\Modules\\ISE etc.) #>
-    $modfiles = @(` <# sourcefile #>                                                                                                             <# destination #>
-    @('wow64_microsoft-windows-gpowershell-exe_31bf3856ad364e35_7.3.7601.16384_none_228e49bab56b74ea/powershell_ise.exe',                        ''),`
-    @('amd64_microsoft-windows-gpowershell-exe_31bf3856ad364e35_7.3.7601.16384_none_18399f68810ab2ef/powershell_ise.exe',                        ''),`
-    @('amd64_microsoft-windows-gpowershell-exe_31bf3856ad364e35_7.3.7601.16384_none_18399f68810ab2ef/ise.psd1',                                  'Modules\\ISE'),`
-    @('amd64_microsoft-windows-gpowershell-exe_31bf3856ad364e35_7.3.7601.16384_none_18399f68810ab2ef/ise.psm1',                                  'Modules\\ISE'),`
-    @('wow64_microsoft-windows-gpowershell-exe_31bf3856ad364e35_7.3.7601.16384_none_228e49bab56b74ea/ise.psd1',                                  'Modules\\ISE'),`
-    @('wow64_microsoft-windows-gpowershell-exe_31bf3856ad364e35_7.3.7601.16384_none_228e49bab56b74ea/ise.psm1',                                  'Modules\\ISE')`
-)
 
+    $sourcefile = @('microsoft.powershell.isecommon.dll', 'microsoft.powershell.gpowershell.dll', 'microsoft.powershell.editor.dll',`
+                    'powershell_ise.exe', 'ise.psd1', 'ise.psm1')
+   
     func_ps51
+   
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb), "$(verb).7z") ) ) {
 
-    $dldir = "ps51"
+        if ( ![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $(verb), "Win7AndW2K8R2-KB3191566-x64.zip" ) ) ) {
+            w_download_to $(verb) "https://download.microsoft.com/download/6/F/5/6F5FF66C-6775-42B0-86C4-47D41F2DA187/Win7AndW2K8R2-KB3191566-x64.zip" "Win7AndW2K8R2-KB3191566-x64.zip"
+            7z e "$cachedir\$(verb)\Win7AndW2K8R2-KB3191566-x64.zip" "-o$cachedir\$(verb)" "Win7AndW2K8R2-KB3191566-x64.msu" -y | Select-String 'ok'; quit?('7z')
+            check_msu_sanity $url $cab;
+        }
 
-    <# fragile test... #>
-    if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:systemroot, "system32", "dpx.dll")  ) ) { func_expand }
+        Remove-Item -Force $([IO.Path]::Combine($cachedir,  $(verb), "Win7AndW2K8R2-KB3191566-x64.zip") ) -ErrorAction SilentlyContinue
 
-    foreach ($i in $sourcefile) {
-        if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
-            expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) } 
-        Copy-Item -force $(Join-Path $cachedir $dldir $i) $env:systemroot\\system32\\WindowsPowerShell\v1.0\\$($i.split('/')[-1])}
+        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
 
-    foreach ($i in $modfiles) {
-        if (![System.IO.File]::Exists(  $(Join-Path $cachedir  $dldir  $i[0]) ) ){  
-                    if( $i[0].SubString(0,3) -eq 'amd' ) {expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i[0].split('/')[-1]) $(Join-Path $cachedir $dldir) }
-                    if( $i[0].SubString(0,3) -eq 'wow' ) {<# Nothing to do #>}  }  }  
+        Remove-Item -Force "$cachedir\$(verb)\$cab" -ErrorAction SilentlyContinue
 
-    foreach ($i in $modfiles) {
-        if( $i[0].SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose $(Join-Path $cachedir $dldir $i[0]) -destination (New-Item -Path $(Join-Path $env:systemroot\\system32\\WindowsPowerShell\\v1.0 $i[1] ) -Type Directory -force) }
-        if( $i[0].SubString(0,3) -eq 'wow' ) {Copy-Item -force -verbose $(Join-Path $cachedir $dldir $i[0]) -destination (New-Item -Path $(Join-Path $env:systemroot\\syswow64\\WindowsPowerShell\\v1.0 $i[1] ) -Type Directory -force) } } 
+        foreach ($i in (gci "$cachedir\$(verb)\msil_*\*").FullName ) {
+         
+            $assembly=[System.Reflection.AssemblyName]::GetAssemblyName($i)
+            $publickeytoken = ($assembly.GetPublicKeyToken() |ForEach-Object ToString x2) -join '' 
+      
+            $destdir = "$env:SystemRoot" + "\" + "Microsoft.NET\assembly\GAC_MSIL\" + $assembly.Name + '\' + 'v4.0_' + $assembly.Version.ToString() + '__' + $publickeytoken
+        
+            7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" $i; quit?('7z')
+            7z rn "$cachedir\$(verb)\$(verb).7z" "$(([System.IO.FileInfo]$i).Name)" "$destdir\$(([System.IO.FileInfo]$i).Name)" ; quit?('7z')
+        }
 
-$regkey_ise = @"
-REGEDIT4
-[HKEY_CURRENT_USER\Software\Wine\Fonts\Replacements]
-"Lucida Console"="Arial"
-"@
-    reg_edit $regkey_ise
+        foreach ($i in 'powershell_ise.exe') {
+ 
+            foreach ($j in (gci "$cachedir\$(verb)\*\$i" ).FullName) {
+                if( $(([System.IO.FileInfo]$j).Directory).Name.SubString(0,3) -eq 'amd' ) {$arch = 'system32'} else {$arch = 'syswow64'}
+
+                7z a -spf -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" $j; quit?('7z')
+                7z rn "$cachedir\$(verb)\$(verb).7z" "$j" "$env:SystemRoot\$arch\WindowsPowershell\v1.0\$(([System.IO.FileInfo]$j).Name)" ; quit?('7z')
+            } 
+         }
+
+         foreach ($i in 'ise.psm1', 'ise.psd1') {
+ 
+             foreach ($j in (gci "$cachedir\$(verb)\*\$i" ).FullName) {
+                  7z a -spf -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" $j; quit?('7z')
+
+                  if( $(([System.IO.FileInfo]$j).Directory).Name.SubString(0,3) -eq 'amd' ) {$arch = 'system32'} else {$arch = 'syswow64'}
+                  7z rn "$cachedir\$(verb)\$(verb).7z" "$j" "$env:SystemRoot\$arch\WindowsPowershell\v1.0\Modules\$(([System.IO.FileInfo]$j).BaseName)\$(([System.IO.FileInfo]$j).Name)" ; quit?('7z')
+             }
+         }
+    }
+
+    foreach($i in 'amd64', 'x86', 'wow64', 'msil') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$($i + '*')" }
+
+    7z x -spf "$cachedir\$(verb)\$(verb).7z" -aoa
+    
+#$regkey_ise = @"
+#REGEDIT4
+#[HKEY_CURRENT_USER\Software\Wine\Fonts\Replacements]
+#"Lucida Console"="Arial"
+#"@
+#    reg_edit $regkey_ise
+
+    func_font_lucida
 
     powershell_ise.exe     
 } <# end ps51_ise #>
@@ -1190,18 +944,484 @@ function func_msvbvm60 <# msvbvm60 #>
 {   
     $url = "http://download.windowsupdate.com/d/msdownload/update/software/updt/2016/05/windows6.1-kb3125574-v4-x64_2dafb1d203c8964239af3048b5dd4b1264cd93b9.msu"
     $cab = "Windows6.1-KB3125574-v4-x64.cab"
-    $sourcefile = @(`
-    'x86_microsoft-windows-msvbvm60_31bf3856ad364e35_6.1.7601.23403_none_c51e69cfc91299fe/msvbvm60.dll'
-    )
+    $sourcefile = @('msvbvm60.dll')
 
-    check_msu_sanity $url $cab; $dldir = $($url.split('/')[-1]) -replace '.msu',''
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
+        check_msu_sanity $url $cab;
+        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\x86*" ; quit?('7z')
 
-    foreach ($i in $sourcefile) {
-        if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
-            expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) } 
-        Copy-Item -force "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\syswow64\\$($i.split('/')[-1])}
+        foreach($i in 'amd64', 'x86', 'wow64') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" }
+    }
+
+    Remove-Item -Force "$cachedir\$(verb)\$cab" -ErrorAction SilentlyContinue
+
+    7z e "$cachedir\$(verb)\$(verb).7z" "x86*\*" -o"$env:systemroot\\syswow64" -aoa
 } <# end msvbvm60 #>
 
+function func_windows.ui.xaml <# experimental... #>
+{
+    $url = "http://download.windowsupdate.com/c/msdownload/update/software/updt/2016/11/windows10.0-kb3205436-x64_45c915e7a85a7cc7fc211022ecd38255297049c3.msu"
+    $cab = "Windows10.0-KB3205436-x64.cab"
+    $sourcefile = @('coremessaging.dll', 'windows.ui.xaml.dll', 'bcp47langs.dll')
+
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
+        check_msu_sanity $url $cab;
+        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\amd64*" "$cachedir\$(verb)\wow*" ; quit?('7z')
+
+        foreach($i in 'amd64', 'x86', 'wow64') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" }
+    }
+
+    Remove-Item -Force "$cachedir\$(verb)\$cab" -ErrorAction SilentlyContinue
+
+    7z e "$cachedir\$(verb)\$(verb).7z" "amd64*\*" -o"$env:systemroot\\system32" -aoa
+    7z e "$cachedir\$(verb)\$(verb).7z" "wow64*\*" -o"$env:systemroot\\syswow64" -aoa
+	
+$regkey = @"
+REGEDIT4
+[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion]
+"CurrentBuild"="17134"
+"CurrentBuildNumber"="17134"
+[HKEY_LOCAL_MACHINE\Software\Microsoft\WindowsRuntime\ActivatableClassId\Windows.UI.Xaml.Application]
+"DllPath"="c:\\\\windows\\\\system32\\\\Windows.UI.Xaml.dll"
+"@
+    reg_edit $regkey
+	  
+} <# end windows.ui.xaml #>
+
+function func_uianimation <# experimental... #>
+{
+    $url = "http://download.windowsupdate.com/c/msdownload/update/software/updt/2016/11/windows10.0-kb3205436-x64_45c915e7a85a7cc7fc211022ecd38255297049c3.msu"
+    $cab = "Windows10.0-KB3205436-x64.cab"
+    $sourcefile = @('uianimation.dll')
+
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
+        check_msu_sanity $url $cab;
+        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\amd64*" "$cachedir\$(verb)\wow*" ; quit?('7z')
+
+        foreach($i in 'amd64', 'x86', 'wow64') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" }
+    }
+
+    Remove-Item -Force "$cachedir\$(verb)\$cab" -ErrorAction SilentlyContinue
+
+    7z e "$cachedir\$(verb)\$(verb).7z" "amd64*\*" -o"$env:systemroot\\system32" -aoa
+    7z e "$cachedir\$(verb)\$(verb).7z" "wow64*\*" -o"$env:systemroot\\syswow64" -aoa
+
+    foreach($i in 'uiribbon') { dlloverride 'native' $i }
+} <# end uianimation #>
+
+function func_dshow
+{
+    $url = "http://download.windowsupdate.com/msdownload/update/software/svpk/2011/02/windows6.1-kb976932-x64_74865ef2562006e51d7f9333b4a8d45b7a749dab.exe"
+    $cab = "191.cab"
+    $sourcefile = @(`
+        'amd64_microsoft-windows-directshow-other_31bf3856ad364e35_6.1.7601.17514_none_6b778d68f75a1a54/amstream.dll',
+        'x86_microsoft-windows-directshow-other_31bf3856ad364e35_6.1.7601.17514_none_0f58f1e53efca91e/amstream.dll',
+        'wow64_microsoft-windows-directshow-asf_31bf3856ad364e35_6.1.7601.17514_none_83382f97498abe19/qasf.dll',
+        'amd64_microsoft-windows-directshow-asf_31bf3856ad364e35_6.1.7601.17514_none_78e385451529fc1e/qasf.dll',
+        'x86_microsoft-windows-directshow-capture_31bf3856ad364e35_6.1.7601.17514_none_bae08d1e7dcccf2a/qcap.dll',
+        'amd64_microsoft-windows-directshow-capture_31bf3856ad364e35_6.1.7601.17514_none_16ff28a2362a4060/qcap.dll',
+        'x86_microsoft-windows-directshow-dvdsupport_31bf3856ad364e35_6.1.7601.17514_none_562994bd321aac67/qdvd.dll',
+        'amd64_microsoft-windows-directshow-dvdsupport_31bf3856ad364e35_6.1.7601.17514_none_b2483040ea781d9d/qdvd.dll',
+        'wow64_microsoft-windows-qedit_31bf3856ad364e35_6.1.7601.17514_none_c3168c6e9267a403/qedit.dll',
+        'amd64_microsoft-windows-qedit_31bf3856ad364e35_6.1.7601.17514_none_b8c1e21c5e06e208/qedit.dll',
+        'wow64_microsoft-windows-directshow-core_31bf3856ad364e35_6.1.7601.17514_none_0eeae7a238e677c8/quartz.dll',
+        'amd64_microsoft-windows-directshow-core_31bf3856ad364e35_6.1.7601.17514_none_04963d500485b5cd/quartz.dll')
+
+    if (![System.IO.File]::Exists([IO.Path]::Combine("$cachedir", "$(verb)", "$(verb).7z") ) ) {
+        w_download_to "$(verb)" "$url" "$($url.split('/')[-1])"
+            if ( ![System.IO.File]::Exists( [IO.Path]::Combine("$cachedir" , "$(verb)", "$cab") ) ) {
+                7z -t# x "$cachedir\$(verb)\$($url.split('/')[-1])" -o"$cachedir\$(verb)" "$cab" -y  ; quit?('7z')
+            }
+        foreach ($i in $sourcefile) {7z x "$cachedir\$(verb)\$cab" -o"$cachedir\$(verb)" "$i" ; quit?('7z') }
+        foreach ($dir in 'amd64*', 'wow64*', 'x86*') {7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\$dir" ; quit?('7z')}
+        foreach ($i in "$cab", "$($url.split('/')[-1])", "$cachedir\$(verb)\amd64*", "$cachedir/$(verb)/wow64*",  "$cachedir/$(verb)/x86*" ) {Remove-Item -Force -Recurse "$([IO.Path]::Combine($cachedir, $(verb), $i) )"}
+    }
+    
+    7z e "$cachedir\$(verb)\$(verb).7z" "-o$env:systemroot\system32" "amd64*/*" -aoa
+    7z e "$cachedir\$(verb)\$(verb).7z" "-o$env:systemroot\syswow64" "wow64*/*" -aoa ; quit?('7z')
+
+    foreach($i in 'amstream', 'qasf', 'qcap', 'qdvd', 'qedit' , 'quartz') { dlloverride 'native' $i }
+
+    foreach($i in  'amstream.dll', 'qasf.dll', 'qcap.dll', 'qdvd.dll', 'qedit.dll' , 'quartz.dll') {
+        & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\$i"
+        & "$env:systemroot\\system32\\regsvr32"  "$env:systemroot\\system32\\$i" }
+} <# end dshow #>
+
+function func_uiribbon
+{
+    $url = "http://download.windowsupdate.com/msdownload/update/software/svpk/2011/02/windows6.1-kb976932-x64_74865ef2562006e51d7f9333b4a8d45b7a749dab.exe"
+    $cab = "191.cab"
+    $sourcefile = @(`
+        'amd64_microsoft-windows-uiribbon_31bf3856ad364e35_6.1.7601.17514_none_d102e18929d497cb/uiribbonres.dll',
+        'wow64_microsoft-windows-uiribbon_31bf3856ad364e35_6.1.7601.17514_none_db578bdb5e3559c6/uiribbon.dll',
+        'wow64_microsoft-windows-uiribbon_31bf3856ad364e35_6.1.7601.17514_none_db578bdb5e3559c6/uiribbonres.dll',
+        'amd64_microsoft-windows-uiribbon_31bf3856ad364e35_6.1.7601.17514_none_d102e18929d497cb/uiribbon.dll'`
+        )
+
+    if (![System.IO.File]::Exists([IO.Path]::Combine("$cachedir", "$(verb)", "$(verb).7z") ) ) {
+        w_download_to "$(verb)" "$url" "$($url.split('/')[-1])"
+            if ( ![System.IO.File]::Exists( [IO.Path]::Combine("$cachedir" , "$(verb)", "$cab") ) ) {
+                7z -t# x "$cachedir\$(verb)\$($url.split('/')[-1])" -o"$cachedir\$(verb)" "$cab" -y  ; quit?('7z')
+            }
+        foreach ($i in $sourcefile) {7z x "$cachedir\$(verb)\$cab" -o"$cachedir\$(verb)" "$i" ; quit?('7z')}
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\amd64*" "$cachedir/$(verb)/wow64*" ; quit?('7z')
+        foreach ($i in "$cab", "$($url.split('/')[-1])", "$cachedir\$(verb)\amd64*", "$cachedir/$(verb)/wow64*" ) {Remove-Item -Force -Recurse "$([IO.Path]::Combine($cachedir, $(verb), $i) )"}
+    }
+    
+
+    7z e "$cachedir\$(verb)\$(verb).7z" "-o$env:systemroot\system32" "amd64*/*" -aoa
+    7z e "$cachedir\$(verb)\$(verb).7z" "-o$env:systemroot\syswow64" "wow64*/*" -aoa ; quit?('7z')
+
+    foreach($i in 'uiribbon') { dlloverride 'native' $i }
+
+    foreach($i in  'uiribbon.dll') {
+        & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\$i"
+        & "$env:systemroot\\system32\\regsvr32"  "$env:systemroot\\system32\\$i" }
+} <# end uiribbon #>
+
+function func_findstr
+{
+    $url = "http://download.windowsupdate.com/msdownload/update/software/svpk/2011/02/windows6.1-kb976932-x64_74865ef2562006e51d7f9333b4a8d45b7a749dab.exe"
+    $cab = "191.cab"
+    $sourcefile = @(`
+        'x86_microsoft-windows-findstr_31bf3856ad364e35_6.1.7601.17514_none_2936f54db7f6c08f/findstr.exe',
+        'amd64_microsoft-windows-findstr_31bf3856ad364e35_6.1.7601.17514_none_855590d1705431c5/findstr.exe')
+
+    if (![System.IO.File]::Exists([IO.Path]::Combine("$cachedir", "$(verb)", "$(verb).7z") ) ) {
+        w_download_to "$(verb)" "$url" "$($url.split('/')[-1])"
+            if ( ![System.IO.File]::Exists( [IO.Path]::Combine("$cachedir" , "$(verb)", "$cab") ) ) {
+                7z -t# x "$cachedir\$(verb)\$($url.split('/')[-1])" -o"$cachedir\$(verb)" "$cab" -y  ; quit?('7z')
+            }
+        foreach ($i in $sourcefile) {7z x "$cachedir\$(verb)\$cab" -o"$cachedir\$(verb)" "$i" ; quit?('7z') }
+        foreach ($dir in 'amd64*', 'wow64*', 'x86*') {7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\$dir" ; quit?('7z')}
+        foreach ($i in "$cab", "$($url.split('/')[-1])", "$cachedir\$(verb)\amd64*", "$cachedir/$(verb)/wow64*",  "$cachedir/$(verb)/x86*" ) {Remove-Item -Force -Recurse "$([IO.Path]::Combine($cachedir, $(verb), $i) )" -ErrorAction SilentlyContinue}
+    }
+    
+    7z e "$cachedir\$(verb)\$(verb).7z" "-o$env:systemroot\system32" "amd64*/*" -aoa
+    7z e "$cachedir\$(verb)\$(verb).7z" "-o$env:systemroot\syswow64" "x86*/*" -aoa ; quit?('7z')
+
+    foreach($i in 'findstr.exe') { dlloverride 'native' $i }
+} <# end findstr #>
+
+function func_d3dx
+{
+    $dldir = "d3dx"
+     #w_download_to "$dldir" "https://globalcdn.nuget.org/packages/microsoft.dxsdk.d3dx.9.29.952.8.nupkg" "microsoft.dxsdk.d3dx.9.29.952.8.nupkg" 
+     w_download_to "$dldir" "https://download.microsoft.com/download/c/c/2/cc291a37-2ebd-4ac2-ba5f-4c9124733bf1/UAPSignedBinary_Microsoft.DirectX.x64.appx" "UAPSignedBinary_Microsoft.DirectX.x64.appx"
+     #7z x $cachedir\\$dldir\\microsoft.dxsdk.d3dx.9.29.952.8.nupkg "-o$env:TEMP\\$dldir\\d3dx" -y #this one has 'D3DCompiler_43.dll', 'd3dx10_43.dll', 'd3dx11_43.dll', 'D3DX9_43.dll'
+     7z x $cachedir\\$dldir\\UAPSignedBinary_Microsoft.DirectX.x64.appx "-o$env:SystemRoot\\system32" -y
+
+     w_download_to "$dldir" "https://download.microsoft.com/download/c/c/2/cc291a37-2ebd-4ac2-ba5f-4c9124733bf1/UAPSignedBinary_Microsoft.DirectX.x86.appx" "UAPSignedBinary_Microsoft.DirectX.x86.appx" 
+     7z x $cachedir\\$dldir\\UAPSignedBinary_Microsoft.DirectX.x86.appx "-o$env:SystemRoot\\syswow64" -y
+} <# end d3dx #>
+
+function func_vcrun2019
+{
+    func_expand
+    
+    if ( ![System.IO.File]::Exists( [IO.Path]::Combine("$cachedir",  "$(verb)",  "64", "VC_redist.x64.exe" ) ) -or 
+         ![System.IO.File]::Exists( [IO.Path]::Combine("$cachedir",  "$(verb)",  "32", "VC__redist.x86.exe") ) ) {
+        choco install vcredist140 -n -force
+        . $env:ProgramData\\chocolatey\\lib\\vcredist140\\tools\\data.ps1 
+        w_download_to "$(verb)\\64" $installData64.url64 "VC_redist.x64.exe"
+        w_download_to "$(verb)\\32" $installData32.url "VC__redist.x86.exe" 
+    }
+    
+    iex "$cachedir\$(verb)\64\VC_redist.x64.exe /q"
+    iex "$cachedir\$(verb)\32\VC__redist.x86.exe /q"
+     
+    7z -t# x $cachedir\\$(verb)\\64\\VC_redist.x64.exe "-o$env:TEMP\\$(verb)\\64" 4.cab -y | Select-String 'ok'; quit?('7z')
+    7z e $env:TEMP\\$(verb)\\64\\4.cab "-o$env:TEMP\\$(verb)\\64" a2 -y | Select-String 'ok' ;quit?('7z')
+
+    & $expand_exe "$env:TEMP\$(verb)\64\a2" -f:"Windows8.1-KB2999226-x64.cab" "$env:TEMP\\$(verb)\\64" 
+    & $expand_exe  "$env:TEMP\$(verb)\64\Windows8.1-KB2999226-x64.cab" -f:"ucrtbase.dll" "$env:TEMP\\$(verb)\\64"
+
+    Copy-Item -Path "$env:TEMP\$(verb)\64\amd*\*" -Destination "$env:SystemRoot\\system32" -Force -Verbose
+    Copy-Item -Path "$env:TEMP\$(verb)\64\x86*\*" -Destination "$env:windir\\SysWOW64" -Force -Verbose
+    
+    Remove-Item -Force -Recurse "$env:TEMP\$(verb)"
+        
+    foreach($i in 'concrt140', 'msvcp140', 'msvcp140_1', 'msvcp140_2', 'vcruntime140', 'vcruntime140_1', 'ucrtbase') { dlloverride 'native' $i }
+} <# end vcrun2019 #>
+
+function func_cmd <# native cmd #>
+{
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z" ) ) ){
+    
+        w_download_to "$(verb)" "https://catalog.s.download.windowsupdate.com/msdownload/update/v3-19990518/cabpool/windowsserver2003.windowsxp-kb914961-sp2-x64-enu_7f8e909c52d23ac8b5dbfd73f1f12d3ee0fe794c.exe" "windowsserver2003.windowsxp-kb914961-sp2-x64-enu_7f8e909c52d23ac8b5dbfd73f1f12d3ee0fe794c.exe"
+
+        7z x "$cachedir\$(verb)\windowsserver2003.windowsxp-kb914961-sp2-x64-enu_7f8e909c52d23ac8b5dbfd73f1f12d3ee0fe794c.exe" "-o$env:Temp\$(verb)" "amd64/cmd.ex_" -aoa; quit?('7z')
+        7z e "$env:Temp\$(verb)\amd64\cmd.ex_" "-o$env:Temp\$(verb)\$(verb)\64" "cmd.exe"-aoa | Select-String 'ok' ; quit?('7z');
+        Remove-Item -Force "$cachedir\$(verb)\windowsserver2003.windowsxp-kb914961-sp2-x64-enu_7f8e909c52d23ac8b5dbfd73f1f12d3ee0fe794c.exe"
+
+        w_download_to "$(verb)" "https://catalog.s.download.windowsupdate.com/msdownload/update/software/dflt/2008/02/windowsserver2003-kb914961-sp2-x86-enu_51e1759a1fda6cd588660324abaed59dd3bbe86b.exe" "windowsserver2003-kb914961-sp2-x86-enu_51e1759a1fda6cd588660324abaed59dd3bbe86b.exe"
+
+        7z x "$cachedir\$(verb)\windowsserver2003-kb914961-sp2-x86-enu_51e1759a1fda6cd588660324abaed59dd3bbe86b.exe" "-o$env:Temp\$(verb)" "i386/cmd.ex_" -aoa; quit?('7z')
+        7z e "$env:Temp\$(verb)\i386\cmd.ex_" "-o$env:Temp\$(verb)\$(verb)\32" "cmd.exe" -aoa | Select-String 'ok' ; quit?('7z'); 
+        Remove-Item -Force "$cachedir\$(verb)\windowsserver2003-kb914961-sp2-x86-enu_51e1759a1fda6cd588660324abaed59dd3bbe86b.exe"
+    
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$env:Temp\$(verb)\$(verb)\64" "$env:Temp\$(verb)\$(verb)\32" ;quit?(7z)
+        Remove-Item -Force "$env:Temp\$(verb)" -recurse
+    }
+    7z e "$cachedir\$(verb)\$(verb).7z" "-o$env:systemroot\system32" "64\cmd.exe" -y 
+    7z e "$cachedir\$(verb)\$(verb).7z" "-o$env:systemroot\syswow64" "32\cmd.exe"  -y
+    
+    foreach($i in 'cmd.exe') { dlloverride 'native' $i }
+} <# end cmd #>
+
+function func_wine_wintrust <# wine wintrust with some hack faking success #>
+{
+    w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
+
+    foreach ($i in $(verb).substring(5) ){
+        7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$env:systemroot\system32" "64/$i.dll" -aoa | Select-String 'ok' 
+        7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
+    foreach($i in $(verb).substring(5) ) { dlloverride 'native' $i }
+} <# end wintrust #>
+
+function func_wine_advapi32 <# wine advapi32 with some hacks  #>
+{
+    w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
+
+    foreach ($i in $(verb).substring(5) ){
+        7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$env:systemroot\system32" "64/$i.dll" -aoa | Select-String 'ok' 
+        7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
+} <# end advapi32 #>
+
+function func_wine_ole32 <# wine ole32 with some hack  #>
+{
+    w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
+
+    foreach ($i in $(verb).substring(5) ){
+        7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$env:systemroot\system32" "64/$i.dll" -aoa | Select-String 'ok' 
+        7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
+    foreach($i in $(verb).substring(5) ) { dlloverride 'native' $i }
+} <# end ole32 #>
+
+function func_wine_combase <# wine combase with some hacks  #>
+{
+    w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
+
+    foreach ($i in $(verb).substring(5) ){
+        7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$env:systemroot\system32" "64/$i.dll" -aoa | Select-String 'ok' 
+        7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
+} <# end combase #>
+
+function func_wine_shell32 <# wine shell32 with some hacks  #>
+{
+    w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
+
+    foreach ($i in $(verb).substring(5) ){
+        7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$env:systemroot\system32" "64/$i.dll" -aoa | Select-String 'ok' 
+        7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
+} <# end shell32 #>
+
+function func_wine_sppc <# wine sppc with some hacks #>
+{
+    w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
+
+    foreach ($i in $(verb).substring(5) ){
+        7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$env:systemroot\system32" "64/$i.dll" -aoa | Select-String 'ok' 
+        7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
+} <# end sppc #>
+
+function func_wine_wintypes <# wine wintypes #>
+{
+    
+    if( [System.IO.File]::Exists( $([IO.Path]::Combine($cachedir,  $(verb), "$(verb).7z") )) -and ( (Get-FileHash  "$cachedir\$(verb)\$(verb).7z").Hash -ne 'DEE94F7B8C4BD325AEAE4F155339D83088B698823A35D7E63C5C9FFFEEBF3CDD') )  {
+        Remove-Item -Force  "$cachedir\$(verb)\$(verb).7z" 
+    }
+    w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
+
+    foreach ($i in $(verb).substring(5) ){
+        7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$env:systemroot\system32" "64/$i.dll" -aoa | Select-String 'ok' 
+        7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
+    foreach($i in $(verb).substring(5) ) { dlloverride 'native' $i }
+} <# end wintypes #>
+
+function func_wine_dxcore <# dxcore #>
+{
+    $dldir = "dxcore"
+    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_dxcore.7z" "wine_dxcore.7z"
+    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_ext-ms-win-dxcore-l1-1-0.7z" "wine_ext-ms-win-dxcore-l1-1-0.7z"
+
+    foreach ($i in 'dxcore.dll', 'ext-ms-win-dxcore-l1-1-0.dll'){
+        7z e $cachedir\\$dldir\\wine_$($i.split('.')[0]).7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
+        7z e $cachedir\\\\$dldir\\wine_$($i.split('.')[0]).7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
+} <# end dxcore #>
+
+function func_wine_hnetcfg <# fix for https://bugs.winehq.org/show_bug.cgi?id=45432 #>
+{
+    w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
+
+    foreach ($i in $(verb).substring(5) ){
+        7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$env:systemroot\system32" "64/$i.dll" -aoa | Select-String 'ok' 
+        7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
+    foreach($i in $(verb).substring(5) ) { dlloverride 'native' $i }
+} <# end hnetcfg #>
+
+function func_wine_msi <# wine msi with some hacks faking success #>
+{
+    w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
+
+    foreach ($i in $(verb).substring(5) ){
+        7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$env:systemroot\system32" "64/$i.dll" -aoa | Select-String 'ok' 
+        7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
+    foreach($i in $(verb).substring(5) ) { dlloverride 'native' $i }
+} <# end msi #>
+
+function func_font_lucida
+{
+    $fonts = @('lucon.ttf'); check_aik_sanity;
+    
+    foreach ($i in $fonts) { 7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\Fonts" "Windows/Fonts/$i" -y | Select-String 'ok'; quit?('7z') }
+    
+$regkey = @'
+REGEDIT4
+[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Fonts]
+"Lucida Console (True Type)"="lucon.ttf"
+'@
+    reg_edit $regkey
+}
+
+function func_font_segoeui
+{
+    $fonts = @('segoeui.ttf', 'segoeuib.ttf', 'segoeuii.ttf', 'segoeuil.ttf', 'segoeuiz.ttf'); check_aik_sanity;
+    
+    foreach ($i in $fonts) { 7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\Fonts" "Windows/Fonts/$i" -y | Select-String 'ok'; quit?('7z') }
+    
+$regkey = @'
+REGEDIT4
+[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Fonts]
+"Segoe UI (TrueType)"="segoeui.ttf"
+"Segoe UI Light (TrueType)"="segoeuil.ttf"
+"Segoe UI Bold (TrueType)"="segoeuib.ttf"
+"Segoe UI Bold Italic (TrueType)"="segoeuiz.ttf"
+"Segoe UI Italic (TrueType)"="segoeuii.ttf"
+'@
+    reg_edit $regkey
+}
+
+function func_font_tahoma
+{
+    $fonts = @('tahomabd.ttf', 'tahoma.ttf'); check_aik_sanity;
+    
+    foreach ($i in $fonts) { 7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\Fonts" "Windows/Fonts/$i" -y | Select-String 'ok'; quit?('7z') }
+    
+$regkey = @'
+REGEDIT4
+[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Fonts]
+"Tahoma (TrueType)"="tahoma.ttf"
+"Tahoma Bold (TrueType)"="tahomabd.ttf"
+'@
+    reg_edit $regkey
+}
+
+function func_font_vista
+{
+    $url = "https://catalog.s.download.windowsupdate.com/msdownload/update/software/updt/2010/04/windows6.0-kb980248-x86_c3accb4e416d6ef6d6fcbe27da9fc7da1fc22eb6.msu"
+    $cab = "Windows6.0-KB980248-x86.cab"
+    $sourcefile = @('arialbd.ttf','arialbi.ttf','ariali.ttf','ariblk.ttf','calibrib.ttf','calibrii.ttf','calibri.ttf','calibriz.ttf','cambriab.ttf',`
+    'cambriai.ttf','cambriaz.ttf','comicbd.ttf','comic.ttf','consolab.ttf','consolai.ttf','consola.ttf','consolaz.ttf','courbd.ttf','courbi.ttf',`
+    'couri.ttf','cour.ttf','georgiab.ttf','georgiai.ttf','georgia.ttf','georgiaz.ttf','impact.ttf','l_10646.ttf','symbol.ttf','timesbd.ttf','timesbi.ttf',`
+    'timesi.ttf','times.ttf','trebucbd.ttf','trebucbi.ttf','trebucit.ttf','trebuc.ttf','verdanab.ttf','verdanai.ttf','verdana.ttf','verdanaz.ttf','webdings.ttf','wingding.ttf')
+    
+
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
+        check_msu_sanity $url $cab;
+        foreach ($i in $sourcefile) { &$expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\x86*_6.0.6001.22635*" ; quit?('7z') #x86_microsoft-windows-font-truetype-webdings_31bf3856ad364e35_6.0.6001.22635_none_af74feceda033349
+    }
+
+    foreach($i in "$cab", "amd64", "x86", "wow64") { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" -Erroraction SilentlyContinue }
+
+    7z e "$cachedir\$(verb)\$(verb).7z" "x86*\*" -o"$env:systemroot\\Fonts" -aoa
+    
+    $regkey = @'
+REGEDIT4
+[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Fonts]
+"Arial Black (TrueType)"="ariblk.ttf"
+"Arial Bold (TrueType)"="arialbd.ttf"
+"Arial Bold Italic (TrueType)"="arialbi.ttf"
+"Arial Italic (TrueType)"="ariali.ttf"
+"Calibri (TrueType)"="calibri.ttf"
+"Calibri Bold (TrueType)"="calibrib.ttf"
+"Calibri Bold Italic (TrueType)"="calibriz.ttf"
+"Calibri Italic (TrueType)"="calibrii.ttf"
+"Cambria Bold (TrueType)"="cambriab.ttf"
+"Cambria Bold Italic (TrueType)"="cambriaz.ttf"
+"Cambria Italic (TrueType)"="cambriai.ttf"
+"Comic Sans MS (TrueType)"="comic.ttf"
+"Comic Sans MS Bold (TrueType)"="comicbd.ttf"
+"Consolas (TrueType)"="consola.ttf"
+"Consolas Bold (TrueType)"="consolab.ttf"
+"Consolas Bold Italic (TrueType)"="consolaz.ttf"
+"Consolas Italic (TrueType)"="consolai.ttf"
+"Courier New (TrueType)"="cour.ttf"
+"Courier New Bold (TrueType)"="courbd.ttf"
+"Courier New Bold Italic (TrueType)"="courbi.ttf"
+"Courier New Italic (TrueType)"="couri.ttf"
+"Georgia (TrueType)"="georgia.ttf"
+"Georgia Bold (TrueType)"="georgiab.ttf"
+"Georgia Bold Italic (TrueType)"="georgiaz.ttf"
+"Georgia Italic (TrueType)"="georgiai.ttf"
+"Impact (TrueType)"="impact.ttf"
+"Lucida Sans Unicode (TrueType)"="l_10646.ttf"
+"Symbol (TrueType)"="symbol.ttf"
+"Tahoma (TrueType)"="tahoma.ttf"
+"Tahoma Bold (TrueType)"="tahomabd.ttf"
+"Times New Roman (TrueType)"="times.ttf"
+"Times New Roman Bold (TrueType)"="timesbd.ttf"
+"Times New Roman Bold Italic (TrueType)"="timesbi.ttf"
+"Times New Roman Italic (TrueType)"="timesi.ttf"
+"Trebuchet MS (TrueType)"="trebuc.ttf"
+"Trebuchet MS Bold (TrueType)"="trebucbd.ttf"
+"Trebuchet MS Bold Italic (TrueType)"="trebucbi.ttf"
+"Trebuchet MS Italic (TrueType)"="trebucit.ttf"
+"Verdana (TrueType)"="verdana.ttf"
+"Verdana Bold (TrueType)"="verdanab.ttf"
+"Verdana Bold Italic (TrueType)"="verdanaz.ttf"
+"Verdana Italic (TrueType)"="verdanai.ttf"
+"Webdings (TrueType)"="webdings.ttf"
+"Wingdings (TrueType)"="wingding.ttf"
+'@
+    reg_edit $regkey
+} <# end gdiplus #>
+
+function func_dxvk1103
+{
+    $dldir = "dxvk1103"
+    w_download_to "dxvk1103" "https://github.com/doitsujin/dxvk/releases/download/v1.10.3/dxvk-1.10.3.tar.gz" "dxvk-1.10.3.tar.gz"
+
+    7z x -y $cachedir\\$dldir\\dxvk-1.10.3.tar.gz "-o$env:TEMP";quit?('7z') 
+    7z e $env:TEMP\\dxvk-1.10.3.tar "-o$env:systemroot\\system32" dxvk-1.10.3/x64 -y;
+    7z e $env:TEMP\\dxvk-1.10.3.tar "-o$env:systemroot\\syswow64" dxvk-1.10.3/x32 -y;
+    foreach($i in 'dxgi', 'd3d9', 'd3d10_1', 'd3d10core', 'd3d10', 'd3d11') { dlloverride 'native' $i }
+} <# end dxvk1101 #>
+
+function func_dxvk20
+{
+    $dldir = "dxvk20"
+    w_download_to "dxvk20" "https://github.com/doitsujin/dxvk/releases/download/v2.0/dxvk-2.0.tar.gz" "dxvk-2.0.tar.gz"
+
+    7z x -y $cachedir\\$dldir\\dxvk-2.0.tar.gz "-o$env:TEMP";quit?('7z') 
+    7z e $env:TEMP\\dxvk-2.0.tar "-o$env:systemroot\\system32" dxvk-2.0/x64 -y;
+    7z e $env:TEMP\\dxvk-2.0.tar "-o$env:systemroot\\syswow64" dxvk-2.0/x32 -y;
+    foreach($i in 'dxgi', 'd3d9', 'd3d10_1', 'd3d10core', 'd3d10', 'd3d11') { dlloverride 'native' $i }
+} <# end dxvk20 #>
+
+function func_ping <# fake ping for when wine's ping fails due to permission issues  #>
+{
+	Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\ping.exe" -Force
+    Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\ping.exe" -Force
+		  
+    foreach($i in 'ping.exe') { dlloverride 'native' $i }
+
+} <# end ping #>
+ 
 function func_nocrashdialog <# nocrashdialog #>
 {   
 $regkey = @"
@@ -1246,50 +1466,89 @@ function func_app_paths
 
 function func_vs19
 {
+    func_msxml6
+    #func_msxml3
+    func_vcrun2019
+    #func_xmllite
+    #func_cmd
+    func_wine_advapi32
+    func_wine_ole32
+    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.13 ) { 
+      func_wine_combase }
+    func_wine_shell32
+
+    winecfg /v win7
+
+    (New-Object System.Net.WebClient).DownloadFile('https://aka.ms/vs/16/release/vs_community.exe', "$env:TMP\\vs_Community.exe") <#  https://download.visualstudio.microsoft.com/download/pr/1d66edfe-3c83-476b-bf05-e8901c62ba7f/ef3e389f222335676581eddbe7ddec01147969c1d42e19b9dade815c3c0f04b1/vs_Community.exe #>
+
+  #  7z x $env:TMP\\installer "-o$env:TMP\\opc" -y ;quit?('7z')
+
+    set-executionpolicy bypass
+
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = "$env:Temp\vs_community.exe"
+    $startInfo.Arguments = "--downloadThenInstall --quiet --productId Microsoft.VisualStudio.Product.Community  --channelId VisualStudio.16.Release  --channelUri `"https://aka.ms/vs/16/release/channel`" --add Microsoft.VisualStudio.Workload.NativeDesktop --includeRecommended --wait"
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+    $process.Start()
+
+    Write-Host -foregroundcolor yellow "**********************************************************"
+    Write-Host -foregroundcolor yellow "*                                                        *"
+    Write-Host -foregroundcolor yellow "*        Downloading  and installing Visual Studio       *"
+    Write-Host -foregroundcolor yellow "*        might takes > 15 minutes!                       *"
+    Write-Host -foregroundcolor yellow "*        Patience please!                                *"
+    Write-Host -foregroundcolor yellow "*                                                        *"
+    Write-Host -foregroundcolor yellow "**********************************************************"
+
+    $process.WaitForExit()
+
+    # Start-Process  "$env:TMP\\opc\\Contents\\vs_installer.exe" -Verb RunAs -ArgumentList "install --channelId VisualStudio.16.Release --channelUri `"https://aka.ms/vs/16/release/channel`" --productId Microsoft.VisualStudio.Product.Community --add Microsoft.VisualStudio.Workload.VCTools --add `"Microsoft.VisualStudio.Component.VC.Tools.x86.x64`" --add `"Microsoft.VisualStudio.Component.VC.CoreIde`"  --add `"Microsoft.VisualStudio.Component.Windows10SDK.16299`"           --includeRecommended --quiet"
+    #& 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64\cl.exe'  -I"c:\Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/um/"     -I"c:\Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/Shared/"   -I"c:\Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/include/"  -I"c:\Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/ucrt/" .\code.cpp /link /LIBPATH:"c:/Program Files (x86)/Windows Kits/10/Lib/10.0.19041.0/um/x64/" /LIBPATH:"c:\Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/lib/x64/" /LIBPATH:"c:/Program Files (x86)/Windows Kits/10/Lib/10.0.19041.0/ucrt/x64/"
+
+
+    quit?('setup');quit?('vs_installer'); quit?('VSFinalizer'); quit?('devenv')
+
+    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe'}
+    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides'}
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'advapi32' -Value 'native' -PropertyType 'String' -force
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'ole32' -Value 'native' -PropertyType 'String' -force
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'shell32' -Value 'native' -PropertyType 'String' -force
+    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.13 ) { 
+        New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'combase' -Value 'native' -PropertyType 'String' -force }
+
+    <# FIXME: frequently mpc are not written to registry (wine bug?), do it manually #>
+    & "${env:ProgramFiles`(x86`)}\Microsoft` Visual` Studio\2019\Community\Common7\IDE\DDConfigCA.exe" | & "${env:ProgramFiles`(x86`)}\Microsoft` Visual` Studio\2019\Community\Common7\IDE\StorePID.exe" 09299
+}
+
+function func_office365
+{
+winecfg /v win10
 func_msxml6
-#func_msxml3
-func_vcrun2019
-#func_xmllite
+func_riched20
+#func_windowscodecs
+#func_wine_ole32
+func_wine_sppc
 
-  func_advapi32
-  func_ole32
-  func_combase
-  func_shell32
+foreach($i in 'sppc') { dlloverride 'native' $i }
+        
+choco install Office365HomePremium
 
-
-winecfg /v win7
-
-(New-Object System.Net.WebClient).DownloadFile('https://aka.ms/vs/16/release/installer', "$env:TMP\\installer")
-
-7z x $env:TMP\\installer "-o$env:TMP\\opc" -y ;quit?('7z')
-
-set-executionpolicy bypass
-
- Start-Process  "$env:TMP\\opc\\Contents\\vs_installer.exe" -Verb RunAs -ArgumentList "install --channelId VisualStudio.16.Release --channelUri `"https://aka.ms/vs/16/release/channel`" --productId Microsoft.VisualStudio.Product.Community --add Microsoft.VisualStudio.Workload.NativeDesktop;includeRecommended  --quiet" 
+#  if(!(Test-Path 'HKCU:\\Software\\Wine\\Direct3D')) {New-Item  -Path 'HKCU:\\Software\\Wine\\Direct3D'}
+#  New-ItemProperty -Path 'HKCU:\\Software\\Wine\\Direct3D' -Name 'MaxVersionGL' -Value '0x30002' -PropertyType 'DWORD' -force
 
 
+(New-Object System.Net.WebClient).DownloadFile('https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_wbemprox.7z', "$env:ProgramFiles\Microsoft Office 15\root\office15\wine_wbemprox.7z")
+7z e "$env:ProgramFiles\Microsoft Office 15\root\office15\wine_wbemprox.7z" "-o$env:SystemRoot\syswow64\wbem" "32/wbemprox.dll"-y
+7z e "$env:ProgramFiles\Microsoft Office 15\root\office15\wine_wbemprox.7z" "-o$env:SystemRoot\system32\wbem" "64/wbemprox.dll"-y
 
 
-# Start-Process  "$env:TMP\\opc\\Contents\\vs_installer.exe" -Verb RunAs -ArgumentList "install --channelId VisualStudio.16.Release --channelUri `"https://aka.ms/vs/16/release/channel`" --productId Microsoft.VisualStudio.Product.Community --add Microsoft.VisualStudio.Workload.VCTools --add `"Microsoft.VisualStudio.Component.VC.Tools.x86.x64`" --add `"Microsoft.VisualStudio.Component.VC.CoreIde`"  --add `"Microsoft.VisualStudio.Component.Windows10SDK.16299`"           --includeRecommended --quiet"
+  if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\onenote.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\onenote.exe'}
+  if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\onenote.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\onenote.exe\\DllOverrides'}
+  New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\onenote.exe\\DllOverrides' -Name 'wbemprox' -Value 'native' -PropertyType 'String' -force
 
-#cl.exe -I"c:\Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/um/"     -I"c:\Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/Shared/"   -I"c:\Program Files (x86)/Windows Kits/10/Include/10.0.16299.0/ucrt/"   -I"c:\Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/include/" .\mainv1.c /link /LIBPATH:"c:/Program Files (x86)/Windows Kits/10/Lib/10.0.16299.0/um/x64/" /LIBPATH:"c:/Program Files (x86)/Microsoft Visual Studio/2019/Community/VC/Tools/MSVC/14.29.30133/lib/x64/" /LIBPATH:"c:/Program Files (x86)/Windows Kits/10/Lib/10.0.16299.0/ucrt/x64/"  "c:/Program Files (x86)/Windows Kits/10/Lib/10.0.16299.0/um/x64/urlmon.lib"  "c:/Program Files (x86)/Windows Kits/10/Lib/10.0.16299.0/um/x64/shlwapi.lib"
-
-
-
-
-
-  if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe'}
-  if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides'}
-  New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'advapi32' -Value 'native' -PropertyType 'String' -force
-  New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'ole32' -Value 'native' -PropertyType 'String' -force
-  New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'combase' -Value 'native' -PropertyType 'String' -force
-  New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'shell32' -Value 'native' -PropertyType 'String' -force
-
-
-quit?('vs_installer'); quit?('VSFinalizer'); quit?('devenv')
-<# FIXME: frequently mpc are not written to registry (wine bug?), do it manually #>
- & "${env:ProgramFiles`(x86`)}\Microsoft` Visual` Studio\2019\Community\Common7\IDE\DDConfigCA.exe" | & "${env:ProgramFiles`(x86`)}\Microsoft` Visual` Studio\2019\Community\Common7\IDE\StorePID.exe" 09299
-
+#  if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\powerpnt.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\powerpnt.exe'}
+#  if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\powerpnt.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\powerpnt.exe\\DllOverrides'}
+#  New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\powerpnt.exe\\DllOverrides' -Name 'kernel32' -Value 'native' -PropertyType 'String' -force
 }
 
 function func_git.portable
@@ -1340,6 +1599,12 @@ function func_sharpdx
     func_sharpdx2
 }
 
+function func_glxgears
+{
+    . "$env:ProgramData\Chocolatey-for-wine\powershell_collected_codesnippets_examples.ps1"
+    func_glxgears2
+}
+
 function func_wpf_xaml
 {
     . "$env:ProgramData\Chocolatey-for-wine\powershell_collected_codesnippets_examples.ps1"
@@ -1364,6 +1629,18 @@ function func_embed-exe-in-psscript
     func_embed-exe-in-psscript2
 }
 
+function func_Get-PEHeader
+{
+    . "$env:ProgramData\Chocolatey-for-wine\powershell_collected_codesnippets_examples.ps1"
+    func_Get-PEHeader2
+}
+
+function func_access_winrt_from_powershell
+{
+    . "$env:ProgramData\Chocolatey-for-wine\powershell_collected_codesnippets_examples.ps1"
+    func_access_winrt_from_powershell2
+}
+
 function func_ps2exe
 {
     . "$env:ProgramData\Chocolatey-for-wine\powershell_collected_codesnippets_examples.ps1"
@@ -1372,29 +1649,27 @@ function func_ps2exe
 
 function func_vulkansamples
 {   <# https://www.saschawillems.de/blog/2017/03/25/updated-vulkan-example-binaries/ #>
-    $dldir = "vulkansamples"
-    w_download_to $dldir "http://vulkan.gpuinfo.org/downloads/examples/vulkan_examples_windows_x64.7z" "vulkan_examples_windows_x64.7z" 
-    w_download_to $dldir "http://vulkan.gpuinfo.org/downloads/examples/vulkan_examples_mediapack.7z" "vulkan_examples_mediapack.7z" 
-    7z x $cachedir\\$dldir\\vulkan_examples_windows_x64.7z "-o$cachedir\\$dldir\\" -y; quit?(7z)
-    7z x $cachedir\\$dldir\\vulkan_examples_mediapack.7z "-o$cachedir\\$dldir\\vulkan_examples_windows_x64" -y; quit?(7z)
+    w_download_to $(verb) "http://vulkan.gpuinfo.org/downloads/examples/vulkan_examples_windows_x64.7z" "vulkan_examples_windows_x64.7z" 
+    w_download_to $(verb) "http://vulkan.gpuinfo.org/downloads/examples/vulkan_examples_mediapack.7z" "vulkan_examples_mediapack.7z" 
+    7z x "$cachedir\$(verb)\vulkan_examples_windows_x64.7z" "-o$env:Temp\$(verb)" -y; quit?(7z)
+    7z x "$cachedir\$(verb)\vulkan_examples_mediapack.7z" "-o$env:Temp\$(verb)\vulkan_examples_windows_x64" -y; quit?(7z)
     Push-Location
-    cd $cachedir\\$dldir\\vulkan_examples_windows_x64\\bin
-    foreach($i in $( ls $cachedir\\$dldir\\vulkan_examples_windows_x64\\bin\\*.exe).Name) { Write-Host 'Press Shift-Ctrl^C to exit earlier...'; Start-process -Wait "$cachedir\\$dldir\\vulkan_examples_windows_x64\\bin\\$i"}
+    cd "$env:Temp\$(verb)\vulkan_examples_windows_x64\bin"
+    foreach($i in (ls ("$env:Temp\$(verb)\vulkan_examples_windows_x64\bin\*.exe")).Name )  { Write-Host 'Press Shift-Ctrl^C to exit earlier...'; Start-process -Wait "$env:Temp\$(verb)\vulkan_examples_windows_x64\bin\$i" }
     Pop-Location
 }
 
 function func_dotnet35
 {
-    $dldir = "dotnet35"
-    w_download_to $dldir "https://download.microsoft.com/download/6/0/f/60fc5854-3cb8-4892-b6db-bd4f42510f28/dotnetfx35.exe" "dotnetfx35.exe"
-    7z x $cachedir\\$dldir\\dotnetfx35.exe "-o$env:TEMP\\$dldir\\" -y; quit?(7z)
+    w_download_to $(verb) "https://download.microsoft.com/download/6/0/f/60fc5854-3cb8-4892-b6db-bd4f42510f28/dotnetfx35.exe" "dotnetfx35.exe"
+    7z x $cachedir\\$(verb)\\dotnetfx35.exe "-o$env:TEMP\\$(verb)\\" -y; quit?(7z)
 
-    Remove-Item -Force  $env:TEMP\\$dldir\\wcu\\dotNetFramework\\dotNetFX20\\PCW_CAB_NetFX*
-    foreach($i in $( ls $env:TEMP\\$dldir\\wcu\\dotNetFramework\\dotNetFX20\\*.msp) )
-        {7z x $i "-o$env:TEMP\\$dldir\\wcu\\dotNetFramework\\dotNetFX20" "PCW_CAB_NetFX" -aou -y;}
+    Remove-Item -Force  $env:TEMP\\$(verb)\\wcu\\dotNetFramework\\dotNetFX20\\PCW_CAB_NetFX*
+    foreach($i in $( ls $env:TEMP\\$(verb)\\wcu\\dotNetFramework\\dotNetFX20\\*.msp) )
+        {7z x $i "-o$env:TEMP\\$(verb)\\wcu\\dotNetFramework\\dotNetFX20" "PCW_CAB_NetFX" -aou -y;}
     quit?(7z)
-    foreach($i in $( ls $env:TEMP\\$dldir\\wcu\\dotNetFramework\\dotNetFX20\\PCW_CAB_NetFX*) )
-        { 7z x $i "-o$env:TEMP\\$dldir\\wcu\\dotNetFramework\\dotNetFX20\\extr" -y; } 
+    foreach($i in $( ls $env:TEMP\\$(verb)\\wcu\\dotNetFramework\\dotNetFX20\\PCW_CAB_NetFX*) )
+        { 7z x $i "-o$env:TEMP\\$(verb)\\wcu\\dotNetFramework\\dotNetFX20\\extr" -y; } 
     quit?(7z)
 
     #https://4sysops.com/archives/find-and-remove-duplicate-files-with-powershell/
@@ -2423,8 +2698,8 @@ for ( $j = 0; $j -lt $dotnet20.count; $j+=2 ) {
     Copy-Item -recurse -Path $dotnet20[$j] -Destination ( Join-Path (New-item -Type Directory -Force $(Split-Path -Path $dotnet20[$j+1]))   $(Split-Path -Leaf $dotnet20[$j+1])   ) -Force  -Verbose }
 
 
-7z x $env:TEMP\\$dldir\\wcu\\dotNetFramework\\dotNetFX35\\x64\\netfx35_x64.exe "-o$env:TEMP\\$dldir\\wcu\\dotNetFramework\\dotNetFX35\\x64" -y;
-7z x $env:TEMP\\$dldir\\wcu\\dotNetFramework\\dotNetFX35\\x64\\vs_setup.cab "-o$env:TEMP\\$dldir\\wcu\\dotNetFramework\\dotNetFX35\\extr" -y;
+7z x $env:TEMP\\$(verb)\\wcu\\dotNetFramework\\dotNetFX35\\x64\\netfx35_x64.exe "-o$env:TEMP\\$(verb)\\wcu\\dotNetFramework\\dotNetFX35\\x64" -y;
+7z x $env:TEMP\\$(verb)\\wcu\\dotNetFramework\\dotNetFX35\\x64\\vs_setup.cab "-o$env:TEMP\\$(verb)\\wcu\\dotNetFramework\\dotNetFX35\\extr" -y;
 
     $srcpath="$env:TEMP\dotnet35\wcu\dotNetFramework\dotNetFX35\extr"
 
@@ -2672,12 +2947,12 @@ for ( $j = 0; $j -lt $dotnet35.count; $j+=2 ) {
     Copy-Item -recurse -Path $dotnet35[$j] -Destination ( Join-Path (New-item -Type Directory -Force $(Split-Path -Path $dotnet35[$j+1]))   $(Split-Path -Leaf $dotnet35[$j+1])   ) -Force  -Verbose }
 
 
-    Remove-Item -Force  $env:TEMP\\$dldir\\wcu\\dotNetFramework\\dotNetFX30\\PCW_CAB_NetFX*
-    foreach($i in $( ls $env:TEMP\\$dldir\\wcu\\dotNetFramework\\dotNetFX30\\*.msp) )
-        {7z x $i "-o$env:TEMP\\$dldir\\wcu\\dotNetFramework\\dotNetFX30" "PCW_CAB_NetFX" -aou -y;}
+    Remove-Item -Force  $env:TEMP\\$(verb)\\wcu\\dotNetFramework\\dotNetFX30\\PCW_CAB_NetFX*
+    foreach($i in $( ls $env:TEMP\\$(verb)\\wcu\\dotNetFramework\\dotNetFX30\\*.msp) )
+        {7z x $i "-o$env:TEMP\\$(verb)\\wcu\\dotNetFramework\\dotNetFX30" "PCW_CAB_NetFX" -aou -y;}
     quit?(7z) ;
-    foreach($i in $( ls $env:TEMP\\$dldir\\wcu\\dotNetFramework\\dotNetFX30\\PCW_CAB_NetFX*) )
-        {7z x $i "-o$env:TEMP\\$dldir\\wcu\\dotNetFramework\\dotNetFX30\\extr" -y; } 
+    foreach($i in $( ls $env:TEMP\\$(verb)\\wcu\\dotNetFramework\\dotNetFX30\\PCW_CAB_NetFX*) )
+        {7z x $i "-o$env:TEMP\\$(verb)\\wcu\\dotNetFramework\\dotNetFX30\\extr" -y; } 
     quit?(7z)
 
     $srcpath="$env:TEMP\dotnet35\wcu\dotNetFramework\dotNetFX30\extr"
@@ -3031,13 +3306,11 @@ function install_from_manifest ( [parameter(position=0)] [string] $manifestfile,
 
 function func_dotnet481
 {
-    $dldir = "dotnet481"
-    w_download_to $dldir "https://download.visualstudio.microsoft.com/download/pr/6f083c7e-bd40-44d4-9e3f-ffba71ec8b09/3951fd5af6098f2c7e8ff5c331a0679c/ndp481-x86-x64-allos-enu.exe" "ndp481-x86-x64-allos-enu.exe" 
-    7z x $cachedir\\$dldir\\ndp481-x86-x64-allos-enu.exe "-o$env:TEMP\\$dldir\\" -y; quit?(7z)
-    7z x $env:TEMP\\$dldir\\x64-Windows10.0-KB5011048-x64.cab "-o$env:TEMP\\$dldir\\" -y; quit?(7z)
+    w_download_to $(verb) "https://download.visualstudio.microsoft.com/download/pr/6f083c7e-bd40-44d4-9e3f-ffba71ec8b09/3951fd5af6098f2c7e8ff5c331a0679c/ndp481-x86-x64-allos-enu.exe" "ndp481-x86-x64-allos-enu.exe" 
+    7z x $cachedir\\$(verb)\\ndp481-x86-x64-allos-enu.exe "-o$env:TEMP\\$(verb)\\" -y; quit?(7z)
+    7z x $env:TEMP\\$(verb)\\x64-Windows10.0-KB5011048-x64.cab "-o$env:TEMP\\$(verb)\\" -y; quit?(7z)
 
     Stop-Process -Name mscorsvw -ErrorAction SilentlyContinue <# otherwise some dlls fail to be replaced as they are in use by mscorvw; only mscoreei.dll has to be copied manually afaict as it is in use by pwsh #>
-
 
     Write-Host -foregroundColor yellow 'Starting copying files , this takes a while (> 3 minutes), patience...'    
     foreach ($i in $(Get-ChildItem $env:TEMP\\dotnet481\\*.manifest).FullName) { install_from_manifest($i) }
@@ -3054,22 +3327,7 @@ function func_install_dll_from_msu
 {
     func_expand
     <# Unfortunately we need another huge download as we need newer version of dpx.dll and msdelta.dll, otherwise several msu files fail to extract #>
-    $url = "https://catalog.s.download.windowsupdate.com/c/msdownload/update/software/updt/2018/08/windows10.0-kb4343893-x64_bdae9c9c28d4102a673a24d37c371ed73d053338.msu"
-    $cab = "Windows10.0-KB4343893-x64.cab"
-    $sourcefile = @(`
-    'amd64_microsoft-windows-i..p-media-legacy-base_31bf3856ad364e35_10.0.16299.547_none_7f0fdb243374c0d2/msdelta.dll',`
-    'amd64_microsoft-windows-i..p-media-legacy-base_31bf3856ad364e35_10.0.16299.547_none_7f0fdb243374c0d2/dpx.dll'`
-    )
-
-    check_msu_sanity $url $cab; $dldir = $($url.split('/')[-1]) -replace '.msu',''    
-
-    foreach ($i in $sourcefile) {
-        if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
-                    if( $i.SubString(0,3) -eq 'amd' ) {& "$env:systemroot\system32\expnd_" $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) }  }  }
-
-    foreach ($i in $sourcefile) {
-        if( $i.SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" -destination $env:systemroot\\system32\\$($i.split('/')[-1]) } } 
-
+     
     #https://4sysops.com/archives/how-to-create-an-open-file-folder-dialog-box-with-powershell/
     try{ $null=[System.Reflection.Assembly]::GetAssembly([System.Windows.Forms]) }
     catch { [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") | Out-Null }
@@ -3085,11 +3343,10 @@ function func_install_dll_from_msu
     $custom_array = New-Object System.Collections.ArrayList
 
     foreach($i in "$(ls $env:TEMP\\$dest\\*.cab)") {
-        if( $( expnd_.exe -d $i ) |select-string 'cabinet.cablist.ini') {# newer msu's apparently contain several cabs, so need another trip around for extraction  
+        if( $( & $expand_exe -d $i ) |select-string 'cabinet.cablist.ini') {# newer msu's apparently contain several cabs, so need another trip around for extraction  
             7z x $i "-x!WSUSSCAN.cab" "-o$env:TEMP\\$dest" -aoa 
             Move-Item $i $i.Replace('.cab','.1cab')
         }
-
     }
     quit?(7z)
     
@@ -3097,7 +3354,7 @@ function func_install_dll_from_msu
     Write-Host -ForegroundColor green '*   Patience please! Getting list of files takes a while!      *'
     Write-Host -ForegroundColor green '****************************************************************'
 
-     $out = $( expnd_.exe -d $env:TEMP\\$dest\\*.cab )
+     $out = $( & $expand_exe -d $env:TEMP\\$dest\\*.cab )
      foreach ( $j in ($out |select-string -notMatch '.manifest', '.cat', '.mum').Line  |Sort-Object  -Unique ) { 
          $custom_array.Add(@{ name = $j }) > $null 
      }
@@ -3106,7 +3363,7 @@ function func_install_dll_from_msu
     $result = ($custom_array  | select name | Out-GridView  -PassThru  -Title 'Make a  selection')
 
     foreach ($i in $result) { #https://stackoverflow.com/questions/8097354/how-do-i-capture-the-output-into-a-variable-from-an-external-process-in-powershe/35980675
-        [array]$verboseoutput = $( expnd_.exe $i.Name.Split(': ')[0] -F:$i.Name.Split(': ')[1] "$env:TEMP\\$dest") 
+        [array]$verboseoutput = $( & $expand_exe $i.Name.Split(': ')[0] -F:$i.Name.Split(': ')[1] "$env:TEMP\\$dest") 
         foreach($n in $verboseoutput) { if($n -match 'Queue') {[array]$output += $n + " from $($i.Name.Split(': ')[0])" } } 
     }
     $output
@@ -3114,7 +3371,7 @@ function func_install_dll_from_msu
     foreach($j in $output  ) {
         $file = [System.IO.FileInfo]$j.Split(' ')[1]
         $manifestfile = $file.DirectoryName.Split('\')[-1] + '.manifest'
-        [array]$verbosemanifestoutput += $(expnd_ $j.Split('from ')[-1] -F:$manifestfile "$env:TEMP\\$dest") 
+        [array]$verbosemanifestoutput += $(& $expand_exe $j.Split('from ')[-1] -F:$manifestfile "$env:TEMP\\$dest") 
     }
 
     foreach($n in $verbosemanifestoutput ) { if($n -match 'Queue') {[array]$verbose += $n}} 
@@ -3132,67 +3389,18 @@ function func_affinity_requirements
 winecfg /v win11
 func_renderer=vulkan
 func_winmetadata
-func_dxcore
-func_wintypes
+func_wine_wintypes
+
+if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.15 ) { func_wine_dxcore }
 }
 
-function func_winmetadata <# winmetadata #>
-{   
-    $url = "https://catalog.s.download.windowsupdate.com/c/msdownload/update/software/updt/2018/08/windows10.0-kb4343893-x64_bdae9c9c28d4102a673a24d37c371ed73d053338.msu"
-    $cab = "Windows10.0-KB4343893-x64.cab"
-    $sourcefile = @(`
-'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.web.winmd',
-'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.foundation.winmd',
-'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.graphics.winmd',
-'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.services.winmd',
-'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.data.winmd',
-'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.media.winmd',
-'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.system.winmd',
-'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.ui.winmd',
-'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.security.winmd',
-'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.globalization.winmd',
-'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.management.winmd',
-'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.devices.winmd',
-'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.perception.winmd',
-'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.storage.winmd',
-'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.ui.xaml.winmd',
-'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.gaming.winmd',
-'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.applicationmodel.winmd',
-'wow64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_5e12b0fead7757f6/windows.networking.winmd',
-'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.web.winmd',
-'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.foundation.winmd',
-'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.graphics.winmd',
-'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.services.winmd',
-'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.data.winmd',
-'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.media.winmd',
-'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.system.winmd',
-'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.ui.winmd',
-'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.security.winmd',
-'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.globalization.winmd',
-'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.management.winmd',
-'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.devices.winmd',
-'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.perception.winmd',
-'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.storage.winmd',
-'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.ui.xaml.winmd',
-'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.gaming.winmd',
-'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.applicationmodel.winmd',
-'amd64_microsoft-windows-runtime-metadata_31bf3856ad364e35_10.0.16299.98_none_53be06ac791695fb/windows.networking.winmd'`
-    )
-
-    New-Item -Path $env:systemroot\\system32\\winmetadata -Type Directory -force -erroraction silentlycontinue
-    New-Item -Path $env:systemroot\\syswow64\\winmetadata -Type Directory -force -erroraction silentlycontinue
-
-    check_msu_sanity $url $cab; $dldir = $($url.split('/')[-1]) -replace '.msu',''    
-
-    foreach ($i in $sourcefile) {
-        if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $dldir,  $i) ) ){
-                    if( $i.SubString(0,3) -eq 'amd' ) {expnd_.exe $([IO.Path]::Combine($cachedir,  $dldir,  $cab)) -f:$($i.split('/')[-1]) $(Join-Path $cachedir  $dldir) }
-                    if( $i.SubString(0,3) -eq 'wow' ) {<# Nothing to do #>}  }  }
-
-    foreach ($i in $sourcefile) {
-        if( $i.SubString(0,3) -eq 'amd' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" -destination $env:systemroot\\system32\\winmetadata\\$($i.split('/')[-1]) }
-        if( $i.SubString(0,3) -eq 'wow' ) {Copy-Item -force -verbose "$(Join-Path $cachedir $dldir)\\$i" $env:systemroot\\syswow64\\winmetadata\\$($i.split('/')[-1]) } } 
-} <# end winmetadata #>
+function func_webview2
+{
+foreach($i in 'wldp') { dlloverride 'disabled' $i }
+winecfg /v win7
+choco install webview2-runtime
+foreach($i in 'wldp') { dlloverride 'builtin' $i }
+}
 
 <# Main function #>
     if ( $args.count ) { $result =  $args } else { $result = $custom_array  | select name,description | Out-GridView  -PassThru  -Title 'Make a  selection'}
