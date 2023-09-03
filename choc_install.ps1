@@ -188,37 +188,105 @@ $profile_winetricks_caller_ps1 = @'
 
 <# To support auto-tabcompletion only a comma seperated is supported from now on when calling winetricks with multiple arguments, e.g. 'winetricks gdiplus,riched20' #>
 
-$verblist = ('msxml3', 'msxml6','gdiplus', 'mfc42', 'riched20', 'msado15', 'expand', 'wmp', 'ucrtbase', 'vcrun2019', 'mshtml', 'd2d1',`
-                     'dxvk1103', 'dxvk20', 'hnetcfg', 'msi', 'wintrust', 'sapi', 'ps51', 'ps51_ise', 'crypt32', 'oleaut32', 'msvbvm60', 'xmllite', 'windows.ui.xaml', 'windowscodecs', 'uxtheme', 'comctl32', 'wsh57',`
-                     'nocrashdialog', 'renderer=vulkan', 'renderer=gl', 'app_paths', 'vs19','git.portable','sharpdx', 'dotnet35', 'dotnet481' ,'cef', 'd3dx','sspicli', 'dshow', 'findstr', 'affinity_requirements',`
-                     'winmetadata', 'wintypes', 'dxcore', 'install_dll_from_msu', 'wpf_xaml', 'wpf_msgbox', 'wpf_routedevents', 'embed-exe-in-psscript', 'vulkansamples', 'ps2exe')
+[array]$Qenu = "gdiplus","GDI+ (gdiplus.dll)",`
+               "msxml3","msxml3.dll",`
+               "msxml6","msxml6.dll",`
+               "mfc42","mfc42.dll, mfc43u.dll",`
+               "riched20","riched20.dll, msls31.dll",`
+               "msado15","MDAC and Jet40: some minimal mdac dlls (msado15.dll, oledb32.dll, dao360.dll)",`
+               "expand", "native expand.exe, it's renamed to expnd_.exe to not interfere with wine's expand",`
+               "wmp", "some wmp (windows media player) dlls, makes e-Sword start",`
+               "vcrun2019", "vcredist2019 (concrt140.dll, msvcp140.dll, msvcp140_1.dll, msvcp140_2.dll, vcruntime140.dll, vcruntime140_1.dll, ucrtbase.dll)",`
+               "mshtml", "experimental, dangerzone, might break things, only use on a per app base;ie8 dlls: mshtml.dll, ieframe.dll, urlmon.dll, jscript.dll, wininet.dll, shlwapi.dll, iertutil.dll",`
+               "wine_hnetcfg", "wine hnetcfg.dll with fix for https://bugs.winehq.org/show_bug.cgi?id=45432",`
+               "wine_msi", "if an msi installer fails, might wanna try this wine msi, just faking success for a few actions... Might also result in broken installation ;)",`
+               "cmd","cmd.exe",` 
+               "wine_wintrust", "wine wintrust faking success for WinVerifyTrust",`
+               "dxvk1103", "dxvk 1.10.3, latest compatible with Kepler (Nvidia GT 470) ??? )",`
+               "dxvk20", "dxvk 2.0",`
+               "crypt32", "experimental, dangerzone, will likely break things, only use on a per app base (crypt32.dll, msasn1.dll)",`
+               "wine_ole32", "wine ole32 with some fix for Visual Studio",`
+               "sapi", "Speech api (sapi.dll), experimental, makes Balabolka work",`
+               "ps51", "rudimentary PowerShell 5.1 (downloads yet another huge amount of Mb`s!)",`
+               "ps51_ise", "PowerShell 5.1 Integrated Scripting Environment",`
+               "msvbvm60", "msvbvm60.dll",`
+               "msdelta", "msdelta.dll",`
+               "xmllite", "xmllite.dll",`
+               "ping","semi-fake ping.exe (tcp isntead of ICMP) as the last requires special permissions",`
+               "windowscodecs", "windowscodecs.dll",`
+               "uxtheme", "uxtheme.dll",`
+               "wsh57", "MS Windows Script Host (vbscript.dll scrrun.dll msscript.ocx jscript.dll scrobj.dll wshom.ocx)",`
+               "comctl32", "dangerzone, only for testing, might break things, only use on a per app base (comctl32.dll)",`
+               "d2d1", "dangerzone, only for testing, might break things, only use on a per app base (d2d1.dll)",`
+               "dinput8", "dinput8.dll",`
+               "windows.ui.xaml", "windows.ui.xaml, experimental...",`
+               "nocrashdialog", "Disable graphical crash dialog",`
+               "renderer=vulkan", "renderer=vulkan",`
+               "renderer=gl", "renderer=gl",`
+               "app_paths", "start new shell with app paths added to the path (permanently), invoke from powershell console!",
+               "vs19", "Visual Studio 2019",
+               "office365","Microsoft Office365HomePremium (registering does not work, many glitches...)",
+               "webview2", "Microsoft Edge WebView2",
+               "git.portable","Access to several unix-commands like tar, file, sed etc. etc.",
+               "d3dx", "d3x9*, d3dx10*, d3dx11*, xactengine*, xapofx* x3daudio*, xinput* and d3dcompiler*",
+               "sspicli", "dangerzone, only for testing, might break things, only use on a per app base (sspicli.dll)",
+               "dshow", "directshow dlls: amstream.dll,qasf.dll,qcap.dll,qdvd.dll,qedit.dll,quartz.dll",
+               "uiribbon", "uiribbon.dll",
+               "uianimation", "uianimation.dll",
+               "findstr", "findstr.exe",
+               "affinity_requirements", "install and configure stuff to get affinity v2 started",
+               "winmetadata", "various *.winmd files",
+               "wine_wintypes", "wine wintypes.dll patched (from ElementalWarrior) for Affinity, https://forum.affinity.serif.com/index.php?/topic/182758-affinity-suite-v204-on-linux-wine/page/1/",
+               "dotnet35", "dotnet35",
+               "dotnet481", "experimental dotnet481 install (includes System.Runtime.WindowsRuntime.dll)",
+               "font_lucida", "Lucida Console font",
+               "font_segoeui", "Segoeui fonts",
+               "font_tahoma","Tahoma font",
+               "font_vista","Arial,Calibri,Cambria,Comic Sans,Consolas,Courier,Georgia,Impact,Lucida Sans Unicode,Symbol,Times New Roman,Trebuchet ,Verdana ,Webdings,Wingdings font",
+               "install_dll_from_msu","extract and install a dll/file from an msu file (installation in right place might or might not work ;) )",
+               "sharpdx", "directX with powershell (spinning cube), test if your d3d11 works, further rather useless verb for now ;)",
+               "glxgears", "test if your opengl in wine is working",
+               "vulkansamples", "51 vulkan samples to test if your vulkan works, do shift-ctrl^c if you wanna leave earlier ;)",
+               "wpf_xaml", "codesnippets from around the internet: how to use wpf+xaml in powershell",
+               "wpf_msgbox", "codesnippets from around the internet: some fancy messageboxes (via wpf) in powershell",
+               "wpf_routedevents", "codesnippets from around the internet: how to use wpf+xaml+routedevents in powershell",
+               "cef", "codesnippets from around the internet: how to use cef / test cef",
+               "embed-exe-in-psscript", "codesnippets from around the internet: samplescript howto embed and run an exe into a powershell-scripts (vkcube.exe)",
+               "Get-PEHeader", "codesnippets from around the internet: add Get-PEHeader to cmdlets, handy to explore dlls imports/exports",
+               "access_winrt_from_powershell", "codesnippets from around the internet: howto use Windows Runtime classes in powershell; requires powershell 5.1, so 1st time usage may take very long time!!!",
+               "ps2exe", "codesnippets from around the internet: convert a ps1-script into an executable; requires powershell 5.1, so 1st time usage may take very long time!!!"
+
+#https://stackoverflow.com/questions/67356762/couldnt-use-predefined-array-inside-validateset-powershell
+
+for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) { [string[]]$verblist += $Qenu[$j] }
 
 function winetricks {
-[CmdletBinding()]
- Param(
-        [Parameter(Mandatory=$false)]
-        [string[]]$verb
-      )
+  [CmdletBinding()]
+  param(
+    #[Parameter(Mandatory)]
+    # Tab-complete based on array $verblist
+    [ArgumentCompleter({
+      param($cmd, $param, $wordToComplete) $verblist -like "$wordToComplete*"
+    })]
+    # Validate based on array $verblist.
+    # NOTE: If validation fails, the (default) error message is unhelpful.
+    #       You can work around that in *Windows PowerShell* with `throw`, and in
+    #       PowerShell (Core) 7+, you can add an `ErrorMessage` property:
+    #         [ValidateScript({ $_ -in $verblist }, ErrorMessage = 'Unknown value: {0}')]
+    [ValidateScript({
+      if ($_ -in $verblist) { return $true }
+      throw "'$_' is not in the set of the supported values: $($verblist -join ', ')"
+    })]
+    $Arg
+  )
 
-     if (!([System.IO.File]::Exists("$env:ProgramData\\Chocolatey-for-wine\\winetricks.ps1"))){
-         Add-Type -AssemblyName PresentationCore,PresentationFramework;
-         [System.Windows.MessageBox]::Show("winetricks script is missing`nplease reinstall it in c:\\ProgramData\\Chocolatey-for-wine",'Congrats','ok','exclamation')
-     }
+  if (!([System.IO.File]::Exists("$env:ProgramData\\Chocolatey-for-wine\\winetricks.ps1"))){
+      Add-Type -AssemblyName PresentationCore,PresentationFramework;
+      [System.Windows.MessageBox]::Show("winetricks script is missing`nplease reinstall it in c:\\ProgramData\\Chocolatey-for-wine",'Congrats','ok','exclamation')
+  }
 
-     pwsh -f  $( Join-Path $("$env:ProgramData\\Chocolatey-for-wine") "winetricks.ps1")   $verb
+ pwsh -f  $( Join-Path $("$env:ProgramData\\Chocolatey-for-wine") "winetricks.ps1") $Arg
 }
-
-$scriptBlock = {
-    param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-
-    $verblist | Where-Object {
-        $_ -like "$wordToComplete*"
-    } | ForEach-Object {
-          "'$_'"
-    }
-}
-
-Register-ArgumentCompleter -CommandName winetricks -ParameterName verb -ScriptBlock $scriptBlock
 '@
 ################################################################################################################################ 
 #                                                                                                                              #
@@ -369,6 +437,215 @@ function QPR.setx.exe { <# setx.exe replacement #>
 #}
 #}
 
+Set-Alias "QPR.ping" "QPR.ping.exe";
+function QPR.ping.exe
+{
+    $cmdline = $env:QPRCMDLINE.SubString($env:QPRCMDLINE.IndexOf(" "), $env:QPRCMDLINE.Length - $env:QPRCMDLINE.IndexOf(" "))
+    iex  -Command ('QPR_ping' + $cmdline)
+}
+
+#https://stackoverflow.com/questions/53522016/how-to-measure-tcp-and-icmp-connection-time-on-remote-machine-like-ping
+function QPR_ping { <# ping.exe replacement #>
+    <#
+        .SYNOPSIS
+            Implementation PS du ping + tcp-Ping
+        .DESCRIPTION
+            retourne les temps de reponce ICMP (port 0) et TCP (port 1-65535)
+        .PARAMETER HostAddress
+            HostName ou IP a tester,
+            pour le HostName une resolution DNS est faite a chaque boucle
+        .PARAMETER ports
+            Liste des ports TCP-IP a tester, le port 0 pour l'ICMP
+        .PARAMETER timeout
+            TimeOut des test individuel
+        .PARAMETER loop
+            nombre de boucle a effectuer, par defaut Infini
+        .PARAMETER Intervale
+            intervale entre chaque series de test
+        .PARAMETER ComputerName
+            permet de faire ce Ping en total remote,
+            si ComputerName est fournis, joignable et different de localhost alors c'est lui qui executera ce code et retourne le resultat
+            Requiere "Enable-PSRemoting -force"
+        .EXAMPLE
+            Ping sur ICMP + TCP:53,80,666 timeout 80ms (par test)
+            Ping 8.8.8.8 -ports 0,53,80,666 -timeout 80 | ft
+        .EXAMPLE
+            3 ping en remote depuis le serveur vdiv05 sur ICMP,3389,6516 le tous dans une jolie fenetre
+            ping 10.48.50.27 0,3389,6516 -ComputerName vdiv05 -count 3 | Out-GridView
+        .NOTES
+            Alban LOPEZ 2018
+            alban.lopez @t gmail.com
+        #>
+    Param(
+        [string]$HostAddress = 'vps.opt2', 
+        [ValidateRange(0, 65535)]
+        [int[]]$ports =  @(80),                                         # @(0, 22, 135), 
+        [ValidateRange(0, 2000)]
+        [int]$timeout = 200,
+        [int32]$n = 4,                                  # [int32]::MaxValue,  68 annees !
+        [ValidateSet(250, 500, 1000, 2000, 4000, 10000)]
+        [int]$Intervale = 2000,
+        $l = 32,                                                        # 1Kb,
+        $ComputerName = $null
+    )
+    
+    
+    
+    begin {     
+        if ($computerName -and $computerName -notmatch "^(\.|localhost|127.0.0.1)$|^$($env:computername)" -and (Test-TcpPort -DestNodes $computerName -ConfirmIfDown)) {
+            $pingScriptBlock = Include-ToScriptblock -functions 'write-logStep', 'write-color', 'Write-Host', 'ping', 'Test-TcpPort', 'Include-ToScriptblock'
+        } else {
+            $ComputerName = $null
+            $ObjPing = [pscustomobject]@{
+                DateTime   = $null
+                IP         = $null
+                Status     = $null
+                hasChanged = $null
+            }
+            $ObjPings = $test = @()
+            if (!$ports) {$ports = @(0)}
+            $Ports | ForEach-Object {
+                if ($_) {
+                    # TCP
+                    $ObjPing | Add-Member -MemberType NoteProperty -Name "Tcp-$_" -Value $null
+                    $test += "Tcp-$_"
+                }
+                else {
+                    # ICMP
+                    $ping = new-object System.Net.NetworkInformation.Ping
+                    $ObjPing | Add-Member -MemberType NoteProperty -Name ICMP -Value $null
+
+                    $ObjPing | Add-Member -MemberType NoteProperty -Name 'ICMP-Ttl' -Value $null
+                    # $ObjPing | Add-Member -MemberType NoteProperty -Name 'ICMP-Size' -Value $l
+                    $buffer = [byte[]](1..$l | ForEach-Object {get-random -Minimum 20 -Maximum 255})
+                    $test += "ICMP ($l Octs)"
+                }
+            }
+            # Write-LogStep -prefixe 'L.%Line% Ping' "Ping [$DestNode] ", ($test -join(' + ')) ok
+        }
+    }
+    process {
+        if(!$ComputerName){
+
+           if (!($HostAddress -as [System.Net.IPAddress])){
+           
+             try { $entry = [System.Net.Dns]::GetHostEntry($HostAddress) }
+             catch { Write-Host "Ping request could not find host $HostAddress. Please check the name and try again."; return}
+              $DestNode = $entry.AddressList | Where-Object -Property AddressFamily -eq -Value "InternetWork" |Get-random
+              $HostName = $entry.HostName
+           if(!$HostAddress){break}
+           } else {
+               $DestNode = [System.Net.IPAddress]$HostAddress
+                $HostName = $HostAddress
+           }
+
+            Write-Host "pinging $HostAddress [$DestNode] with $l bytes of data:"
+            
+
+                        $ObjPing.DateTime = (get-date)
+                        $ObjPing.status = $ObjPing.haschanged = $null
+                        $ObjPing.IP = [string][System.Net.Dns]::GetHostAddresses($DestNode).IPAddressToString
+                                While ($n--) {
+                $ms = (Measure-Command {
+                    try {
+                        #$ObjPing.DateTime = (get-date)
+                       # $ObjPing.status = $ObjPing.haschanged = $null
+                       # $ObjPing.IP = [string][System.Net.Dns]::GetHostAddresses($DestNode).IPAddressToString
+                        #Write-LogStep -prefixe 'L.%Line% Ping' "Ping $DestNode", $ObjPing.IP wait
+                            foreach ($port in $ports) {
+                                if ($port) {
+                                    # TCP
+                                    $ObjPing."Tcp-$port" = $iar = $null
+                                    try {
+                                        $tcpclient = new-Object system.Net.Sockets.TcpClient # Create TCP Client
+                                        $iar = $tcpclient.BeginConnect($ObjPing.IP, $port, $null, $null) # Tell TCP Client to connect to machine on Port
+                                        $timeMs = (Measure-Command {
+                                                $wait = $iar.AsyncWaitHandle.WaitOne($timeout, $false) # Set the wait time
+                                            }).TotalMilliseconds
+                                    }
+                                    catch {
+                                        # Write-verbose $_
+                                    }
+                                    # Write-LogStep -prefixe 'L.%Line% Ping' "Tcp-$port", $x.status, $timeMs ok
+                                    # Check to see if the connection is done
+                                    if (!$wait) {
+                                        # Close the connection and report timeout
+                                        $ObjPing."Tcp-$port" = 'TimeOut'
+                                        $tcpclient.Close()
+                                    }
+                                    else {
+                                        try {
+                                            $ObjPing."Tcp-$port" = [int]$timeMs
+                                            $ObjPing.status ++
+                                            # Write-LogStep -prefixe 'L.%Line% Ping' 'TCP ', "$($ObjPing."Tcp-$port") ms" ok
+                                            $tcpclient.EndConnect($iar) | out-Null
+                                            $tcpclient.Close()
+                                        }
+                                        catch {
+                                            # $ObjPing."Tcp-$port" = 'Unknow Host'
+                                        }
+                                    }
+                                    if ($tcpclient) {
+                                        $tcpclient.Dispose()
+                                        $tcpclient.Close()
+                                    }
+                                }
+                                else {
+                                    # ICMP
+                                    $ObjPing.ICMP = $ObjPing."ICMP-Ttl"  = $null # $ObjPing."ICMP-Size"
+                                    try {
+                                        $x = $ping.send($ObjPing.IP, $timeOut, $Buffer)
+                                        if ($x.status -like 'Success') {
+                                            $ObjPing."ICMP" = [int]$x.RoundtripTime
+                                            $ObjPing."ICMP-Ttl" = $x.Options.Ttl
+                                            # $ObjPing."ICMP-Size" = $x.Buffer.Length
+                                            $ObjPing.status ++
+                                            # Write-LogStep -prefixe 'L.%Line% Ping' 'ICMP ', "$($x.RoundtripTime) ms", $x.Options.Ttl, $x.Buffer.Length ok
+                                        }
+                                        else {
+                                            # Write-LogStep -prefixe 'L.%Line% Ping' 'ICMP ', "$($x.RoundtripTime) ms", $x.Options.Ttl, $x.Buffer.Length Warn
+                                            $ObjPing."ICMP" = $x.status
+                                            $ObjPing."ICMP-Ttl" = $ObjPing."ICMP-Size" = '-'
+                                        }
+                                    }
+                                    catch {
+                                        # $ObjPing.ICMP =  'Unknow Host'
+                                    }
+                                }
+                            }
+                        }
+                        catch {
+                            # Write-LogStep -prefixe 'L.%Line% Ping' '', 'Inpossible de determiner le noeud de destination !' error
+                            $ObjPing.Status = 0
+                        }
+                        #$ObjPing.status = "$([int]([Math]::Round($ObjPing.status / $ports.count,2) * 100))%"
+                        #$ObjPing.hasChanged = !($ObjPing.Status -eq $last -and $ObjPing.IP -eq $IP )
+                        $last = $ObjPing.Status
+                        $IP = $ObjPing.IP
+                        ipconfig /flushdns
+                    }).TotalMilliseconds
+
+                $ObjPings += $ObjPing
+
+                
+                if($timeMs  -lt 200) { Write-Host Reply from "$IP": bytes=$l time="$timeMs"ms TTL=123}
+                else    { Write-Host "Request timed out" }
+
+                if ($n -and $Intervale - $ms -gt 0) {
+                    start-sleep -m ($Intervale - $ms)
+                }
+            }
+        }
+    }
+    end {
+        if ($computerName) {
+            $pingScriptBlock = $pingScriptBlock | Include-ToScriptblock -StringBlocks "Ping -DestNode $DestNode -ports $($ports -join(',')) -timeout $timeout -loop $n -Intervale $Intervale"
+            Invoke-Command -ComputerName $ComputerName -ScriptBlock $pingScriptBlock | Select-Object -Property * -ExcludeProperty RunspaceID
+        }
+     exit 0
+    }
+}
+
 Set-Alias "QPR.systeminfo" "QPR.systeminfo.exe";
 function QPR.systeminfo.exe { <# systeminfo replacement #>
     $result = [System.Collections.ArrayList]::new() ;  $p=[System.Collections.ArrayList]::new() 
@@ -491,13 +768,16 @@ function handy_apps { choco install explorersuite reactos-paint}
     iex "$(Join-Path "$env:TEMP" '7z2201-x64.exe') /S"; while(!(Test-Path -Path "$env:ProgramW6432\\7-zip\\7z.exe") ) {Sleep 0.25}
     New-Item -Path "$env:ProgramData" -Name "Chocolatey-for-wine" -ItemType "directory" -ErrorAction SilentlyContinue
 
+    if (!(Test-Path -Path "$env:WINEHOMEDIR\.cache\choc_install_files\net48\netfx_Full.mzz".substring(4) -PathType Leaf)) { <#fragile test#>
+
     <# fragile test... If install files already present skip downloads. Run choc_installer once with 'SAVEINSTALLFILES=1' to cache downloads #>
     if (!(Test-Path -Path "$env:WINEHOMEDIR\.cache\choc_install_files\ndp48-x86-x64-allos-enu.exe".substring(4) -PathType Leaf)) { <# First download/extract/install dotnet48 as job, this takes most time #>
         (New-Object System.Net.WebClient).DownloadFile('https://download.visualstudio.microsoft.com/download/pr/7afca223-55d2-470a-8edc-6a1739ae3252/abd170b4b0ec15ad0222a809b761a036/ndp48-x86-x64-allos-enu.exe', $(Join-Path "$env:TEMP" 'ndp48-x86-x64-allos-enu.exe') ) }
     else {
         Copy-Item -Path "$env:WINEHOMEDIR\.cache\choc_install_files\ndp48-x86-x64-allos-enu.exe".substring(4) -Destination "$env:TEMP" -Force }
-    start-threadjob -throttle 2 -ScriptBlock {[System.Threading.Thread]::CurrentThread.Priority = 'Highest'; Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -ArgumentList  "x -x!*.cab -ms190M $env:TEMP\\ndp48-x86-x64-allos-enu.exe -o$env:TEMP"}
-    start-threadjob -throttle 2 -ScriptBlock {  while(!(Test-Path -Path "$env:TEMP\1025") ) {Sleep 0.25} ;[System.Threading.Thread]::CurrentThread.Priority = 'Highest'; &{ c:\\windows\\system32\\msiexec.exe  /i $env:TEMP\\netfx_Full_x64.msi EXTUI=1 /sfxlang:1033 /q /norestart} }
+    start-threadjob -throttle 2 -ScriptBlock {[System.Threading.Thread]::CurrentThread.Priority = 'Highest'; Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -ArgumentList  "x -x!*.cab -x!netfx_c* -x!netfx_e* -x!NetFx4* -ms190M $env:TEMP\\ndp48-x86-x64-allos-enu.exe -o$env:TEMP\\net48"} }
+    else { Copy-Item -Path "$env:WINEHOMEDIR\.cache\choc_install_files\net48".substring(4) -Destination "$env:TEMP" -recurse -Force }
+    start-threadjob -throttle 2 -ScriptBlock {  while(!(Test-Path -Path "$env:TEMP\net48\1025") ) {Sleep 0.25} ;[System.Threading.Thread]::CurrentThread.Priority = 'Highest'; &{ c:\\windows\\system32\\msiexec.exe  /i $env:TEMP\\net48\\netfx_Full_x64.msi EXTUI=1 /sfxlang:1033 /q /norestart} }
 
     $url = @('http://download.windowsupdate.com/msdownload/update/software/crup/2010/06/windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', `
              'https://mirrors.kernel.org/gentoo/distfiles/arial32.exe', `
@@ -722,8 +1002,8 @@ function handy_apps { choco install explorersuite reactos-paint}
     <# Backup files if wanted #>
     if (Test-Path 'env:SAVEINSTALLFILES') { 
         New-Item -Path "$env:WINEHOMEDIR\.cache\".substring(4) -Name "choc_install_files" -ItemType "directory" -ErrorAction SilentlyContinue
-        foreach($i in 'ndp48-x86-x64-allos-enu.exe', 'PowerShell-7.1.5-win-x64.msi', 'arial32.exe', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2201-x64.exe', 'sevenzipextractor.1.0.17.nupkg') {
-            Copy-Item -Path $env:TEMP\\$i -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4)  -force }
+        foreach($i in 'net48', 'PowerShell-7.1.5-win-x64.msi', 'arial32.exe', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2201-x64.exe', 'sevenzipextractor.1.0.17.nupkg') {
+            Copy-Item -Path $env:TEMP\\$i -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4) -recurse -force }
     }
     <# install wine robocopy and (custom) wine tasksch.dll #>
     Copy-Item -Path "$env:TMP\\robocopy64.exe" -Destination "$env:SystemRoot\\System32\\robocopy.exe" -Force
