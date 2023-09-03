@@ -63,7 +63,7 @@ About winetricks(.ps1):
 
 - If you don't call it ('winetricks' in powershell-console) , nothing gets downloadeded so no overhead there. 
 - A lot of verbs (like powershell 5.1) need a few essential files to extract stuff from msu packages. Installing these essential files requires first huge downloads , and       takes lots of time during 1st time usage. But after things are cached it goes quickly . For example if you might wanna try 'winetricks ps51' first, it will take about       approx. 15 minutes. Some other verbs might take 5 minutes on first time usage. But after you called a verb once this nuisance is gone.
-- Files are cached in directory '$HOME/.cache/winetrickxs'
+- Files are cached in directory '$HOME/.cache/winetrickxs'. If you call all verbs it'll take about 800 MB there.
 - Hopefully some better 64-bit support for some verbs.
 - Possibility to extract a file and (try) install from an msu file. Do 'winetricks install_dll_from_msu' to see how.
 - A rudimentary Powershell 5.1.
