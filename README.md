@@ -11,7 +11,7 @@ Optional:
   
 Optional:
 
-- Run the installer like 'SAVEINSTALLFILES=1 wine ChoCinstaller_0.5i.715.exe' , then the install files (like Powershell.msi and dotnet48) are saved in
+- Run the installer like 'SAVEINSTALLFILES=1 wine ChoCinstaller_0.5i.715.exe' , then the install files (like Powershell*.msi and dotnet48) are saved in
   '$HOME/.cache/choc_install_files' and they don't need to be downloaded again if you create a new prefix)
   
 ![Screenshot from 2022-08-26 12-31-18](https://user-images.githubusercontent.com/26839562/186885380-d5a617c4-9cf4-4831-a475-2bd85a3b5784.png)
@@ -26,7 +26,7 @@ About PowerShell:
 
   There's also some PowerShell 5.1 support:
 
-- From PowerShell-Core console do 'winetricks ps51' (takes very long time to complete! and downloads gigs of mostly   useless stuff)
+- From PowerShell-Core console do 'winetricks ps51' (takes very long time to complete!!!)
 
   Then from PowerShell-Core console you could:
 
@@ -61,8 +61,8 @@ No garantuee this works for more complex programs as well...
 
 About winetricks(.ps1):
 
-- If you don't call it ('winetricks' in powershell-console) , nothing gets downloadeded so no overhead there. 
-- A lot of verbs (like powershell 5.1) need a few essential files to extract stuff from msu packages. Installing these essential files requires first huge downloads , and       takes lots of time during 1st time usage. But after things are cached it goes quickly . For example if you might wanna try 'winetricks ps51' first, it will take about       approx. 15 minutes. Some other verbs might take 5 minutes on first time usage. But after you called a verb once this nuisance is gone.
+- If you don't call it ('winetricks' in powershell-console) , nothing gets downloaded so no overhead there. 
+- A lot of verbs (like powershell 5.1) need a few essential files to extract stuff from msu packages. Installing these essential files requires first huge downloads , and  takes lots of time during 1st time usage. But after things are cached it goes quickly . For example if you might wanna try 'winetricks ps51' first, it will take about  approx. 15 minutes. Some other verbs might take 5 minutes on first time usage. But after you called a verb once this nuisance is gone.
 - Files are cached in directory '$HOME/.cache/winetrickxs'. If you call all verbs it'll take about 800 MB there.
 - Hopefully some better 64-bit support for some verbs.
 - Possibility to extract a file and (try) install from an msu file. Do 'winetricks install_dll_from_msu' to see how.
@@ -71,11 +71,11 @@ About winetricks(.ps1):
 - Autotab-completion. Note: while using multiple verbs from command line they have to be seperated by a comma
   from now on (this is how powershell handles multiple arguments)
   So 'winetricks riched20 gdiplus' won't work anymore, use 'winetricks riched20,gdiplus' instead
-- Some programs fail to install/run due to wine-bugs. I added a few workarounds in winetricks, see below:
+- Some programs fail to install/run when you try them via Chocolatey due to wine-bugs. I added a few workarounds in winetricks for them, see below:
 - A special verb to install requirements to get Affinity Photo/Designer started.
 - Special verb (winetricks vs19)to install a working Visual Studio Community 2019 (see screenshot, >10 mins to install and requires approx. 10GB!, after install start devenv.exe from directory c:\Program\ Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE/)
   ![screenshot](https://github.com/PietJankbal/Chocolatey-for-wine/assets/26839562/d576a619-c752-4eb1-81c2-6f6b66b50ff6)
-- Special verb to get access to various unix commands like grep,sed, file, less etc. etc. (winetricks git.portable, Disclaimer: some commands do not yet work due to wine bug
+- Special verb to get access to various unix commands like grep,sed, file, less etc. etc. (winetricks git.portable, Disclaimer: some commands do not yet work due to wine bugs
 - Also included a few powershell scripts adapted from codesnippets found on the internet:
     - How to embed an exe in a powershell script via Invoke-ReflectivePEInjection (the exe won't show up in tasklist).
     - How to make fancy messageboxes
@@ -85,8 +85,8 @@ About winetricks(.ps1):
 Notes:
 
   - Do NOT use on existing wineprefix, only on fresh new created prefix! The installer just stupidly installs dotnet48 itsself and messes with registrykeys.
-    If you have any dotnet version already installed with winetricks, it will likely fail, and even if it succeeds, you'll likely end up with a broken prefix.
-    If you need to install stuff via winetricks for programs, do NOT use any of the dotnet* verbs. 
+    If you have any dotnet version already installed with regular winetricks.sh, it will likely fail, and even if it succeeds, you'll likely end up with a broken prefix.
+    If you need to install stuff with regular winetricks.sh for programs, do NOT use any of the dotnet* verbs. 
     BTW 'Arial' and 'd3dcompiler_47' verbs are already installed by default.
   - WINEARCH=win32 is _not_ supported!
   - Updating from a previous version is for now not (yet) supported, maybe later
