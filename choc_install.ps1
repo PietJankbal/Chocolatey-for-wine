@@ -119,6 +119,8 @@ $profile = '$env:ProgramFiles\PowerShell\7\profile.ps1'
 $profile_essentials_ps1 = @'
 <# This contains essential functions/settings for Chocolatey-for-wine to work properly, do not remove or change #>
 
+cd c:\  <# Somehow this seems to be needed to let CreateSymbolicLinkW Stagings work, no idea why...#>
+
 $env:DXVK_CONFIG_FILE=("$env:WINECONFIGDIR" + "\" + "drive_c" + "\" + ($env:ProgramData |split-path -leaf) + "\" + "dxvk.conf").substring(6) -replace "\\","/"
 
 # Enable Chocolatey profile
@@ -139,16 +141,21 @@ if( !( (Get-FileHash C:\windows\system32\user32.dll).Hash -eq (Get-FileHash C:\w
 <# check wine-version, hack is only compatible with recent wine versions #>
 $MethodDefinition = @" 
 [DllImport("ntdll.dll", CharSet = CharSet.Ansi)] public static extern string wine_get_version();
+[DllImport("ntdll.dll", CharSet = CharSet.Ansi)] public static extern string wine_get_build_id();
 "@
 $ntdll = Add-Type -MemberDefinition $MethodDefinition -Name 'ntdll' -PassThru
 
-if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 7.16 ) { <# hack incompatible for older wine versions #>
+if([System.Convert]::ToDecimal( $ntdll::wine_get_build_id().split('-').split('(')[1] )  -lt 7.16) { <# hack incompatible for older wine versions#>
     $null = New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ConEmu64.exe\\DllOverrides' -force -Name 'user32' -Value 'builtin' -PropertyType 'String'}
 else {
      $null = New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ConEmu64.exe\\DllOverrides' -force -Name 'user32' -Value 'native' -PropertyType 'String'}
 <# end update ConEmu hack #>
 
-#Examples of usage: Get-WmiObject win32_operatingsystem version or $(Get-WmiObject win32_videocontroller).name etc.
+Set-Alias gwmi Get-WmiObject
+Set-Alias Get-CIMInstance Get-CIMInstance_replacement
+'@
+
+@'
 Function Get-WmiObject([parameter(mandatory=$true, position = 0, parametersetname = 'class')] [string]$class, `
                        [parameter( position = 1, parametersetname = 'class')][string[]]$property="*", `
                        [string]$computername = "localhost", [string]$namespace = "root\cimv2", `
@@ -163,21 +170,21 @@ Function Get-WmiObject([parameter(mandatory=$true, position = 0, parametersetnam
 
     return [System.Management.ManagementObjectCollection]$searcher.get()
 }
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\Get-WmiObject\Get-WmiObject.psm1 -Force )
 
-Set-Alias gwmi Get-WmiObject
-
-Function Get-CIMInstance ( [parameter(mandatory)] [string]$classname, [string[]]$property="*", [string]$filter)
+@'
+Function Get-CIMInstance_replacement ( [parameter(mandatory)] [string]$classname, [string[]]$property="*", [string]$filter)
 {
      Get-WMIObject $classname -property $property -filter $filter
 }
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\Get-CIMInstance_replacement\Get-CIMInstance_replacement.psm1 -Force )
 
-# Query program replacement for wusa.exe; Do not remove or change, it will break Chocolatey
-Set-Alias "QPR.wusa" "QPR.wusa.exe";
-function QPR.wusa.exe { <# wusa.exe replacement #>
+@'
+function QPR.wusa { <# wusa.exe replacement, Query program replacement for wusa.exe; Do not remove or change, it will break Chocolatey #>
      Write-Host "This is wusa dummy doing nothing..."
      exit 0;
 }
-'@
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.wusa\QPR.wusa.psm1 -Force )
 ################################################################################################################################ 
 #                                                                                                                              #
 #  profile_winetricks_caller.ps1                   #
@@ -225,12 +232,14 @@ $profile_winetricks_caller_ps1 = @'
                "renderer=gl", "renderer=gl",`
                "app_paths", "start new shell with app paths added to the path (permanently), invoke from powershell console!",
                "vs19", "Visual Studio 2019",
+               "vs22", "experimental Visual Studio 2022",
                "office365","Microsoft Office365HomePremium (registering does not work, many glitches...)",
                "webview2", "Microsoft Edge WebView2",
                "git.portable","Access to several unix-commands like tar, file, sed etc. etc.",
                "d3dx", "d3x9*, d3dx10*, d3dx11*, xactengine*, xapofx* x3daudio*, xinput* and d3dcompiler*",
                "sspicli", "dangerzone, only for testing, might break things, only use on a per app base (sspicli.dll)",
                "dshow", "directshow dlls: amstream.dll,qasf.dll,qcap.dll,qdvd.dll,qedit.dll,quartz.dll",
+               "directmusic", "directmusic ddls: dmusic.dll, dmband.dll, dmime.dll, dmloader.dll, dmscript.dll, dmstyle.dll, dmsynth.dll, dsound.dll, dswave.dll",
                "uiribbon", "uiribbon.dll",
                "uianimation", "uianimation.dll",
                "findstr", "findstr.exe",
@@ -285,7 +294,12 @@ function winetricks {
       [System.Windows.MessageBox]::Show("winetricks script is missing`nplease reinstall it in c:\\ProgramData\\Chocolatey-for-wine",'Congrats','ok','exclamation')
   }
 
- pwsh -f  $( Join-Path $("$env:ProgramData\\Chocolatey-for-wine") "winetricks.ps1") $Arg
+  if($arg) {
+     pwsh -nop -f $([System.IO.Path]::Combine("$env:ProgramData","Chocolatey-for-wine", "winetricks.ps1")) $arg
+  }
+  else {
+     pwsh -nop -f $([System.IO.Path]::Combine("$env:ProgramData","Chocolatey-for-wine", "winetricks.ps1")) $Qenu
+  }
 }
 '@
 ################################################################################################################################ 
@@ -299,6 +313,8 @@ $profile_miscellaneous_ps1 = @'
 #Remove ~/Documents/Powershell/Modules from modulepath; it becomes a mess because it`s not removed when one deletes the wineprefix... 
 $path = $env:PSModulePath -split ';'
 $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -join ';'
+
+Write-Host -Foregroundcolor yellow Running Power Shell Core 7.1.5 on $ntdll::wine_get_build_id(); Write-Host ""
 
 #Register-WMIEvent not available in PS Core, so for now just change into noop
 function Register-WMIEvent {
@@ -374,36 +390,6 @@ function Resolve-DnsName([string]$name) { <# https://askme4tech.com/how-resolve-
     if( $type -eq 'Dns')                            { [System.Net.Dns]::GetHostaddresses($name) |select IPAddressToString}
     if( ($type -eq 'IPv4') || ($type -eq 'IPv6'))   { [System.Net.Dns]::GetHostentry($name).hostname}
 }
- <# hack for installing adobereader #>
-function  Unregister-ScheduledTask { Write-Host 'cmdlet Unregister-ScheduledTask not available in PS 7, doing nothing...'; return}
-<# needed for Amazon Music #>
-Set-Alias "QPR.ie4uinit" "QPR.ie4uinit.exe";
-function QPR.ie4uinit.exe { <# ie4uinit.exe replacement #>
-     Write-Host "This is ie4uinit dummy doing nothing..."
-     exit 0;
-}
-
-function check_busybox {
-    if (!([System.IO.File]::Exists("$env:systemdrive\\ProgramData\\chocolatey\\bin\\busybox64.exe "))){ choco install Busybox -y }
-}
-
-
-# Note: Visual Studio calls this, not sure if this is really needed by it...
-Set-Alias "QPR.getmac" "QPR.getmac.exe";
-function QPR.getmac.exe { <# getmac.exe replacement #>
-    Get-WmiObject win32_networkadapterconfiguration | Format-Table @{L=’Physical address’;E={$_.macaddress}}
-}
-
-Set-Alias "QPR.setx" "QPR.setx.exe";
-function QPR.setx.exe { <# setx.exe replacement #>
-    <# FIXME, only setting env. variable handled atm. #>
-    <# https://stackoverflow.com/questions/50368246/splitting-a-string-on-spaces-but-ignore-section-between-double-quotes #>
-    $argv = ($env:QPRCMDLINE| select-string '("[^"]*"|\S)+' -AllMatches | % matches | % value) -replace '"'
-
-    New-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Session Manager\\Environment' -force -Name $argv[1] -Value $argv[2] -PropertyType 'String' 
-    New-ItemProperty -Path 'HKCU:\\Environment' -force -Name $argv[1] -Value $argv[2] -PropertyType 'String' 
-    exit 0
-}
 
 #Set-Alias "QPR.findstr" "QPR.findstr.exe"; Set-Alias "findstr.exe" "QPR.findstr.exe"; Set-Alias "findstr" "QPR.findstr.exe"
 #function QPR.findstr.exe { <# findstr.exe replacement #>
@@ -437,13 +423,159 @@ function QPR.setx.exe { <# setx.exe replacement #>
 #}
 #}
 
-Set-Alias "QPR.ping" "QPR.ping.exe";
-function QPR.ping.exe
+function use_google_as_browser { <# replace winebrowser with google chrome to open webpages #>
+    if (!([System.IO.File]::Exists("$env:ProgramFiles\Google\Chrome\Application\Chrome.exe"))){ choco install googlechrome}
+
+$regkey = @"
+REGEDIT4
+[HKEY_CLASSES_ROOT\https\shell\open\command]
+@="\"%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe\" \"--no-sandbox\" \"%1\""
+[HKEY_CLASSES_ROOT\http\shell\open\command]
+@="\"%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe\" \"--no-sandbox\" \"%1\""
+"@
+    $regkey | Out-File -FilePath $env:TEMP\\regkey.reg
+    reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:64;
+    reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:32;
+}
+
+#Easy access to the C# compiler
+Set-Alias csc c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
+
+function handy_apps { choco install explorersuite reactos-paint}
+
+Set-Alias Get-ComputerInfo QPR.systeminfo.exe
+'@
+
+@'
+#If passing back (manipulated) arguments back to the same program, make sure to backup a copy (here QPR.schtasks.exe, copied during installation)
+
+function QPR.schtasks { <# schtasks.exe replacement #>
+    $cmdline = $env:QPRCMDLINE
+
+    $cmdline = $cmdline -replace '/create', '-create' -replace '/tn', '-tn' -replace "/tr", "-tr" <#-replace "'", "'`"'"#>  <# escape quotes (??) #> `
+                        -replace "/sc", "-sc" -replace "/run", "-run" -replace "/delete", "-delete"
+    $cmdline
+    iex  -Command ('QPR_schtasks ' + $cmdline)
+} 
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.schtasks\QPR.schtasks.psm1 -Force )
+
+@'
+function QPR_schtasks { <# schtasks replacement #>
+   # [CmdletBinding()]
+    Param([switch]$create, [string]$tn, [string]$tr, [string]$sc, [switch]$run, [switch]$delete,
+    [parameter(ValueFromRemainingArguments=$true)]$vargs)
+
+   if($create) {$tr -replace "'" 
+    start-process ($tr -replace "'" -replace "/silent") } <# hack for spotify #>
+   else {
+       $cmdline = $cmdline -replace "^[^ ]+" <# remove everything up yo 1st space #> -replace "-","/"
+       Start-Process -NoNewWindow QPR.schtasks.exe -argumentlist "$cmdline" }
+}
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR_schtasks\QPR_schtasks.psm1 -Force )
+
+@'
+function QPR.systeminfo { <# systeminfo replacement #>
+    $result = [System.Collections.ArrayList]::new() ;  $p=[System.Collections.ArrayList]::new() 
+
+    foreach ($i in 'operatingsystem', 'computersystem', 'processor', 'bios', 'QuickFixEngineering', 'PageFileUsage', 'videocontroller') {
+        $null = $p.Add( [PSCustomObject]@{ v = Get-WmiObject ('win32_' + $i)} ) } 
+
+        $null = $result.Add([PSCustomObject]@{
+    "Host Name"=$p[0].v.csname ; "OS Name"=$p[0].v.caption ; "OS Version"=$p[0].v.version + ' Build ' + $p[0].v.buildnumber         
+    "OS Manufacturer"=$p[0].v.manufacturer ; "OS Build Type"=$p[0].v.buildtype ; "Registered Owner"=$p[0].v.registereduser          
+    "Registered Organization"=$p[0].v.organization ; "Product ID"=$p[0].v.SerialNumber                
+    "Original Install Date"=[Management.ManagementDateTimeConverter]::ToDateTime($p[0].v.InstallDate) 
+    "System Boot Time"=[Management.ManagementDateTimeConverter]::ToDateTime($p[0].v.LastBootUpTime)    
+    "System Manufacturer"=$p[1].v.manufacturer ; "System Model"=$p[1].v.model ; "System Type"=$p[1].v.systemtype            
+    "Processor(s)"=$p[2].v.Description + ' ~' + $p[2].v.CurrentClockSpeed + 'Mhz'            
+    "BIOS Version"=$p[3].v.Manufacturer + ' ' + $p[3].v.SMBIOSBIOSVersion + ' ' + [Management.ManagementDateTimeConverter]::ToDateTime($p[3].v.ReleaseDate)            
+    "Windows Directory"=$p[0].v.windowsdirectory ; "System Directory"=$p[0].v.systemdirectory ; "Boot Device"=$p[0].v.bootdevice          
+    "System Locale"=$p[0].v.oslanguage ; "Input Locale"=$p[0].v.oslanguage
+    "Time Zone"='UTC' + (( ($p[0].v.CurrentTimeZone/60) -gt 0) ? ('+') : ('-')) + $p[0].v.currenttimezone/60 
+    "Total Physical Memory"=$p[0].v.TotalVisibleMemorySize ; "Available Physical Memory"=$p[0].v.FreePhysicalMemory
+    "Virtual Memory: Max Size"=$p[0].v.TotalVirtualMemorySize ; "Virtual Memory: Available"=$p[0].v.FreeVirtualMemory
+    "Virtual Memory: In Use"='[not implemented]' ; "Page File Location(s)"=$p[5].v.name ; "Domain"=$p[1].v.domain ; "Logon Server"=$env:LOGONSERVER ;
+    "Hotfix(s)"=$p[4].v.hotfixid ; "Network Card(s)"='[not implemented]' ; "Hyper-V Requirements"='[not implemented]' ; "GPU"=$p[6].v.videoprocessor })
+   
+    return $result 
+}
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.systeminfo\QPR.systeminfo.psm1 -Force )
+
+@'
+ <# hack for installing adobereader #>
+function  Unregister-ScheduledTask { Write-Host 'cmdlet Unregister-ScheduledTask not available in PS 7, doing nothing...'; return}
+<# needed for Amazon Music #>
+function QPR.ie4uinit { <# ie4uinit.exe replacement #>
+     Write-Host "This is ie4uinit dummy doing nothing..."
+     exit 0;
+}
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.ie4uinit\QPR.ie4uinit.psm1 -Force )
+
+@'
+# Note: Visual Studio calls this, not sure if this is really needed by it...
+function QPR.getmac { <# getmac.exe replacement #>
+    Get-WmiObject win32_networkadapterconfiguration | Format-Table @{L=’Physical address’;E={$_.macaddress}}
+}
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.getmac\QPR.getmac.psm1 -Force )
+
+@'
+function QPR.setx { <# setx.exe replacement #>
+    <# FIXME, only setting env. variable handled atm. #>
+    <# https://stackoverflow.com/questions/50368246/splitting-a-string-on-spaces-but-ignore-section-between-double-quotes #>
+    $argv = ($env:QPRCMDLINE| select-string '("[^"]*"|\S)+' -AllMatches | % matches | % value) -replace '"'
+
+    New-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Session Manager\\Environment' -force -Name $argv[1] -Value $argv[2] -PropertyType 'String' 
+    New-ItemProperty -Path 'HKCU:\\Environment' -force -Name $argv[1] -Value $argv[2] -PropertyType 'String' 
+    exit 0
+}
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.setx\QPR.setx.psm1 -Force )
+
+@'
+function QPR.wmic { <# wmic replacement, this part only rebuilds the arguments #>
+    $cmdline = $env:QPRCMDLINE 
+    $hash = @{
+        'os' = "-class win32_operatingsystem"
+        'bios' = "-class win32_bios"
+        'logicaldisk' = "-class win32_logicaldisk"
+        'process' = "-class win32_process" } <# etc. etc. #>
+
+    foreach ($key in $hash.keys) {
+        if( $cmdline |select-string "\b$key\b" ) { $cmdline = $cmdline -replace $key, $hash[$key]; break }    }
+   
+    $cmdline = $cmdline -replace 'get', '-property' -replace 'where', '-where' -replace "/path", "-class"
+
+    <# Hack: if command like  'wmic logicaldisk where 'deviceid="c:"' get freespace' is ran from PS-console, somehow (double) quotes get lost so escape them #>
+    if ( $(Get-Process wmic).Parent.name -eq 'pwsh') <# check whether cmd is ran from PS-console #>
+        { $cmdline = $cmdline -replace "`'", "```'"   -replace "`"", "```""}
+
+    iex  -Command ('QPR_wmic ' + $cmdline)
+}
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.wmic\QPR.wmic.psm1 -Force )
+
+@'
+function QPR_wmic { <# wmic replacement #>
+    [CmdletBinding()]
+    Param([parameter(Position=0)][string]$class, [string[]]$property="*",
+    [string]$where, [parameter(ValueFromRemainingArguments=$true)]$vargs)
+
+    if($property -eq '*'){ <# 'get-wmiobject $class | select *' does not work because of wine-bug, so need a workaround:  #>
+        Get-WmiObject $class ($($(Get-WmiObject $class |Get-Member) |where {$_.membertype -eq 'property'}).name |Join-String -Separator ',') }
+    else { #handle e.g. wmic logicaldisk where "deviceid='C:'" get freespace or  wmic logicaldisk get size, freespace, caption
+    $query = 'Select' + ' ' + $($property -join ',' ) + ' ' + 'From' + ' ' + $class + (($where) ? (' where ' + $where ) : ('')) #+ $vargs
+    <#                                                                              -Stream: break up in lines  skip seperatorline(---) remove blank lines #>
+    (Get-WMIObject -query $query |ft ($property |sort-object) -autosize |Out-string -Stream | Select-Object    -skipindex (2)|          ?{$_.trim() -ne ""}) } 
+}
+'@ |  Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR_wmic\QPR_wmic.psm1 -Force )
+
+@'
+function QPR.ping
 {
     $cmdline = $env:QPRCMDLINE.SubString($env:QPRCMDLINE.IndexOf(" "), $env:QPRCMDLINE.Length - $env:QPRCMDLINE.IndexOf(" "))
     iex  -Command ('QPR_ping' + $cmdline)
 }
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.ping\QPR.ping.psm1 -Force )
 
+@'
 #https://stackoverflow.com/questions/53522016/how-to-measure-tcp-and-icmp-connection-time-on-remote-machine-like-ping
 function QPR_ping { <# ping.exe replacement #>
     <#
@@ -523,6 +655,13 @@ function QPR_ping { <# ping.exe replacement #>
             }
             # Write-LogStep -prefixe 'L.%Line% Ping' "Ping [$DestNode] ", ($test -join(' + ')) ok
         }
+        
+    #statistics calculations
+    $averageTime = -1;
+    $minimumTime = $timeout;
+    $maximumTime = 0
+    $count = $n;
+        
     }
     process {
         if(!$ComputerName){
@@ -539,8 +678,8 @@ function QPR_ping { <# ping.exe replacement #>
                 $HostName = $HostAddress
            }
 
+            Write-Host ""
             Write-Host "pinging $HostAddress [$DestNode] with $l bytes of data:"
-            
 
                         $ObjPing.DateTime = (get-date)
                         $ObjPing.status = $ObjPing.haschanged = $null
@@ -628,13 +767,35 @@ function QPR_ping { <# ping.exe replacement #>
                 $ObjPings += $ObjPing
 
                 
-                if($timeMs  -lt 200) { Write-Host Reply from "$IP": bytes=$l time="$timeMs"ms TTL=123}
+                if($timeMs  -lt 200) { Write-Host Reply from "$IP": bytes=$l time="$timeMs"ms TTL=123
+                
+                            if ($timeMs -gt $maximumTime)
+            {
+                $maximumTime = $timeMs;
+            }
+            if ($timeMs -lt $minimumTime)
+            {
+                $minimumTime = $timeMs;
+            }
+   
+        $averageTime += $timeMs;
+               
+                }
                 else    { Write-Host "Request timed out" }
 
                 if ($n -and $Intervale - $ms -gt 0) {
                     start-sleep -m ($Intervale - $ms)
                 }
-            }
+            }    
+            
+            
+           Write-Host ""
+           Write-Host  "Ping statistics for ${IP}:"
+           Write-Host "	Packets: Sent = $count, Received = $count, Lost = 0 <0% loss>,"
+           Write-Host "Approximate round trip times in milli-seconds:" 
+           Write-Host "	Minimum = ${minimumTime}ms, Maximum = ${maximumTime}ms, Average = $($averageTime/$count)ms" 
+                        
+                         
         }
     }
     end {
@@ -645,113 +806,8 @@ function QPR_ping { <# ping.exe replacement #>
      exit 0
     }
 }
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR_ping\QPR_ping.psm1 -Force )
 
-Set-Alias "QPR.systeminfo" "QPR.systeminfo.exe";
-function QPR.systeminfo.exe { <# systeminfo replacement #>
-    $result = [System.Collections.ArrayList]::new() ;  $p=[System.Collections.ArrayList]::new() 
-
-    foreach ($i in 'operatingsystem', 'computersystem', 'processor', 'bios', 'QuickFixEngineering', 'PageFileUsage', 'videocontroller') {
-        $null = $p.Add( [PSCustomObject]@{ v = Get-WmiObject ('win32_' + $i)} ) } 
-
-        $null = $result.Add([PSCustomObject]@{
-    "Host Name"=$p[0].v.csname ; "OS Name"=$p[0].v.caption ; "OS Version"=$p[0].v.version + ' Build ' + $p[0].v.buildnumber         
-    "OS Manufacturer"=$p[0].v.manufacturer ; "OS Build Type"=$p[0].v.buildtype ; "Registered Owner"=$p[0].v.registereduser          
-    "Registered Organization"=$p[0].v.organization ; "Product ID"=$p[0].v.SerialNumber                
-    "Original Install Date"=[Management.ManagementDateTimeConverter]::ToDateTime($p[0].v.InstallDate) 
-    "System Boot Time"=[Management.ManagementDateTimeConverter]::ToDateTime($p[0].v.LastBootUpTime)    
-    "System Manufacturer"=$p[1].v.manufacturer ; "System Model"=$p[1].v.model ; "System Type"=$p[1].v.systemtype            
-    "Processor(s)"=$p[2].v.Description + ' ~' + $p[2].v.CurrentClockSpeed + 'Mhz'            
-    "BIOS Version"=$p[3].v.Manufacturer + ' ' + $p[3].v.SMBIOSBIOSVersion + ' ' + [Management.ManagementDateTimeConverter]::ToDateTime($p[3].v.ReleaseDate)            
-    "Windows Directory"=$p[0].v.windowsdirectory ; "System Directory"=$p[0].v.systemdirectory ; "Boot Device"=$p[0].v.bootdevice          
-    "System Locale"=$p[0].v.oslanguage ; "Input Locale"=$p[0].v.oslanguage
-    "Time Zone"='UTC' + (( ($p[0].v.CurrentTimeZone/60) -gt 0) ? ('+') : ('-')) + $p[0].v.currenttimezone/60 
-    "Total Physical Memory"=$p[0].v.TotalVisibleMemorySize ; "Available Physical Memory"=$p[0].v.FreePhysicalMemory
-    "Virtual Memory: Max Size"=$p[0].v.TotalVirtualMemorySize ; "Virtual Memory: Available"=$p[0].v.FreeVirtualMemory
-    "Virtual Memory: In Use"='[not implemented]' ; "Page File Location(s)"=$p[5].v.name ; "Domain"=$p[1].v.domain ; "Logon Server"=$env:LOGONSERVER ;
-    "Hotfix(s)"=$p[4].v.hotfixid ; "Network Card(s)"='[not implemented]' ; "Hyper-V Requirements"='[not implemented]' ; "GPU"=$p[6].v.videoprocessor })
-   
-    return $result 
-}
-
-Set-Alias Get-ComputerInfo QPR.systeminfo.exe
-
-#If passing back (manipulated) arguments back to the same program, make sure to backup a copy (here QPR.schtasks.exe, copied during installation)
-Set-Alias "QPR.schtasks" "QPR.schtasks.exe";
-function QPR.schtasks.exe { <# schtasks.exe replacement #>
-    $cmdline = $env:QPRCMDLINE
-
-    $cmdline = $cmdline -replace '/create', '-create' -replace '/tn', '-tn' -replace "/tr", "-tr" <#-replace "'", "'`"'"#>  <# escape quotes (??) #> `
-                        -replace "/sc", "-sc" -replace "/run", "-run" -replace "/delete", "-delete"
-    $cmdline
-    iex  -Command ('QPR_schtasks ' + $cmdline)
-}
-
-function QPR_schtasks { <# schtasks replacement #>
-   # [CmdletBinding()]
-    Param([switch]$create, [string]$tn, [string]$tr, [string]$sc, [switch]$run, [switch]$delete,
-    [parameter(ValueFromRemainingArguments=$true)]$vargs)
-
-   if($create) {$tr -replace "'" 
-    start-process ($tr -replace "'" -replace "/silent") } <# hack for spotify #>
-   else {
-       $cmdline = $cmdline -replace "^[^ ]+" <# remove everything up yo 1st space #> -replace "-","/"
-       Start-Process -NoNewWindow QPR.schtasks.exe -argumentlist "$cmdline" }
-}
-
-Set-Alias "QPR.wmic" "QPR.wmic.exe";
-function QPR.wmic.exe { <# wmic replacement, this part only rebuilds the arguments #>
-    $cmdline = $env:QPRCMDLINE 
-    $hash = @{
-        'os' = "-class win32_operatingsystem"
-        'bios' = "-class win32_bios"
-        'logicaldisk' = "-class win32_logicaldisk"
-        'process' = "-class win32_process" } <# etc. etc. #>
-
-    foreach ($key in $hash.keys) {
-        if( $cmdline |select-string "\b$key\b" ) { $cmdline = $cmdline -replace $key, $hash[$key]; break }    }
-   
-    $cmdline = $cmdline -replace 'get', '-property' -replace 'where', '-where' -replace "/path", "-class"
-
-    <# Hack: if command like  'wmic logicaldisk where 'deviceid="c:"' get freespace' is ran from PS-console, somehow (double) quotes get lost so escape them #>
-    if ( $(Get-Process wmic).Parent.name -eq 'pwsh') <# check whether cmd is ran from PS-console #>
-        { $cmdline = $cmdline -replace "`'", "```'"   -replace "`"", "```""}
-
-    iex  -Command ('QPR_wmic ' + $cmdline)
-}
-
-function QPR_wmic { <# wmic replacement #>
-    [CmdletBinding()]
-    Param([parameter(Position=0)][string]$class, [string[]]$property="*",
-    [string]$where, [parameter(ValueFromRemainingArguments=$true)]$vargs)
-
-    if($property -eq '*'){ <# 'get-wmiobject $class | select *' does not work because of wine-bug, so need a workaround:  #>
-        Get-WmiObject $class ($($(Get-WmiObject $class |Get-Member) |where {$_.membertype -eq 'property'}).name |Join-String -Separator ',') }
-    else { #handle e.g. wmic logicaldisk where "deviceid='C:'" get freespace or  wmic logicaldisk get size, freespace, caption
-    $query = 'Select' + ' ' + $($property -join ',' ) + ' ' + 'From' + ' ' + $class + (($where) ? (' where ' + $where ) : ('')) #+ $vargs
-    <#                                                                              -Stream: break up in lines  skip seperatorline(---) remove blank lines #>
-    (Get-WMIObject -query $query |ft ($property |sort-object) -autosize |Out-string -Stream | Select-Object    -skipindex (2)|          ?{$_.trim() -ne ""}) } 
-}
-
-function use_google_as_browser { <# replace winebrowser with google chrome to open webpages #>
-    if (!([System.IO.File]::Exists("$env:ProgramFiles\Google\Chrome\Application\Chrome.exe"))){ choco install googlechrome}
-
-$regkey = @"
-REGEDIT4
-[HKEY_CLASSES_ROOT\https\shell\open\command]
-@="\"%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe\" \"--no-sandbox\" \"%1\""
-[HKEY_CLASSES_ROOT\http\shell\open\command]
-@="\"%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe\" \"--no-sandbox\" \"%1\""
-"@
-    $regkey | Out-File -FilePath $env:TEMP\\regkey.reg
-    reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:64;
-    reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:32;
-}
-
-#Easy access to the C# compiler
-Set-Alias csc c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
-
-function handy_apps { choco install explorersuite reactos-paint}
-'@
 ################################################################################################################################ 
 #                                                                                                                              #
 #  Install dotnet48, ConEmu, Chocolatey, 7z, arial, d3dcompiler_47 and a few extras (wine robocopy + wine taskschd)                   #
@@ -780,10 +836,11 @@ function handy_apps { choco install explorersuite reactos-paint}
     start-threadjob -throttle 2 -ScriptBlock {  while(!(Test-Path -Path "$env:TEMP\net48\1025") ) {Sleep 0.25} ;[System.Threading.Thread]::CurrentThread.Priority = 'Highest'; &{ c:\\windows\\system32\\msiexec.exe  /i $env:TEMP\\net48\\netfx_Full_x64.msi EXTUI=1 /sfxlang:1033 /q /norestart} }
 
     $url = @('http://download.windowsupdate.com/msdownload/update/software/crup/2010/06/windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', `
-             'https://mirrors.kernel.org/gentoo/distfiles/arial32.exe', `
+             'https://mirrors.edge.kernel.org/gentoo/distfiles/5e/arial32.exe', `
 #            'https://mirrors.kernel.org/gentoo/distfiles/arialb32.exe', `
              'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47.dll', `
              'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47_32.dll', `
+             'https://github.com/Maximus5/ConEmu/releases/download/v23.07.24/ConEmuPack.230724.7z', `
              'https://globalcdn.nuget.org/packages/sevenzipextractor.1.0.17.nupkg' )
     <# Download stuff #>
     foreach($i in $url) {          `
@@ -791,8 +848,8 @@ function handy_apps { choco install explorersuite reactos-paint}
               (New-Object System.Net.WebClient).DownloadFile($i, $(Join-Path "$env:TEMP" $i.split('/')[-1]) ) }
          else {
              Copy-Item -Path "$env:WINEHOMEDIR\.cache\choc_install_files\$i.split('/')[-1]".substring(4) -Destination "$env:TEMP" -Force } }
-    <# Download ConEmu #>
-    (New-Object System.Net.WebClient).DownloadFile('https://conemu.github.io/install2.ps1', $(Join-Path "$env:TEMP" 'install2.ps1') )
+    <# Download ConEmu #> 
+    #(New-Object System.Net.WebClient).DownloadFile('', $(Join-Path "$env:TEMP" 'ConEmuPack.230724.7z') )
     <# we probably only need this from regular dotnet40 install (???) #>
     Start-Process wusa.exe -NoNewWindow -Wait -ArgumentList  "$env:TEMP\\windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu"
      
@@ -800,7 +857,8 @@ function handy_apps { choco install explorersuite reactos-paint}
     Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $(Join-Path $args[0] 'EXTRAS\wine_taskschd.7z') -o$env:TEMP";
     Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $(Join-Path $args[0] 'EXTRAS\wine_user32_for_conemu_hack_for_wine7_16.7z') -o$env:TEMP" `
 
-    & $env:TEMP\\install2.ps1  <# ConEmu install #>
+    Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\ConEmuPack.230724.7z -o$env:SystemDrive\ConEmu";
+    #& $env:TEMP\\install2.ps1  <# ConEmu install #>
     
     $misc_reg | Out-File $env:TEMP\\misc.reg
     $profile_ps1 | Out-File $env:TEMP\\profile.ps1
@@ -1002,7 +1060,7 @@ function handy_apps { choco install explorersuite reactos-paint}
     <# Backup files if wanted #>
     if (Test-Path 'env:SAVEINSTALLFILES') { 
         New-Item -Path "$env:WINEHOMEDIR\.cache\".substring(4) -Name "choc_install_files" -ItemType "directory" -ErrorAction SilentlyContinue
-        foreach($i in 'net48', 'PowerShell-7.1.5-win-x64.msi', 'arial32.exe', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2201-x64.exe', 'sevenzipextractor.1.0.17.nupkg') {
+        foreach($i in 'net48', 'PowerShell-7.1.5-win-x64.msi', 'arial32.exe', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2201-x64.exe', 'sevenzipextractor.1.0.17.nupkg', 'ConEmuPack.230724.7z') {
             Copy-Item -Path $env:TEMP\\$i -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4) -recurse -force }
     }
     <# install wine robocopy and (custom) wine tasksch.dll #>
