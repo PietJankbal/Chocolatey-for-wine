@@ -128,7 +128,7 @@ int mainCRTStartup(void)
     /* I can also act as a dummy program if my exe-name is not powershell, allows to replace a system exe (like wusa.exe, or any exe really) by a function in profile.ps1 */
     else if ( _wcsnicmp( filenameW , L"powershell" , 10 ) )
     {   /* add some prefix to the exe and execute it through pwsh , so we can query for program replacement in profile.ps1 */
-        wcscat( wcscat( cmdlineW, L" -c QPR." ) , filenameW );
+        wcscat( wcscat( cmdlineW, L" -nop -c QPR." ) , filenameW );
         for( i = 1; i < argc; i++ ) { /* concatenate the rest of the arguments into the new cmdline */
             wcscat( wcscat( wcscat( cmdlineW, L" '\"" )  , argv[i] ), L"\"'" ); }
 
