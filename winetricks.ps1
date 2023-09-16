@@ -2,15 +2,6 @@ $cachedir = ("$env:WINEHOMEDIR" + "\.cache\winetrickxs").substring(4)
 
 $expand_exe = "$env:systemroot\system32\expnd\expand.exe"
 
-$custom_array = @() # Creating an empty array to populate data in; verbs can be found in c:\ProgramData\Chocolatey-for-wine\profile_winetricks_caller.ps1
-
-for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) { 
-    $custom_array += New-Object PSObject -Property @{ # Setting up custom array utilizing a PSObject
-        name = $Qenu[$j]  
-        Description = $Qenu[$j+1]
-    }
-}
-
 if (!(Test-Path -Path "$env:ProgramW6432\7-Zip\7z.exe" -PathType Leaf)) { choco install 7zip -y }
 
 function quit?([string] $process)  <# wait for a process to quit #>
@@ -91,6 +82,12 @@ function reg_edit
 }
 
 function verb { return $((Get-PSCallStack)[1].Command).replace('func_', '') }
+
+$MethodDefinition = @" 
+[DllImport("ntdll.dll", CharSet = CharSet.Ansi)] public static extern string wine_get_version();
+[DllImport("ntdll.dll", CharSet = CharSet.Ansi)] public static extern string wine_get_build_id();
+"@
+$ntdll = Add-Type -MemberDefinition $MethodDefinition -Name 'ntdll' -PassThru
 
 function func_msxml3
 {
@@ -703,7 +700,19 @@ function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
                     'powershell.exe', 'microsoft.management.infrastructure.native.dll', 'microsoft.powershell.management.psd1', 'microsoft.powershell.utility.psd1',`
                     'microsoft.powershell.utility.psm1', 'microsoft.powershell.archive.psm1', 'microsoft.powershell.archive.psd1', 'microsoft.powershell.diagnostics.psd1',`
                     'microsoft.powershell.security.psd1')
-   
+
+    if("$($ntdll::wine_get_build_id())".Contains('(Staging)')) { #Temporary workaround: In staging running ps51.exe frequently hangs in recent versions (e.g. 8.15)
+        func_wine_shell32
+        if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe'}
+        if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe\\DllOverrides'}
+        New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe\\DllOverrides' -Name 'shell32' -Value 'native' -PropertyType 'String' -force
+    }
+    else {
+        if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe'}
+        if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe\\DllOverrides'}
+        New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe\\DllOverrides' -Name 'shell32' -Value 'builtin' -PropertyType 'String' -force
+    }
+    
     if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb), "$(verb).7z") ) ) {
 
         if ( ![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $(verb), "Win7AndW2K8R2-KB3191566-x64.zip" ) ) ) {
@@ -864,7 +873,7 @@ if ((Get-process -Name powershell_ise -erroraction silentlycontinue)) {
     Copy-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.management.infrastructure.native.dll" -Destination (New-item -Name "Microsoft.Management.Infrastructure\v4.0_1.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_64" -Force) -Force 
     Copy-Item -Path "$env:systemroot\syswow64\WindowsPowershell\v1.0\microsoft.management.infrastructure.native.dll" -Destination (New-item -Name "Microsoft.Management.Infrastructure\v4.0_1.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_32" -Force) -Force 
 
-    if ((Get-PSCallStack)[1].Command -ne 'func_ps51_ise') { ps51 }
+    if ( ( (Get-PSCallStack)[1].Command -ne 'func_ps51_ise') -and ( (Get-PSCallStack)[1].Command -ne 'func_access_winrt_from_powershell2')  ) { ps51 }
 
 } <# end ps51 #>
 
@@ -1171,6 +1180,30 @@ function func_cmd <# native cmd #>
     
     foreach($i in 'cmd.exe') { dlloverride 'native' $i }
 } <# end cmd #>
+
+function func_directmusic <# native dmusic #>
+{
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z" ) ) ){
+    
+        w_download_to "$(verb)" "https://catalog.s.download.windowsupdate.com/msdownload/update/software/dflt/2008/04/windowsxp-kb936929-sp3-x86-enu_c81472f7eeea2eca421e116cd4c03e2300ebfde4.exe" "windowsxp-kb936929-sp3-x86-enu_c81472f7eeea2eca421e116cd4c03e2300ebfde4.exe"
+
+    foreach ($i in 'dmusic.dll', 'dmband.dll', 'dmime.dll', 'dmloader.dll', 'dmscript.dll', 'dmstyle.dll', 'dmsynth.dll', 'dsound.dll', 'dswave.dll' <#, 'dcompos.dll', 'dmusic32.dll' #>) {
+            7z x "$cachedir\$(verb)\windowsxp-kb936929-sp3-x86-enu_c81472f7eeea2eca421e116cd4c03e2300ebfde4.exe" "-o$env:Temp\$(verb)" "i386/$($i.replace('dll','dl_'))" -aoa; quit?('7z')
+            7z e "$env:Temp\$(verb)\i386\$($i.replace('dll','dl_'))" "-o$env:Temp\$(verb)\$(verb)\32" "$i" -aoa | Select-String 'ok' ; quit?('7z');
+            
+        }
+        Remove-Item -Force "$cachedir\$(verb)\windowsxp-kb936929-sp3-x86-enu_c81472f7eeea2eca421e116cd4c03e2300ebfde4.exe"
+    
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$env:Temp\$(verb)\$(verb)\32" ;quit?(7z)
+        Remove-Item -Force "$env:Temp\$(verb)" -recurse
+    }
+    7z e "$cachedir\$(verb)\$(verb).7z" "-o$env:systemroot\syswow64" "32\*"  -y
+    
+    foreach ($i in 'dmusic.dll', 'dmband.dll', 'dmime.dll', 'dmloader.dll', 'dmscript.dll', 'dmstyle.dll', 'dmsynth.dll', 'dsound.dll', 'dswave.dll' <#, 'dcompos.dll', 'dmusic32.dll' #>) {
+        dlloverride 'native' $i
+        & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\$i"
+    }
+} <# end directmusic #>
 
 function func_wine_wintrust <# wine wintrust with some hack faking success #>
 {
@@ -1518,6 +1551,70 @@ function func_vs19
 
     <# FIXME: frequently mpc are not written to registry (wine bug?), do it manually #>
     & "${env:ProgramFiles`(x86`)}\Microsoft` Visual` Studio\2019\Community\Common7\IDE\DDConfigCA.exe" | & "${env:ProgramFiles`(x86`)}\Microsoft` Visual` Studio\2019\Community\Common7\IDE\StorePID.exe" 09299
+}
+
+function func_vs22
+{
+    func_msxml6
+    #func_msxml3
+    func_vcrun2019
+    #func_xmllite
+    #func_cmd
+    func_wine_advapi32
+    if([System.Convert]::ToDecimal( $ntdll::wine_get_build_id().split('-').split('(')[1] )  -lt 8.16) {
+        func_wine_ole32 }
+    if([System.Convert]::ToDecimal( $ntdll::wine_get_build_id().split('-').split('(')[1] )  -lt 8.13) { 
+      func_wine_combase }
+    func_wine_shell32
+    func_wine_wintypes
+    func_winmetadata
+
+    winecfg /v win7
+
+    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe'}
+    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides'}
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'advapi32' -Value 'native' -PropertyType 'String' -force
+    if([System.Convert]::ToDecimal( $ntdll::wine_get_build_id().split('-').split('(')[1] )  -lt 8.16) {
+        New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'ole32' -Value 'native' -PropertyType 'String' -force }
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'shell32' -Value 'native' -PropertyType 'String' -force
+    if([System.Convert]::ToDecimal( $ntdll::wine_get_build_id().split('-').split('(')[1] )  -lt 8.13) { 
+        New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'combase' -Value 'native' -PropertyType 'String' -force }
+
+    (New-Object System.Net.WebClient).DownloadFile('https://aka.ms/vs/17/release/vs_community.exe', "$env:TMP\\vs_Community.exe") 
+
+  #  7z x $env:TMP\\installer "-o$env:TMP\\opc" -y ;quit?('7z')
+
+    set-executionpolicy bypass
+
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = "$env:Temp\vs_community.exe"
+    $startInfo.Arguments = "--downloadThenInstall --quiet --productId Microsoft.VisualStudio.Product.Community  --channelId VisualStudio.17.Release  --channelUri `"https://aka.ms/vs/17/release/channel`" --add Microsoft.VisualStudio.Workload.NativeDesktop --includeRecommended --wait"
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+    $process.Start()
+
+    Write-Host -foregroundcolor yellow "**********************************************************"
+    Write-Host -foregroundcolor yellow "*                                                        *"
+    Write-Host -foregroundcolor yellow "*        Downloading  and installing Visual Studio       *"
+    Write-Host -foregroundcolor yellow "*        might takes > 25 minutes!                       *"
+    Write-Host -foregroundcolor yellow "*        Patience please!                                *"
+    Write-Host -foregroundcolor yellow "*                                                        *"
+    Write-Host -foregroundcolor yellow "**********************************************************"
+
+    $process.WaitForExit()
+
+    # Start-Process  "$env:TMP\\opc\\Contents\\vs_installer.exe" -Verb RunAs -ArgumentList "install --channelId VisualStudio.17.Release --channelUri `"https://aka.ms/vs/17/release/channel`" --productId Microsoft.VisualStudio.Product.Community --add Microsoft.VisualStudio.Workload.VCTools --add `"Microsoft.VisualStudio.Component.VC.Tools.x86.x64`" --add `"Microsoft.VisualStudio.Component.VC.CoreIde`"  --add `"Microsoft.VisualStudio.Component.Windows10SDK.16299`"           --includeRecommended --quiet"
+    #& 'C:\Program Files (x86)\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64\cl.exe'  -I"c:\Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/um/"     -I"c:\Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/Shared/"   -I"c:\Program Files (x86)/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.29.30133/include/"  -I"c:\Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/ucrt/" .\code.cpp /link /LIBPATH:"c:/Program Files (x86)/Windows Kits/10/Lib/10.0.19041.0/um/x64/" /LIBPATH:"c:\Program Files (x86)/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.29.30133/lib/x64/" /LIBPATH:"c:/Program Files (x86)/Windows Kits/10/Lib/10.0.19041.0/ucrt/x64/"
+
+
+    quit?('setup');quit?('vs_installer'); quit?('VSFinalizer'); quit?('devenv')
+
+    <# FIXME: frequently mpc are not written to registry (wine bug?), do it manually #>
+    & "${env:ProgramFiles}\Microsoft` Visual` Studio\2022\Community\Common7\IDE\DDConfigCA.exe" | & "${env:ProgramFiles}\Microsoft` Visual` Studio\2022\Community\Common7\IDE\StorePID.exe" 09299
+
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'sxs' -Value '' -PropertyType 'String' -force
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe' -Name 'Version' -Value 'win7' -PropertyType 'String' -force
+    winecfg /v win10
 }
 
 function func_office365
@@ -3403,5 +3500,16 @@ foreach($i in 'wldp') { dlloverride 'builtin' $i }
 }
 
 <# Main function #>
-    if ( $args.count ) { $result =  $args } else { $result = $custom_array  | select name,description | Out-GridView  -PassThru  -Title 'Make a  selection'}
-    foreach ($i in $result) { if ( $args.count ) { $call = $i } else { $call = $i.Name }; & $('func_' + $call); }
+if ( $args.count -gt 99) { <#at least gt amount of verbs... #>
+    $custom_array = @() # Creating an empty array to populate data in; verbs can be found in c:\ProgramData\Chocolatey-for-wine\profile_winetricks_caller.ps1
+
+    for ( $j = 0; $j -lt $args.count; $j+=2 ) { 
+        $custom_array += New-Object PSObject -Property @{ # Setting up custom array utilizing a PSObject
+            name = $args[$j]  
+            Description = $args[$j+1]
+        }
+    }
+}
+
+if ( $args.count -lt 99) { $result =  $args } else { $result = $custom_array  | select name,description | Out-GridView  -PassThru  -Title 'Make a  selection'}
+foreach ($i in $result) { if ( $args.count -lt 99 ) { $call = $i } else { $call = $i.Name }; & $('func_' + $call); }
