@@ -1,8 +1,31 @@
 diff --git a/dlls/wbemprox/builtin.c b/dlls/wbemprox/builtin.c
-index 3703fd0cca5..91d4ec6452c 100644
+index 038ce99539f..26f35498370 100644
 --- a/dlls/wbemprox/builtin.c
 +++ b/dlls/wbemprox/builtin.c
-@@ -331,6 +331,10 @@ static const struct column col_process[] =
+@@ -50,6 +50,22 @@
+ 
+ WINE_DEFAULT_DEBUG_CHANNEL(wbemprox);
+ 
++////////////////////////////////////////////////////////////////////////////////////////////////////////////
++WCHAR fkeyA[19][35] ;
++WCHAR fkeyB[19][35];
++WCHAR fkeyC[19][35] ;
++WCHAR fkeyD[19][35];
++WCHAR fkeyE[19][35] ;
++
++WCHAR fvalA[19][235] ;
++WCHAR fvalB[19][235] ;
++WCHAR fvalC[19][235] ;
++WCHAR fvalD[19][235] ;
++WCHAR fvalE[19][235] ;
++
++WCHAR fclass[5][35] ;
++
++//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+ /* column definitions must be kept in sync with record structures below */
+ static const struct column col_associator[] =
+ {
+@@ -331,6 +347,10 @@ static const struct column col_process[] =
      { L"Create",          CIM_FLAG_ARRAY|COL_FLAG_METHOD },
      { L"GetOwner",        CIM_FLAG_ARRAY|COL_FLAG_METHOD },
  };
@@ -13,7 +36,127 @@ index 3703fd0cca5..91d4ec6452c 100644
  static const struct column col_processor[] =
  {
      { L"AddressWidth",              CIM_UINT16 },
-@@ -830,6 +834,10 @@ struct record_rawsmbiostables
+@@ -484,7 +504,118 @@ static const struct column col_videocontroller[] =
+     { L"VideoModeDescription",        CIM_STRING|COL_FLAG_DYNAMIC },
+     { L"VideoProcessor",              CIM_STRING|COL_FLAG_DYNAMIC },
+ };
+-
++//////////////////////////////////////////////////////////////////////////
++static const struct column col_spoofclassA[] =
++{
++    { fkeyA[0],                    CIM_STRING },
++    { fkeyA[1],                    CIM_STRING },
++    { fkeyA[2],                    CIM_STRING },
++    { fkeyA[3],                    CIM_STRING },
++    { fkeyA[4],                    CIM_STRING },
++    { fkeyA[5],                    CIM_UINT8  },
++    { fkeyA[6],                    CIM_UINT16 },
++    { fkeyA[7],                    CIM_UINT16 },
++    { fkeyA[8],                    CIM_UINT16 },
++    { fkeyA[9],                    CIM_UINT32 },
++    { fkeyA[10],                   CIM_UINT32 },
++    { fkeyA[11],                   CIM_UINT32 },
++    { fkeyA[12],                   CIM_UINT64 },
++    { fkeyA[13],                   CIM_UINT64 },
++    { fkeyA[14],                   CIM_BOOLEAN},
++    { fkeyA[15],                   CIM_BOOLEAN},
++    { fkeyA[16],                   CIM_SINT32 },
++    { fkeyA[17],                   CIM_REAL32 },
++    { fkeyA[18],                   CIM_DATETIME },
++};
++static const struct column col_spoofclassB[] =
++{
++    { fkeyB[0],                    CIM_STRING },
++    { fkeyB[1],                    CIM_STRING },
++    { fkeyB[2],                    CIM_STRING },
++    { fkeyB[3],                    CIM_STRING },
++    { fkeyB[4],                    CIM_STRING },
++    { fkeyB[5],                    CIM_UINT8 },
++    { fkeyB[6],                    CIM_UINT16 },
++    { fkeyB[7],                    CIM_UINT16 },
++    { fkeyB[8],                    CIM_UINT16 },
++    { fkeyB[9],                    CIM_UINT32 },
++    { fkeyB[10],                   CIM_UINT32 },
++    { fkeyB[11],                   CIM_UINT32 },
++    { fkeyB[12],                   CIM_UINT64 },
++    { fkeyB[13],                   CIM_UINT64 },
++    { fkeyB[14],                   CIM_BOOLEAN},
++    { fkeyB[15],                   CIM_BOOLEAN},
++    { fkeyB[16],                   CIM_SINT32 },
++    { fkeyB[17],                   CIM_REAL32 },
++    { fkeyB[18],                   CIM_DATETIME },
++};
++static const struct column col_spoofclassC[] =
++{
++    { fkeyC[0],                    CIM_STRING },
++    { fkeyC[1],                    CIM_STRING },
++    { fkeyC[2],                    CIM_STRING },
++    { fkeyC[3],                    CIM_STRING },
++    { fkeyC[4],                    CIM_STRING },
++    { fkeyC[5],                    CIM_UINT8 },
++    { fkeyC[6],                    CIM_UINT16 },
++    { fkeyC[7],                    CIM_UINT16 },
++    { fkeyC[8],                    CIM_UINT16 },
++    { fkeyC[9],                    CIM_UINT32 },
++    { fkeyC[10],                   CIM_UINT32 },
++    { fkeyC[11],                   CIM_UINT32 },
++    { fkeyC[12],                   CIM_UINT64 },
++    { fkeyC[13],                   CIM_UINT64 },
++    { fkeyC[14],                   CIM_BOOLEAN},
++    { fkeyC[15],                   CIM_BOOLEAN},
++    { fkeyC[16],                   CIM_SINT32 },
++    { fkeyC[17],                   CIM_REAL32 },
++    { fkeyC[18],                   CIM_DATETIME },
++};
++static const struct column col_spoofclassD[] =
++{
++    { fkeyD[0],                    CIM_STRING },
++    { fkeyD[1],                    CIM_STRING },
++    { fkeyD[2],                    CIM_STRING },
++    { fkeyD[3],                    CIM_STRING },
++    { fkeyD[4],                    CIM_STRING },
++    { fkeyD[5],                    CIM_UINT8 },
++    { fkeyD[6],                    CIM_UINT16 },
++    { fkeyD[7],                    CIM_UINT16 },
++    { fkeyD[8],                    CIM_UINT16 },
++    { fkeyD[9],                    CIM_UINT32 },
++    { fkeyD[10],                   CIM_UINT32 },
++    { fkeyD[11],                   CIM_UINT32 },
++    { fkeyD[12],                   CIM_UINT64 },
++    { fkeyD[13],                   CIM_UINT64 },
++    { fkeyD[14],                   CIM_BOOLEAN},
++    { fkeyD[15],                   CIM_BOOLEAN},
++    { fkeyD[16],                   CIM_SINT32 },
++    { fkeyD[17],                   CIM_REAL32 },
++    { fkeyD[18],                   CIM_DATETIME },
++};
++static const struct column col_spoofclassE[] =
++{
++    { fkeyE[0],                    CIM_STRING },
++    { fkeyE[1],                    CIM_STRING },
++    { fkeyE[2],                    CIM_STRING },
++    { fkeyE[3],                    CIM_STRING },
++    { fkeyE[4],                    CIM_STRING },
++    { fkeyE[5],                    CIM_UINT8 },
++    { fkeyE[6],                    CIM_UINT16 },
++    { fkeyE[7],                    CIM_UINT16 },
++    { fkeyE[8],                    CIM_UINT16 },
++    { fkeyE[9],                    CIM_UINT32 },
++    { fkeyE[10],                   CIM_UINT32 },
++    { fkeyE[11],                   CIM_UINT32 },
++    { fkeyE[12],                   CIM_UINT64 },
++    { fkeyE[13],                   CIM_UINT64 },
++    { fkeyE[14],                   CIM_BOOLEAN},
++    { fkeyE[15],                   CIM_BOOLEAN},
++    { fkeyE[16],                   CIM_SINT32 },
++    { fkeyE[17],                   CIM_REAL32 },
++    { fkeyE[18],                   CIM_DATETIME },
++};
++////////////////////////////////////////////////////////////////////////////
+ static const struct column col_volume[] =
+ {
+     { L"DeviceId",      CIM_STRING|COL_FLAG_DYNAMIC|COL_FLAG_KEY },
+@@ -830,6 +961,10 @@ struct record_rawsmbiostables
  {
      const struct array *smbiosdata;
  };
@@ -24,28 +167,379 @@ index 3703fd0cca5..91d4ec6452c 100644
  struct record_service
  {
      int          accept_pause;
-@@ -943,6 +951,8 @@ struct record_volume
+@@ -936,13 +1071,123 @@ struct record_videocontroller
+     const WCHAR *videomodedescription;
+     const WCHAR *videoprocessor;
+ };
+-
++//////////////////////////////////////////////////////////////////////////
++struct record_spoofclassA
++{
++    const WCHAR *fstring_1;
++    const WCHAR *fstring_2;
++    const WCHAR *fstring_3;
++    const WCHAR *fstring_4;
++    const WCHAR *fstring_5;
++    UINT8        fuint8_1;
++    UINT16       fuint16_1;
++    UINT16       fuint16_2;
++    UINT16       fuint16_3;
++    UINT32       fuint32_1;
++    UINT32       fuint32_2;
++    UINT32       fuint32_3;
++    UINT64       fuint64_1;
++    UINT64       fuint64_2;
++    int 		 fbool_1;
++    int			 fbool_2;
++    INT32		 fint32_1;
++    FLOAT		 ffloat_1;
++    const WCHAR *fdatetime;
++};
++struct record_spoofclassB
++{
++    const WCHAR *fstring_1;
++    const WCHAR *fstring_2;
++    const WCHAR *fstring_3;
++    const WCHAR *fstring_4;
++    const WCHAR *fstring_5;
++    UINT8        fuint8_1;
++    UINT16       fuint16_1;
++    UINT16       fuint16_2;
++    UINT16       fuint16_3;
++    UINT32       fuint32_1;
++    UINT32       fuint32_2;
++    UINT32       fuint32_3;
++    UINT64       fuint64_1;
++    UINT64       fuint64_2;
++    int 		 fbool_1;
++    int			 fbool_2;
++    INT32		 fint32_1;
++    FLOAT		 ffloat_1;
++    const WCHAR *fdatetime;
++};
++struct record_spoofclassC
++{
++    const WCHAR *fstring_1;
++    const WCHAR *fstring_2;
++    const WCHAR *fstring_3;
++    const WCHAR *fstring_4;
++    const WCHAR *fstring_5;
++    UINT8        fuint8_1;
++    UINT16       fuint16_1;
++    UINT16       fuint16_2;
++    UINT16       fuint16_3;
++    UINT32       fuint32_1;
++    UINT32       fuint32_2;
++    UINT32       fuint32_3;
++    UINT64       fuint64_1;
++    UINT64       fuint64_2;
++    int 		 fbool_1;
++    int			 fbool_2;
++    INT32		 fint32_1;
++    FLOAT		 ffloat_1;
++    const WCHAR *fdatetime;
++};
++struct record_spoofclassD
++{
++    const WCHAR *fstring_1;
++    const WCHAR *fstring_2;
++    const WCHAR *fstring_3;
++    const WCHAR *fstring_4;
++    const WCHAR *fstring_5;
++    UINT8        fuint8_1;
++    UINT16       fuint16_1;
++    UINT16       fuint16_2;
++    UINT16       fuint16_3;
++    UINT32       fuint32_1;
++    UINT32       fuint32_2;
++    UINT32       fuint32_3;
++    UINT64       fuint64_1;
++    UINT64       fuint64_2;
++    int 		 fbool_1;
++    int			 fbool_2;
++    INT32		 fint32_1;
++    FLOAT		 ffloat_1;
++    const WCHAR *fdatetime;
++};
++struct record_spoofclassE
++{
++    const WCHAR *fstring_1;
++    const WCHAR *fstring_2;
++    const WCHAR *fstring_3;
++    const WCHAR *fstring_4;
++    const WCHAR *fstring_5;
++    UINT8        fuint8_1;
++    UINT16       fuint16_1;
++    UINT16       fuint16_2;
++    UINT16       fuint16_3;
++    UINT32       fuint32_1;
++    UINT32       fuint32_2;
++    UINT32       fuint32_3;
++    UINT64       fuint64_1;
++    UINT64       fuint64_2;
++    int 		 fbool_1;
++    int			 fbool_2;
++    INT32		 fint32_1;
++    FLOAT		 ffloat_1;
++    const WCHAR *fdatetime;
++};
++////////////////////////////////////////////////////////////
+ struct record_volume
+ {
+     const WCHAR *deviceid;
      const WCHAR *driveletter;
  };
- 
-+
-+
+-
  struct record_winsat
  {
      FLOAT        cpuscore;
-@@ -1042,6 +1052,11 @@ static const struct record_qualifier data_qualifier[] =
+@@ -1042,6 +1287,11 @@ static const struct record_qualifier data_qualifier[] =
      { L"__WIN32_PROCESS_GETOWNER_OUT", L"Domain", CIM_SINT32, FLAVOR_ID, L"ID", 1 }
  };
  
 +static const struct record_serverfeature data_serverfeature[] =
 +{
-+    { L"Desktop Experience", },
++    { L"Desktop Experience"},
 +};
 +
  static const struct record_quickfixengineering data_quickfixengineering[] =
  {
      { L"http://winehq.org", L"Update", L"KB1234567", L"", L"22/2/2022" },
-@@ -4353,6 +4368,7 @@ static struct table cimv2_builtin_classes[] =
+@@ -2914,7 +3164,7 @@ static enum fill_status fill_networkadapter( struct table *table, const struct e
+         rec->interface_index      = aa->IfIndex;
+         rec->mac_address          = get_mac_address( aa->PhysicalAddress, aa->PhysicalAddressLength );
+         rec->manufacturer         = L"The Wine Project";
+-        rec->netconnection_id     = NULL; /* FIXME Windows seems to fill this when it's connected and in use */
++        rec->netconnection_id     = NULL; /* TRACE Windows seems to fill this when it's connected and in use */
+         rec->name                 = wcsdup( aa->FriendlyName );
+         rec->netenabled           = connection_status ? -1 : 0;
+         rec->netconnection_status = connection_status;
+@@ -3287,7 +3537,7 @@ static enum fill_status fill_printer( struct table *table, const struct expr *co
+ static WCHAR *get_cmdline( DWORD process_id )
+ {
+     if (process_id == GetCurrentProcessId()) return wcsdup( GetCommandLineW() );
+-    return NULL; /* FIXME handle different process case */
++    return NULL; /* TRACE handle different process case */
+ }
+ 
+ static enum fill_status fill_process( struct table *table, const struct expr *cond )
+@@ -3350,7 +3600,7 @@ void do_cpuid( unsigned int ax, int *p )
+ #if defined(__i386__) || defined(__x86_64__)
+     __cpuid( p, ax );
+ #else
+-    FIXME("\n");
++    TRACE("\n");
+ #endif
+ }
+ 
+@@ -4176,7 +4426,7 @@ static WCHAR *get_videocontroller_pnpdeviceid( DXGI_ADAPTER_DESC *desc )
+ 
+ static const WCHAR *get_videocontroller_installeddriver( UINT vendorid )
+ {
+-    /* FIXME: wined3d has a better table, but we cannot access this information through dxgi */
++    /* TRACE: wined3d has a better table, but we cannot access this information through dxgi */
+ 
+     if (vendorid == HW_VENDOR_AMD) return L"aticfx32.dll";
+     else if (vendorid == HW_VENDOR_NVIDIA) return L"nvd3dum.dll";
+@@ -4206,7 +4456,6 @@ static BOOL get_dxgi_adapter_desc( DXGI_ADAPTER_DESC *desc )
+     IDXGIFactory_Release( factory );
+     return SUCCEEDED( hr );
+ }
+-
+ static enum fill_status fill_videocontroller( struct table *table, const struct expr *cond )
+ {
+     struct record_videocontroller *rec;
+@@ -4257,7 +4506,189 @@ static enum fill_status fill_videocontroller( struct table *table, const struct
+     table->num_rows = row;
+     return status;
+ }
++//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
++static enum fill_status fill_spoofclassA( struct table *table, const struct expr *cond )
++{
++    struct record_spoofclassA *rec;
++    UINT row = 0;
++    enum fill_status status = FILL_STATUS_UNFILTERED;
++
++    if (!resize_table( table, 1, sizeof(*rec) )) return FILL_STATUS_FAILED;
++
++    rec = (struct record_spoofclassA *)table->data;
++    rec->fstring_1 = fvalA[0];
++    rec->fstring_2 = fvalA[1];
++    rec->fstring_3 = fvalA[2];
++    rec->fstring_4 = fvalA[3];
++    rec->fstring_5 = fvalA[4];
++    rec->fuint8_1  =  wcstoul(fvalA[5],0,10);
++    rec->fuint16_1 = wcstoul(fvalA[6],0,10);
++    rec->fuint16_2 = wcstoul(fvalA[7],0,10);
++    rec->fuint16_3 = wcstoul(fvalA[8],0,10);
++    rec->fuint32_1 = wcstoul(fvalA[9],0,10);
++    rec->fuint32_2 = wcstoul(fvalA[10],0,10);
++    rec->fuint32_3 = wcstoul(fvalA[11],0,10);
++    rec->fuint64_1 = wcstoul(fvalA[12],0,10);
++    rec->fuint64_2 = wcstoul(fvalA[13],0,10);
++    rec->fbool_1   = _wtoi(fvalA[14]);
++    rec->fbool_2   = _wtoi(fvalA[15]);
++    rec->fint32_1  = wcstol (fvalA[16],0,16);
++    rec->ffloat_1  = wcstof(fvalA[17],0);
++    rec->fdatetime = fvalA[18];
++
++    if (!match_row( table, row, cond, &status )) free_row_values( table, row );
++    else row++;
++
++    TRACE("created %u rows\n", row);
++    table->num_rows = row;
++    return status;
++}
++
++static enum fill_status fill_spoofclassB( struct table *table, const struct expr *cond )
++{
++    struct record_spoofclassB *rec;
++    UINT row = 0;
++    enum fill_status status = FILL_STATUS_UNFILTERED;
++
++    if (!resize_table( table, 1, sizeof(*rec) )) return FILL_STATUS_FAILED;
++
++    rec = (struct record_spoofclassB *)table->data;
++    rec->fstring_1 = fvalB[0];
++    rec->fstring_2 = fvalB[1];
++    rec->fstring_3 = fvalB[2];
++    rec->fstring_4 = fvalB[3];
++    rec->fstring_5 = fvalB[4];
++    rec->fuint8_1  =  wcstoul(fvalB[5],0,10);
++    rec->fuint16_1 = wcstoul(fvalB[6],0,10);
++    rec->fuint16_2 = wcstoul(fvalB[7],0,10);
++    rec->fuint16_3 = wcstoul(fvalB[8],0,10);
++    rec->fuint32_1 = wcstoul(fvalB[9],0,10);
++    rec->fuint32_2 = wcstoul(fvalB[10],0,10);
++    rec->fuint32_3 = wcstoul(fvalB[11],0,10);
++    rec->fuint64_1 = wcstoul(fvalB[12],0,10);
++    rec->fuint64_2 = wcstoul(fvalB[13],0,10);
++    rec->fbool_1   = _wtoi(fvalB[14]);
++    rec->fbool_2   = _wtoi(fvalB[15]);
++    rec->fint32_1  = wcstol (fvalB[16],0,16);
++    rec->ffloat_1  = wcstof(fvalB[17],0);
++    rec->fdatetime = fvalB[18];
++
++    if (!match_row( table, row, cond, &status )) free_row_values( table, row );
++    else row++;
++
++    TRACE("created %u rows\n", row);
++    table->num_rows = row;
++    return status;
++}
++static enum fill_status fill_spoofclassC( struct table *table, const struct expr *cond )
++{
++    struct record_spoofclassC *rec;
++    UINT row = 0;
++    enum fill_status status = FILL_STATUS_UNFILTERED;
++
++    if (!resize_table( table, 1, sizeof(*rec) )) return FILL_STATUS_FAILED;
++
++    rec = (struct record_spoofclassC *)table->data;
++    rec->fstring_1 = fvalC[0];
++    rec->fstring_2 = fvalC[1];
++    rec->fstring_3 = fvalC[2];
++    rec->fstring_4 = fvalC[3];
++    rec->fstring_5 = fvalC[4];
++    rec->fuint8_1  =  wcstoul(fvalC[5],0,10);
++    rec->fuint16_1 = wcstoul(fvalC[6],0,10);
++    rec->fuint16_2 = wcstoul(fvalC[7],0,10);
++    rec->fuint16_3 = wcstoul(fvalC[8],0,10);
++    rec->fuint32_1 = wcstoul(fvalC[9],0,10);
++    rec->fuint32_2 = wcstoul(fvalC[10],0,10);
++    rec->fuint32_3 = wcstoul(fvalC[11],0,10);
++    rec->fuint64_1 = wcstoul(fvalC[12],0,10);
++    rec->fuint64_2 = wcstoul(fvalC[13],0,10);
++    rec->fbool_1   = _wtoi(fvalC[14]);
++    rec->fbool_2   = _wtoi(fvalC[15]);
++    rec->fint32_1  = wcstol (fvalC[16],0,16);
++    rec->ffloat_1  = wcstof(fvalC[17],0);
++    rec->fdatetime = fvalC[18];
++
++    if (!match_row( table, row, cond, &status )) free_row_values( table, row );
++    else row++;
++
++    TRACE("created %u rows\n", row);
++    table->num_rows = row;
++    return status;
++}
++static enum fill_status fill_spoofclassD( struct table *table, const struct expr *cond )
++{
++    struct record_spoofclassD *rec;
++    UINT row = 0;
++    enum fill_status status = FILL_STATUS_UNFILTERED;
++
++    if (!resize_table( table, 1, sizeof(*rec) )) return FILL_STATUS_FAILED;
++
++    rec = (struct record_spoofclassD *)table->data;
++    rec->fstring_1 = fvalD[0];
++    rec->fstring_2 = fvalD[1];
++    rec->fstring_3 = fvalD[2];
++    rec->fstring_4 = fvalD[3];
++    rec->fstring_5 = fvalD[4];
++    rec->fuint8_1  =  wcstoul(fvalD[5],0,10);
++    rec->fuint16_1 = wcstoul(fvalD[6],0,10);
++    rec->fuint16_2 = wcstoul(fvalD[7],0,10);
++    rec->fuint16_3 = wcstoul(fvalD[8],0,10);
++    rec->fuint32_1 = wcstoul(fvalD[9],0,10);
++    rec->fuint32_2 = wcstoul(fvalD[10],0,10);
++    rec->fuint32_3 = wcstoul(fvalD[11],0,10);
++    rec->fuint64_1 = wcstoul(fvalD[12],0,10);
++    rec->fuint64_2 = wcstoul(fvalD[13],0,10);
++    rec->fbool_1   = _wtoi(fvalD[14]);
++    rec->fbool_2   = _wtoi(fvalD[15]);
++    rec->fint32_1  = wcstol (fvalD[16],0,16);
++    rec->ffloat_1  = wcstof(fvalD[17],0);
++    rec->fdatetime = fvalD[18];
++
++    if (!match_row( table, row, cond, &status )) free_row_values( table, row );
++    else row++;
++
++    TRACE("created %u rows\n", row);
++    table->num_rows = row;
++    return status;
++}
++static enum fill_status fill_spoofclassE( struct table *table, const struct expr *cond )
++{
++    struct record_spoofclassE *rec;
++    UINT row = 0;
++    enum fill_status status = FILL_STATUS_UNFILTERED;
++
++    if (!resize_table( table, 1, sizeof(*rec) )) return FILL_STATUS_FAILED;
++
++    rec = (struct record_spoofclassE *)table->data;
++    rec->fstring_1 = fvalE[0];
++    rec->fstring_2 = fvalE[1];
++    rec->fstring_3 = fvalE[2];
++    rec->fstring_4 = fvalE[3];
++    rec->fstring_5 = fvalE[4];
++    rec->fuint8_1  =  wcstoul(fvalE[5],0,10);
++    rec->fuint16_1 = wcstoul(fvalE[6],0,10);
++    rec->fuint16_2 = wcstoul(fvalE[7],0,10);
++    rec->fuint16_3 = wcstoul(fvalE[8],0,10);
++    rec->fuint32_1 = wcstoul(fvalE[9],0,10);
++    rec->fuint32_2 = wcstoul(fvalE[10],0,10);
++    rec->fuint32_3 = wcstoul(fvalE[11],0,10);
++    rec->fuint64_1 = wcstoul(fvalE[12],0,10);
++    rec->fuint64_2 = wcstoul(fvalE[13],0,10);
++    rec->fbool_1   = _wtoi(fvalE[14]);
++    rec->fbool_2   = _wtoi(fvalE[15]);
++    rec->fint32_1  = wcstol (fvalE[16],0,16);
++    rec->ffloat_1  = wcstof(fvalE[17],0);
++    rec->fdatetime = fvalE[18];
++
++    if (!match_row( table, row, cond, &status )) free_row_values( table, row );
++    else row++;
+ 
++    TRACE("created %u rows\n", row);
++    table->num_rows = row;
++    return status;
++}
++/////////////////////////////////////////////////////////////////////////////////////////////////////////////
+ static WCHAR *get_volume_driveletter( const WCHAR *volume )
+ {
+     DWORD len = 0;
+@@ -4392,9 +4823,15 @@ static struct table cimv2_builtin_classes[] =
      { L"Win32_QuickFixEngineering", C(col_quickfixengineering), D(data_quickfixengineering) },
      { L"Win32_SID", C(col_sid), 0, 0, NULL, fill_sid },
      { L"Win32_Service", C(col_service), 0, 0, NULL, fill_service },
@@ -53,3 +547,1219 @@ index 3703fd0cca5..91d4ec6452c 100644
      { L"Win32_SoundDevice", C(col_sounddevice), 0, 0, NULL, fill_sounddevice },
      { L"Win32_SystemEnclosure", C(col_systemenclosure), 0, 0, NULL, fill_systemenclosure },
      { L"Win32_VideoController", C(col_videocontroller), 0, 0, NULL, fill_videocontroller },
++    { fclass[0], C(col_spoofclassA), 0, 0, NULL, fill_spoofclassA },
++    { fclass[1], C(col_spoofclassB), 0, 0, NULL, fill_spoofclassB },
++    { fclass[2], C(col_spoofclassC), 0, 0, NULL, fill_spoofclassC },
++    { fclass[3], C(col_spoofclassD), 0, 0, NULL, fill_spoofclassD },
++    { fclass[4], C(col_spoofclassE), 0, 0, NULL, fill_spoofclassE },
+     { L"Win32_Volume", C(col_volume), 0, 0, NULL, fill_volume },
+     { L"Win32_WinSAT", C(col_winsat), D(data_winsat) },
+ };
+@@ -4424,6 +4861,103 @@ void init_table_list( void )
+     static struct list tables[WBEMPROX_NAMESPACE_LAST];
+     UINT ns, i;
+ 
++//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
++    int r=0;
++
++    WCHAR buf[1021];
++    WCHAR *p, *value=0; 
++    WCHAR ini_path[MAX_PATH];
++    
++    ExpandEnvironmentStringsW( L"%ProgramData%", ini_path, MAX_PATH + 1 );
++    wcscat(ini_path, L"\\Chocolatey-for-wine\\wmispoofer.ini");
++    
++    GetPrivateProfileStringW (L"Win32_SpoofClassA", L"ClassName", 0 , fclass[0],sizeof(fclass[0]), ini_path) ;
++    GetPrivateProfileStringW (L"Win32_SpoofClassB", L"ClassName", 0 , fclass[1],sizeof(fclass[1]), ini_path) ;
++    GetPrivateProfileStringW (L"Win32_SpoofClassC", L"ClassName", 0 , fclass[2],sizeof(fclass[2]), ini_path) ;
++    GetPrivateProfileStringW (L"Win32_SpoofClassD", L"ClassName", 0 , fclass[3],sizeof(fclass[3]), ini_path) ;
++    GetPrivateProfileStringW (L"Win32_SpoofClassE", L"ClassName", 0 , fclass[4],sizeof(fclass[4]), ini_path) ;
++    
++    r=GetPrivateProfileSectionW(L"Win32_SpoofClassA" , buf, sizeof(buf), ini_path);
++    if (r)  { 
++        for( p = buf + lstrlenW(buf) + 1; *p;p += lstrlenW(p)+1)  p[-1] = ',';
++
++        WCHAR * pch; int j=0;
++
++        pch = _wcstok (buf, L","); pch = _wcstok (NULL, L",");
++        while (pch != NULL)
++        {
++            value = wcschr(pch, L'='); *value = 0 ; value++;
++            wcscpy(fkeyA[j], pch); 
++            wcscpy(fvalA[j],value);j++;
++            pch = _wcstok (NULL, L",");
++        }
++    }
++
++    r=GetPrivateProfileSectionW(L"Win32_SpoofClassB" , buf, sizeof(buf), ini_path);
++    if (r)  {  
++        for( p = buf + lstrlenW(buf) + 1; *p;p += lstrlenW(p)+1)  p[-1] = ',';
++
++        WCHAR * pch; int j=0;
++
++        pch = _wcstok (buf, L","); pch = _wcstok (NULL, L",");
++        while (pch != NULL)
++        {
++            value = wcschr(pch, L'='); *value = 0 ; value++;
++            if(*pch) wcscpy(fkeyB[j], pch); 
++            if(*pch) wcscpy(fvalB[j],value);j++;
++            pch = _wcstok (NULL, L",");
++        }
++    }
++
++    r=GetPrivateProfileSectionW(L"Win32_SpoofClassC" , buf, sizeof(buf), ini_path);
++    if (r)  {  
++        for( p = buf + lstrlenW(buf) + 1; *p;p += lstrlenW(p)+1)  p[-1] = ',';
++
++        WCHAR * pch; int j=0;
++
++        pch = _wcstok (buf, L","); pch = _wcstok (NULL, L",");
++        while (pch != NULL)
++        {
++            value = wcschr(pch, L'='); *value = 0 ; value++;
++            wcscpy(fkeyC[j], pch); 
++            wcscpy(fvalC[j],value);j++;
++            pch = _wcstok (NULL, L",");
++        }
++    }
++    
++    r=GetPrivateProfileSectionW(L"Win32_SpoofClassD" , buf, sizeof(buf), ini_path);
++    if (r)  {  
++        for( p = buf + lstrlenW(buf) + 1; *p;p += lstrlenW(p)+1)  p[-1] = ',';
++
++        WCHAR * pch; int j=0;
++
++        pch = _wcstok (buf, L","); pch = _wcstok (NULL, L",");
++        while (pch != NULL)
++        {
++            value = wcschr(pch, L'='); *value = 0 ; value++;
++            wcscpy(fkeyD[j], pch); 
++            wcscpy(fvalD[j],value);j++;
++            pch = _wcstok (NULL, L",");
++        }
++    }
++    
++    r=GetPrivateProfileSectionW(L"Win32_SpoofClassE" , buf, sizeof(buf), ini_path);
++    if (r)  {  
++        for( p = buf + lstrlenW(buf) + 1; *p;p += lstrlenW(p)+1)  p[-1] = ',';
++
++        WCHAR * pch; int j=0;
++
++        pch = _wcstok (buf, L","); pch = _wcstok (NULL, L",");
++        while (pch != NULL)
++        {
++            value = wcschr(pch, L'='); *value = 0 ; value++;
++            wcscpy(fkeyE[j], pch); 
++            wcscpy(fvalE[j],value);j++;
++            pch = _wcstok (NULL, L",");
++        }
++    }
++    
++/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+     for (ns = 0; ns < ARRAY_SIZE(builtin_namespaces); ns++)
+     {
+         list_init( &tables[ns] );
+diff --git a/dlls/wbemprox/class.c b/dlls/wbemprox/class.c
+index 1570a5e534a..9b9f54411df 100644
+--- a/dlls/wbemprox/class.c
++++ b/dlls/wbemprox/class.c
+@@ -87,7 +87,7 @@ static HRESULT WINAPI enum_class_object_QueryInterface(
+     }
+     else
+     {
+-        FIXME("interface %s not implemented\n", debugstr_guid(riid));
++        TRACE("interface %s not implemented\n", debugstr_guid(riid));
+         return E_NOINTERFACE;
+     }
+     IEnumWbemClassObject_AddRef( iface );
+@@ -122,7 +122,7 @@ static HRESULT WINAPI enum_class_object_Next(
+     TRACE( "%p, %ld, %lu, %p, %p\n", iface, lTimeout, uCount, apObjects, puReturned );
+ 
+     if (!apObjects || !puReturned) return WBEM_E_INVALID_PARAMETER;
+-    if (lTimeout != WBEM_INFINITE && !once++) FIXME("timeout not supported\n");
++    if (lTimeout != WBEM_INFINITE && !once++) TRACE("timeout not supported\n");
+ 
+     *puReturned = 0;
+ 
+@@ -148,7 +148,7 @@ static HRESULT WINAPI enum_class_object_NextAsync(
+     ULONG uCount,
+     IWbemObjectSink *pSink )
+ {
+-    FIXME( "%p, %lu, %p\n", iface, uCount, pSink );
++    TRACE( "%p, %lu, %p\n", iface, uCount, pSink );
+     return E_NOTIMPL;
+ }
+ 
+@@ -174,7 +174,7 @@ static HRESULT WINAPI enum_class_object_Skip(
+ 
+     TRACE( "%p, %ld, %lu\n", iface, lTimeout, nCount );
+ 
+-    if (lTimeout != WBEM_INFINITE && !once++) FIXME("timeout not supported\n");
++    if (lTimeout != WBEM_INFINITE && !once++) TRACE("timeout not supported\n");
+ 
+     if (!view->result_count) return WBEM_S_FALSE;
+ 
+@@ -333,7 +333,7 @@ static HRESULT WINAPI class_object_QueryInterface(
+     }
+     else
+     {
+-        FIXME("interface %s not implemented\n", debugstr_guid(riid));
++        TRACE("interface %s not implemented\n", debugstr_guid(riid));
+         return E_NOINTERFACE;
+     }
+     IWbemClassObject_AddRef( iface );
+@@ -396,7 +396,8 @@ static HRESULT WINAPI class_object_Get(
+     struct class_object *co = impl_from_IWbemClassObject( iface );
+     struct enum_class_object *ec = impl_from_IEnumWbemClassObject( co->iter );
+ 
+-    TRACE( "%p, %s, %#lx, %p, %p, %p\n", iface, debugstr_w(wszName), lFlags, pVal, pType, plFlavor );
++    if ( wcsicmp(wszName,L"__NAMESPACE") && wcsicmp(wszName,L"__CLASS")&& wcsicmp(wszName,L"__Derivation")&& wcsicmp(wszName,L"__GENUS")&& wcsicmp(wszName,L"__RELPATH")  && wcsicmp(wszName,L"__PROPERTY_COUNT")  && wcsicmp(wszName,L"__SERVER")  && wcsicmp(wszName,L"__PATH")) {
++        FIXME( "%p, %s, %#lx, %p, %p, %p\n", iface, debugstr_w(wszName), lFlags, pVal, pType, plFlavor );}
+ 
+     if (co->record)
+     {
+@@ -406,7 +407,8 @@ static HRESULT WINAPI class_object_Get(
+         if ((hr = get_column_index( co->record->table, wszName, &index )) != S_OK) return hr;
+         return record_get_value( co->record, index, pVal, pType );
+     }
+-    return get_propval( ec->query->view, co->index, wszName, pVal, pType, plFlavor );
++    
++    return get_propval_wmispoofer( ec->query->view, co->index, wszName, pVal, pType, plFlavor);
+ }
+ 
+ static HRESULT record_set_value( struct record *record, UINT index, VARIANT *var )
+@@ -437,7 +439,7 @@ static HRESULT record_set_value( struct record *record, UINT index, VARIANT *var
+         record->fields[index].u.ival = val;
+         return S_OK;
+     default:
+-        FIXME( "unhandled type %lu\n", type );
++        TRACE( "unhandled type %lu\n", type );
+         break;
+     }
+     return WBEM_E_INVALID_PARAMETER;
+@@ -473,7 +475,7 @@ static HRESULT WINAPI class_object_Delete(
+     IWbemClassObject *iface,
+     LPCWSTR wszName )
+ {
+-    FIXME("%p, %s\n", iface, debugstr_w(wszName));
++    TRACE("%p, %s\n", iface, debugstr_w(wszName));
+     return E_NOTIMPL;
+ }
+ 
+@@ -501,12 +503,12 @@ static HRESULT WINAPI class_object_GetNames(
+         lFlags != WBEM_FLAG_NONSYSTEM_ONLY &&
+         lFlags != WBEM_FLAG_SYSTEM_ONLY))
+     {
+-        FIXME( "flags %#lx not supported\n", lFlags );
++        TRACE( "flags %#lx not supported\n", lFlags );
+         return E_NOTIMPL;
+     }
+ 
+     if (wszQualifierName || pQualifierVal)
+-        FIXME("qualifier not supported\n");
++        TRACE("qualifier not supported\n");
+ 
+     return get_properties( ec->query->view, co->index, lFlags, pNames );
+ }
+@@ -519,7 +521,7 @@ static HRESULT WINAPI class_object_BeginEnumeration(
+ 
+     TRACE( "%p, %#lx\n", iface, lEnumFlags );
+ 
+-    if (lEnumFlags) FIXME( "flags %#lx not supported\n", lEnumFlags );
++    if (lEnumFlags) TRACE( "flags %#lx not supported\n", lEnumFlags );
+ 
+     co->index_property = 0;
+     return S_OK;
+@@ -541,7 +543,7 @@ static HRESULT WINAPI class_object_Next(
+     HRESULT hr;
+     UINT i;
+ 
+-    TRACE( "%p, %#lx, %p, %p, %p, %p\n", iface, lFlags, strName, pVal, pType, plFlavor );
++    FIXME( "%p, %#lx, %p, %p, %p, %p\n", iface, lFlags, strName, pVal, pType, plFlavor );
+ 
+     for (i = obj->index_property; i < table->num_cols; i++)
+     {
+@@ -600,7 +602,7 @@ static HRESULT WINAPI class_object_Clone(
+     IWbemClassObject *iface,
+     IWbemClassObject **ppCopy )
+ {
+-    FIXME("%p, %p\n", iface, ppCopy);
++    TRACE("%p, %p\n", iface, ppCopy);
+     return E_NOTIMPL;
+ }
+ 
+@@ -663,7 +665,7 @@ static HRESULT WINAPI class_object_GetObjectText(
+ 
+     TRACE( "%p, %#lx, %p\n", iface, lFlags, pstrObjectText );
+ 
+-    if (lFlags) FIXME( "flags %#lx not implemented\n", lFlags );
++    if (lFlags) TRACE( "flags %#lx not implemented\n", lFlags );
+ 
+     if (!(text = get_object_text( view, co->index ))) return E_OUTOFMEMORY;
+     *pstrObjectText = text;
+@@ -675,7 +677,7 @@ static HRESULT WINAPI class_object_SpawnDerivedClass(
+     LONG lFlags,
+     IWbemClassObject **ppNewClass )
+ {
+-    FIXME( "%p, %#lx, %p\n", iface, lFlags, ppNewClass );
++    TRACE( "%p, %#lx, %p\n", iface, lFlags, ppNewClass );
+     return E_NOTIMPL;
+ }
+ 
+@@ -709,7 +711,7 @@ static HRESULT WINAPI class_object_CompareTo(
+     LONG lFlags,
+     IWbemClassObject *pCompareTo )
+ {
+-    FIXME( "%p, %#lx, %p\n", iface, lFlags, pCompareTo );
++    TRACE( "%p, %#lx, %p\n", iface, lFlags, pCompareTo );
+     return E_NOTIMPL;
+ }
+ 
+@@ -718,7 +720,7 @@ static HRESULT WINAPI class_object_GetPropertyOrigin(
+     LPCWSTR wszName,
+     BSTR *pstrClassName )
+ {
+-    FIXME("%p, %s, %p\n", iface, debugstr_w(wszName), pstrClassName);
++    TRACE("%p, %s, %p\n", iface, debugstr_w(wszName), pstrClassName);
+     return E_NOTIMPL;
+ }
+ 
+@@ -726,7 +728,7 @@ static HRESULT WINAPI class_object_InheritsFrom(
+     IWbemClassObject *iface,
+     LPCWSTR strAncestor )
+ {
+-    FIXME("%p, %s\n", iface, debugstr_w(strAncestor));
++    TRACE("%p, %s\n", iface, debugstr_w(strAncestor));
+     return E_NOTIMPL;
+ }
+ 
+@@ -755,7 +757,7 @@ static void set_default_value( CIMTYPE type, UINT val, BYTE *ptr )
+         *(UINT32 *)ptr = val;
+         break;
+     default:
+-        FIXME( "unhandled type %lu\n", type );
++        TRACE( "unhandled type %lu\n", type );
+         break;
+     }
+ }
+@@ -905,7 +907,7 @@ static HRESULT WINAPI class_object_GetMethod(
+     }
+     if (i == table->num_cols)
+     {
+-        FIXME("Method %s not found in class %s.\n", debugstr_w(wszName), debugstr_w(co->name));
++        TRACE("Method %s not found in class %s.\n", debugstr_w(wszName), debugstr_w(co->name));
+         return WBEM_E_NOT_FOUND;
+     }
+ 
+@@ -931,7 +933,7 @@ static HRESULT WINAPI class_object_PutMethod(
+     IWbemClassObject *pInSignature,
+     IWbemClassObject *pOutSignature )
+ {
+-    FIXME( "%p, %s, %#lx, %p, %p\n", iface, debugstr_w(wszName), lFlags, pInSignature, pOutSignature );
++    TRACE( "%p, %s, %#lx, %p, %p\n", iface, debugstr_w(wszName), lFlags, pInSignature, pOutSignature );
+     return E_NOTIMPL;
+ }
+ 
+@@ -939,7 +941,7 @@ static HRESULT WINAPI class_object_DeleteMethod(
+     IWbemClassObject *iface,
+     LPCWSTR wszName )
+ {
+-    FIXME("%p, %s\n", iface, debugstr_w(wszName));
++    TRACE("%p, %s\n", iface, debugstr_w(wszName));
+     return E_NOTIMPL;
+ }
+ 
+@@ -951,7 +953,7 @@ static HRESULT WINAPI class_object_BeginMethodEnumeration(
+ 
+     TRACE( "%p, %#lx\n", iface, lEnumFlags );
+ 
+-    if (lEnumFlags) FIXME( "flags %#lx not supported\n", lEnumFlags );
++    if (lEnumFlags) TRACE( "flags %#lx not supported\n", lEnumFlags );
+ 
+     co->index_method = 0;
+     return S_OK;
+@@ -1021,7 +1023,7 @@ static HRESULT WINAPI class_object_GetMethodOrigin(
+     LPCWSTR wszMethodName,
+     BSTR *pstrClassName)
+ {
+-    FIXME("%p, %s, %p\n", iface, debugstr_w(wszMethodName), pstrClassName);
++    TRACE("%p, %s, %p\n", iface, debugstr_w(wszMethodName), pstrClassName);
+     return E_NOTIMPL;
+ }
+ 
+diff --git a/dlls/wbemprox/main.c b/dlls/wbemprox/main.c
+index 30363658636..79bb54f1c0f 100644
+--- a/dlls/wbemprox/main.c
++++ b/dlls/wbemprox/main.c
+@@ -59,7 +59,7 @@ static HRESULT WINAPI wbemprox_cf_QueryInterface( IClassFactory *iface, REFIID r
+         *ppobj = iface;
+         return S_OK;
+     }
+-    FIXME("interface %s not implemented\n", debugstr_guid(riid));
++    TRACE("interface %s not implemented\n", debugstr_guid(riid));
+     return E_NOINTERFACE;
+ }
+ 
+@@ -90,7 +90,7 @@ static HRESULT WINAPI wbemprox_cf_CreateInstance( IClassFactory *iface, LPUNKNOW
+ 
+ static HRESULT WINAPI wbemprox_cf_LockServer( IClassFactory *iface, BOOL dolock )
+ {
+-    FIXME("(%p)->(%d)\n", iface, dolock);
++    TRACE("(%p)->(%d)\n", iface, dolock);
+     return S_OK;
+ }
+ 
+diff --git a/dlls/wbemprox/process.c b/dlls/wbemprox/process.c
+index 0fdd9340d16..22e92a0482f 100644
+--- a/dlls/wbemprox/process.c
++++ b/dlls/wbemprox/process.c
+@@ -123,7 +123,7 @@ HRESULT process_create( IWbemClassObject *obj, IWbemContext *context, IWbemClass
+     BOOL bret;
+     CIMTYPE type;
+ 
+-    FIXME("%p, %p, %p, %p stub\n", obj, context, in, out);
++    TRACE("%p, %p, %p, %p stub\n", obj, context, in, out);
+ 
+     *out = NULL;
+ 
+@@ -147,7 +147,7 @@ HRESULT process_create( IWbemClassObject *obj, IWbemContext *context, IWbemClass
+ 
+     if (SUCCEEDED(IWbemClassObject_Get( in, L"ProcessStartupInformation", 0, &startup_info, &type, NULL ))
+             && V_VT( &startup_info ) == VT_UNKNOWN && V_UNKNOWN( &startup_info ))
+-        FIXME( "ProcessStartupInformation is not implemented, vt_type %u, type %lu, val %p\n",
++        TRACE( "ProcessStartupInformation is not implemented, vt_type %u, type %lu, val %p\n",
+                 V_VT( &startup_info ), type, V_UNKNOWN( &startup_info ));
+ 
+     if (out && (hr = IWbemClassObject_SpawnInstance( sig, 0, &out_params )))
+diff --git a/dlls/wbemprox/qualifier.c b/dlls/wbemprox/qualifier.c
+index 167a8142223..e46672ddd57 100644
+--- a/dlls/wbemprox/qualifier.c
++++ b/dlls/wbemprox/qualifier.c
+@@ -83,7 +83,7 @@ static HRESULT WINAPI qualifier_set_QueryInterface(
+     }
+     else
+     {
+-        FIXME("interface %s not implemented\n", debugstr_guid(riid));
++        TRACE("interface %s not implemented\n", debugstr_guid(riid));
+         return E_NOINTERFACE;
+     }
+     IWbemQualifierSet_AddRef( iface );
+@@ -180,7 +180,7 @@ static HRESULT WINAPI qualifier_set_Get(
+     TRACE( "%p, %s, %#lx, %p, %p\n", iface, debugstr_w(wszName), lFlags, pVal, plFlavor );
+     if (lFlags)
+     {
+-        FIXME( "flags %#lx not supported\n", lFlags );
++        TRACE( "flags %#lx not supported\n", lFlags );
+         return E_NOTIMPL;
+     }
+     return get_qualifier_value( set->ns, set->class, set->member, wszName, pVal, plFlavor );
+@@ -192,7 +192,7 @@ static HRESULT WINAPI qualifier_set_Put(
+     VARIANT *pVal,
+     LONG lFlavor )
+ {
+-    FIXME( "%p, %s, %p, %ld\n", iface, debugstr_w(wszName), pVal, lFlavor );
++    TRACE( "%p, %s, %p, %ld\n", iface, debugstr_w(wszName), pVal, lFlavor );
+     return E_NOTIMPL;
+ }
+ 
+@@ -200,7 +200,7 @@ static HRESULT WINAPI qualifier_set_Delete(
+     IWbemQualifierSet *iface,
+     LPCWSTR wszName )
+ {
+-    FIXME("%p, %s\n", iface, debugstr_w(wszName));
++    TRACE("%p, %s\n", iface, debugstr_w(wszName));
+     return E_NOTIMPL;
+ }
+ 
+@@ -217,7 +217,7 @@ static HRESULT WINAPI qualifier_set_GetNames(
+     TRACE( "%p, %#lx, %p\n", iface, lFlags, pNames );
+     if (lFlags)
+     {
+-        FIXME( "flags %#lx not supported\n", lFlags );
++        TRACE( "flags %#lx not supported\n", lFlags );
+         return E_NOTIMPL;
+     }
+ 
+@@ -237,7 +237,7 @@ static HRESULT WINAPI qualifier_set_BeginEnumeration(
+     IWbemQualifierSet *iface,
+     LONG lFlags )
+ {
+-    FIXME( "%p, %#lx\n", iface, lFlags );
++    TRACE( "%p, %#lx\n", iface, lFlags );
+     return E_NOTIMPL;
+ }
+ 
+@@ -248,14 +248,14 @@ static HRESULT WINAPI qualifier_set_Next(
+     VARIANT *pVal,
+     LONG *plFlavor )
+ {
+-    FIXME( "%p, %#lx, %p, %p, %p\n", iface, lFlags, pstrName, pVal, plFlavor );
++    TRACE( "%p, %#lx, %p, %p, %p\n", iface, lFlags, pstrName, pVal, plFlavor );
+     return E_NOTIMPL;
+ }
+ 
+ static HRESULT WINAPI qualifier_set_EndEnumeration(
+     IWbemQualifierSet *iface )
+ {
+-    FIXME("%p\n", iface);
++    TRACE("%p\n", iface);
+     return E_NOTIMPL;
+ }
+ 
+diff --git a/dlls/wbemprox/query.c b/dlls/wbemprox/query.c
+index 1087e271837..b9bd0ea2c28 100644
+--- a/dlls/wbemprox/query.c
++++ b/dlls/wbemprox/query.c
+@@ -641,7 +641,7 @@ static HRESULT exec_assoc_view( struct view *view )
+     struct path *path;
+     HRESULT hr;
+ 
+-    if (view->keywordlist) FIXME( "ignoring keywords\n" );
++    if (view->keywordlist) TRACE( "ignoring keywords\n" );
+     if ((hr = parse_path( view->path, &path )) != S_OK) return hr;
+ 
+     if ((hr = create_assoc_enum( view->ns, path->class, path->class_len, &iter )) != S_OK) goto done;
+@@ -951,7 +951,7 @@ static HRESULT get_system_propval( const struct view *view, UINT table_index, UI
+         if (ret)
+         {
+             V_VT( ret ) = VT_I4;
+-            V_I4( ret ) = WBEM_GENUS_INSTANCE; /* FIXME */
++            V_I4( ret ) = WBEM_GENUS_INSTANCE; /* TRACE */
+         }
+         if (type) *type = CIM_SINT32;
+         return S_OK;
+@@ -1015,7 +1015,7 @@ static HRESULT get_system_propval( const struct view *view, UINT table_index, UI
+         if (ret)
+         {
+             SAFEARRAY *sa;
+-            FIXME( "returning empty array for __DERIVATION\n" );
++            TRACE( "returning empty array for __DERIVATION\n" );
+             if (!(sa = SafeArrayCreateVector( VT_BSTR, 0, 0 ))) return E_OUTOFMEMORY;
+             V_VT( ret ) = VT_BSTR | VT_ARRAY;
+             V_ARRAY( ret ) = sa;
+@@ -1023,7 +1023,7 @@ static HRESULT get_system_propval( const struct view *view, UINT table_index, UI
+         if (type) *type = CIM_STRING | CIM_FLAG_ARRAY;
+         return S_OK;
+     }
+-    FIXME("system property %s not implemented\n", debugstr_w(name));
++    TRACE("system property %s not implemented\n", debugstr_w(name));
+     return WBEM_E_NOT_FOUND;
+ }
+ 
+@@ -1172,6 +1172,7 @@ struct table *get_view_table( const struct view *view, UINT index )
+     }
+ }
+ 
++
+ HRESULT get_propval( const struct view *view, UINT index, const WCHAR *name, VARIANT *ret, CIMTYPE *type,
+                      LONG *flavor )
+ {
+@@ -1251,6 +1252,147 @@ HRESULT get_propval( const struct view *view, UINT index, const WCHAR *name, VAR
+     return S_OK;
+ }
+ 
++HRESULT put_propval_wmispoofer( const struct view *view, UINT index, const WCHAR *name, VARIANT *var, CIMTYPE type )
++{
++    HRESULT hr;
++    UINT row, column, table_index, result_index;
++    struct table *table;
++    LONGLONG val;
++
++    if ((hr = map_view_index( view, index, &table_index, &result_index )) != S_OK) return hr;
++
++    table = view->table[table_index];
++    hr = get_column_index( table, name, &column );
++    if (hr != S_OK)
++    {
++        TRACE("no support for creating new properties\n");
++        return WBEM_E_FAILED;
++    }
++    if (is_method( table, column ) /*|| !(table->columns[column].type & COL_FLAG_DYNAMIC)*/)
++        return WBEM_E_FAILED;
++
++    hr = to_longlong( var, &val, &type );
++    if (hr != S_OK) return hr;
++
++    row = view->result[result_index];
++    return set_value( table, row, column, val, type );
++}
++
++HRESULT get_propval_wmispoofer(const  struct view *view, UINT index, const WCHAR *name, VARIANT *ret, CIMTYPE *type,
++                     LONG *flavor)
++{
++    HRESULT hr;
++    UINT column, row, table_index, result_index;
++    struct table *table;
++    VARTYPE vartype;
++    void *val_ptr = NULL;
++    LONGLONG val;
++///////////////////////////////////////////////////////////////////////////////////////////////////////////
++    int r=0;
++
++    WCHAR buf[75]; WCHAR cvalue[255];
++    WCHAR ini_path[MAX_PATH];
++    
++    ExpandEnvironmentStringsW( L"%ProgramData%", ini_path, MAX_PATH + 1 );
++    wcscat(ini_path, L"\\Chocolatey-for-wine\\wmispoofer.ini");
++    
++    
++    r=GetPrivateProfileSectionW(view->table[0]->name , buf, sizeof(buf), ini_path);
++    
++    if(r) { if(GetPrivateProfileStringW (view->table[0]->name, L"ClassName", 0 , buf,sizeof(buf), ini_path)) goto skipped;}
++    
++    if(!type) goto skipped;
++    
++    if (r && GetPrivateProfileStringW (view->table[0]->name, name, 0 , cvalue,sizeof(cvalue), ini_path) )
++    {     
++        VARIANT v;
++
++	    if(*type==CIM_STRING)       { VariantInit(&v); V_VT(&v) = VT_BSTR; V_BSTR(&v)=SysAllocString(cvalue); }
++        else if(*type==CIM_UINT8)   { VariantInit(&v); V_VT(&v) = VT_UI1;  V_UI1(&v) = wcstoul(cvalue,0,10);  }
++        else if(*type==CIM_UINT16)  { VariantInit(&v); V_VT(&v) = VT_UI2;  V_UI2(&v) = wcstoul(cvalue,0,10);  }
++        else if(*type==CIM_UINT32)  { VariantInit(&v); V_VT(&v) = VT_UI4;  V_UI4(&v) = wcstoul(cvalue,0,10);  }
++        else if(*type==CIM_UINT64)  { VariantInit(&v); V_VT(&v) = VT_UI8;  V_UI8(&v) = wcstoul(cvalue,0,10);  }
++        else if(*type==CIM_BOOLEAN) { VariantInit(&v); V_VT(&v) = VT_BOOL;  V_BOOL(&v)=0 ;  FIXME("doesn't work :(\n");} 
++        else goto skipped;
++
++        put_propval_wmispoofer( view, index, name, &v, *type ); FIXME("Spoofing %s\n",debugstr_w(name));
++
++        skipped:
++        VariantClear(&v);
++    }
++    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
++     
++
++    
++    if ((hr = map_view_index( view, index, &table_index, &result_index )) != S_OK) return hr;
++
++    if (is_system_prop( name )) return get_system_propval( view, table_index, result_index, name, ret, type, flavor );
++    if (!view->result_count ) return 0x40005;  /*WBEM_E_NOT_FOUND; */ if( !is_result_prop( view, name )) return WBEM_E_NOT_FOUND;
++
++    table = view->table[table_index];
++    hr = get_column_index( table, name, &column );
++    if (hr != S_OK || is_method( table, column ))  return  WBEM_E_NOT_FOUND;
++
++    row = view->result[result_index];
++    hr = get_value( table, row, column, &val );
++    if (hr != S_OK) return hr;
++
++    if (type) *type = table->columns[column].type & COL_TYPE_MASK; 
++    if (flavor) *flavor = 0;
++
++    if (!ret) return S_OK;
++
++    vartype = to_vartype( table->columns[column].type & CIM_TYPE_MASK );
++    if (table->columns[column].type & CIM_FLAG_ARRAY)
++    {
++        CIMTYPE basetype = table->columns[column].type & CIM_TYPE_MASK;
++
++        val_ptr = to_safearray( (const struct array *)(INT_PTR)val, basetype );
++        if (!val_ptr) vartype = VT_NULL;
++        else vartype |= VT_ARRAY;
++        set_variant( vartype, val, val_ptr, ret );
++        return S_OK;
++    }
++
++    switch (table->columns[column].type & COL_TYPE_MASK)
++    {
++    case CIM_STRING:
++    case CIM_REFERENCE:
++    case CIM_DATETIME:
++        if (val)
++        {
++            vartype = VT_BSTR;
++            val_ptr = SysAllocString( (const WCHAR *)(INT_PTR)val );
++        }
++        else
++            vartype = VT_NULL;
++        break;
++    case CIM_SINT64:
++        vartype = VT_BSTR;
++        val_ptr = get_value_bstr( table, row, column );
++        break;
++    case CIM_UINT64:
++        vartype = VT_BSTR;
++        val_ptr = get_value_bstr( table, row, column );
++        break;
++    case CIM_BOOLEAN:
++    case CIM_SINT8:
++    case CIM_UINT8:
++    case CIM_SINT16:
++    case CIM_UINT16:
++    case CIM_SINT32:
++    case CIM_UINT32:
++    case CIM_REAL32:
++        break;
++    default:
++        ERR("unhandled column type %u\n", table->columns[column].type);
++        return WBEM_E_FAILED;
++    }
++
++    set_variant( vartype, val, val_ptr, ret );
++    return S_OK;
++}
++
+ static CIMTYPE to_cimtype( VARTYPE type )
+ {
+     switch (type)
+@@ -1348,6 +1490,16 @@ HRESULT to_longlong( VARIANT *var, LONGLONG *val, CIMTYPE *type )
+         *val = V_I2( var );
+         *type = CIM_SINT16;
+         break;
++    //////////////////////////////////////////////////////////////////////
++    case VT_UI1:
++        *val = V_UI1( var );
++        *type = CIM_UINT8;
++        break;
++    case VT_UI8:
++        *val = V_UI8( var );
++        *type = CIM_UINT64;
++        break;
++    /////////////////////////////////////////////////////////////////////
+     case VT_UI2:
+         *val = V_UI2( var );
+         *type = CIM_UINT16;
+@@ -1370,6 +1522,8 @@ HRESULT to_longlong( VARIANT *var, LONGLONG *val, CIMTYPE *type )
+     return S_OK;
+ }
+ 
++
++
+ HRESULT put_propval( const struct view *view, UINT index, const WCHAR *name, VARIANT *var, CIMTYPE type )
+ {
+     HRESULT hr;
+@@ -1383,7 +1537,7 @@ HRESULT put_propval( const struct view *view, UINT index, const WCHAR *name, VAR
+     hr = get_column_index( table, name, &column );
+     if (hr != S_OK)
+     {
+-        FIXME("no support for creating new properties\n");
++        TRACE("no support for creating new properties\n");
+         return WBEM_E_FAILED;
+     }
+     if (is_method( table, column ) || !(table->columns[column].type & COL_FLAG_DYNAMIC))
+diff --git a/dlls/wbemprox/security.c b/dlls/wbemprox/security.c
+index df8c55c48fc..07236aa6ba5 100644
+--- a/dlls/wbemprox/security.c
++++ b/dlls/wbemprox/security.c
+@@ -191,7 +191,7 @@ HRESULT security_set_sd( IWbemClassObject *obj, IWbemContext *context, IWbemClas
+     IWbemClassObject *sig, *out_params = NULL;
+     HRESULT hr;
+ 
+-    FIXME("stub\n");
++    TRACE("stub\n");
+ 
+     hr = create_signature( WBEMPROX_NAMESPACE_CIMV2, L"__SystemSecurity", L"SetSD", PARAM_OUT, &sig );
+ 
+diff --git a/dlls/wbemprox/services.c b/dlls/wbemprox/services.c
+index 436097c1e8d..dce3a79f829 100644
+--- a/dlls/wbemprox/services.c
++++ b/dlls/wbemprox/services.c
+@@ -56,7 +56,7 @@ static HRESULT WINAPI client_security_QueryInterface(
+     }
+     else
+     {
+-        FIXME("interface %s not implemented\n", debugstr_guid(riid));
++        TRACE("interface %s not implemented\n", debugstr_guid(riid));
+         return E_NOINTERFACE;
+     }
+     IClientSecurity_AddRef( iface );
+@@ -66,14 +66,14 @@ static HRESULT WINAPI client_security_QueryInterface(
+ static ULONG WINAPI client_security_AddRef(
+     IClientSecurity *iface )
+ {
+-    FIXME("%p\n", iface);
++    TRACE("%p\n", iface);
+     return 2;
+ }
+ 
+ static ULONG WINAPI client_security_Release(
+     IClientSecurity *iface )
+ {
+-    FIXME("%p\n", iface);
++    TRACE("%p\n", iface);
+     return 1;
+ }
+ 
+@@ -88,7 +88,7 @@ static HRESULT WINAPI client_security_QueryBlanket(
+     void **pAuthInfo,
+     DWORD *pCapabilities )
+ {
+-    FIXME("semi-stub.\n");
++    TRACE("semi-stub.\n");
+ 
+     if (pAuthnSvc)
+         *pAuthnSvc = RPC_C_AUTHN_NONE;
+@@ -122,7 +122,7 @@ static HRESULT WINAPI client_security_SetBlanket(
+     const OLECHAR *princname = (pServerPrincName == COLE_DEFAULT_PRINCIPAL) ?
+                                L"<COLE_DEFAULT_PRINCIPAL>" : pServerPrincName;
+ 
+-    FIXME( "%p, %p, %lu, %lu, %s, %lu, %lu, %p, %#lx\n", iface, pProxy, AuthnSvc, AuthzSvc,
++    TRACE( "%p, %p, %lu, %lu, %s, %lu, %lu, %p, %#lx\n", iface, pProxy, AuthnSvc, AuthzSvc,
+            debugstr_w(princname), AuthnLevel, ImpLevel, pAuthInfo, Capabilities );
+     return WBEM_NO_ERROR;
+ }
+@@ -132,7 +132,7 @@ static HRESULT WINAPI client_security_CopyProxy(
+     IUnknown *pProxy,
+     IUnknown **ppCopy )
+ {
+-    FIXME("\n");
++    TRACE("\n");
+     return WBEM_E_FAILED;
+ }
+ 
+@@ -273,7 +273,7 @@ static HRESULT WINAPI wbem_services_QueryInterface(
+     }
+     else
+     {
+-        FIXME("interface %s not implemented\n", debugstr_guid(riid));
++        TRACE("interface %s not implemented\n", debugstr_guid(riid));
+         return E_NOINTERFACE;
+     }
+     IWbemServices_AddRef( iface );
+@@ -332,7 +332,7 @@ static HRESULT WINAPI wbem_services_QueryObjectSink(
+     LONG lFlags,
+     IWbemObjectSink **ppResponseHandler )
+ {
+-    FIXME("\n");
++    TRACE("\n");
+     return WBEM_E_FAILED;
+ }
+ 
+@@ -502,15 +502,41 @@ static HRESULT WINAPI wbem_services_GetObject(
+ {
+     struct wbem_services *services = impl_from_IWbemServices( iface );
+ 
+-    TRACE( "%p, %s, %#lx, %p, %p, %p\n", iface, debugstr_w(strObjectPath), lFlags,
++    FIXME( "%p, %s, %#lx, %p, %p, %p\n", iface, debugstr_w(strObjectPath), lFlags,
+            pCtx, ppObject, ppCallResult );
+ 
+-    if (lFlags) FIXME( "unsupported flags %#lx\n", lFlags );
++    if (lFlags) TRACE( "unsupported flags %#lx\n", lFlags );
++
++////////////////////////////////////////////////////////////////////////////////////////////
++    BSTR bstr;
++    WCHAR buf[35]=L"", dummy[MAX_PATH], ini_path[MAX_PATH];
++    DWORD r;
++
++    ExpandEnvironmentStringsW( L"%ProgramData%", ini_path, MAX_PATH + 1 );
++    wcscat(ini_path, L"\\Chocolatey-for-wine\\wmispoofer.ini");
++
++    wcscpy(dummy, strObjectPath);
++
++
++    r = ( GetPrivateProfileSectionW( dummy , buf, sizeof(buf), ini_path) );
++
++    if (r &&  GetPrivateProfileStringW(dummy, L"ClassName", 0 , buf, 200, ini_path) )
++    { 
++        
++        FIXME( "new querysyting is %s\n", debugstr_w(buf) );
++
++        bstr = SysAllocString(buf);
++    }
++    else r=0;
++    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+ 
+     if (!strObjectPath || !strObjectPath[0])
+         return create_class_object( services->ns, NULL, NULL, 0, NULL, ppObject );
+-
+-    return get_object( services->ns, strObjectPath, ppObject );
++    HRESULT h;
++    
++    h= get_object( services->ns, r ? bstr :strObjectPath, ppObject );
++    SysFreeString(bstr);
++    return h;
+ }
+ 
+ static HRESULT WINAPI wbem_services_GetObjectAsync(
+@@ -520,7 +546,7 @@ static HRESULT WINAPI wbem_services_GetObjectAsync(
+     IWbemContext *pCtx,
+     IWbemObjectSink *pResponseHandler )
+ {
+-    FIXME("\n");
++    TRACE("\n");
+     return WBEM_E_FAILED;
+ }
+ 
+@@ -531,7 +557,7 @@ static HRESULT WINAPI wbem_services_PutClass(
+     IWbemContext *pCtx,
+     IWbemCallResult **ppCallResult )
+ {
+-    FIXME("\n");
++    TRACE("\n");
+     return WBEM_E_FAILED;
+ }
+ 
+@@ -542,7 +568,7 @@ static HRESULT WINAPI wbem_services_PutClassAsync(
+     IWbemContext *pCtx,
+     IWbemObjectSink *pResponseHandler )
+ {
+-    FIXME("\n");
++    TRACE("\n");
+     return WBEM_E_FAILED;
+ }
+ 
+@@ -553,7 +579,7 @@ static HRESULT WINAPI wbem_services_DeleteClass(
+     IWbemContext *pCtx,
+     IWbemCallResult **ppCallResult )
+ {
+-    FIXME("\n");
++    TRACE("\n");
+     return WBEM_E_FAILED;
+ }
+ 
+@@ -564,7 +590,7 @@ static HRESULT WINAPI wbem_services_DeleteClassAsync(
+     IWbemContext *pCtx,
+     IWbemObjectSink *pResponseHandler )
+ {
+-    FIXME("\n");
++    TRACE("\n");
+     return WBEM_E_FAILED;
+ }
+ 
+@@ -575,7 +601,7 @@ static HRESULT WINAPI wbem_services_CreateClassEnum(
+     IWbemContext *pCtx,
+     IEnumWbemClassObject **ppEnum )
+ {
+-    FIXME("\n");
++    TRACE("\n");
+     return WBEM_E_FAILED;
+ }
+ 
+@@ -586,7 +612,7 @@ static HRESULT WINAPI wbem_services_CreateClassEnumAsync(
+     IWbemContext *pCtx,
+     IWbemObjectSink *pResponseHandler )
+ {
+-    FIXME("\n");
++    TRACE("\n");
+     return WBEM_E_FAILED;
+ }
+ 
+@@ -597,7 +623,7 @@ static HRESULT WINAPI wbem_services_PutInstance(
+     IWbemContext *pCtx,
+     IWbemCallResult **ppCallResult )
+ {
+-    FIXME("\n");
++    TRACE("\n");
+     return WBEM_E_FAILED;
+ }
+ 
+@@ -608,7 +634,7 @@ static HRESULT WINAPI wbem_services_PutInstanceAsync(
+     IWbemContext *pCtx,
+     IWbemObjectSink *pResponseHandler )
+ {
+-    FIXME("\n");
++    TRACE("\n");
+     return WBEM_E_FAILED;
+ }
+ 
+@@ -619,7 +645,7 @@ static HRESULT WINAPI wbem_services_DeleteInstance(
+     IWbemContext *pCtx,
+     IWbemCallResult **ppCallResult )
+ {
+-    FIXME("\n");
++    TRACE("\n");
+     return WBEM_E_FAILED;
+ }
+ 
+@@ -630,7 +656,7 @@ static HRESULT WINAPI wbem_services_DeleteInstanceAsync(
+     IWbemContext *pCtx,
+     IWbemObjectSink *pResponseHandler )
+ {
+-    FIXME("\n");
++    TRACE("\n");
+     return WBEM_E_FAILED;
+ }
+ 
+@@ -647,7 +673,7 @@ static HRESULT WINAPI wbem_services_CreateInstanceEnum(
+ 
+     TRACE( "%p, %s, %#lx, %p, %p\n", iface, debugstr_w(strClass), lFlags, pCtx, ppEnum );
+ 
+-    if (lFlags) FIXME( "unsupported flags %#lx\n", lFlags );
++    if (lFlags) TRACE( "unsupported flags %#lx\n", lFlags );
+ 
+     hr = parse_path( strClass, &path );
+     if (hr != S_OK) return hr;
+@@ -664,7 +690,7 @@ static HRESULT WINAPI wbem_services_CreateInstanceEnumAsync(
+     IWbemContext *pCtx,
+     IWbemObjectSink *pResponseHandler )
+ {
+-    FIXME("\n");
++    TRACE("\n");
+     return WBEM_E_FAILED;
+ }
+ 
+@@ -678,12 +704,53 @@ static HRESULT WINAPI wbem_services_ExecQuery(
+ {
+     struct wbem_services *services = impl_from_IWbemServices( iface );
+ 
+-    TRACE( "%p, %s, %s, %#lx, %p, %p\n", iface, debugstr_w(strQueryLanguage),
++    int r=0;
++    WCHAR buf[35]=L"", dummy[MAX_PATH], *p, ini_path[MAX_PATH], dst[75] = L"";
++    HRESULT h;
++    BSTR bstr=0;
++
++    FIXME( "%p, %s, %s, %#lx, %p, %p\n", iface, debugstr_w(strQueryLanguage),
+            debugstr_w(strQuery), lFlags, pCtx, ppEnum );
++    ////////////////////////////////////////////////////////////////////////////////////////////
++    ExpandEnvironmentStringsW( L"%ProgramData%", ini_path, MAX_PATH + 1 );
++    wcscat(ini_path, L"\\Chocolatey-for-wine\\wmispoofer.ini");
+ 
+-    if (!strQueryLanguage || !strQuery || !strQuery[0]) return WBEM_E_INVALID_PARAMETER;
++    wcscpy(dummy, strQuery);
++
++    p = _wcstok (dummy, L" ");
++    while (p != NULL)
++    {
++        if(!wcsicmp(p, L"FROM")) { p = _wcstok (NULL, L" "); break;}
++        p = _wcstok (NULL, L" ");
++    }
++
++    r =  GetPrivateProfileSectionW( p , buf, sizeof(buf), ini_path) ;
++
++    if (r && GetPrivateProfileStringW(p, L"ClassName", 0 , buf, 200, ini_path))
++    { 
++        //GetPrivateProfileStringW(p, L"ClassName", 0 , buf, 200, ini_path);
++
++        wcscpy(dummy, strQuery);  dst[0] = 0;
++    
++        p = _wcstok (dummy, L" ");
++        while (p != NULL)
++            {   
++		        if(!wcsicmp(p, L"FROM")) {wcscat( wcscat(dst, p) , L" "); wcscat( wcscat(dst, buf) , L" "); p = _wcstok (NULL, L" ");} /* FIXME got a trailing space now in querystring , is that bad? */
++		        else wcscat( wcscat(dst, p) , L" ");
++                p = _wcstok (NULL, L" ");
++            }
++        FIXME( "new querysyting is %s\n", debugstr_w(dst) );
++
++        bstr = SysAllocString(dst);
++    }
++    else r=0;
++    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
++    if (!strQueryLanguage || !strQuery ) return WBEM_E_INVALID_PARAMETER;
+     if (wcsicmp( strQueryLanguage, L"WQL" )) return WBEM_E_INVALID_QUERY_TYPE;
+-    return exec_query( services->ns, strQuery, ppEnum );
++    h = exec_query( services->ns, r ? bstr : strQuery, ppEnum );
++    SysFreeString(bstr);
++
++    return h;
+ }
+ 
+ static void async_exec_query( struct async_header *hdr )
+@@ -736,7 +803,7 @@ static HRESULT WINAPI wbem_services_ExecQueryAsync(
+ 
+     if (services->async)
+     {
+-        FIXME("handle more than one pending async\n");
++        TRACE("handle more than one pending async\n");
+         hr = WBEM_E_FAILED;
+         goto done;
+     }
+@@ -776,7 +843,7 @@ static HRESULT WINAPI wbem_services_ExecNotificationQuery(
+     IWbemContext *pCtx,
+     IEnumWbemClassObject **ppEnum )
+ {
+-    FIXME("\n");
++    TRACE("\n");
+     return WBEM_E_FAILED;
+ }
+ 
+@@ -806,7 +873,7 @@ static HRESULT WINAPI wbem_services_ExecNotificationQueryAsync(
+ 
+     if (services->async)
+     {
+-        FIXME("handle more than one pending async\n");
++        TRACE("handle more than one pending async\n");
+         hr = WBEM_E_FAILED;
+         goto done;
+     }
+@@ -860,7 +927,7 @@ static HRESULT WINAPI wbem_services_ExecMethod(
+     TRACE( "%p, %s, %s, %#lx, %p, %p, %p, %p\n", iface, debugstr_w(strObjectPath),
+            debugstr_w(strMethodName), lFlags, context, pInParams, ppOutParams, ppCallResult );
+ 
+-    if (lFlags) FIXME( "flags %#lx not supported\n", lFlags );
++    if (lFlags) TRACE( "flags %#lx not supported\n", lFlags );
+ 
+     if ((hr = parse_path( strObjectPath, &path )) != S_OK) return hr;
+     if (!(str = query_from_path( path )))
+@@ -909,7 +976,7 @@ static HRESULT WINAPI wbem_services_ExecMethodAsync(
+     IWbemClassObject *pInParams,
+     IWbemObjectSink *pResponseHandler )
+ {
+-    FIXME("\n");
++    TRACE("\n");
+     return WBEM_E_FAILED;
+ }
+ 
+@@ -1017,7 +1084,7 @@ static HRESULT WINAPI wbem_context_QueryInterface(
+     }
+     else
+     {
+-        FIXME("interface %s not implemented\n", debugstr_guid(riid));
++        TRACE("interface %s not implemented\n", debugstr_guid(riid));
+         return E_NOINTERFACE;
+     }
+ 
+@@ -1084,7 +1151,7 @@ static HRESULT WINAPI wbem_context_GetNames(
+     LONG flags,
+     SAFEARRAY **names )
+ {
+-    FIXME( "%p, %#lx, %p\n", iface, flags, names );
++    TRACE( "%p, %#lx, %p\n", iface, flags, names );
+ 
+     return E_NOTIMPL;
+ }
+@@ -1093,7 +1160,7 @@ static HRESULT WINAPI wbem_context_BeginEnumeration(
+     IWbemContext *iface,
+     LONG flags )
+ {
+-    FIXME( "%p, %#lx\n", iface, flags );
++    TRACE( "%p, %#lx\n", iface, flags );
+ 
+     return E_NOTIMPL;
+ }
+@@ -1104,7 +1171,7 @@ static HRESULT WINAPI wbem_context_Next(
+     BSTR *name,
+     VARIANT *value )
+ {
+-    FIXME( "%p, %#lx, %p, %p\n", iface, flags, name, value );
++    TRACE( "%p, %#lx, %p, %p\n", iface, flags, name, value );
+ 
+     return E_NOTIMPL;
+ }
+@@ -1112,7 +1179,7 @@ static HRESULT WINAPI wbem_context_Next(
+ static HRESULT WINAPI wbem_context_EndEnumeration(
+     IWbemContext *iface )
+ {
+-    FIXME("%p\n", iface);
++    TRACE("%p\n", iface);
+ 
+     return E_NOTIMPL;
+ }
+@@ -1196,7 +1263,7 @@ static HRESULT WINAPI wbem_context_DeleteValue(
+     LPCWSTR name,
+     LONG flags )
+ {
+-    FIXME( "%p, %s, %#lx\n", iface, debugstr_w(name), flags );
++    TRACE( "%p, %s, %#lx\n", iface, debugstr_w(name), flags );
+ 
+     return E_NOTIMPL;
+ }
+@@ -1204,7 +1271,7 @@ static HRESULT WINAPI wbem_context_DeleteValue(
+ static HRESULT WINAPI wbem_context_DeleteAll(
+     IWbemContext *iface )
+ {
+-    FIXME("%p\n", iface);
++    TRACE("%p\n", iface);
+ 
+     return E_NOTIMPL;
+ }
+diff --git a/dlls/wbemprox/sysrestore.c b/dlls/wbemprox/sysrestore.c
+index 44c7c4a98a3..8c51e104301 100644
+--- a/dlls/wbemprox/sysrestore.c
++++ b/dlls/wbemprox/sysrestore.c
+@@ -33,13 +33,13 @@ WINE_DEFAULT_DEBUG_CHANNEL(wbemprox);
+ 
+ HRESULT sysrestore_create( IWbemClassObject *obj, IWbemContext *context, IWbemClassObject *in, IWbemClassObject **out )
+ {
+-    FIXME("stub\n");
++    TRACE("stub\n");
+     return S_OK;
+ }
+ 
+ HRESULT sysrestore_disable( IWbemClassObject *obj, IWbemContext *context, IWbemClassObject *in, IWbemClassObject **out )
+ {
+-    FIXME("stub\n");
++    TRACE("stub\n");
+     return S_OK;
+ }
+ 
+@@ -72,7 +72,7 @@ HRESULT sysrestore_enable( IWbemClassObject *obj, IWbemContext *context, IWbemCl
+         }
+     }
+ 
+-    FIXME("%s: stub\n", wine_dbgstr_variant(&drive));
++    TRACE("%s: stub\n", wine_dbgstr_variant(&drive));
+ 
+     VariantClear( &drive );
+     IWbemClassObject_Release( sig );
+@@ -95,12 +95,12 @@ HRESULT sysrestore_enable( IWbemClassObject *obj, IWbemContext *context, IWbemCl
+ 
+ HRESULT sysrestore_get_last_status( IWbemClassObject *obj, IWbemContext *context, IWbemClassObject *in, IWbemClassObject **out )
+ {
+-    FIXME("stub\n");
++    TRACE("stub\n");
+     return E_NOTIMPL;
+ }
+ 
+ HRESULT sysrestore_restore( IWbemClassObject *obj, IWbemContext *context, IWbemClassObject *in, IWbemClassObject **out )
+ {
+-    FIXME("stub\n");
++    TRACE("stub\n");
+     return S_OK;
+ }
+diff --git a/dlls/wbemprox/table.c b/dlls/wbemprox/table.c
+index ab386efa06b..c1a88f03bc3 100644
+--- a/dlls/wbemprox/table.c
++++ b/dlls/wbemprox/table.c
+@@ -161,7 +161,7 @@ BSTR get_value_bstr( const struct table *table, UINT row, UINT column )
+ 
+     if (table->columns[column].type & CIM_FLAG_ARRAY)
+     {
+-        FIXME("array to string conversion not handled\n");
++        TRACE("array to string conversion not handled\n");
+         return NULL;
+     }
+     if (get_value( table, row, column, &val ) != S_OK) return NULL;
+@@ -200,7 +200,7 @@ BSTR get_value_bstr( const struct table *table, UINT row, UINT column )
+         return SysAllocString( number );
+ 
+     default:
+-        FIXME("unhandled column type %u\n", table->columns[column].type & COL_TYPE_MASK);
++        TRACE("unhandled column type %u\n", table->columns[column].type & COL_TYPE_MASK);
+         break;
+     }
+     return NULL;
+@@ -250,7 +250,7 @@ HRESULT set_value( const struct table *table, UINT row, UINT column, LONGLONG va
+         *(UINT64 *)ptr = val;
+         break;
+     default:
+-        FIXME( "unhandled column type %lu\n", type );
++        TRACE( "unhandled column type %lu\n", type );
+         return WBEM_E_FAILED;
+     }
+     return S_OK;
+diff --git a/dlls/wbemprox/wbemlocator.c b/dlls/wbemprox/wbemlocator.c
+index 6e5bddea156..91dbb8fa4c9 100644
+--- a/dlls/wbemprox/wbemlocator.c
++++ b/dlls/wbemprox/wbemlocator.c
+@@ -77,7 +77,7 @@ static HRESULT WINAPI wbem_locator_QueryInterface(
+     }
+     else
+     {
+-        FIXME("interface %s not implemented\n", debugstr_guid(riid));
++        TRACE("interface %s not implemented\n", debugstr_guid(riid));
+         return E_NOINTERFACE;
+     }
+     IWbemLocator_AddRef( iface );
+@@ -173,17 +173,17 @@ static HRESULT WINAPI wbem_locator_ConnectServer(
+ 
+     if (!is_local_machine( server ))
+     {
+-        FIXME("remote computer not supported\n");
++        TRACE("remote computer not supported\n");
+         free( server );
+         free( namespace );
+         return WBEM_E_TRANSPORT_FAILURE;
+     }
+     if (User || Password || Authority)
+-        FIXME("authentication not supported\n");
++        TRACE("authentication not supported\n");
+     if (Locale)
+-        FIXME("specific locale not supported\n");
++        TRACE("specific locale not supported\n");
+     if (SecurityFlags)
+-        FIXME("unsupported flags\n");
++        TRACE("unsupported flags\n");
+ 
+     hr = WbemServices_create( namespace, context, (void **)ppNamespace );
+     free( namespace );
