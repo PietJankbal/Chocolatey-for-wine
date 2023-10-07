@@ -660,7 +660,7 @@ index 038ce99539f..26f35498370 100644
      {
          list_init( &tables[ns] );
 diff --git a/dlls/wbemprox/class.c b/dlls/wbemprox/class.c
-index 1570a5e534a..9b9f54411df 100644
+index 1570a5e534a..cd5909607f5 100644
 --- a/dlls/wbemprox/class.c
 +++ b/dlls/wbemprox/class.c
 @@ -87,7 +87,7 @@ static HRESULT WINAPI enum_class_object_QueryInterface(
@@ -708,7 +708,7 @@ index 1570a5e534a..9b9f54411df 100644
          return E_NOINTERFACE;
      }
      IWbemClassObject_AddRef( iface );
-@@ -396,7 +396,8 @@ static HRESULT WINAPI class_object_Get(
+@@ -396,17 +396,19 @@ static HRESULT WINAPI class_object_Get(
      struct class_object *co = impl_from_IWbemClassObject( iface );
      struct enum_class_object *ec = impl_from_IEnumWbemClassObject( co->iter );
  
@@ -717,8 +717,11 @@ index 1570a5e534a..9b9f54411df 100644
 +        FIXME( "%p, %s, %#lx, %p, %p, %p\n", iface, debugstr_w(wszName), lFlags, pVal, pType, plFlavor );}
  
      if (co->record)
-     {
-@@ -406,7 +407,8 @@ static HRESULT WINAPI class_object_Get(
+-    {
++    {    //FIXME("zzzzzzzzzzzzzzzzz\n");
+         UINT index;
+         HRESULT hr;
+ 
          if ((hr = get_column_index( co->record->table, wszName, &index )) != S_OK) return hr;
          return record_get_value( co->record, index, pVal, pType );
      }
@@ -1251,7 +1254,7 @@ index df8c55c48fc..07236aa6ba5 100644
      hr = create_signature( WBEMPROX_NAMESPACE_CIMV2, L"__SystemSecurity", L"SetSD", PARAM_OUT, &sig );
  
 diff --git a/dlls/wbemprox/services.c b/dlls/wbemprox/services.c
-index 436097c1e8d..dce3a79f829 100644
+index 436097c1e8d..86bf2df1b97 100644
 --- a/dlls/wbemprox/services.c
 +++ b/dlls/wbemprox/services.c
 @@ -56,7 +56,7 @@ static HRESULT WINAPI client_security_QueryInterface(
@@ -1325,7 +1328,7 @@ index 436097c1e8d..dce3a79f829 100644
      return WBEM_E_FAILED;
  }
  
-@@ -502,15 +502,41 @@ static HRESULT WINAPI wbem_services_GetObject(
+@@ -502,15 +502,40 @@ static HRESULT WINAPI wbem_services_GetObject(
  {
      struct wbem_services *services = impl_from_IWbemServices( iface );
  
@@ -1340,6 +1343,8 @@ index 436097c1e8d..dce3a79f829 100644
 +    BSTR bstr;
 +    WCHAR buf[35]=L"", dummy[MAX_PATH], ini_path[MAX_PATH];
 +    DWORD r;
++
++    if(!wcsicmp(strObjectPath,L"Win32_LogicalDisk=\"C:\"") ) wcscpy(strObjectPath,L"Win32_LogicalDisk");
 +
 +    ExpandEnvironmentStringsW( L"%ProgramData%", ini_path, MAX_PATH + 1 );
 +    wcscat(ini_path, L"\\Chocolatey-for-wine\\wmispoofer.ini");
@@ -1361,17 +1366,13 @@ index 436097c1e8d..dce3a79f829 100644
  
      if (!strObjectPath || !strObjectPath[0])
          return create_class_object( services->ns, NULL, NULL, 0, NULL, ppObject );
--
+ 
 -    return get_object( services->ns, strObjectPath, ppObject );
-+    HRESULT h;
-+    
-+    h= get_object( services->ns, r ? bstr :strObjectPath, ppObject );
-+    SysFreeString(bstr);
-+    return h;
++    return get_object( services->ns, r ? bstr :strObjectPath, ppObject );
  }
  
  static HRESULT WINAPI wbem_services_GetObjectAsync(
-@@ -520,7 +546,7 @@ static HRESULT WINAPI wbem_services_GetObjectAsync(
+@@ -520,7 +545,7 @@ static HRESULT WINAPI wbem_services_GetObjectAsync(
      IWbemContext *pCtx,
      IWbemObjectSink *pResponseHandler )
  {
@@ -1380,7 +1381,7 @@ index 436097c1e8d..dce3a79f829 100644
      return WBEM_E_FAILED;
  }
  
-@@ -531,7 +557,7 @@ static HRESULT WINAPI wbem_services_PutClass(
+@@ -531,7 +556,7 @@ static HRESULT WINAPI wbem_services_PutClass(
      IWbemContext *pCtx,
      IWbemCallResult **ppCallResult )
  {
@@ -1389,7 +1390,7 @@ index 436097c1e8d..dce3a79f829 100644
      return WBEM_E_FAILED;
  }
  
-@@ -542,7 +568,7 @@ static HRESULT WINAPI wbem_services_PutClassAsync(
+@@ -542,7 +567,7 @@ static HRESULT WINAPI wbem_services_PutClassAsync(
      IWbemContext *pCtx,
      IWbemObjectSink *pResponseHandler )
  {
@@ -1398,7 +1399,7 @@ index 436097c1e8d..dce3a79f829 100644
      return WBEM_E_FAILED;
  }
  
-@@ -553,7 +579,7 @@ static HRESULT WINAPI wbem_services_DeleteClass(
+@@ -553,7 +578,7 @@ static HRESULT WINAPI wbem_services_DeleteClass(
      IWbemContext *pCtx,
      IWbemCallResult **ppCallResult )
  {
@@ -1407,7 +1408,7 @@ index 436097c1e8d..dce3a79f829 100644
      return WBEM_E_FAILED;
  }
  
-@@ -564,7 +590,7 @@ static HRESULT WINAPI wbem_services_DeleteClassAsync(
+@@ -564,7 +589,7 @@ static HRESULT WINAPI wbem_services_DeleteClassAsync(
      IWbemContext *pCtx,
      IWbemObjectSink *pResponseHandler )
  {
@@ -1416,7 +1417,7 @@ index 436097c1e8d..dce3a79f829 100644
      return WBEM_E_FAILED;
  }
  
-@@ -575,7 +601,7 @@ static HRESULT WINAPI wbem_services_CreateClassEnum(
+@@ -575,7 +600,7 @@ static HRESULT WINAPI wbem_services_CreateClassEnum(
      IWbemContext *pCtx,
      IEnumWbemClassObject **ppEnum )
  {
@@ -1425,7 +1426,7 @@ index 436097c1e8d..dce3a79f829 100644
      return WBEM_E_FAILED;
  }
  
-@@ -586,7 +612,7 @@ static HRESULT WINAPI wbem_services_CreateClassEnumAsync(
+@@ -586,7 +611,7 @@ static HRESULT WINAPI wbem_services_CreateClassEnumAsync(
      IWbemContext *pCtx,
      IWbemObjectSink *pResponseHandler )
  {
@@ -1434,7 +1435,7 @@ index 436097c1e8d..dce3a79f829 100644
      return WBEM_E_FAILED;
  }
  
-@@ -597,7 +623,7 @@ static HRESULT WINAPI wbem_services_PutInstance(
+@@ -597,7 +622,7 @@ static HRESULT WINAPI wbem_services_PutInstance(
      IWbemContext *pCtx,
      IWbemCallResult **ppCallResult )
  {
@@ -1443,7 +1444,7 @@ index 436097c1e8d..dce3a79f829 100644
      return WBEM_E_FAILED;
  }
  
-@@ -608,7 +634,7 @@ static HRESULT WINAPI wbem_services_PutInstanceAsync(
+@@ -608,7 +633,7 @@ static HRESULT WINAPI wbem_services_PutInstanceAsync(
      IWbemContext *pCtx,
      IWbemObjectSink *pResponseHandler )
  {
@@ -1452,7 +1453,7 @@ index 436097c1e8d..dce3a79f829 100644
      return WBEM_E_FAILED;
  }
  
-@@ -619,7 +645,7 @@ static HRESULT WINAPI wbem_services_DeleteInstance(
+@@ -619,7 +644,7 @@ static HRESULT WINAPI wbem_services_DeleteInstance(
      IWbemContext *pCtx,
      IWbemCallResult **ppCallResult )
  {
@@ -1461,7 +1462,7 @@ index 436097c1e8d..dce3a79f829 100644
      return WBEM_E_FAILED;
  }
  
-@@ -630,7 +656,7 @@ static HRESULT WINAPI wbem_services_DeleteInstanceAsync(
+@@ -630,7 +655,7 @@ static HRESULT WINAPI wbem_services_DeleteInstanceAsync(
      IWbemContext *pCtx,
      IWbemObjectSink *pResponseHandler )
  {
@@ -1470,7 +1471,7 @@ index 436097c1e8d..dce3a79f829 100644
      return WBEM_E_FAILED;
  }
  
-@@ -647,7 +673,7 @@ static HRESULT WINAPI wbem_services_CreateInstanceEnum(
+@@ -647,7 +672,7 @@ static HRESULT WINAPI wbem_services_CreateInstanceEnum(
  
      TRACE( "%p, %s, %#lx, %p, %p\n", iface, debugstr_w(strClass), lFlags, pCtx, ppEnum );
  
@@ -1479,7 +1480,7 @@ index 436097c1e8d..dce3a79f829 100644
  
      hr = parse_path( strClass, &path );
      if (hr != S_OK) return hr;
-@@ -664,7 +690,7 @@ static HRESULT WINAPI wbem_services_CreateInstanceEnumAsync(
+@@ -664,7 +689,7 @@ static HRESULT WINAPI wbem_services_CreateInstanceEnumAsync(
      IWbemContext *pCtx,
      IWbemObjectSink *pResponseHandler )
  {
@@ -1488,7 +1489,7 @@ index 436097c1e8d..dce3a79f829 100644
      return WBEM_E_FAILED;
  }
  
-@@ -678,12 +704,53 @@ static HRESULT WINAPI wbem_services_ExecQuery(
+@@ -678,12 +703,53 @@ static HRESULT WINAPI wbem_services_ExecQuery(
  {
      struct wbem_services *services = impl_from_IWbemServices( iface );
  
@@ -1545,7 +1546,7 @@ index 436097c1e8d..dce3a79f829 100644
  }
  
  static void async_exec_query( struct async_header *hdr )
-@@ -736,7 +803,7 @@ static HRESULT WINAPI wbem_services_ExecQueryAsync(
+@@ -736,7 +802,7 @@ static HRESULT WINAPI wbem_services_ExecQueryAsync(
  
      if (services->async)
      {
@@ -1554,7 +1555,7 @@ index 436097c1e8d..dce3a79f829 100644
          hr = WBEM_E_FAILED;
          goto done;
      }
-@@ -776,7 +843,7 @@ static HRESULT WINAPI wbem_services_ExecNotificationQuery(
+@@ -776,7 +842,7 @@ static HRESULT WINAPI wbem_services_ExecNotificationQuery(
      IWbemContext *pCtx,
      IEnumWbemClassObject **ppEnum )
  {
@@ -1563,7 +1564,7 @@ index 436097c1e8d..dce3a79f829 100644
      return WBEM_E_FAILED;
  }
  
-@@ -806,7 +873,7 @@ static HRESULT WINAPI wbem_services_ExecNotificationQueryAsync(
+@@ -806,7 +872,7 @@ static HRESULT WINAPI wbem_services_ExecNotificationQueryAsync(
  
      if (services->async)
      {
@@ -1572,7 +1573,7 @@ index 436097c1e8d..dce3a79f829 100644
          hr = WBEM_E_FAILED;
          goto done;
      }
-@@ -860,7 +927,7 @@ static HRESULT WINAPI wbem_services_ExecMethod(
+@@ -860,7 +926,7 @@ static HRESULT WINAPI wbem_services_ExecMethod(
      TRACE( "%p, %s, %s, %#lx, %p, %p, %p, %p\n", iface, debugstr_w(strObjectPath),
             debugstr_w(strMethodName), lFlags, context, pInParams, ppOutParams, ppCallResult );
  
@@ -1581,7 +1582,7 @@ index 436097c1e8d..dce3a79f829 100644
  
      if ((hr = parse_path( strObjectPath, &path )) != S_OK) return hr;
      if (!(str = query_from_path( path )))
-@@ -909,7 +976,7 @@ static HRESULT WINAPI wbem_services_ExecMethodAsync(
+@@ -909,7 +975,7 @@ static HRESULT WINAPI wbem_services_ExecMethodAsync(
      IWbemClassObject *pInParams,
      IWbemObjectSink *pResponseHandler )
  {
@@ -1590,7 +1591,7 @@ index 436097c1e8d..dce3a79f829 100644
      return WBEM_E_FAILED;
  }
  
-@@ -1017,7 +1084,7 @@ static HRESULT WINAPI wbem_context_QueryInterface(
+@@ -1017,7 +1083,7 @@ static HRESULT WINAPI wbem_context_QueryInterface(
      }
      else
      {
@@ -1599,7 +1600,7 @@ index 436097c1e8d..dce3a79f829 100644
          return E_NOINTERFACE;
      }
  
-@@ -1084,7 +1151,7 @@ static HRESULT WINAPI wbem_context_GetNames(
+@@ -1084,7 +1150,7 @@ static HRESULT WINAPI wbem_context_GetNames(
      LONG flags,
      SAFEARRAY **names )
  {
@@ -1608,7 +1609,7 @@ index 436097c1e8d..dce3a79f829 100644
  
      return E_NOTIMPL;
  }
-@@ -1093,7 +1160,7 @@ static HRESULT WINAPI wbem_context_BeginEnumeration(
+@@ -1093,7 +1159,7 @@ static HRESULT WINAPI wbem_context_BeginEnumeration(
      IWbemContext *iface,
      LONG flags )
  {
@@ -1617,7 +1618,7 @@ index 436097c1e8d..dce3a79f829 100644
  
      return E_NOTIMPL;
  }
-@@ -1104,7 +1171,7 @@ static HRESULT WINAPI wbem_context_Next(
+@@ -1104,7 +1170,7 @@ static HRESULT WINAPI wbem_context_Next(
      BSTR *name,
      VARIANT *value )
  {
@@ -1626,7 +1627,7 @@ index 436097c1e8d..dce3a79f829 100644
  
      return E_NOTIMPL;
  }
-@@ -1112,7 +1179,7 @@ static HRESULT WINAPI wbem_context_Next(
+@@ -1112,7 +1178,7 @@ static HRESULT WINAPI wbem_context_Next(
  static HRESULT WINAPI wbem_context_EndEnumeration(
      IWbemContext *iface )
  {
@@ -1635,7 +1636,7 @@ index 436097c1e8d..dce3a79f829 100644
  
      return E_NOTIMPL;
  }
-@@ -1196,7 +1263,7 @@ static HRESULT WINAPI wbem_context_DeleteValue(
+@@ -1196,7 +1262,7 @@ static HRESULT WINAPI wbem_context_DeleteValue(
      LPCWSTR name,
      LONG flags )
  {
@@ -1644,7 +1645,7 @@ index 436097c1e8d..dce3a79f829 100644
  
      return E_NOTIMPL;
  }
-@@ -1204,7 +1271,7 @@ static HRESULT WINAPI wbem_context_DeleteValue(
+@@ -1204,7 +1270,7 @@ static HRESULT WINAPI wbem_context_DeleteValue(
  static HRESULT WINAPI wbem_context_DeleteAll(
      IWbemContext *iface )
  {
