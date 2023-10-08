@@ -131,9 +131,9 @@ int mainCRTStartup(void)
         wcscat( wcscat( cmdlineW, L" -nop -c QPR." ) , filenameW );
         for( i = 1; i < argc; i++ ) { /* concatenate the rest of the arguments into the new cmdline */
             wcscat( wcscat( wcscat( cmdlineW, L" '\"" )  , argv[i] ), L"\"'" ); }
-
+/* Curently not used
         FILE_FS_DEVICE_INFORMATION info; IO_STATUS_BLOCK io;
-        HANDLE input = GetStdHandle(STD_INPUT_HANDLE); /* try handle pipe with ugly hack */
+        HANDLE input = GetStdHandle(STD_INPUT_HANDLE); // try handle pipe with ugly hack 
 
         NtQueryVolumeInformationFile( input, &io, &info, sizeof(info), FileFsDeviceInformation ); 
 
@@ -142,8 +142,8 @@ int mainCRTStartup(void)
 
             while ( (line = read_line_from_handle( input, FALSE ) ) != NULL) { wcscat( pipeW, line); wcscat( pipeW,L"\n"); }
             wcscat( pipeW, L"\"");
-            SetEnvironmentVariableW( L"QPRPIPE", pipeW ); /* FIXME, very ugly, store pipe in envvar; */
-        } /* end handle pipe */
+            SetEnvironmentVariableW( L"QPRPIPE", pipeW ); / FIXME, very ugly, store pipe in envvar; 
+        } end Currently not used*//* end handle pipe */
         SetEnvironmentVariableW( L"QPRCMDLINE", GetCommandLineW() ); /* option to track the complete commandline via $env:QPRCMDLINE */
         goto exec;
     }  /* note: set desired exitcode in the function in profile.ps1 */ 
