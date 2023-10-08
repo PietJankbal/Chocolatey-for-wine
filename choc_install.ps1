@@ -16,7 +16,6 @@ REGEDIT4
 "setx.exe"="native"
 "taskschd"="native"
 "robocopy.exe"="native"
-"systeminfo.exe"="native"
 "wmic.exe"="native"
 "ngen.exe"="native"
 
@@ -122,6 +121,7 @@ $profile_essentials_ps1 = @'
 cd c:\  <# Somehow this seems to be needed to let CreateSymbolicLinkW Stagings work, no idea why...#>
 
 $env:DXVK_CONFIG_FILE=("$env:WINECONFIGDIR" + "\" + "drive_c" + "\" + ($env:ProgramData |split-path -leaf) + "\" + "dxvk.conf").substring(6) -replace "\\","/"
+$env:POWERSHELL_UPDATECHECK=0
 
 # Enable Chocolatey profile
 $ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
@@ -129,15 +129,6 @@ if (Test-Path($ChocolateyProfile)) {
     Import-Module "$ChocolateyProfile"
 }
 
-if($env:FirstRun -eq '2') {
-    Write-Host Installed Software besides ConEmu: ; Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Format-Table ; [Environment]::SetEnvironmentVariable("FirstRun",$null)}
-
-if($env:FirstRun -eq '1') { $env:FirstRun=2 }
-
-<# if wineprefix is updated by running another wine version we have to update the hack for ConEmu bug https://bugs.winehq.org/show_bug.cgi?id=48761 #>
-if( !( (Get-FileHash C:\windows\system32\user32.dll).Hash -eq (Get-FileHash C:\windows\system32\user32dummy.dll).Hash) ) {
-    Copy-Item $env:SystemRoot\\system32\\user32.dll $env:SystemRoot\\system32\\user32dummy.dll -force -erroraction silentlycontinue
-}
 <# check wine-version, hack is only compatible with recent wine versions #>
 $MethodDefinition = @" 
 [DllImport("ntdll.dll", CharSet = CharSet.Ansi)] public static extern string wine_get_version();
@@ -145,10 +136,22 @@ $MethodDefinition = @"
 "@
 $ntdll = Add-Type -MemberDefinition $MethodDefinition -Name 'ntdll' -PassThru
 
-if([System.Convert]::ToDecimal( $ntdll::wine_get_build_id().split('-').split('(')[1] )  -lt 7.16) { <# hack incompatible for older wine versions#>
+if($env:FirstRun -eq '2') {
+    Write-Host Installed Software: ; Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Format-Table ; [Environment]::SetEnvironmentVariable("FirstRun",$null)
+}
+if($env:FirstRun -eq '1') { $env:FirstRun=2 }
+
+if($([System.Diagnostics.Process]::GetCurrentProcess().Parent.processname) -eq 'ConEmuC64' ) {Write-Host -Foregroundcolor yellow Running Power Shell Core 7.1.5 on $ntdll::wine_get_build_id(); Write-Host ""}
+
+<# if wineprefix is updated by running another wine version we have to update the hack for ConEmu bug https://bugs.winehq.org/show_bug.cgi?id=48761 #>
+if( !( (Get-FileHash C:\windows\system32\user32.dll).Hash -eq (Get-FileHash C:\windows\system32\user32dummy.dll).Hash) ) {
+    Copy-Item $env:SystemRoot\\system32\\user32.dll $env:SystemRoot\\system32\\user32dummy.dll -force -erroraction silentlycontinue
+}
+
+if( [System.Convert]::ToDecimal( $ntdll::wine_get_version())  -lt 7.16 ){ <# hack incompatible for older wine versions#>
     $null = New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ConEmu64.exe\\DllOverrides' -force -Name 'user32' -Value 'builtin' -PropertyType 'String'}
 else {
-     $null = New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ConEmu64.exe\\DllOverrides' -force -Name 'user32' -Value 'native' -PropertyType 'String'}
+     $null = New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ConEmu64.exe\\DllOverrides' -force -Name 'user32' -Value 'native,builtin' -PropertyType 'String'}
 <# end update ConEmu hack #>
 
 Set-Alias gwmi Get-WmiObject
@@ -223,7 +226,8 @@ $profile_winetricks_caller_ps1 = @'
                "windowscodecs", "windowscodecs.dll",`
                "uxtheme", "uxtheme.dll",`
                "wsh57", "MS Windows Script Host (vbscript.dll scrrun.dll msscript.ocx jscript.dll scrobj.dll wshom.ocx)",`
-               "comctl32", "dangerzone, only for testing, might break things, only use on a per app base (comctl32.dll)",`
+               "comctl32", "dangerzone, might break things, can only be set on a per app base",
+               "oleaut32","native oleaut32, (dangerzone) can only be set on a per app base",
                "d2d1", "dangerzone, only for testing, might break things, only use on a per app base (d2d1.dll)",`
                "dinput8", "dinput8.dll",`
                "windows.ui.xaml", "windows.ui.xaml, experimental...",`
@@ -242,6 +246,9 @@ $profile_winetricks_caller_ps1 = @'
                "directmusic", "directmusic ddls: dmusic.dll, dmband.dll, dmime.dll, dmloader.dll, dmscript.dll, dmstyle.dll, dmsynth.dll, dsound.dll, dswave.dll",
                "uiribbon", "uiribbon.dll",
                "uianimation", "uianimation.dll",
+               "wmiutils","wmiutils.dll",
+               "wine_wbemprox","hacky wmispoofer, spoof wmi values/add new classes, see c:\ProgramData\Chocolatey-for-wine\wmispoofer.ini for details",
+               "wine_kernelbase","rudimentary mui resource support (makes windows 7 games work)",
                "findstr", "findstr.exe",
                "affinity_requirements", "install and configure stuff to get affinity v2 started",
                "winmetadata", "various *.winmd files",
@@ -260,6 +267,7 @@ $profile_winetricks_caller_ps1 = @'
                "wpf_msgbox", "codesnippets from around the internet: some fancy messageboxes (via wpf) in powershell",
                "wpf_routedevents", "codesnippets from around the internet: how to use wpf+xaml+routedevents in powershell",
                "cef", "codesnippets from around the internet: how to use cef / test cef",
+               "vanara","vanara https://github.com/dahall/Vanara",
                "embed-exe-in-psscript", "codesnippets from around the internet: samplescript howto embed and run an exe into a powershell-scripts (vkcube.exe)",
                "Get-PEHeader", "codesnippets from around the internet: add Get-PEHeader to cmdlets, handy to explore dlls imports/exports",
                "access_winrt_from_powershell", "codesnippets from around the internet: howto use Windows Runtime classes in powershell; requires powershell 5.1, so 1st time usage may take very long time!!!",
@@ -295,10 +303,10 @@ function winetricks {
   }
 
   if($arg) {
-     pwsh -nop -f $([System.IO.Path]::Combine("$env:ProgramData","Chocolatey-for-wine", "winetricks.ps1")) $arg
+     pwsh -nop -f  <# . #>  $([System.IO.Path]::Combine("$env:ProgramData","Chocolatey-for-wine", "winetricks.ps1")) $arg
   }
   else {
-     pwsh -nop -f $([System.IO.Path]::Combine("$env:ProgramData","Chocolatey-for-wine", "winetricks.ps1")) $Qenu
+     pwsh -nop -f <# . #> $([System.IO.Path]::Combine("$env:ProgramData","Chocolatey-for-wine", "winetricks.ps1")) "no_args" $Qenu 
   }
 }
 '@
@@ -313,8 +321,6 @@ $profile_miscellaneous_ps1 = @'
 #Remove ~/Documents/Powershell/Modules from modulepath; it becomes a mess because it`s not removed when one deletes the wineprefix... 
 $path = $env:PSModulePath -split ';'
 $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -join ';'
-
-Write-Host -Foregroundcolor yellow Running Power Shell Core 7.1.5 on $ntdll::wine_get_build_id(); Write-Host ""
 
 #Register-WMIEvent not available in PS Core, so for now just change into noop
 function Register-WMIEvent {
@@ -443,7 +449,7 @@ Set-Alias csc c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
 
 function handy_apps { choco install explorersuite reactos-paint}
 
-Set-Alias Get-ComputerInfo QPR.systeminfo.exe
+Set-Alias Get-ComputerInfo systeminfo.exe
 '@
 
 @'
@@ -472,34 +478,6 @@ function QPR_schtasks { <# schtasks replacement #>
        Start-Process -NoNewWindow QPR.schtasks.exe -argumentlist "$cmdline" }
 }
 '@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR_schtasks\QPR_schtasks.psm1 -Force )
-
-@'
-function QPR.systeminfo { <# systeminfo replacement #>
-    $result = [System.Collections.ArrayList]::new() ;  $p=[System.Collections.ArrayList]::new() 
-
-    foreach ($i in 'operatingsystem', 'computersystem', 'processor', 'bios', 'QuickFixEngineering', 'PageFileUsage', 'videocontroller') {
-        $null = $p.Add( [PSCustomObject]@{ v = Get-WmiObject ('win32_' + $i)} ) } 
-
-        $null = $result.Add([PSCustomObject]@{
-    "Host Name"=$p[0].v.csname ; "OS Name"=$p[0].v.caption ; "OS Version"=$p[0].v.version + ' Build ' + $p[0].v.buildnumber         
-    "OS Manufacturer"=$p[0].v.manufacturer ; "OS Build Type"=$p[0].v.buildtype ; "Registered Owner"=$p[0].v.registereduser          
-    "Registered Organization"=$p[0].v.organization ; "Product ID"=$p[0].v.SerialNumber                
-    "Original Install Date"=[Management.ManagementDateTimeConverter]::ToDateTime($p[0].v.InstallDate) 
-    "System Boot Time"=[Management.ManagementDateTimeConverter]::ToDateTime($p[0].v.LastBootUpTime)    
-    "System Manufacturer"=$p[1].v.manufacturer ; "System Model"=$p[1].v.model ; "System Type"=$p[1].v.systemtype            
-    "Processor(s)"=$p[2].v.Description + ' ~' + $p[2].v.CurrentClockSpeed + 'Mhz'            
-    "BIOS Version"=$p[3].v.Manufacturer + ' ' + $p[3].v.SMBIOSBIOSVersion + ' ' + [Management.ManagementDateTimeConverter]::ToDateTime($p[3].v.ReleaseDate)            
-    "Windows Directory"=$p[0].v.windowsdirectory ; "System Directory"=$p[0].v.systemdirectory ; "Boot Device"=$p[0].v.bootdevice          
-    "System Locale"=$p[0].v.oslanguage ; "Input Locale"=$p[0].v.oslanguage
-    "Time Zone"='UTC' + (( ($p[0].v.CurrentTimeZone/60) -gt 0) ? ('+') : ('-')) + $p[0].v.currenttimezone/60 
-    "Total Physical Memory"=$p[0].v.TotalVisibleMemorySize ; "Available Physical Memory"=$p[0].v.FreePhysicalMemory
-    "Virtual Memory: Max Size"=$p[0].v.TotalVirtualMemorySize ; "Virtual Memory: Available"=$p[0].v.FreeVirtualMemory
-    "Virtual Memory: In Use"='[not implemented]' ; "Page File Location(s)"=$p[5].v.name ; "Domain"=$p[1].v.domain ; "Logon Server"=$env:LOGONSERVER ;
-    "Hotfix(s)"=$p[4].v.hotfixid ; "Network Card(s)"='[not implemented]' ; "Hyper-V Requirements"='[not implemented]' ; "GPU"=$p[6].v.videoprocessor })
-   
-    return $result 
-}
-'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.systeminfo\QPR.systeminfo.psm1 -Force )
 
 @'
  <# hack for installing adobereader #>
@@ -537,10 +515,11 @@ function QPR.wmic { <# wmic replacement, this part only rebuilds the arguments #
         'os' = "-class win32_operatingsystem"
         'bios' = "-class win32_bios"
         'logicaldisk' = "-class win32_logicaldisk"
+        'nic' = "-class win32_NetworkAdapter"        
         'process' = "-class win32_process" } <# etc. etc. #>
 
     foreach ($key in $hash.keys) {
-        if( $cmdline |select-string "\b$key\b" ) { $cmdline = $cmdline -replace $key, $hash[$key]; break }    }
+        if( $cmdline |select-string "\b$key\b" ) { $cmdline = $cmdline -replace "\b$key\b", $hash[$key]; break }    }
    
     $cmdline = $cmdline -replace 'get', '-property' -replace 'where', '-where' -replace "/path", "-class"
 
@@ -859,7 +838,17 @@ function QPR_ping { <# ping.exe replacement #>
 
     Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\ConEmuPack.230724.7z -o$env:SystemDrive\ConEmu";
     #& $env:TEMP\\install2.ps1  <# ConEmu install #>
+            
+    Remove-Item -force  "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{55B609D4-ABF3-52AF-8723-C81E75B86D50}" -recurse
+    Remove-Item -force  "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{9F22663D-4E4B-5B49-A04C-22EDFD519AC5}" -recurse
+    Remove-Item -force -recurse "$env:systemroot\mono"
     
+    New-Item  -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{DE293FDE-C181-46C0-8DCC-1F75EA35833D}"
+    New-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{DE293FDE-C181-46C0-8DCC-1F75EA35833D}" -Name "DisplayName" -Value "ConEmu 230724.x64" -PropertyType 'String' -force
+    New-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{DE293FDE-C181-46C0-8DCC-1F75EA35833D}" -Name "DisplayVersion" -Value "11.230.7240" -PropertyType 'String' -force
+    New-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{DE293FDE-C181-46C0-8DCC-1F75EA35833D}" -Name "InstallDate" -Value "20231006" -PropertyType 'String' -force
+    New-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{DE293FDE-C181-46C0-8DCC-1F75EA35833D}" -Name "Publisher" -Value "ConEmu-Maximus5" -PropertyType 'String' -force
+ 
     $misc_reg | Out-File $env:TEMP\\misc.reg
     $profile_ps1 | Out-File $env:TEMP\\profile.ps1
     $profile_ps1 | Out-File $(Join-Path $(Split-Path -Path (Get-Process -Id $pid).Path) "profile.ps1") <# Write profile.ps1 to Powershell directory #>
@@ -1073,7 +1062,7 @@ function QPR_ping { <# ping.exe replacement #>
     ForEach ($file in "schtasks.exe") {
         Copy-Item -Path "$env:windir\\SysWOW64\\$file" -Destination "$env:windir\\SysWOW64\\QPR.$file" -Force
         Copy-Item -Path "$env:winsysdir\\$file" -Destination "$env:winsysdir\\QPR.$file" -Force}
-    ForEach ($file in "wusa.exe","schtasks.exe","systeminfo.exe","getmac.exe","setx.exe","wbem\\wmic.exe", "ie4uinit.exe") {
+    ForEach ($file in "wusa.exe","schtasks.exe","getmac.exe","setx.exe","wbem\\wmic.exe", "ie4uinit.exe") {
         Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\$file" -Force
         Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\$file" -Force}
     <# It seems some programs need this dir?? #>
@@ -1083,7 +1072,6 @@ function QPR_ping { <# ping.exe replacement #>
     <# a game launcher tried to open this key, i think it should be present (?) #>
     reg.exe COPY "HKLM\SYSTEM\CurrentControlSet" "HKLM\SYSTEM\ControlSet001" /s /f
     <# dxvk (if installed) doesn't work well with WPF, add workaround from dxvk site  #>
-    
 $dxvkconf = @"
 [pwsh.exe]
 d3d9.shaderModel = 1
