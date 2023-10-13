@@ -128,16 +128,6 @@ function func_riched20
     foreach($i in 'riched20') { dlloverride 'native' $i }
 } <# end riched20 #>
 
-function func_crypt32
-{
-    $dlls = @('crypt32.dll','msasn1.dll'); check_aik_sanity;
-
-    foreach ($i in $dlls) {
-        7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
-        7z e "$cachedir\aik70\F1_WINPE.WIM" "-o$env:systemroot\syswow64" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z') 
-    foreach($i in 'crypt32') { dlloverride 'native' $i }
-}  <# end crypt32 #>
-
 function func_windowscodecs
 {
     $dlls = @('windowscodecs.dll'); check_aik_sanity;
@@ -181,15 +171,30 @@ function func_xmllite
     foreach($i in 'xmllite') { dlloverride 'native' $i }
 } <# end xmllite #>
 
-function func_comctl32
+function func_comctl32 <# comctl32 #>
 {
-    check_aik_sanity; $dldir = "aik70" <# There`s also other version 5.8 ?? #>
-    $60dlls = @( 'amd64_microsoft.windows.common-controls_6595b64144ccf1df_6.0.7600.16385_none_fa645303170382f6/comctl32.dll', `
-                 'x86_microsoft.windows.common-controls_6595b64144ccf1df_6.0.7600.16385_none_421189da2b7fabfc/comctl32.dll') ` 
+    #https://4sysops.com/archives/how-to-create-an-open-file-folder-dialog-box-with-powershell/
+    try{ $null=[System.Reflection.Assembly]::GetAssembly([System.Windows.Forms]) }
+    catch { [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") | Out-Null }
+    $FileBrowser = New-Object System.Windows.Forms.OpenFileDialog -Property @{
+    InitialDirectory =  [System.IO.Directory]::GetCurrentDirectory() 
+    Filter = 'exe files (*.exe)|*.exe'
+    Title = "Select the exe for which you want to add the 'native' $(verb) override" }
+    if ( $FileBrowser.ShowDialog() -eq 'Cancel' ) {exit}
 
-    foreach ($i in $60dlls) {
-        if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}
-        if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])}} quit?('7z')
+    $file = ([System.IO.FileInfo]($FileBrowser.FileName)).name
+    $filepath = ([System.IO.FileInfo]($FileBrowser.FileName)).Fullname
+    $destdir =([System.IO.FileInfo]($FileBrowser.FileName)).Directory
+
+    $dlls = @("$(verb).dll"); check_aik_sanity;
+
+    foreach ($i in $dlls) {
+        7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/winsxs/amd64_microsoft.windows.common-controls_6595b64144ccf1df_6.0.7600.16385_none_fa645303170382f6/$i" -y 
+        7z e "$cachedir\aik70\F1_WINPE.WIM" "-o$env:systemroot\syswow64" "Windows/winsxs/x86_microsoft.windows.common-controls_6595b64144ccf1df_6.0.7600.16385_none_421189da2b7fabfc/$i" -y } ; quit?('7z') 
+
+    if(!(Test-Path "HKCU:\\Software\\Wine\\AppDefaults\\$file")) {New-Item  -Path "HKCU:\\Software\\Wine\\AppDefaults\\$file"}
+    if(!(Test-Path "HKCU:\\Software\\Wine\\AppDefaults\\$file\\DllOverrides")) {New-Item  -Path "HKCU:\\Software\\Wine\\AppDefaults\\$file\\DllOverrides"}
+    New-ItemProperty -Path "HKCU:\\Software\\Wine\\AppDefaults\\$file\\DllOverrides" -Name "$(verb)" -Value 'native,builtin' -PropertyType 'String' -force
 
 $regkey = @"
 REGEDIT4
@@ -204,9 +209,36 @@ REGEDIT4
 
     Remove-Item -Force $env:systemroot\winsxs\manifests\amd64_microsoft.windows.common-controls_6595b64144ccf1df_6.0.2600.2982_none_deadbeef.manifest -ErrorAction SilentlyContinue
     Remove-Item -Force $env:systemroot\winsxs\manifests\x86_microsoft.windows.common-controls_6595b64144ccf1df_6.0.2600.2982_none_deadbeef.manifest -ErrorAction SilentlyContinue
-
-    foreach($i in 'comctl32') { dlloverride 'native' $i }
 } <# end comctl32 #>
+
+function func_oleaut32 <# oleaut32  #>
+{
+    #https://4sysops.com/archives/how-to-create-an-open-file-folder-dialog-box-with-powershell/
+    try{ $null=[System.Reflection.Assembly]::GetAssembly([System.Windows.Forms]) }
+    catch { [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") | Out-Null }
+    $FileBrowser = New-Object System.Windows.Forms.OpenFileDialog -Property @{
+    InitialDirectory =  [System.IO.Directory]::GetCurrentDirectory() 
+    Filter = 'exe files (*.exe)|*.exe'
+    Title = "Select the exe for which you want to add the 'native' $(verb) override" }
+    if ( $FileBrowser.ShowDialog() -eq 'Cancel' ) {exit}
+
+    $file = ([System.IO.FileInfo]($FileBrowser.FileName)).name
+    $filepath = ([System.IO.FileInfo]($FileBrowser.FileName)).Fullname
+    $destdir =([System.IO.FileInfo]($FileBrowser.FileName)).Directory
+
+    if ( $(7z l $filepath | findstr 'CPU' |select-string x64) )       {$arch = 'F3' }
+    elseif ( $(7z l $filepath | findstr 'CPU' |select-string x86) )   {$arch = 'F1' }
+    else {Write-Host 'Something went wrong...'; exit}
+    
+    $dlls = @("$(verb).dll"); check_aik_sanity;
+    
+    foreach ($i in $dlls ) {
+        7z e "$cachedir\aik70\$($arch)_WINPE.WIM" "-o$destdir" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z') 
+     
+    if(!(Test-Path "HKCU:\\Software\\Wine\\AppDefaults\\$file")) {New-Item  -Path "HKCU:\\Software\\Wine\\AppDefaults\\$file"}
+    if(!(Test-Path "HKCU:\\Software\\Wine\\AppDefaults\\$file\\DllOverrides")) {New-Item  -Path "HKCU:\\Software\\Wine\\AppDefaults\\$file\\DllOverrides"}
+    New-ItemProperty -Path "HKCU:\\Software\\Wine\\AppDefaults\\$file\\DllOverrides" -Name "$(verb)" -Value 'native,builtin' -PropertyType 'String' -force
+} <# end oleaut32 #>
 
 function func_wsh57
 {
@@ -536,10 +568,30 @@ function func_d2d1
 
     foreach($i in "$cab", "amd64", "x86", "wow64") { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" -Erroraction SilentlyContinue }
 
-    7z e "$cachedir\$(verb)\$(verb).7z" "amd64*\*" -o"$env:systemroot\\system32" -aoa
-    7z e "$cachedir\$(verb)\$(verb).7z" "x86*\*" -o"$env:systemroot\\syswow64" -aoa
+    #https://4sysops.com/archives/how-to-create-an-open-file-folder-dialog-box-with-powershell/
+    try{ $null=[System.Reflection.Assembly]::GetAssembly([System.Windows.Forms]) }
+    catch { [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") | Out-Null }
+    $FileBrowser = New-Object System.Windows.Forms.OpenFileDialog -Property @{
+    InitialDirectory =  [System.IO.Directory]::GetCurrentDirectory() 
+    Filter = 'exe files (*.exe)|*.exe'
+    Title = "Select the exe for which you want to add the 'native' $(verb) override" }
+    if ( $FileBrowser.ShowDialog() -eq 'Cancel' ) {exit}
 
-    foreach($i in 'd2d1') { dlloverride 'native' $i }  
+    $file = ([System.IO.FileInfo]($FileBrowser.FileName)).name
+    $filepath = ([System.IO.FileInfo]($FileBrowser.FileName)).Fullname
+    $destdir =([System.IO.FileInfo]($FileBrowser.FileName)).Directory
+
+    if ( $(7z l $filepath | findstr 'CPU' |select-string x64) )       {$arch = 'amd64'}
+    elseif ( $(7z l $filepath | findstr 'CPU' |select-string x86) )   {$arch = 'x86'}
+    else {Write-Host 'Something went wrong...'; exit}
+    
+    check_aik_sanity;
+  
+    7z e "$cachedir\$(verb)\$(verb).7z" "$($arch)*\*" "-o$destdir" -y| Select-String 'ok' ; quit?('7z') 
+     
+    if(!(Test-Path "HKCU:\\Software\\Wine\\AppDefaults\\$file")) {New-Item  -Path "HKCU:\\Software\\Wine\\AppDefaults\\$file"}
+    if(!(Test-Path "HKCU:\\Software\\Wine\\AppDefaults\\$file\\DllOverrides")) {New-Item  -Path "HKCU:\\Software\\Wine\\AppDefaults\\$file\\DllOverrides"}
+    New-ItemProperty -Path "HKCU:\\Software\\Wine\\AppDefaults\\$file\\DllOverrides" -Name "$(verb)" -Value 'native,builtin' -PropertyType 'String' -force 
 } <# end d2d1 #>
 
 function func_dinput8
@@ -858,10 +910,7 @@ if ((Get-process -Name powershell_ise -erroraction silentlycontinue)) {
    # `$Child =  Get-WmiObject -Class win32_process | where {`$_.ParentProcessId -eq `$Pid}
    # $child
     `$Child | ForEach-Object { Stop-Process -Id `$_.ProcessId } 
- 
-
-   
-}, "ALT+F6") | Out-Null
+ }, "ALT+F6") | Out-Null
 
 
 }
@@ -1018,7 +1067,7 @@ function func_uianimation <# experimental... #>
     7z e "$cachedir\$(verb)\$(verb).7z" "amd64*\*" -o"$env:systemroot\\system32" -aoa
     7z e "$cachedir\$(verb)\$(verb).7z" "wow64*\*" -o"$env:systemroot\\syswow64" -aoa
 
-    foreach($i in 'uiribbon') { dlloverride 'native' $i }
+    foreach($i in 'uianimation') { dlloverride 'native' $i }
 } <# end uianimation #>
 
 function func_dshow
@@ -1181,6 +1230,213 @@ function func_cmd <# native cmd #>
     foreach($i in 'cmd.exe') { dlloverride 'native' $i }
 } <# end cmd #>
 
+function func_wmiutils <# native wmiutils #>
+{
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z" ) ) ){
+    
+        w_download_to "$(verb)" "https://catalog.s.download.windowsupdate.com/msdownload/update/v3-19990518/cabpool/windowsserver2003.windowsxp-kb914961-sp2-x64-enu_7f8e909c52d23ac8b5dbfd73f1f12d3ee0fe794c.exe" "windowsserver2003.windowsxp-kb914961-sp2-x64-enu_7f8e909c52d23ac8b5dbfd73f1f12d3ee0fe794c.exe"
+
+        7z x "$cachedir\$(verb)\windowsserver2003.windowsxp-kb914961-sp2-x64-enu_7f8e909c52d23ac8b5dbfd73f1f12d3ee0fe794c.exe" "-o$env:Temp\$(verb)" "amd64/wmiutils.dl_" -aoa; quit?('7z')
+        7z e "$env:Temp\$(verb)\amd64\wmiutils.dl_" "-o$env:Temp\$(verb)\$(verb)\64" "wmiutils.dll"-aoa | Select-String 'ok' ; quit?('7z');
+
+        7z x "$cachedir\$(verb)\windowsserver2003.windowsxp-kb914961-sp2-x64-enu_7f8e909c52d23ac8b5dbfd73f1f12d3ee0fe794c.exe" "-o$env:Temp\$(verb)" "amd64/wow/wwmiutils.dl_" -aoa; quit?('7z')
+        7z e "$env:Temp\$(verb)\amd64\wow\wwmiutils.dl_" "-o$env:Temp\$(verb)\$(verb)\32" "wwmiutils.dll" -aoa | Select-String 'ok' ; quit?('7z');
+        Move-Item "$env:Temp\$(verb)\$(verb)\32\wwmiutils.dll" "$env:Temp\$(verb)\$(verb)\32\wmiutils.dll"
+
+        Remove-Item -Force "$cachedir\$(verb)\windowsserver2003.windowsxp-kb914961-sp2-x64-enu_7f8e909c52d23ac8b5dbfd73f1f12d3ee0fe794c.exe"
+ 
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$env:Temp\$(verb)\$(verb)\64" "$env:Temp\$(verb)\$(verb)\32" ;quit?(7z)
+        Remove-Item -Force "$env:Temp\$(verb)" -recurse
+    }
+    7z e "$cachedir\$(verb)\$(verb).7z" "-o$env:systemroot\system32\wbem" "64\wmiutils.dll" -y 
+    7z e "$cachedir\$(verb)\$(verb).7z" "-o$env:systemroot\syswow64\wbem" "32\wmiutils.dll"  -y
+    
+    foreach($i in 'wmiutils') { dlloverride 'native' $i }
+} <# end wmiutils #>
+
+function func_wine_wbemprox
+{
+    w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
+
+    foreach ($i in $(verb).substring(5) ){
+        7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$env:systemroot\system32\wbem" "64/$i.dll" -aoa | Select-String 'ok' 
+        7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64\wbem" "32/$i.dll" -aoa | Select-String 'ok'  }
+
+@'
+[win32_bios]        ;replace value, might not always work. If not, just replace whole class like in last example
+Manufacturer=Mercedes Benz
+
+[win32_videocontroller]
+Caption=3Dfx Voodoo 3 3000 AGP VGA Card
+
+[Win32_NetworkAdapter]
+Speed=5
+
+[Win32_Operatingsystem]
+Caption=MSDOS 1.0
+
+[Win32_spoofclassA]     ;  add new class, number of keys and types is hardcoded, make sure to add right type and don not change number of keys  
+ClassName=Win32_example
+string1=somestring1
+string2=somestring2
+string3=somestring3
+string4=somestring4
+string5=somestring5
+uint8=26
+uint16_1=27
+uint16_2=28
+uint16_3=29
+uint32_1=30
+uint32_2=31
+uint32_3=32
+uint64_1=33
+uint64_2=34
+bool1=1
+bool2=1
+sint32=0x21
+real32=3.3f
+datetime=20140101000000.000000+000
+
+[Win32_spoofclassB]     ;  add new class, number of keys and types is hardcoded, make sure to add right type and don not change number of keys
+ClassName=Win32_example1
+string1=somestring1
+string2=somestring2
+string3=somestring3
+string4=somestring4
+string5=somestring5
+uint8=26
+uint16_1=27
+uint16_2=28
+uint16_3=29
+uint32_1=30
+uint32_2=31
+uint32_3=32
+uint64_1=33
+uint64_2=34
+bool1=1
+bool2=1
+sint32=0x21
+real32=3.3f
+datetime=20140101000000.000000+000
+
+[Win32_spoofclassC]   ;  add new class, number of keys and types is hardcoded, make sure to add right type and don not change number of keys
+ClassName=Win32_example2
+string1=somestring1
+string2=somestring2
+string3=somestring3
+string4=somestring4
+string5=somestring5
+uint8=26
+uint16_1=27
+uint16_2=28
+uint16_3=29
+uint32_1=30
+uint32_2=31
+uint32_3=32
+uint64_1=33
+uint64_2=34
+bool1=1
+bool2=1
+sint32=0x21
+real32=3.3f
+datetime=20140101000000.000000+000
+
+[Win32_spoofclassD]         ;  add new class, number of keys and types is hardcoded, make sure to add right type and don not change number of keys          
+ClassName=Win32_example3
+string1=somestring1
+string2=somestring2
+string3=somestring3
+string4=somestring4
+string5=somestring5
+uint8=26
+uint16_1=27
+uint16_2=28
+uint16_3=29
+uint32_1=30
+uint32_2=31
+uint32_3=32
+uint64_1=33
+uint64_2=34
+bool1=1
+bool2=1
+sint32=0x21
+real32=3.3f
+datetime=20140101000000.000000+000
+
+[Win32_QuickFixEngineering]	 ; replace existing class, make sure to add right type and don not change number of keys 
+ClassName=fake_entry1
+[Win32_spoofclassE]                
+ClassName=fake_entry1
+Caption=Updates
+Description=Installed Updates
+Status=OK
+HotFixID=KB5555 KB77777
+InstalledBy=Me
+uint8=
+uint16_1=
+uint16_2=
+uint16_3=
+uint32_1=
+uint32_2=
+uint32_3=
+uint64_1=
+uint64_2=
+bool1=
+bool2=
+sint32=
+real32=
+InstallDate=
+'@ |Out-File "$env:ProgramData\Chocolatey-for-wine\wmispoofer.ini"
+
+foreach($i in 'wbemprox') { dlloverride 'native' $i }
+
+pwsh -nologo
+}
+
+function func_crypt32 <# native crypt32 #>
+{
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z" ) ) ){
+    
+       try{ w_download_to "$(verb)" "https://catalog.s.download.windowsupdate.com/msdownload/update/v3-19990518/cabpool/windowsserver2003.windowsxp-kb914961-sp2-x64-enu_7f8e909c52d23ac8b5dbfd73f1f12d3ee0fe794c.exe" "windowsserver2003.windowsxp-kb914961-sp2-x64-enu_7f8e909c52d23ac8b5dbfd73f1f12d3ee0fe794c.exe"}
+       catch{"$($Error[0].Exception.InnerException.message): $computername"} ;$PSItem.Exception.InnerExceptionMessage
+        7z x "$cachedir\$(verb)\windowsserver2003.windowsxp-kb914961-sp2-x64-enu_7f8e909c52d23ac8b5dbfd73f1f12d3ee0fe794c.exe" "-o$env:Temp\$(verb)" "amd64/crypt32.dl_" "amd64/msasn1.dl_" -aoa; quit?('7z')
+        7z e "$env:Temp\$(verb)\amd64\*.dl_" "-o$env:Temp\$(verb)\$(verb)\64" -aoa | Select-String 'ok' ; quit?('7z');
+
+        7z x "$cachedir\$(verb)\windowsserver2003.windowsxp-kb914961-sp2-x64-enu_7f8e909c52d23ac8b5dbfd73f1f12d3ee0fe794c.exe" "-o$env:Temp\$(verb)" "amd64/wow/wcrypt32.dl_" "amd64/wow/wmsasn1.dl_" -aoa; quit?('7z')
+        7z e "$env:Temp\$(verb)\amd64\wow\*.dl_" "-o$env:Temp\$(verb)\$(verb)\32"  -aoa | Select-String 'ok' ; quit?('7z');
+        Move-Item "$env:Temp\$(verb)\$(verb)\32\wcrypt32.dll" "$env:Temp\$(verb)\$(verb)\32\crypt32.dll"
+        Move-Item "$env:Temp\$(verb)\$(verb)\32\wmsasn1.dll" "$env:Temp\$(verb)\$(verb)\32\msasn1.dll"
+        
+        Remove-Item -Force "$cachedir\$(verb)\windowsserver2003.windowsxp-kb914961-sp2-x64-enu_7f8e909c52d23ac8b5dbfd73f1f12d3ee0fe794c.exe"
+ 
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$env:Temp\$(verb)\$(verb)\64" "$env:Temp\$(verb)\$(verb)\32" ;quit?(7z)
+       # Remove-Item -Force "$env:Temp\$(verb)" -recurse
+    }
+
+    #https://4sysops.com/archives/how-to-create-an-open-file-folder-dialog-box-with-powershell/
+    try{ $null=[System.Reflection.Assembly]::GetAssembly([System.Windows.Forms]) }
+    catch { [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") | Out-Null }
+    $FileBrowser = New-Object System.Windows.Forms.OpenFileDialog -Property @{
+    InitialDirectory =  [System.IO.Directory]::GetCurrentDirectory() 
+    Filter = 'exe files (*.exe)|*.exe'
+    Title = "Select the exe for which you want to add the 'native' $($(verb))  override" }
+    if ( $FileBrowser.ShowDialog() -eq 'Cancel' ) {exit}
+
+    $file = ([System.IO.FileInfo]($FileBrowser.FileName)).name
+    $filepath = ([System.IO.FileInfo]($FileBrowser.FileName)).Fullname
+    $destdir =([System.IO.FileInfo]($FileBrowser.FileName)).Directory
+
+    if ( $(7z l $filepath | findstr 'CPU' |select-string x64) )       {$arch = '64' }
+    elseif ( $(7z l $filepath | findstr 'CPU' |select-string x86) )   {$arch = '32' }
+    else {Write-Host 'Something went wrong...'; exit}
+    
+    7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$destdir" "$arch/*" -aoa 
+        
+    if(!(Test-Path "HKCU:\\Software\\Wine\\AppDefaults\\$file")) {New-Item  -Path "HKCU:\\Software\\Wine\\AppDefaults\\$file"}
+    if(!(Test-Path "HKCU:\\Software\\Wine\\AppDefaults\\$file\\DllOverrides")) {New-Item  -Path "HKCU:\\Software\\Wine\\AppDefaults\\$file\\DllOverrides"}
+    New-ItemProperty -Path "HKCU:\\Software\\Wine\\AppDefaults\\$file\\DllOverrides" -Name "$(verb)" -Value 'native,builtin' -PropertyType 'String' -force
+} <# end crypt32 #>
+
 function func_directmusic <# native dmusic #>
 {
     if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z" ) ) ){
@@ -1305,6 +1561,36 @@ function func_wine_msi <# wine msi with some hacks faking success #>
         7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
     foreach($i in $(verb).substring(5) ) { dlloverride 'native' $i }
 } <# end msi #>
+
+
+function func_wine_kernelbase <# wine kernelbase with rudimentary MUI support  #>
+{
+    w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
+
+    #https://4sysops.com/archives/how-to-create-an-open-file-folder-dialog-box-with-powershell/
+    try{ $null=[System.Reflection.Assembly]::GetAssembly([System.Windows.Forms]) }
+    catch { [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") | Out-Null }
+    $FileBrowser = New-Object System.Windows.Forms.OpenFileDialog -Property @{
+    InitialDirectory =  [System.IO.Directory]::GetCurrentDirectory() 
+    Filter = 'exe files (*.exe)|*.exe'
+    Title = "Select the exe for which you want to add the 'native' $($(verb).substring(5))  override" }
+    if ( $FileBrowser.ShowDialog() -eq 'Cancel' ) {exit}
+
+    $file = ([System.IO.FileInfo]($FileBrowser.FileName)).name
+    $filepath = ([System.IO.FileInfo]($FileBrowser.FileName)).Fullname
+    $destdir =([System.IO.FileInfo]($FileBrowser.FileName)).Directory
+
+    if ( $(7z l $filepath | findstr 'CPU' |select-string x64) )       {$arch = '64' }
+    elseif ( $(7z l $filepath | findstr 'CPU' |select-string x86) )   {$arch = '32' }
+    else {Write-Host 'Something went wrong...'; exit}
+    
+    foreach ($i in $(verb).substring(5) ){
+        7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$destdir" "$arch/$($(verb).substring(5)).dll" -aoa  }
+        
+    if(!(Test-Path "HKCU:\\Software\\Wine\\AppDefaults\\$file")) {New-Item  -Path "HKCU:\\Software\\Wine\\AppDefaults\\$file"}
+    if(!(Test-Path "HKCU:\\Software\\Wine\\AppDefaults\\$file\\DllOverrides")) {New-Item  -Path "HKCU:\\Software\\Wine\\AppDefaults\\$file\\DllOverrides"}
+    New-ItemProperty -Path "HKCU:\\Software\\Wine\\AppDefaults\\$file\\DllOverrides" -Name "$($(verb).substring(5))" -Value 'native,builtin' -PropertyType 'String' -force
+} <# end kernelbase #>
 
 function func_font_lucida
 {
@@ -1505,8 +1791,9 @@ function func_vs19
     #func_xmllite
     #func_cmd
     func_wine_advapi32
-    func_wine_ole32
-    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.13 ) { 
+    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.16 ) {
+        func_wine_ole32 }
+    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.13 ) {
       func_wine_combase }
     func_wine_shell32
 
@@ -1544,9 +1831,10 @@ function func_vs19
     if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe'}
     if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides'}
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'advapi32' -Value 'native' -PropertyType 'String' -force
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'ole32' -Value 'native' -PropertyType 'String' -force
+    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.16 ) {
+        New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'ole32' -Value 'native' -PropertyType 'String' -force }
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'shell32' -Value 'native' -PropertyType 'String' -force
-    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.13 ) { 
+    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.13 ) {
         New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'combase' -Value 'native' -PropertyType 'String' -force }
 
     <# FIXME: frequently mpc are not written to registry (wine bug?), do it manually #>
@@ -1561,25 +1849,17 @@ function func_vs22
     #func_xmllite
     #func_cmd
     func_wine_advapi32
-    if([System.Convert]::ToDecimal( $ntdll::wine_get_build_id().split('-').split('(')[1] )  -lt 8.16) {
+    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.16 ) {
         func_wine_ole32 }
-    if([System.Convert]::ToDecimal( $ntdll::wine_get_build_id().split('-').split('(')[1] )  -lt 8.13) { 
+    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.13 ) {
       func_wine_combase }
     func_wine_shell32
     func_wine_wintypes
     func_winmetadata
 
-    winecfg /v win7
+    winecfg /v win10
 
-    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe'}
-    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides'}
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'advapi32' -Value 'native' -PropertyType 'String' -force
-    if([System.Convert]::ToDecimal( $ntdll::wine_get_build_id().split('-').split('(')[1] )  -lt 8.16) {
-        New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'ole32' -Value 'native' -PropertyType 'String' -force }
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'shell32' -Value 'native' -PropertyType 'String' -force
-    if([System.Convert]::ToDecimal( $ntdll::wine_get_build_id().split('-').split('(')[1] )  -lt 8.13) { 
-        New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'combase' -Value 'native' -PropertyType 'String' -force }
-
+    
     (New-Object System.Net.WebClient).DownloadFile('https://aka.ms/vs/17/release/vs_community.exe', "$env:TMP\\vs_Community.exe") 
 
   #  7z x $env:TMP\\installer "-o$env:TMP\\opc" -y ;quit?('7z')
@@ -1606,6 +1886,14 @@ function func_vs22
     # Start-Process  "$env:TMP\\opc\\Contents\\vs_installer.exe" -Verb RunAs -ArgumentList "install --channelId VisualStudio.17.Release --channelUri `"https://aka.ms/vs/17/release/channel`" --productId Microsoft.VisualStudio.Product.Community --add Microsoft.VisualStudio.Workload.VCTools --add `"Microsoft.VisualStudio.Component.VC.Tools.x86.x64`" --add `"Microsoft.VisualStudio.Component.VC.CoreIde`"  --add `"Microsoft.VisualStudio.Component.Windows10SDK.16299`"           --includeRecommended --quiet"
     #& 'C:\Program Files (x86)\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64\cl.exe'  -I"c:\Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/um/"     -I"c:\Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/Shared/"   -I"c:\Program Files (x86)/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.29.30133/include/"  -I"c:\Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/ucrt/" .\code.cpp /link /LIBPATH:"c:/Program Files (x86)/Windows Kits/10/Lib/10.0.19041.0/um/x64/" /LIBPATH:"c:\Program Files (x86)/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.29.30133/lib/x64/" /LIBPATH:"c:/Program Files (x86)/Windows Kits/10/Lib/10.0.19041.0/ucrt/x64/"
 
+if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe'}
+    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides'}
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'advapi32' -Value 'native' -PropertyType 'String' -force
+    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.16 ) {
+        New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'ole32' -Value 'native' -PropertyType 'String' -force }
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'shell32' -Value 'native' -PropertyType 'String' -force
+    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.13 ) {
+        New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'combase' -Value 'native' -PropertyType 'String' -force }
 
     quit?('setup');quit?('vs_installer'); quit?('VSFinalizer'); quit?('devenv')
 
@@ -1614,7 +1902,7 @@ function func_vs22
 
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'sxs' -Value '' -PropertyType 'String' -force
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe' -Name 'Version' -Value 'win7' -PropertyType 'String' -force
-    winecfg /v win10
+    winecfg /v win7
 }
 
 function func_office365
@@ -1742,6 +2030,12 @@ function func_ps2exe
 {
     . "$env:ProgramData\Chocolatey-for-wine\powershell_collected_codesnippets_examples.ps1"
     func_ps2exe2
+}
+
+function func_vanara
+{
+    . "$env:ProgramData\Chocolatey-for-wine\powershell_collected_codesnippets_examples.ps1"
+    func_vanara2
 }
 
 function func_vulkansamples
@@ -3499,11 +3793,11 @@ choco install webview2-runtime
 foreach($i in 'wldp') { dlloverride 'builtin' $i }
 }
 
-<# Main function #>
-if ( $args.count -gt 99) { <#at least gt amount of verbs... #>
+<# Main function #> 
+if ( $args[0] -eq "no_args") {
     $custom_array = @() # Creating an empty array to populate data in; verbs can be found in c:\ProgramData\Chocolatey-for-wine\profile_winetricks_caller.ps1
 
-    for ( $j = 0; $j -lt $args.count; $j+=2 ) { 
+    for ( $j = 1; $j -lt $args.count; $j+=2 ) { 
         $custom_array += New-Object PSObject -Property @{ # Setting up custom array utilizing a PSObject
             name = $args[$j]  
             Description = $args[$j+1]
@@ -3511,5 +3805,5 @@ if ( $args.count -gt 99) { <#at least gt amount of verbs... #>
     }
 }
 
-if ( $args.count -lt 99) { $result =  $args } else { $result = $custom_array  | select name,description | Out-GridView  -PassThru  -Title 'Make a  selection'}
-foreach ($i in $result) { if ( $args.count -lt 99 ) { $call = $i } else { $call = $i.Name }; & $('func_' + $call); }
+if ( !($args[0] -eq "no_args")) { $result =  $args } else { $result = $custom_array  | select name,description | Out-GridView  -PassThru  -Title 'Make a  selection'}
+foreach ($i in $result) { if ( !($args[0] -eq "no_args") ) { $call = $i } else { $call = $i.Name }; & $('func_' + $call); }
