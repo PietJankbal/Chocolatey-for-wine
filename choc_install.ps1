@@ -272,7 +272,7 @@ $profile_winetricks_caller_ps1 = @'
                "Get-PEHeader", "codesnippets from around the internet: add Get-PEHeader to cmdlets, handy to explore dlls imports/exports",
                "access_winrt_from_powershell", "codesnippets from around the internet: howto use Windows Runtime classes in powershell; requires powershell 5.1, so 1st time usage may take very long time!!!",
                "ps2exe", "codesnippets from around the internet: convert a ps1-script into an executable; requires powershell 5.1, so 1st time usage may take very long time!!!"
-
+               
 #https://stackoverflow.com/questions/67356762/couldnt-use-predefined-array-inside-validateset-powershell
 
 for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) { [string[]]$verblist += $Qenu[$j] }
@@ -815,8 +815,8 @@ function QPR_ping { <# ping.exe replacement #>
     start-threadjob -throttle 2 -ScriptBlock {  while(!(Test-Path -Path "$env:TEMP\net48\1025") ) {Sleep 0.25} ;[System.Threading.Thread]::CurrentThread.Priority = 'Highest'; &{ c:\\windows\\system32\\msiexec.exe  /i $env:TEMP\\net48\\netfx_Full_x64.msi EXTUI=1 /sfxlang:1033 /q /norestart} }
 
     $url = @('http://download.windowsupdate.com/msdownload/update/software/crup/2010/06/windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', `
-             'https://mirrors.edge.kernel.org/gentoo/distfiles/5e/arial32.exe', `
-#            'https://mirrors.kernel.org/gentoo/distfiles/arialb32.exe', `
+#            'https://mirrors.edge.kernel.org/gentoo/distfiles/5e/arial32.exe', `
+             'https://github.com/pushcx/corefonts/raw/master/arial32.exe', `
              'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47.dll', `
              'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47_32.dll', `
              'https://github.com/Maximus5/ConEmu/releases/download/v23.07.24/ConEmuPack.230724.7z', `
@@ -846,7 +846,7 @@ function QPR_ping { <# ping.exe replacement #>
     New-Item  -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{DE293FDE-C181-46C0-8DCC-1F75EA35833D}"
     New-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{DE293FDE-C181-46C0-8DCC-1F75EA35833D}" -Name "DisplayName" -Value "ConEmu 230724.x64" -PropertyType 'String' -force
     New-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{DE293FDE-C181-46C0-8DCC-1F75EA35833D}" -Name "DisplayVersion" -Value "11.230.7240" -PropertyType 'String' -force
-    New-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{DE293FDE-C181-46C0-8DCC-1F75EA35833D}" -Name "InstallDate" -Value "20231006" -PropertyType 'String' -force
+    New-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{DE293FDE-C181-46C0-8DCC-1F75EA35833D}" -Name "InstallDate" -Value "$(Get-Date -Format FileDate)" -PropertyType 'String' -force
     New-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{DE293FDE-C181-46C0-8DCC-1F75EA35833D}" -Name "Publisher" -Value "ConEmu-Maximus5" -PropertyType 'String' -force
  
     $misc_reg | Out-File $env:TEMP\\misc.reg
