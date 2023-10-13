@@ -8783,6 +8783,52 @@ Write-Host Reported serialNumber via class [Windows.System.Profile.SystemManufac
 Write-Host ' '
 }
 
+function func_vanara2
+{
+    $wc = New-Object System.Net.WebClient
+
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:Temp,"vanara.core.3.4.16.nupkg")  )) {
+        $wc.DownloadFile('https://globalcdn.nuget.org/packages/vanara.core.3.4.16.nupkg', "$env:Temp\vanara.core.3.4.16.nupkg")
+    } 
+
+    7z e "$env:Temp\vanara.core.3.4.16.nupkg" "-o$env:ProgramFiles\Powershell\7\modules\vanara" "lib/netstandard2.0/Vanara.Core.dll" -y 
+    
+    foreach( $i in '.ntdll', '.shared', '.kernel32', '.gdi32', '.user32' <# vanara #> )
+    {
+        if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:Temp,"vanara.pinvoke$i.3.4.16.nupkg")  )) {
+            $wc.DownloadFile("https://globalcdn.nuget.org/packages/vanara.pinvoke$i.3.4.16.nupkg", "$env:Temp\vanara.pinvoke$i.3.4.16.nupkg")
+        } 
+
+        7z e "$env:Temp\vanara.pinvoke$i.3.4.16.nupkg" "-o$env:ProgramFiles\Powershell\7\modules\vanara" "lib/netstandard2.0/Vanara.PInvoke$i.dll" -y 
+    }
+@'    
+    function Vanara { }
+'@ |Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.psm1 -Force )
+
+@'
+@{
+
+# Version number of this module.
+ModuleVersion = '0.0.1'
+
+# Assemblies that must be loaded prior to importing this module
+ RequiredAssemblies = @("$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.Core.dll" 
+"$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.PInvoke.Gdi32.dll"
+"$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.PInvoke.Kernel32.dll"
+"$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.PInvoke.NtDll.dll"
+"$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.PInvoke.Shared.dll"
+"$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.PInvoke.User32.dll"
+)
+}
+'@ |Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.psd1 -Force ) 
+
+Import-module Vanara
+
+[Vanara.PInvoke.User32]::MessageBox([IntPtr]::Zero,'Do "Import-Module Vanara" to use the functions  ','',0)
+
+}
+
+
 function func_Get-PEHeader2
 {
 $script = @'
