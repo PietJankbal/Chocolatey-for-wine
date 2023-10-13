@@ -236,7 +236,7 @@ $profile_winetricks_caller_ps1 = @'
                "renderer=gl", "renderer=gl",`
                "app_paths", "start new shell with app paths added to the path (permanently), invoke from powershell console!",
                "vs19", "Visual Studio 2019",
-               "vs22", "experimental Visual Studio 2022",
+               "vs22", "WIP, might just not work/be broken, experimental Visual Studio 2022",
                "office365","Microsoft Office365HomePremium (registering does not work, many glitches...)",
                "webview2", "Microsoft Edge WebView2",
                "git.portable","Access to several unix-commands like tar, file, sed etc. etc.",
