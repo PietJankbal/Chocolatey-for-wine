@@ -188,6 +188,7 @@ function QPR.wusa { <# wusa.exe replacement, Query program replacement for wusa.
      exit 0;
 }
 '@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.wusa\QPR.wusa.psm1 -Force )
+
 ################################################################################################################################ 
 #                                                                                                                              #
 #  profile_winetricks_caller.ps1                   #
