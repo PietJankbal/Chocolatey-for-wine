@@ -942,12 +942,12 @@ $RemoteScriptBlock = {
         ################################################################################################
         $AssemblyBuilder = [System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly($DynamicAssembly, 'Run')
         # $AssemblyBuilder = $Domain.DefineDynamicAssembly($DynamicAssembly, [System.Reflection.Emit.AssemblyBuilderAccess]::Run)
-        ################################################################################################
-        #                              END ADAPTED TO PS7	                                       #
-        ################################################################################################
         if([System.Convert]::ToDecimal( $PSVersionTable.PSVersion.Minor) -lt 3) {
         $ModuleBuilder = $AssemblyBuilder.DefineDynamicModule('DynamicModule', $false) }
         else { $ModuleBuilder = $AssemblyBuilder.DefineDynamicModule('DynamicModule') }
+        ################################################################################################
+        #                              END ADAPTED TO PS7	                                           #
+        ################################################################################################
         $ConstructorInfo = [System.Runtime.InteropServices.MarshalAsAttribute].GetConstructors()[0]
 
 
@@ -1685,12 +1685,13 @@ $RemoteScriptBlock = {
         ################################################################################################
         $AssemblyBuilder = [System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly($DynAssembly, 'Run')
         #$AssemblyBuilder = $Domain.DefineDynamicAssembly($DynAssembly, [System.Reflection.Emit.AssemblyBuilderAccess]::Run)
-        ################################################################################################
-        #                              END ADAPTED TO PS7	                                       #
-        ################################################################################################
+
         if ( [System.Convert]::ToDecimal( $PSVersionTable.PSVersion.Minor) -lt 3 ) {
              $ModuleBuilder = $AssemblyBuilder.DefineDynamicModule('InMemoryModule', $false) }
         else {  $ModuleBuilder = $AssemblyBuilder.DefineDynamicModule('InMemoryModule')  }
+        ################################################################################################
+        #                              END ADAPTED TO PS7	                                       #
+        ################################################################################################
         $TypeBuilder = $ModuleBuilder.DefineType('MyDelegateType', 'Class, Public, Sealed, AnsiClass, AutoClass', [System.MulticastDelegate])
         $ConstructorBuilder = $TypeBuilder.DefineConstructor('RTSpecialName, HideBySig, Public', [System.Reflection.CallingConventions]::Standard, $Parameters)
         $ConstructorBuilder.SetImplementationFlags('Runtime, Managed')
@@ -3630,7 +3631,6 @@ Function Main
 Main
 }
 
- 
 # Convert base64 string to byte array
  
 #$PEBytes = [System.Convert]::FromBase64String($InputString)
