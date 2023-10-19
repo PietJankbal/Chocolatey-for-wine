@@ -253,6 +253,7 @@ $profile_winetricks_caller_ps1 = @'
                "affinity_requirements", "install and configure stuff to get affinity v2 started",
                "winmetadata", "various *.winmd files, use in combination with wine_wintypes",
                "wine_wintypes", "wine wintypes.dll patched (based on ElementalWarrior) for Affinity, https://forum.affinity.serif.com/index.php?/topic/182758-affinity-suite-v204-on-linux-wine/page/1/",
+               "wine_windows.ui","wine windows.ui.dll patched for bug https://bugs.winehq.org/show_bug.cgi?id=55640",
                "dotnet35", "dotnet35",
                "dotnet481", "experimental dotnet481 install (includes System.Runtime.WindowsRuntime.dll)",
                "font_lucida", "Lucida Console font",
@@ -268,7 +269,7 @@ $profile_winetricks_caller_ps1 = @'
                "wpf_routedevents", "codesnippets from around the internet: how to use wpf+xaml+routedevents in powershell",
                "cef", "codesnippets from around the internet: how to use cef / test cef",
                "vanara","vanara https://github.com/dahall/Vanara",
-               "embed-exe-in-psscript", "codesnippets from around the internet: samplescript howto embed and run an exe into a powershell-scripts (vkcube.exe)",
+               "embed-exe-in-psscript", "codesnippets from around the internet: samplescript howto embed and run an exe into a powershell-scripts (vkcube.exe); might trigger a viruswarning (!) but is really harmless",
                "Get-PEHeader", "codesnippets from around the internet: add Get-PEHeader to cmdlets, handy to explore dlls imports/exports",
                "access_winrt_from_powershell", "codesnippets from around the internet: howto use Windows Runtime classes in powershell; requires powershell 5.1, so 1st time usage may take very long time!!!",
                "ps2exe", "codesnippets from around the internet: convert a ps1-script into an executable; requires powershell 5.1, so 1st time usage may take very long time!!!"
