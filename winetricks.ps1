@@ -844,6 +844,8 @@ $profile51 = @"
 #FIXME: following causes a hang when running pwsh from ps51 console:
 #`$env:PSModulepath = 'c:\windows\system32\WindowsPowershell\v1.0\Modules' + `$env:PSModulepath
 
+`$env:PSMOdulePath="`$env:SystemRoot\WindowsPowershell\v1.0\Modules"
+
 Import-Module `$env:SystemRoot\system32\WindowsPowerShell\v1.0\Modules\microsoft.powershell.utility\microsoft.powershell.utility.psm1
 
 `$env:PS51 = 1
@@ -1531,6 +1533,18 @@ function func_wine_wintypes <# wine wintypes #>
     foreach($i in $(verb).substring(5) ) { dlloverride 'native' $i }
 } <# end wintypes #>
 
+function func_wine_windows.ui <# wine windows.ui #>
+{
+    if( ![System.IO.File]::Exists( $([IO.Path]::Combine($cachedir,  $(verb), "$(verb).7z") ) ) ){
+        w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
+    }
+
+    foreach ($i in $(verb).substring(5) ){
+        7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$env:systemroot\system32" "64/$i.dll" -aoa | Select-String 'ok' 
+        7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
+    foreach($i in $(verb).substring(5) ) { dlloverride 'native' $i }
+} <# end windows.ui #>
+
 function func_wine_dxcore <# dxcore #>
 {
     $dldir = "dxcore"
@@ -1910,7 +1924,6 @@ function func_office365
 winecfg /v win10
 func_msxml6
 func_riched20
-#func_windowscodecs
 #func_wine_ole32
 func_wine_sppc
 
@@ -2010,8 +2023,20 @@ function func_wpf_routedevents
 
 function func_embed-exe-in-psscript
 {
-    . "$env:ProgramData\Chocolatey-for-wine\powershell_collected_codesnippets_examples.ps1"
-    func_embed-exe-in-psscript2
+    if (![System.IO.File]::Exists(  "$env:ProgramData\Chocolatey-for-wine\embed-exe-in-psscript.ps1"  )) {
+        Add-Type -AssemblyName System.Windows.Forms
+        $result = [System.Windows.Forms.MessageBox]::Show("Using this verb might likely trigger a viruswarning, but this script is actually really harmless. Download the script now? " , "Info" , 4)
+        if ($result -eq 'Yes') {
+            (New-Object System.Net.WebClient).DownloadFile('https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/embed-exe-in-psscript.ps1', "$env:ProgramData\Chocolatey-for-wine\embed-exe-in-psscript.ps1" )
+        . "$env:ProgramData\Chocolatey-for-wine\embed-exe-in-psscript.ps1"
+        func_embed-exe-in-psscript2
+        }
+        elseif ($result -eq 'No') { return } 
+    }
+    else {
+        . "$env:ProgramData\Chocolatey-for-wine\embed-exe-in-psscript.ps1"
+        func_embed-exe-in-psscript2
+    }
 }
 
 function func_Get-PEHeader
@@ -3795,15 +3820,8 @@ foreach($i in 'wldp') { dlloverride 'builtin' $i }
 
 <# Main function #> 
 if ( $args[0] -eq "no_args") {
-    $custom_array = @() # Creating an empty array to populate data in; verbs can be found in c:\ProgramData\Chocolatey-for-wine\profile_winetricks_caller.ps1
-
-    for ( $j = 1; $j -lt $args.count; $j+=2 ) { 
-        $custom_array += New-Object PSObject -Property @{ # Setting up custom array utilizing a PSObject
-            name = $args[$j]  
-            Description = $args[$j+1]
-        }
-    }
+    $custom_array = @()
+    for ( $j = 1; $j -lt $args.count; $j+=2 ) { $custom_array += [PSCustomObject]@{ name = $args[$j]; Description = $args[$j+1] } } 
+    $args =  $($custom_array  | select name,description | Out-GridView  -PassThru  -Title 'Make a  selection').name
 }
-
-if ( !($args[0] -eq "no_args")) { $result =  $args } else { $result = $custom_array  | select name,description | Out-GridView  -PassThru  -Title 'Make a  selection'}
-foreach ($i in $result) { if ( !($args[0] -eq "no_args") ) { $call = $i } else { $call = $i.Name }; & $('func_' + $call); }
+foreach ($i in $args) { & $('func_' + $i); }
