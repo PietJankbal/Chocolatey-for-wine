@@ -1,4 +1,3 @@
-
 function func_wpf_xaml2
 {
 <# Author      : Jim Moyle @jimmoyle   GitHub      : https://github.com/JimMoyle/GUIDemo #>
