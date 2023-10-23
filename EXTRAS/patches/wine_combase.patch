@@ -1,0 +1,23 @@
+diff --git a/dlls/combase/roapi.c b/dlls/combase/roapi.c
+index b80ca2e8325..accfe63d489 100644
+--- a/dlls/combase/roapi.c
++++ b/dlls/combase/roapi.c
+@@ -202,10 +202,14 @@ HRESULT WINAPI RoGetParameterizedTypeInstanceIID(UINT32 name_element_count, cons
+                                                  const IRoMetaDataLocator *meta_data_locator, GUID *iid,
+                                                  ROPARAMIIDHANDLE *hiid)
+ {
+-    FIXME("stub: %d %p %p %p %p\n", name_element_count, name_elements, meta_data_locator, iid, hiid);
+-    if (iid) *iid = GUID_NULL;
+-    if (hiid) *hiid = INVALID_HANDLE_VALUE;
+-    return E_NOTIMPL;
++	int i;
++	
++	for (i=0;i<name_element_count;i++) {    FIXME("stub: %d %s %p %p %p\n", name_element_count, debugstr_w(name_elements[i]), meta_data_locator, iid, hiid);}
++
++     GUID testGuid = {0xFFFFFFFF, 0xFFFF, 0xFFFF, {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF}};
++    if (iid) *iid = testGuid; //GUID_NULL;
++    if (hiid) *hiid = (HANDLE)0xfefefafa; //INVALID_HANDLE_VALUE;
++    return S_OK;//E_NOTIMPL;
+ }
+ 
+ /***********************************************************************

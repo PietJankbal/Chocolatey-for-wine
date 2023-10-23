@@ -1,5 +1,3 @@
-patch by Myah Caron https://gitlab.winehq.org/wine/wine/-/merge_requests/3931/diffs#2d58bfd02f84fb515eac8481c7e4e5209f29c7f2
-
 diff --git a/dlls/windows.ui/Makefile.in b/dlls/windows.ui/Makefile.in
 index 592d023f353..4fafcbfe869 100644
 --- a/dlls/windows.ui/Makefile.in
@@ -12,9 +10,18 @@ index 592d023f353..4fafcbfe869 100644
  C_SRCS = \
  	main.c \
 diff --git a/dlls/windows.ui/uisettings.c b/dlls/windows.ui/uisettings.c
-index 041388da33b..cba295eee39 100644
+index 041388da33b..bdb2495507d 100644
 --- a/dlls/windows.ui/uisettings.c
 +++ b/dlls/windows.ui/uisettings.c
+@@ -224,7 +224,7 @@ static HRESULT WINAPI uisettings2_add_TextScaleFactorChanged( IUISettings2 *ifac
+         EventRegistrationToken *cookie )
+ {
+     FIXME( "iface %p, handler %p, cookie %p stub!\n", iface, handler, cookie );
+-    return E_NOTIMPL;
++    return 0;//E_NOTIMPL;
+ }
+ 
+ static HRESULT WINAPI uisettings2_remove_TextScaleFactorChanged( IUISettings2 *iface, EventRegistrationToken cookie )
 @@ -274,9 +274,23 @@ static void set_color_value( BYTE a, BYTE r, BYTE g, BYTE b, Color *out )
      out->B = b;
  }
@@ -95,3 +102,12 @@ index 041388da33b..cba295eee39 100644
  
      TRACE( "Returning value.A = %d, value.R = %d, value.G = %d, value.B = %d\n", value->A, value->R, value->G, value->B );
      return S_OK;
+@@ -303,7 +355,7 @@ static HRESULT WINAPI uisettings3_GetColorValue( IUISettings3 *iface, UIColorTyp
+ static HRESULT WINAPI uisettings3_add_ColorValuesChanged( IUISettings3 *iface, ITypedEventHandler_UISettings_IInspectable *handler, EventRegistrationToken *cookie )
+ {
+     FIXME( "iface %p, handler %p, cookie %p stub!\n", iface, handler, cookie );
+-    return E_NOTIMPL;
++    return 0;
+ }
+ 
+ static HRESULT WINAPI uisettings3_remove_ColorValuesChanged( IUISettings3 *iface, EventRegistrationToken cookie )
