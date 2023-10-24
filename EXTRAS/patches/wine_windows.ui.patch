@@ -1,3 +1,13 @@
+From 999f50aaf6506f6791561868f1ba0cba5d0b6625 Mon Sep 17 00:00:00 2001
+From: Myah Caron <qsniyg@protonmail.com>
+Date: Fri, 22 Sep 2023 20:41:23 +0000
+Subject: [PATCH] windows.ui: Support accent colors in
+ uisettings3_GetColorValue.
+
+Wine-Bug: https://bugs.winehq.org/show_bug.cgi?id=55640
+Signed-off-by: Myah Caron <qsniyg@protonmail.com>
+
+
 diff --git a/dlls/windows.ui/Makefile.in b/dlls/windows.ui/Makefile.in
 index 592d023f353..4fafcbfe869 100644
 --- a/dlls/windows.ui/Makefile.in
