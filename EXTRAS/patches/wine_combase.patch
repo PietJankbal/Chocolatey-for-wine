@@ -1,3 +1,25 @@
+diff --git a/dlls/combase/marshal.c b/dlls/combase/marshal.c
+index 84f57b8c1c8..d188b83971c 100644
+--- a/dlls/combase/marshal.c
++++ b/dlls/combase/marshal.c
+@@ -1388,7 +1388,7 @@ static HRESULT WINAPI ProxyCliSec_QueryBlanket(IClientSecurity *iface,
+     if (pCapabilities)
+         *pCapabilities = EOAC_NONE;
+ 
+-    return E_NOTIMPL;
++    return S_OK;
+ }
+ 
+ static HRESULT WINAPI ProxyCliSec_SetBlanket(IClientSecurity *iface,
+@@ -1402,7 +1402,7 @@ static HRESULT WINAPI ProxyCliSec_SetBlanket(IClientSecurity *iface,
+     FIXME("%p, %ld, %ld, %s, %ld, %ld, %p, %#lx: stub\n", pProxy, AuthnSvc, AuthzSvc,
+           pServerPrincName == COLE_DEFAULT_PRINCIPAL ? "<default principal>" : debugstr_w(pServerPrincName),
+           AuthnLevel, ImpLevel, pAuthInfo, Capabilities);
+-    return E_NOTIMPL;
++    return S_OK;
+ }
+ 
+ static HRESULT WINAPI ProxyCliSec_CopyProxy(IClientSecurity *iface,
 diff --git a/dlls/combase/roapi.c b/dlls/combase/roapi.c
 index b80ca2e8325..accfe63d489 100644
 --- a/dlls/combase/roapi.c
