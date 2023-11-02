@@ -1,0 +1,97 @@
+patch by Myah Caron https://gitlab.winehq.org/wine/wine/-/merge_requests/3931/diffs#2d58bfd02f84fb515eac8481c7e4e5209f29c7f2
+
+diff --git a/dlls/windows.ui/Makefile.in b/dlls/windows.ui/Makefile.in
+index 592d023f353..4fafcbfe869 100644
+--- a/dlls/windows.ui/Makefile.in
++++ b/dlls/windows.ui/Makefile.in
+@@ -1,5 +1,5 @@
+ MODULE  = windows.ui.dll
+-IMPORTS = combase advapi32
++IMPORTS = combase advapi32 user32
+ 
+ C_SRCS = \
+ 	main.c \
+diff --git a/dlls/windows.ui/uisettings.c b/dlls/windows.ui/uisettings.c
+index 041388da33b..cba295eee39 100644
+--- a/dlls/windows.ui/uisettings.c
++++ b/dlls/windows.ui/uisettings.c
+@@ -274,9 +274,23 @@ static void set_color_value( BYTE a, BYTE r, BYTE g, BYTE b, Color *out )
+     out->B = b;
+ }
+ 
++static BYTE darken_single_color( BYTE color, float darken )
++{
++    return (BYTE)(color + ((color / 256.0) * darken));
++}
++
++static void darken_dword_to_color( DWORD color, float darken, Color *out )
++{
++    out->R = darken_single_color(color & 0xFF, darken);
++    out->G = darken_single_color((color >> 8) & 0xFF, darken);
++    out->B = darken_single_color((color >> 16) & 0xFF, darken);
++    out->A = (color >> 24) & 0xFF;
++}
++
+ static HRESULT WINAPI uisettings3_GetColorValue( IUISettings3 *iface, UIColorType type, Color *value )
+ {
+     DWORD theme;
++    DWORD highlight = 0;
+ 
+     TRACE( "iface %p, type %d, value %p.\n", iface, type, value );
+ 
+@@ -286,15 +300,53 @@ static HRESULT WINAPI uisettings3_GetColorValue( IUISettings3 *iface, UIColorTyp
+     case UIColorType_Background:
+         theme = get_app_theme();
+         break;
++    case UIColorType_Accent:
++    case UIColorType_AccentDark1:
++    case UIColorType_AccentDark2:
++    case UIColorType_AccentDark3:
++    case UIColorType_AccentLight1:
++    case UIColorType_AccentLight2:
++    case UIColorType_AccentLight3:
++        if (type != UIColorType_Accent)
++            FIXME( "type %d: returning dummy color.\n", type );
++        highlight = GetSysColor(COLOR_HIGHLIGHT);
++        break;
+     default:
+         FIXME( "type %d not implemented.\n", type );
+         return E_NOTIMPL;
+     }
+ 
+-    if (type == UIColorType_Foreground)
++    switch (type)
++    {
++    case UIColorType_Foreground:
+         set_color_value( 255, theme ? 0 : 255, theme ? 0 : 255, theme ? 0 : 255, value );
+-    else
++        break;
++    case UIColorType_Background:
+         set_color_value( 255, theme ? 255 : 0, theme ? 255 : 0, theme ? 255 : 0, value );
++        break;
++    case UIColorType_Accent:
++        darken_dword_to_color( highlight, 0.0, value );
++        break;
++    case UIColorType_AccentDark1:
++        darken_dword_to_color( highlight, 0.2, value );
++        break;
++    case UIColorType_AccentDark2:
++        darken_dword_to_color( highlight, 0.4, value );
++        break;
++    case UIColorType_AccentDark3:
++        darken_dword_to_color( highlight, 0.6, value );
++        break;
++    case UIColorType_AccentLight1:
++        darken_dword_to_color( highlight, -0.2, value );
++        break;
++    case UIColorType_AccentLight2:
++        darken_dword_to_color( highlight, -0.4, value );
++        break;
++    case UIColorType_AccentLight3:
++        darken_dword_to_color( highlight, -0.6, value );
++        break;
++    default: break; /* silence warning */
++    }
+ 
+     TRACE( "Returning value.A = %d, value.R = %d, value.G = %d, value.B = %d\n", value->A, value->R, value->G, value->B );
+     return S_OK;

@@ -1,0 +1,205 @@
+A bunch of sad hacks + patch below
+
+From 3b2495a7bd1740bcb4f946f92da7dee40ec10d03 Mon Sep 17 00:00:00 2001
+From: Paul Gofman <pgofman@codeweavers.com>
+Date: Tue, 12 Sep 2023 14:47:07 -0600
+Subject: [PATCH 1/2] combase/tests: Add tests for implicit MTA with
+ RoGetActivationFactory().
+
+diff --git a/dlls/combase/apartment.c b/dlls/combase/apartment.c
+index d679ef3407a..92f1e32c502 100644
+--- a/dlls/combase/apartment.c
++++ b/dlls/combase/apartment.c
+@@ -1157,6 +1157,11 @@ void leave_apartment(struct tlsdata *data)
+         if (data->ole_inits)
+             WARN( "Uninitializing apartment while Ole is still initialized\n" );
+         apartment_release(data->apt);
++        if (data->implicit_mta_cookie)
++        {
++            apartment_decrement_mta_usage(data->implicit_mta_cookie);
++            data->implicit_mta_cookie = NULL;
++        }
+         data->apt = NULL;
+         data->flags &= ~(OLETLS_DISABLE_OLE1DDE | OLETLS_APARTMENTTHREADED | OLETLS_MULTITHREADED);
+     }
+@@ -1288,3 +1293,29 @@ void apartment_global_cleanup(void)
+     apartment_release_dlls();
+     DeleteCriticalSection(&apt_cs);
+ }
++
++HRESULT ensure_mta(void)
++{
++    struct apartment *apt;
++    struct tlsdata *data;
++    HRESULT hr;
++
++    if (FAILED(hr = com_get_tlsdata(&data)))
++        return hr;
++    if ((apt = data->apt) && (data->implicit_mta_cookie || apt->multi_threaded))
++        return S_OK;
++
++    EnterCriticalSection(&apt_cs);
++    if (apt || mta)
++        hr = apartment_increment_mta_usage(&data->implicit_mta_cookie);
++    else
++        hr = CO_E_NOTINITIALIZED;
++    LeaveCriticalSection(&apt_cs);
++
++    if (FAILED(hr))
++    {
++        ERR("Failed, hr %#lx.\n", hr);
++        return hr;
++    }
++    return S_OK;
++}
+diff --git a/dlls/combase/combase.c b/dlls/combase/combase.c
+index f1b5828e0f8..e072c169953 100644
+--- a/dlls/combase/combase.c
++++ b/dlls/combase/combase.c
+@@ -407,6 +407,9 @@ static void com_cleanup_tlsdata(void)
+ 
+     if (tlsdata->apt)
+         apartment_release(tlsdata->apt);
++    if (tlsdata->implicit_mta_cookie)
++        apartment_decrement_mta_usage(tlsdata->implicit_mta_cookie);
++
+     if (tlsdata->errorinfo)
+         IErrorInfo_Release(tlsdata->errorinfo);
+     if (tlsdata->state)
+diff --git a/dlls/combase/combase_private.h b/dlls/combase/combase_private.h
+index 53932e9a357..04d251962ec 100644
+--- a/dlls/combase/combase_private.h
++++ b/dlls/combase/combase_private.h
+@@ -92,6 +92,7 @@ struct tlsdata
+     struct list       spies;         /* Spies installed with CoRegisterInitializeSpy */
+     DWORD             spies_lock;
+     DWORD             cancelcount;
++    CO_MTA_USAGE_COOKIE implicit_mta_cookie; /* mta referenced by roapi from sta thread */
+ };
+ 
+ extern HRESULT WINAPI InternalTlsAllocData(struct tlsdata **data);
+@@ -161,6 +162,7 @@ void apartment_release(struct apartment *apt);
+ struct apartment * apartment_get_current_or_mta(void);
+ HRESULT apartment_increment_mta_usage(CO_MTA_USAGE_COOKIE *cookie);
+ void apartment_decrement_mta_usage(CO_MTA_USAGE_COOKIE cookie);
++HRESULT ensure_mta(void);
+ struct apartment * apartment_get_mta(void);
+ HRESULT apartment_get_inproc_class_object(struct apartment *apt, const struct class_reg_data *regdata,
+         REFCLSID rclsid, REFIID riid, DWORD class_context, void **ppv);
+diff --git a/dlls/combase/marshal.c b/dlls/combase/marshal.c
+index 84f57b8c1c8..d188b83971c 100644
+--- a/dlls/combase/marshal.c
++++ b/dlls/combase/marshal.c
+@@ -1388,7 +1388,7 @@ static HRESULT WINAPI ProxyCliSec_QueryBlanket(IClientSecurity *iface,
+     if (pCapabilities)
+         *pCapabilities = EOAC_NONE;
+ 
+-    return E_NOTIMPL;
++    return S_OK;
+ }
+ 
+ static HRESULT WINAPI ProxyCliSec_SetBlanket(IClientSecurity *iface,
+@@ -1402,7 +1402,7 @@ static HRESULT WINAPI ProxyCliSec_SetBlanket(IClientSecurity *iface,
+     FIXME("%p, %ld, %ld, %s, %ld, %ld, %p, %#lx: stub\n", pProxy, AuthnSvc, AuthzSvc,
+           pServerPrincName == COLE_DEFAULT_PRINCIPAL ? "<default principal>" : debugstr_w(pServerPrincName),
+           AuthnLevel, ImpLevel, pAuthInfo, Capabilities);
+-    return E_NOTIMPL;
++    return S_OK;
+ }
+ 
+ static HRESULT WINAPI ProxyCliSec_CopyProxy(IClientSecurity *iface,
+diff --git a/dlls/combase/roapi.c b/dlls/combase/roapi.c
+index b80ca2e8325..dd914c39d06 100644
+--- a/dlls/combase/roapi.c
++++ b/dlls/combase/roapi.c
+@@ -24,6 +24,8 @@
+ #include "roerrorapi.h"
+ #include "winstring.h"
+ 
++#include "combase_private.h"
++
+ #include "wine/debug.h"
+ 
+ WINE_DEFAULT_DEBUG_CHANNEL(combase);
+@@ -154,13 +156,59 @@ HRESULT WINAPI RoGetActivationFactory(HSTRING classid, REFIID iid, void **class_
+     if (!iid || !class_factory)
+         return E_INVALIDARG;
+ 
++    if (FAILED(hr = ensure_mta()))
++        return hr;
++
+     hr = get_library_for_classid(WindowsGetStringRawBuffer(classid, NULL), &library);
+     if (FAILED(hr))
+     {
+-        ERR("Failed to find library for %s\n", debugstr_hstring(classid));
+-        return hr;
++        ERR("Failed to find library for %s,trying again with some dummy dll;\n", debugstr_hstring(classid));
++        
++        static const struct
++        {
++            const WCHAR *reg_entry;
++            const WCHAR *dll;
++        }
++        a[] =
++        {
++            {L"Windows.Foundation.Diagnostics.AsyncCausalityTracer", L"c:\\windows\\system32\\combase.dll"},
++            {L"Windows.UI.Xaml.Application", L"c:\\windows\\system32\\Windows.UI.Xaml.dll"},
++            {L"Windows.UI.Xaml.Hosting.WindowsXamlManager", L"c:\\windows\\system32\\Windows.UI.Xaml.dll"}, 
++        };
++        
++        int i;
++        HKEY hkey_main=0;
++        WCHAR buf[MAX_PATH] = L"";
++        BOOL found = FALSE;
++        
++       for(i=0; i<ARRAY_SIZE(a);i++) {
++           if(!wcsicmp(a[i].reg_entry, WindowsGetStringRawBuffer(classid, NULL)) ) {
++			   
++			   found = TRUE;
++			   FIXME("Trying to load a dummy dll for %ls, expect problems; Consider copying a native %ls to sysdirs, maybe you're lucky...\n", a[i].dll, a[i].dll);
++			   
++               buf[0] = 0;
++               RegCreateKeyExW( HKEY_LOCAL_MACHINE, wcscat(wcscat(buf, L"Software\\Microsoft\\WindowsRuntime\\ActivatableClassId\\"), WindowsGetStringRawBuffer(classid, NULL) ), 0, 0, 0, KEY_READ|KEY_WRITE|KEY_WOW64_64KEY, 0, &hkey_main,0 );
++               RegSetValueExW(hkey_main, L"DllPath", 0, REG_SZ, (BYTE *)a[i].dll, (lstrlenW(a[i].dll) + 1) * sizeof(WCHAR));
++               RegCloseKey(hkey_main);
++               
++               buf[0] = 0; hkey_main=0;
++               RegCreateKeyExW( HKEY_LOCAL_MACHINE, wcscat(wcscat(buf, L"Software\\Microsoft\\WindowsRuntime\\ActivatableClassId\\"), WindowsGetStringRawBuffer(classid, NULL) ), 0, 0, 0, KEY_READ|KEY_WRITE|KEY_WOW64_32KEY, 0, &hkey_main,0 );
++               RegSetValueExW(hkey_main, L"DllPath", 0, REG_SZ, (BYTE *)a[i].dll, (lstrlenW(a[i].dll) + 1) * sizeof(WCHAR));
++               RegCloseKey(hkey_main);    
++               
++               buf[0] = 0;
++               CopyFileW(L"c:\\windows\\system32\\windows.ui.dll", a[i].dll, TRUE);
++               CopyFileW(L"c:\\windows\\syswow64\\windows.ui.dll",wcscat( wcscat(buf, L"c:\\windows\\syswow64"), wcsrchr(a[i].dll,L'\\') ), TRUE);
++
++               // try again
++               hr = get_library_for_classid(WindowsGetStringRawBuffer(classid, NULL), &library);
++           }
++        }
++    if(!found) ERR("No idea what dll to load for classid %ls; patch me with correct entries  \n", WindowsGetStringRawBuffer(classid, NULL));
++    if (FAILED(hr)) {ERR("Failed to find library for %ls\n", WindowsGetStringRawBuffer(classid, NULL)); return hr;}
+     }
+-
++    
+     if (!(module = LoadLibraryW(library)))
+     {
+         ERR("Failed to load module %s\n", debugstr_w(library));
+@@ -202,10 +250,14 @@ HRESULT WINAPI RoGetParameterizedTypeInstanceIID(UINT32 name_element_count, cons
+                                                  const IRoMetaDataLocator *meta_data_locator, GUID *iid,
+                                                  ROPARAMIIDHANDLE *hiid)
+ {
+-    FIXME("stub: %d %p %p %p %p\n", name_element_count, name_elements, meta_data_locator, iid, hiid);
+-    if (iid) *iid = GUID_NULL;
+-    if (hiid) *hiid = INVALID_HANDLE_VALUE;
+-    return E_NOTIMPL;
++	int i;
++	
++	for (i=0;i<name_element_count;i++) {    FIXME("stub: %d %s %p %p %p\n", name_element_count, debugstr_w(name_elements[i]), meta_data_locator, iid, hiid);}
++
++     GUID testGuid = {0xFFFFFFFF, 0xFFFF, 0xFFFF, {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF}};
++    if (iid) *iid = testGuid; //GUID_NULL;
++    if (hiid) *hiid = (HANDLE)0xfefefafa; //INVALID_HANDLE_VALUE;
++    return S_OK;//E_NOTIMPL;
+ }
+ 
+ /***********************************************************************
