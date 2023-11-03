@@ -15,7 +15,9 @@ Optional:
   '$HOME/.cache/choc_install_files' and they don't need to be downloaded again if you create a new prefix)
 
 Optional:
-- Install (rudimentary) powershell 5.1 via winetricks (see below) to get better compability: occasionally a chocolatey install scripts might fail as it is written for Windows Powershell (not for Powershell Core). Installing powershell 5.1 probably helps workaround this (you then just run 'ps51 choco.exe install some_app' instead of 'choco install some_app')). 
+- Install (rudimentary) powershell 5.1 via winetricks (see below) to get better compability: occasionally a chocolatey install scripts might fail as it is written for Windows Powershell (not for Powershell Core). Installing powershell 5.1 and enabling builtin powershell host probably helps workaround this:
+- winetricks ps51 (takes very long time to complete!)
+- choco.exe feature enable --name=powershellHost 
   
 ![Screenshot from 2022-08-26 12-31-18](https://user-images.githubusercontent.com/26839562/186885380-d5a617c4-9cf4-4831-a475-2bd85a3b5784.png)
 
