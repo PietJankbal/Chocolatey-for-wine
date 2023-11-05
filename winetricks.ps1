@@ -431,12 +431,14 @@ function func_expand
         }
 
         func_msdelta
+        iex "$env:ProgramData\\chocolatey\\tools\\shimgen.exe --output=`"$env:ProgramData`"\\chocolatey\\bin\\expnd.exe --path=`"$env:SystemRoot`"\\system32\\expnd\\expand.exe"
     }
 
     if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe'}
     if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe\\DllOverrides'}
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe\\DllOverrides' -Name 'cabinet' -Value 'native,builtin' -PropertyType 'String' -force
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\expand.exe\\DllOverrides' -Name 'msdelta' -Value 'native,builtin' -PropertyType 'String' -force
+
 } <# end expand #>
 
 function func_mshtml
@@ -924,7 +926,7 @@ if ((Get-process -Name powershell_ise -erroraction silentlycontinue)) {
     Copy-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.management.infrastructure.native.dll" -Destination (New-item -Name "Microsoft.Management.Infrastructure\v4.0_1.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_64" -Force) -Force 
     Copy-Item -Path "$env:systemroot\syswow64\WindowsPowershell\v1.0\microsoft.management.infrastructure.native.dll" -Destination (New-item -Name "Microsoft.Management.Infrastructure\v4.0_1.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_32" -Force) -Force 
 
-    if ( ( (Get-PSCallStack)[1].Command -ne 'func_ps51_ise') -and ( (Get-PSCallStack)[1].Command -ne 'func_access_winrt_from_powershell2')  ) { ps51 }
+    #if ( ( (Get-PSCallStack)[1].Command -ne 'func_ps51_ise') -and ( (Get-PSCallStack)[1].Command -ne 'func_access_winrt_from_powershell2')  ) { ps51 }
 
 } <# end ps51 #>
 
@@ -1071,6 +1073,28 @@ function func_uianimation <# experimental... #>
 
     foreach($i in 'uianimation') { dlloverride 'native' $i }
 } <# end uianimation #>
+
+function func_dcomp <# experimental... #>
+{
+    $url = "http://download.windowsupdate.com/c/msdownload/update/software/updt/2016/11/windows10.0-kb3205436-x64_45c915e7a85a7cc7fc211022ecd38255297049c3.msu"
+    $cab = "Windows10.0-KB3205436-x64.cab"
+    $sourcefile = @('dcomp.dll')
+
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
+        check_msu_sanity $url $cab;
+        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\amd64*" "$cachedir\$(verb)\wow*" ; quit?('7z')
+
+        foreach($i in 'amd64', 'x86', 'wow64') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" }
+    }
+
+    Remove-Item -Force "$cachedir\$(verb)\$cab" -ErrorAction SilentlyContinue
+
+    7z e "$cachedir\$(verb)\$(verb).7z" "amd64*\*" -o"$env:systemroot\\system32" -aoa
+    7z e "$cachedir\$(verb)\$(verb).7z" "wow64*\*" -o"$env:systemroot\\syswow64" -aoa
+
+    foreach($i in 'dcomp') { dlloverride 'native' $i }
+} <# end dcomp #>
 
 function func_dshow
 {
@@ -1494,11 +1518,15 @@ function func_wine_ole32 <# wine ole32 with some hack  #>
 
 function func_wine_combase <# wine combase with some hacks  #>
 {
+    if( [System.IO.File]::Exists( $([IO.Path]::Combine($cachedir,  $(verb), "$(verb).7z") )) -and ( (Get-FileHash  "$cachedir\$(verb)\$(verb).7z").Hash -ne '2DA34A53C4F1C6932BA0B55293CB6EBEFA6169CE8AD536836C48799A4169EFF3') )  {
+        Remove-Item -Force  "$cachedir\$(verb)\$(verb).7z" 
+    }
     w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
 
     foreach ($i in $(verb).substring(5) ){
         7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$env:systemroot\system32" "64/$i.dll" -aoa | Select-String 'ok' 
         7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
+    foreach($i in $(verb).substring(5) ) { dlloverride 'native' $i }
 } <# end combase #>
 
 function func_wine_shell32 <# wine shell32 with some hacks  #>
@@ -1535,26 +1563,17 @@ function func_wine_wintypes <# wine wintypes #>
 
 function func_wine_windows.ui <# wine windows.ui #>
 {
-    if( ![System.IO.File]::Exists( $([IO.Path]::Combine($cachedir,  $(verb), "$(verb).7z") ) ) ){
-        w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
+    if( [System.IO.File]::Exists( $([IO.Path]::Combine($cachedir,  $(verb), "$(verb).7z") )) -and ( (Get-FileHash  "$cachedir\$(verb)\$(verb).7z").Hash -ne '896A301B19F1FBED85C23D0A2DDD55B0457E35C22B5725598F895A0C8E4C0FA6') )  {
+        Remove-Item -Force  "$cachedir\$(verb)\$(verb).7z" 
     }
+    w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
+
 
     foreach ($i in $(verb).substring(5) ){
         7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$env:systemroot\system32" "64/$i.dll" -aoa | Select-String 'ok' 
         7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
     foreach($i in $(verb).substring(5) ) { dlloverride 'native' $i }
 } <# end windows.ui #>
-
-function func_wine_dxcore <# dxcore #>
-{
-    $dldir = "dxcore"
-    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_dxcore.7z" "wine_dxcore.7z"
-    w_download_to "$dldir" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_ext-ms-win-dxcore-l1-1-0.7z" "wine_ext-ms-win-dxcore-l1-1-0.7z"
-
-    foreach ($i in 'dxcore.dll', 'ext-ms-win-dxcore-l1-1-0.dll'){
-        7z e $cachedir\\$dldir\\wine_$($i.split('.')[0]).7z "-o$env:systemroot\system32" 64/$i -aoa | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1]);quit?('7z')
-        7z e $cachedir\\\\$dldir\\wine_$($i.split('.')[0]).7z "-o$env:systemroot\syswow64" 32/$i -aoa | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1]); quit?('7z') }
-} <# end dxcore #>
 
 function func_wine_hnetcfg <# fix for https://bugs.winehq.org/show_bug.cgi?id=45432 #>
 {
@@ -1748,6 +1767,239 @@ function func_dxvk20
 
 function func_ping <# fake ping for when wine's ping fails due to permission issues  #>
 {
+@'
+#https://stackoverflow.com/questions/53522016/how-to-measure-tcp-and-icmp-connection-time-on-remote-machine-like-ping
+function QPR_ping { <# ping.exe replacement #>
+    <#
+        .SYNOPSIS
+            Implementation PS du ping + tcp-Ping
+        .DESCRIPTION
+            retourne les temps de reponce ICMP (port 0) et TCP (port 1-65535)
+        .PARAMETER HostAddress
+            HostName ou IP a tester,
+            pour le HostName une resolution DNS est faite a chaque boucle
+        .PARAMETER ports
+            Liste des ports TCP-IP a tester, le port 0 pour l'ICMP
+        .PARAMETER timeout
+            TimeOut des test individuel
+        .PARAMETER loop
+            nombre de boucle a effectuer, par defaut Infini
+        .PARAMETER Intervale
+            intervale entre chaque series de test
+        .PARAMETER ComputerName
+            permet de faire ce Ping en total remote,
+            si ComputerName est fournis, joignable et different de localhost alors c'est lui qui executera ce code et retourne le resultat
+            Requiere "Enable-PSRemoting -force"
+        .EXAMPLE
+            Ping sur ICMP + TCP:53,80,666 timeout 80ms (par test)
+            Ping 8.8.8.8 -ports 0,53,80,666 -timeout 80 | ft
+        .EXAMPLE
+            3 ping en remote depuis le serveur vdiv05 sur ICMP,3389,6516 le tous dans une jolie fenetre
+            ping 10.48.50.27 0,3389,6516 -ComputerName vdiv05 -count 3 | Out-GridView
+        .NOTES
+            Alban LOPEZ 2018
+            alban.lopez @t gmail.com
+        #>
+    Param(
+        [string]$HostAddress = 'vps.opt2', 
+        [ValidateRange(0, 65535)]
+        [int[]]$ports =  @(80),                                         # @(0, 22, 135), 
+        [ValidateRange(0, 2000)]
+        [int]$timeout = 200,
+        [int32]$n = 4,                                  # [int32]::MaxValue,  68 annees !
+        [ValidateSet(250, 500, 1000, 2000, 4000, 10000)]
+        [int]$Intervale = 2000,
+        $l = 32,                                                        # 1Kb,
+        $ComputerName = $null
+    )
+    
+    
+    
+    begin {     
+        if ($computerName -and $computerName -notmatch "^(\.|localhost|127.0.0.1)$|^$($env:computername)" -and (Test-TcpPort -DestNodes $computerName -ConfirmIfDown)) {
+            $pingScriptBlock = Include-ToScriptblock -functions 'write-logStep', 'write-color', 'Write-Host', 'ping', 'Test-TcpPort', 'Include-ToScriptblock'
+        } else {
+            $ComputerName = $null
+            $ObjPing = [pscustomobject]@{
+                DateTime   = $null
+                IP         = $null
+                Status     = $null
+                hasChanged = $null
+            }
+            $ObjPings = $test = @()
+            if (!$ports) {$ports = @(0)}
+            $Ports | ForEach-Object {
+                if ($_) {
+                    # TCP
+                    $ObjPing | Add-Member -MemberType NoteProperty -Name "Tcp-$_" -Value $null
+                    $test += "Tcp-$_"
+                }
+                else {
+                    # ICMP
+                    $ping = new-object System.Net.NetworkInformation.Ping
+                    $ObjPing | Add-Member -MemberType NoteProperty -Name ICMP -Value $null
+
+                    $ObjPing | Add-Member -MemberType NoteProperty -Name 'ICMP-Ttl' -Value $null
+                    # $ObjPing | Add-Member -MemberType NoteProperty -Name 'ICMP-Size' -Value $l
+                    $buffer = [byte[]](1..$l | ForEach-Object {get-random -Minimum 20 -Maximum 255})
+                    $test += "ICMP ($l Octs)"
+                }
+            }
+            # Write-LogStep -prefixe 'L.%Line% Ping' "Ping [$DestNode] ", ($test -join(' + ')) ok
+        }
+        
+    #statistics calculations
+    $averageTime = -1;
+    $minimumTime = $timeout;
+    $maximumTime = 0
+    $count = $n;
+        
+    }
+    process {
+        if(!$ComputerName){
+
+           if (!($HostAddress -as [System.Net.IPAddress])){
+           
+             try { $entry = [System.Net.Dns]::GetHostEntry($HostAddress) }
+             catch { Write-Host "Ping request could not find host $HostAddress. Please check the name and try again."; return}
+              $DestNode = $entry.AddressList | Where-Object -Property AddressFamily -eq -Value "InternetWork" |Get-random
+              $HostName = $entry.HostName
+           if(!$HostAddress){break}
+           } else {
+               $DestNode = [System.Net.IPAddress]$HostAddress
+                $HostName = $HostAddress
+           }
+
+            Write-Host ""
+            Write-Host "pinging $HostAddress [$DestNode] with $l bytes of data:"
+
+                        $ObjPing.DateTime = (get-date)
+                        $ObjPing.status = $ObjPing.haschanged = $null
+                        $ObjPing.IP = [string][System.Net.Dns]::GetHostAddresses($DestNode).IPAddressToString
+                                While ($n--) {
+                $ms = (Measure-Command {
+                    try {
+                        #$ObjPing.DateTime = (get-date)
+                       # $ObjPing.status = $ObjPing.haschanged = $null
+                       # $ObjPing.IP = [string][System.Net.Dns]::GetHostAddresses($DestNode).IPAddressToString
+                        #Write-LogStep -prefixe 'L.%Line% Ping' "Ping $DestNode", $ObjPing.IP wait
+                            foreach ($port in $ports) {
+                                if ($port) {
+                                    # TCP
+                                    $ObjPing."Tcp-$port" = $iar = $null
+                                    try {
+                                        $tcpclient = new-Object system.Net.Sockets.TcpClient # Create TCP Client
+                                        $iar = $tcpclient.BeginConnect($ObjPing.IP, $port, $null, $null) # Tell TCP Client to connect to machine on Port
+                                        $timeMs = (Measure-Command {
+                                                $wait = $iar.AsyncWaitHandle.WaitOne($timeout, $false) # Set the wait time
+                                            }).TotalMilliseconds
+                                    }
+                                    catch {
+                                        # Write-verbose $_
+                                    }
+                                    # Write-LogStep -prefixe 'L.%Line% Ping' "Tcp-$port", $x.status, $timeMs ok
+                                    # Check to see if the connection is done
+                                    if (!$wait) {
+                                        # Close the connection and report timeout
+                                        $ObjPing."Tcp-$port" = 'TimeOut'
+                                        $tcpclient.Close()
+                                    }
+                                    else {
+                                        try {
+                                            $ObjPing."Tcp-$port" = [int]$timeMs
+                                            $ObjPing.status ++
+                                            # Write-LogStep -prefixe 'L.%Line% Ping' 'TCP ', "$($ObjPing."Tcp-$port") ms" ok
+                                            $tcpclient.EndConnect($iar) | out-Null
+                                            $tcpclient.Close()
+                                        }
+                                        catch {
+                                            # $ObjPing."Tcp-$port" = 'Unknow Host'
+                                        }
+                                    }
+                                    if ($tcpclient) {
+                                        $tcpclient.Dispose()
+                                        $tcpclient.Close()
+                                    }
+                                }
+                                else {
+                                    # ICMP
+                                    $ObjPing.ICMP = $ObjPing."ICMP-Ttl"  = $null # $ObjPing."ICMP-Size"
+                                    try {
+                                        $x = $ping.send($ObjPing.IP, $timeOut, $Buffer)
+                                        if ($x.status -like 'Success') {
+                                            $ObjPing."ICMP" = [int]$x.RoundtripTime
+                                            $ObjPing."ICMP-Ttl" = $x.Options.Ttl
+                                            # $ObjPing."ICMP-Size" = $x.Buffer.Length
+                                            $ObjPing.status ++
+                                            # Write-LogStep -prefixe 'L.%Line% Ping' 'ICMP ', "$($x.RoundtripTime) ms", $x.Options.Ttl, $x.Buffer.Length ok
+                                        }
+                                        else {
+                                            # Write-LogStep -prefixe 'L.%Line% Ping' 'ICMP ', "$($x.RoundtripTime) ms", $x.Options.Ttl, $x.Buffer.Length Warn
+                                            $ObjPing."ICMP" = $x.status
+                                            $ObjPing."ICMP-Ttl" = $ObjPing."ICMP-Size" = '-'
+                                        }
+                                    }
+                                    catch {
+                                        # $ObjPing.ICMP =  'Unknow Host'
+                                    }
+                                }
+                            }
+                        }
+                        catch {
+                            # Write-LogStep -prefixe 'L.%Line% Ping' '', 'Inpossible de determiner le noeud de destination !' error
+                            $ObjPing.Status = 0
+                        }
+                        #$ObjPing.status = "$([int]([Math]::Round($ObjPing.status / $ports.count,2) * 100))%"
+                        #$ObjPing.hasChanged = !($ObjPing.Status -eq $last -and $ObjPing.IP -eq $IP )
+                        $last = $ObjPing.Status
+                        $IP = $ObjPing.IP
+                        ipconfig /flushdns
+                    }).TotalMilliseconds
+
+                $ObjPings += $ObjPing
+
+                
+                if($timeMs  -lt 200) { Write-Host Reply from "$IP": bytes=$l time="$timeMs"ms TTL=123
+                
+                            if ($timeMs -gt $maximumTime)
+            {
+                $maximumTime = $timeMs;
+            }
+            if ($timeMs -lt $minimumTime)
+            {
+                $minimumTime = $timeMs;
+            }
+   
+        $averageTime += $timeMs;
+               
+                }
+                else    { Write-Host "Request timed out" }
+
+                if ($n -and $Intervale - $ms -gt 0) {
+                    start-sleep -m ($Intervale - $ms)
+                }
+            }    
+            
+            
+           Write-Host ""
+           Write-Host  "Ping statistics for ${IP}:"
+           Write-Host "	Packets: Sent = $count, Received = $count, Lost = 0 <0% loss>,"
+           Write-Host "Approximate round trip times in milli-seconds:" 
+           Write-Host "	Minimum = ${minimumTime}ms, Maximum = ${maximumTime}ms, Average = $($averageTime/$count)ms" 
+                        
+                         
+        }
+    }
+    end {
+        if ($computerName) {
+            $pingScriptBlock = $pingScriptBlock | Include-ToScriptblock -StringBlocks "Ping -DestNode $DestNode -ports $($ports -join(',')) -timeout $timeout -loop $n -Intervale $Intervale"
+            Invoke-Command -ComputerName $ComputerName -ScriptBlock $pingScriptBlock | Select-Object -Property * -ExcludeProperty RunspaceID
+        }
+     exit 0
+    }
+}
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR_ping\QPR_ping.psm1 -Force )
+
 	Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\ping.exe" -Force
     Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\ping.exe" -Force
 		  
@@ -1756,7 +2008,7 @@ function func_ping <# fake ping for when wine's ping fails due to permission iss
 } <# end ping #>
  
 function func_nocrashdialog <# nocrashdialog #>
-{   
+{
 $regkey = @"
 REGEDIT4
 [HKEY_CURRENT_USER\Software\Wine\WineDbg]
@@ -1924,7 +2176,6 @@ function func_office365
 winecfg /v win10
 func_msxml6
 func_riched20
-#func_wine_ole32
 func_wine_sppc
 
 foreach($i in 'sppc') { dlloverride 'native' $i }
@@ -2077,8 +2328,11 @@ function func_vulkansamples
 
 function func_dotnet35
 {
-    w_download_to $(verb) "https://download.microsoft.com/download/6/0/f/60fc5854-3cb8-4892-b6db-bd4f42510f28/dotnetfx35.exe" "dotnetfx35.exe"
-    7z x $cachedir\\$(verb)\\dotnetfx35.exe "-o$env:TEMP\\$(verb)\\" -y; quit?(7z)
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z" ) ) ){
+    
+    (New-Object System.Net.WebClient).DownloadFile('https://download.microsoft.com/download/6/0/f/60fc5854-3cb8-4892-b6db-bd4f42510f28/dotnetfx35.exe', "$env:TMP\dotnetfx35.exe")
+    #w_download_to "$env:TEMP" "https://download.microsoft.com/download/6/0/f/60fc5854-3cb8-4892-b6db-bd4f42510f28/dotnetfx35.exe" "dotnetfx35.exe"
+    7z x "$env:TEMP\dotnetfx35.exe" "-o$env:TEMP\$(verb)\" -y; quit?(7z)
 
     Remove-Item -Force  $env:TEMP\\$(verb)\\wcu\\dotNetFramework\\dotNetFX20\\PCW_CAB_NetFX*
     foreach($i in $( ls $env:TEMP\\$(verb)\\wcu\\dotNetFramework\\dotNetFX20\\*.msp) )
@@ -2131,984 +2385,747 @@ function func_dotnet35
     $srcpath="$env:TEMP\dotnet35\wcu\dotNetFramework\dotNetFX20\extr"
 
 [array]$dotnet20 = `
-"$srcpath\FL_EditAppSetting_aspx_resx_103113_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\EditAppSetting.aspx.resx",`
-"$srcpath\FL_EditAppSetting_aspx_resx_103113_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\EditAppSetting.aspx.resx",`
-"$srcpath\FL_EditAppSetting_aspx_resx_103113_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\EditAppSetting.aspx.resx",`
-"$srcpath\FL_System_EnterpriseServices_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_32\System.EnterpriseServices\2.0.0.0__b03f5f7f11d50a3a\System.EnterpriseServices.dll",`
-"$srcpath\FL_System_EnterpriseServices_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.EnterpriseServices.dll",`
-"$srcpath\FL_System_ServiceProcess_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.ServiceProcess\2.0.0.0__b03f5f7f11d50a3a\System.ServiceProcess.dll",`
-"$srcpath\FL_System_ServiceProcess_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.ServiceProcess.dll",`
-"$srcpath\FL_System_ServiceProcess_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.ServiceProcess.dll",`
-"$srcpath\FL_aspnet_perf2_ini_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\aspnet_perf2.ini",`
-"$srcpath\FL_web_mediumtrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\web_mediumtrust.config.default",`
-"$srcpath\FL_web_mediumtrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\web_mediumtrust.config.default",`
-"$srcpath\FL_WebAdminHelp_aspx_resx_122112_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\App_LocalResources\WebAdminHelp.aspx.resx",`
-"$srcpath\FL_WebAdminHelp_aspx_resx_122112_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_LocalResources\WebAdminHelp.aspx.resx",`
-"$srcpath\FL_WebAdminHelp_aspx_resx_122112_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\App_LocalResources\WebAdminHelp.aspx.resx",`
-"$srcpath\FL_alink_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\alink.dll",`
-"$srcpath\FL_headerGRADIENT_Tall_gif_102057_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Images\headerGRADIENT_Tall.gif",`
-"$srcpath\FL_headerGRADIENT_Tall_gif_102057_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\headerGRADIENT_Tall.gif",`
-"$srcpath\FL_headerGRADIENT_Tall_gif_102057_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Images\headerGRADIENT_Tall.gif",`
-"$srcpath\FL_dfdll_dll_75023_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\dfdll.dll",`
-"$srcpath\FL_mscorsvw_exe_93402_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\mscorsvw.exe",`
-"$srcpath\FL_jphone_browser_76157_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\jphone.browser",`
-"$srcpath\FL_jphone_browser_76157_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\jphone.browser",`
-"$srcpath\msvcp80.dll.8.0.50727.1433.844EFBA7_1C24_93B2_FF1F_C8B3B9A1E18E" , "$env:SystemRoot\winsxs\amd64_Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_8.0.50727.1433_x-ww_8f022ab2\msvcp80.dll",`
-"$srcpath\FL_corperfmonsymbols_ini_1_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\corperfmonsymbols.ini",`
-"$srcpath\FL_corperfmonsymbols_ini_1_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\corperfmonsymbols.ini",`
-"$srcpath\FL_IEExec_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\IEExec.exe",`
-"$srcpath\FL_home0_aspx_resx_103505_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\App_LocalResources\home0.aspx.resx",`
-"$srcpath\FL_home0_aspx_resx_103505_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_LocalResources\home0.aspx.resx",`
-"$srcpath\FL_home0_aspx_resx_103505_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\App_LocalResources\home0.aspx.resx",`
-"$srcpath\FL_UninstallSqlStateTemplate_sql_116232_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\UninstallSqlStateTemplate.sql",`
-"$srcpath\FL_UninstallSqlStateTemplate_sql_116232_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\UninstallSqlStateTemplate.sql",`
-"$srcpath\FL_UninstallSqlStateTemplate_sql_116232_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\UninstallSqlStateTemplate.sql",`
-"$srcpath\FL_UninstallSqlStateTemplate_sql_116232_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\UninstallSqlStateTemplate.sql",`
-"$srcpath\FL_CLR_mof_uninstall_126479_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CLR.mof.uninstall",`
-"$srcpath\FL_CLR_mof_uninstall_126479_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CLR.mof.uninstall",`
-"$srcpath\catalog.8.0.50727.1433.63E949F6_03BC_5C40_FF1F_C8B3B9A1E18E" , "$env:SystemRoot\winsxs\Policies\x86_policy.8.0.Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_x-ww_77c24773\8.0.50727.1433.cat",`
-"$srcpath\Microsoft_VisualBasic_dll_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\Microsoft.VisualBasic\8.0.0.0__b03f5f7f11d50a3a\Microsoft.VisualBasic.dll",`
-"$srcpath\Microsoft_VisualBasic_dll_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Microsoft.VisualBasic.dll",`
-"$srcpath\Microsoft_VisualBasic_dll_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\Microsoft.VisualBasic.dll",`
-"$srcpath\FL_System_Configuration_Install_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Configuration.Install\2.0.0.0__b03f5f7f11d50a3a\System.Configuration.Install.dll",`
-"$srcpath\FL_System_Configuration_Install_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.Configuration.Install.dll",`
-"$srcpath\FL_System_Configuration_Install_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.Configuration.Install.dll",`
-"$srcpath\FL_Microsoft_Vsa_Vb_CodeDOMProcessor_tlb_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Microsoft.Vsa.Vb.CodeDOMProcessor.tlb",`
-"$srcpath\FL_webtv_browser_76167_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\webtv.browser",`
-"$srcpath\FL_webtv_browser_76167_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\webtv.browser",`
-"$srcpath\FL_SOS_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\SOS.dll",`
-"$srcpath\FL_CLR_mof_126478_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CLR.mof",`
-"$srcpath\FL_CLR_mof_126478_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CLR.mof",`
-"$srcpath\FL_wizardAddUser_ascx_resx_103392_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardAddUser.ascx.resx",`
-"$srcpath\FL_wizardAddUser_ascx_resx_103392_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardAddUser.ascx.resx",`
-"$srcpath\FL_wizardAddUser_ascx_resx_103392_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardAddUser.ascx.resx",`
-"$srcpath\FL_Microsoft_Vsa_Vb_CodeDOMProcessor_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\Microsoft.Vsa.Vb.CodeDOMProcessor\8.0.0.0__b03f5f7f11d50a3a\Microsoft.Vsa.Vb.CodeDOMProcessor.dll",`
-"$srcpath\FL_Microsoft_Vsa_Vb_CodeDOMProcessor_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Microsoft.Vsa.Vb.CodeDOMProcessor.dll",`
-"$srcpath\FL_xjis_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\xjis.nlp",`
-"$srcpath\FL_xjis_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\xjis.nlp",`
-"$srcpath\FL_xjis_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\xjis.nlp",`
-"$srcpath\FL_xjis_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\xjis.nlp",`
-"$srcpath\FL_NETFXSBS10_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\NETFXSBS10.exe",`
-"$srcpath\FL_PerfCounter_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\PerfCounter.dll",`
-"$srcpath\FL_System_configuration_dll_116773_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Configuration\2.0.0.0__b03f5f7f11d50a3a\System.configuration.dll",`
-"$srcpath\FL_System_configuration_dll_116773_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.configuration.dll",`
-"$srcpath\FL_System_configuration_dll_116773_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.configuration.dll",`
-"$srcpath\dw20.adm_0001_1036_1036.F0DF3458_A845_11D3_8D0A_0050046416B9" , "$env:SystemRoot\inf\AER_1036.ADM",`
-"$srcpath\FL_System_Windows_Forms_tlb_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.Windows.Forms.tlb",`
-"$srcpath\FL_editUser_aspx_resx_103466_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\Users\App_LocalResources\editUser.aspx.resx",`
-"$srcpath\FL_editUser_aspx_resx_103466_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Users\App_LocalResources\editUser.aspx.resx",`
-"$srcpath\FL_editUser_aspx_resx_103466_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\Users\App_LocalResources\editUser.aspx.resx",`
-"$srcpath\FL_cscmsgs_dll_ENU_X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\1033\cscompui.dll",`
-"$srcpath\FL_chooseProviderManagement_aspx_resx_103382_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Providers\App_LocalResources\chooseProviderManagement.aspx.resx",`
-"$srcpath\FL_chooseProviderManagement_aspx_resx_103382_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Providers\App_LocalResources\chooseProviderManagement.aspx.resx",`
-"$srcpath\FL_chooseProviderManagement_aspx_resx_103382_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Providers\App_LocalResources\chooseProviderManagement.aspx.resx",`
-"$srcpath\FL_addUser_aspx_74814_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Users\addUser.aspx",`
-"$srcpath\dw20.adm_0001_1041_1041.F0DF3458_A845_11D3_8D0A_0050046416B9" , "$env:SystemRoot\inf\AER_1041.ADM",`
-"$srcpath\FL_Microsoft_Build_Core_xsd_117587_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\MSBuild\Microsoft.Build.Core.xsd",`
-"$srcpath\FL_Microsoft_Build_Core_xsd_117587_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\MSBuild\Microsoft.Build.Core.xsd",`
-"$srcpath\FL_sbs_mscordbi_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\sbs_mscordbi.dll",`
-"$srcpath\FL_aspnet_regbrowsers_exe_76177_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\aspnet_regbrowsers.exe",`
-"$srcpath\FL_PasswordValueTextBox_cs_102036_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_Code\PasswordValueTextBox.cs",`
-"$srcpath\FL_sbs_system_configuration_install_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\sbs_system.configuration.install.dll",`
-"$srcpath\FL_Ldr64_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\Ldr64.exe",`
-"$srcpath\FL_ericsson_browser_76173_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\ericsson.browser",`
-"$srcpath\FL_ericsson_browser_76173_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\ericsson.browser",`
-"$srcpath\FL_ASPdotNET_logo_jpg_74765_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Images\ASPdotNET_logo.jpg",`
-"$srcpath\FL_ASPdotNET_logo_jpg_74765_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\ASPdotNET_logo.jpg",`
-"$srcpath\FL_ASPdotNET_logo_jpg_74765_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Images\ASPdotNET_logo.jpg",`
-"$srcpath\FL_palm_browser_76164_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\palm.browser",`
-"$srcpath\FL_palm_browser_76164_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\palm.browser",`
-"$srcpath\FL_wizardCreateRoles_ascx_74818_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\wizardCreateRoles.ascx",`
-"$srcpath\FL_ksc_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\ksc.nlp",`
-"$srcpath\FL_ksc_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\ksc.nlp",`
-"$srcpath\FL_ksc_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\ksc.nlp",`
-"$srcpath\FL_ksc_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ksc.nlp",`
-"$srcpath\FL_csc_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\csc.exe",`
-"$srcpath\FL_wizardFinish_ascx_resx_103396_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardFinish.ascx.resx",`
-"$srcpath\FL_wizardFinish_ascx_resx_103396_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardFinish.ascx.resx",`
-"$srcpath\FL_wizardFinish_ascx_resx_103396_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardFinish.ascx.resx",`
-"$srcpath\FL_ManageAppSettings_aspx_102021_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\AppConfig\ManageAppSettings.aspx",`
-"$srcpath\FL_ManageAppSettings_aspx_102021_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\ManageAppSettings.aspx",`
-"$srcpath\FL_ManageAppSettings_aspx_102021_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\AppConfig\ManageAppSettings.aspx",`
-"$srcpath\FL_AssemblyList_xml_113047_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\RedistList\FrameworkList.xml",`
-"$srcpath\FL_MSBuild_exe_67853_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\MSBuild.exe",`
-"$srcpath\FL_security0_aspx_74806_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\security0.aspx",`
-"$srcpath\FL_security0_aspx_74806_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\security0.aspx",`
-"$srcpath\FL_security0_aspx_74806_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\security0.aspx",`
-"$srcpath\FL_wizard_aspx_resx_103393_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizard.aspx.resx",`
-"$srcpath\FL_wizard_aspx_resx_103393_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizard.aspx.resx",`
-"$srcpath\FL_wizard_aspx_resx_103393_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizard.aspx.resx",`
-"$srcpath\FL_InstallMembership_sql_67218_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\InstallMembership.sql",`
-"$srcpath\FL_InstallMembership_sql_67218_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\InstallMembership.sql",`
-"$srcpath\FL_Microsoft_VisualBasic_Vsa_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\Microsoft.VisualBasic.Vsa\8.0.0.0__b03f5f7f11d50a3a\Microsoft.VisualBasic.Vsa.dll",`
-"$srcpath\FL_Microsoft_VisualBasic_Vsa_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Microsoft.VisualBasic.Vsa.dll",`
-"$srcpath\FL_normidna_nlp_93185_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\normidna.nlp",`
-"$srcpath\FL_normidna_nlp_93185_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\normidna.nlp",`
-"$srcpath\FL_normidna_nlp_93185_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\assembly\GAC_32\mscorlib\v4.0_4.0.0.0__b77a5c561934e089\normidna.nlp",`
-"$srcpath\FL_normidna_nlp_93185_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\assembly\GAC_64\mscorlib\v4.0_4.0.0.0__b77a5c561934e089\normidna.nlp",`
-"$srcpath\FL_normidna_nlp_93185_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\normidna.nlp",`
-"$srcpath\FL_normidna_nlp_93185_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\normidna.nlp",`
-"$srcpath\FL_normidna_nlp_93185_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\normidna.nlp",`
-"$srcpath\FL_normidna_nlp_93185_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\normidna.nlp",`
-"$srcpath\FL_ilasm_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\ilasm.exe",`
-"$srcpath\FL_System_Windows_Forms_tlb_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.Windows.Forms.tlb",`
-"$srcpath\FL_mscorld_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\mscorld.dll",`
-"$srcpath\FL_ApplicationConfigurationPage_cs_102046_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_Code\ApplicationConfigurationPage.cs",`
-"$srcpath\FL_CustomMarshalers_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_32\CustomMarshalers\2.0.0.0__b03f5f7f11d50a3a\CustomMarshalers.dll",`
-"$srcpath\FL_CustomMarshalers_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CustomMarshalers.dll",`
-"$srcpath\FL_Accessibility_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\Accessibility\2.0.0.0__b03f5f7f11d50a3a\Accessibility.dll",`
-"$srcpath\FL_Accessibility_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Accessibility.dll",`
-"$srcpath\FL_Accessibility_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\Accessibility.dll",`
-"$srcpath\FL__DataPerfCounters_ini_108892_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\_DataPerfCounters.ini",`
-"$srcpath\FL__DataPerfCounters_ini_108892_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\_DataPerfCounters.ini",`
-"$srcpath\FL_peverify_dll_97810_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\peverify.dll",`
-"$srcpath\FL_mscorld_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\mscorld.dll",`
-"$srcpath\FL_Microsoft_Build_Commontypes_xsd_117588_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\MSBuild\Microsoft.Build.Commontypes.xsd",`
-"$srcpath\FL_Microsoft_Build_Commontypes_xsd_117588_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\MSBuild\Microsoft.Build.Commontypes.xsd",`
-"$srcpath\FL_alert_sml_gif_93379_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Images\security_watermark.jpg",`
-"$srcpath\FL_alert_sml_gif_93379_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Images\selectedTab_1x1.gif",`
-"$srcpath\FL_alert_sml_gif_93379_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\alert_sml.gif",`
-"$srcpath\FL_alert_sml_gif_93379_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\security_watermark.jpg",`
-"$srcpath\FL_alert_sml_gif_93379_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\selectedTab_1x1.gif",`
-"$srcpath\FL_alert_sml_gif_93379_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Images\security_watermark.jpg",`
-"$srcpath\FL_alert_sml_gif_93379_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Images\selectedTab_1x1.gif",`
-"$srcpath\FL_mscorlib_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\mscorlib.dll",`
-"$srcpath\FL_mscorlib_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\mscorlib.dll",`
-"$srcpath\FL_wizardCreateRoles_ascx_resx_103397_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardCreateRoles.ascx.resx",`
-"$srcpath\FL_wizardCreateRoles_ascx_resx_103397_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardCreateRoles.ascx.resx",`
-"$srcpath\FL_wizardCreateRoles_ascx_resx_103397_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardCreateRoles.ascx.resx",`
-"$srcpath\FL_WebAdminHelp_Security_aspx_resx_122115_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\App_LocalResources\WebAdminHelp_Security.aspx.resx",`
-"$srcpath\FL_WebAdminHelp_Security_aspx_resx_122115_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_LocalResources\WebAdminHelp_Security.aspx.resx",`
-"$srcpath\FL_WebAdminHelp_Security_aspx_resx_122115_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\App_LocalResources\WebAdminHelp_Security.aspx.resx",`
-"$srcpath\FL_webengine_dll_135889_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\webengine.dll",`
-"$srcpath\FL_normnfkc_nlp_66376_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\normnfkc.nlp",`
-"$srcpath\FL_normnfkc_nlp_66376_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\normnfkc.nlp",`
-"$srcpath\FL_normnfkc_nlp_66376_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\normnfkc.nlp",`
-"$srcpath\FL_normnfkc_nlp_66376_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\normnfkc.nlp",`
-"$srcpath\FL_PerfCounter_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\PerfCounter.dll",`
-"$srcpath\FL_ISymWrapper_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_64\ISymWrapper\2.0.0.0__b03f5f7f11d50a3a\ISymWrapper.dll",`
-"$srcpath\FL_ISymWrapper_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ISymWrapper.dll",`
-"$srcpath\FL_aspnet_compiler_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\aspnet_compiler.exe",`
-"$srcpath\FL_Culture_dll_102451_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Culture.dll",`
-"$srcpath\FL_wizardPermission_ascx_resx_103399_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardPermission.ascx.resx",`
-"$srcpath\FL_wizardPermission_ascx_resx_103399_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardPermission.ascx.resx",`
-"$srcpath\FL_wizardPermission_ascx_resx_103399_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardPermission.ascx.resx",`
-"$srcpath\FL_ManageConsolidatedProviders_aspx_102159_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Providers\ManageConsolidatedProviders.aspx",`
-"$srcpath\FL_ManageConsolidatedProviders_aspx_102159_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Providers\ManageConsolidatedProviders.aspx",`
-"$srcpath\FL_ManageConsolidatedProviders_aspx_102159_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Providers\ManageConsolidatedProviders.aspx",`
-"$srcpath\mscorwks_dll_4_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\mscorwks.dll",`
-"$srcpath\FL_sbs_wminet_utils_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\sbs_wminet_utils.dll",`
-"$srcpath\Microsoft_Vsa_dll_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\Microsoft.Vsa\8.0.0.0__b03f5f7f11d50a3a\Microsoft.Vsa.dll",`
-"$srcpath\Microsoft_Vsa_dll_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Microsoft.Vsa.dll",`
-"$srcpath\Microsoft_Vsa_dll_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\Microsoft.Vsa.dll",`
-"$srcpath\FL__dataperfcounters_ini_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\_dataperfcounters_shared12_neutral.ini",`
-"$srcpath\FL__dataperfcounters_ini_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\_dataperfcounters_shared12_neutral.ini",`
-"$srcpath\FL_pie_browser_76166_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\pie.browser",`
-"$srcpath\FL_pie_browser_76166_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\pie.browser",`
-"$srcpath\cvtres_exe_1_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\cvtres.exe",`
-"$srcpath\FL_vbc_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\vbc.exe",`
-"$srcpath\FL_aspnet_mof_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\aspnet.mof",`
-"$srcpath\FL_aspnet_mof_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\aspnet.mof",`
-"$srcpath\FL_topGradRepeat_jpg_74759_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Images\topGradRepeat.jpg",`
-"$srcpath\FL_topGradRepeat_jpg_74759_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\topGradRepeat.jpg",`
-"$srcpath\FL_topGradRepeat_jpg_74759_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Images\topGradRepeat.jpg",`
-"$srcpath\FL_vbc7ui_dll_ENU_X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\1033\vbc7ui.dll",`
-"$srcpath\FL_mscordacwks_dll_66373_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\mscordacwks.dll",`
-"$srcpath\FL_wizard_aspx_74823_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\wizard.aspx",`
-"$srcpath\FL_WebAdminPage_cs_74747_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_Code\WebAdminPage.cs",`
-"$srcpath\FL_mscortim_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\mscortim.dll",`
-"$srcpath\FL_Microsoft_Build_xsd_117586_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Microsoft.Build.xsd",`
-"$srcpath\FL_Microsoft_Build_xsd_117586_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\Microsoft.Build.xsd",`
-"$srcpath\FL_XPThemes_manifest_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\XPThemes.manifest",`
-"$srcpath\FL_XPThemes_manifest_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\XPThemes.manifest",`
-"$srcpath\FL_XPThemes_manifest_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\XPThemes.manifest",`
-"$srcpath\FL_XPThemes_manifest_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\XPThemes.manifest",`
-"$srcpath\FL_System_Web_RegularExpressions_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Web.RegularExpressions\2.0.0.0__b03f5f7f11d50a3a\System.Web.RegularExpressions.dll",`
-"$srcpath\FL_System_Web_RegularExpressions_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.Web.RegularExpressions.dll",`
-"$srcpath\FL_System_Web_RegularExpressions_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.Web.RegularExpressions.dll",`
-"$srcpath\FL_nokia_browser_76161_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\nokia.browser",`
-"$srcpath\FL_nokia_browser_76161_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\nokia.browser",`
-"$srcpath\FL_managePermissions_aspx_resx_103212_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\Permissions\App_LocalResources\managePermissions.aspx.resx",`
-"$srcpath\FL_managePermissions_aspx_resx_103212_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Permissions\App_LocalResources\managePermissions.aspx.resx",`
-"$srcpath\FL_managePermissions_aspx_resx_103212_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\Permissions\App_LocalResources\managePermissions.aspx.resx",`
-"$srcpath\FL_Microsoft_VisualC_Dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\Microsoft.VisualC\8.0.0.0__b03f5f7f11d50a3a\Microsoft.VisualC.Dll",`
-"$srcpath\FL_Microsoft_VisualC_Dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Microsoft.VisualC.Dll",`
-"$srcpath\FL_Microsoft_VisualC_Dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\Microsoft.VisualC.Dll",`
-"$srcpath\FL_Aspnet_perf_dll_113116_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\Aspnet_perf.dll",`
-"$srcpath\FL_csc_urt_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\csc.exe.config",`
-"$srcpath\FL_csc_urt_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\jsc.exe.config",`
-"$srcpath\FL_csc_urt_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\vbc.exe.config",`
-"$srcpath\FL_csc_urt_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\csc.exe.config",`
-"$srcpath\FL_csc_urt_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\vbc.exe.config",`
-"$srcpath\FL_csc_urt_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\csc.exe.config",`
-"$srcpath\FL_csc_urt_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\jsc.exe.config",`
-"$srcpath\FL_csc_urt_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\vbc.exe.config",`
-"$srcpath\FL_csc_urt_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\csc.exe.config",`
-"$srcpath\FL_csc_urt_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\vbc.exe.config",`
-"$srcpath\FL_IEHost_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\IEHost\2.0.0.0__b03f5f7f11d50a3a\IEHost.dll",`
-"$srcpath\FL_IEHost_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\IEHost.dll",`
-"$srcpath\FL_IEHost_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\IEHost.dll",`
-"$srcpath\FL_manageSingleRole_aspx_74810_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Roles\manageSingleRole.aspx",`
-"$srcpath\FL_mscordacwks_dll_66373_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\mscordacwks.dll",`
-"$srcpath\System.Web_dll_5_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_64\System.Web\2.0.0.0__b03f5f7f11d50a3a\System.Web.dll",`
-"$srcpath\System.Web_dll_5_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.Web.dll",`
-"$srcpath\FL_manageconsolidatedProviders_aspx_resx_103380_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Providers\App_LocalResources\manageconsolidatedProviders.aspx.resx",`
-"$srcpath\FL_manageconsolidatedProviders_aspx_resx_103380_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Providers\App_LocalResources\manageconsolidatedProviders.aspx.resx",`
-"$srcpath\FL_manageconsolidatedProviders_aspx_resx_103380_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Providers\App_LocalResources\manageconsolidatedProviders.aspx.resx",`
-"$srcpath\FL_WebAdminStyles_css_74739_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\WebAdminStyles.css",`
-"$srcpath\FL_image1_gif_74784_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Images\image1.gif",`
-"$srcpath\FL_image1_gif_74784_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\image1.gif",`
-"$srcpath\FL_image1_gif_74784_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Images\image1.gif",`
-"$srcpath\FL_legend_browser_109072_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\legend.browser",`
-"$srcpath\FL_legend_browser_109072_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\legend.browser",`
-"$srcpath\FL_WebAdminHelp_Application_aspx_119290_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\ASP.NETWebAdminFiles\WebAdminHelp_Application.aspx",`
-"$srcpath\FL_WebAdminHelp_Application_aspx_119290_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\WebAdminHelp_Application.aspx",`
-"$srcpath\FL_WebAdminHelp_Application_aspx_119290_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\WebAdminHelp_Application.aspx",`
-"$srcpath\FL_WebAdminHelp_Application_aspx_119290_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\WebAdminHelp_Application.aspx",`
-"$srcpath\FL_InstallUtil_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\InstallUtil.exe",`
-"$srcpath\FL_System_Security_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Security\2.0.0.0__b03f5f7f11d50a3a\System.Security.dll",`
-"$srcpath\FL_System_Security_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.Security.dll",`
-"$srcpath\FL_System_Security_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.Security.dll",`
-"$srcpath\FL_System_EnterpriseServices_tlb_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.EnterpriseServices.tlb",`
-"$srcpath\FL_wizardInit_ascx_resx_103398_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardInit.ascx.resx",`
-"$srcpath\FL_wizardInit_ascx_resx_103398_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardInit.ascx.resx",`
-"$srcpath\FL_wizardInit_ascx_resx_103398_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardInit.ascx.resx",`
-"$srcpath\FL_alert_lrg_gif_92834_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Images\alert_lrg.gif",`
-"$srcpath\FL_alert_lrg_gif_92834_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\alert_lrg.gif",`
-"$srcpath\FL_alert_lrg_gif_92834_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Images\alert_lrg.gif",`
-"$srcpath\FL_aspnet_wp_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\aspnet_wp.exe",`
-"$srcpath\FL_fusion_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\fusion.dll",`
-"$srcpath\FL_dfdll_dll_75023_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\dfdll.dll",`
-"$srcpath\FL_caspol_exe_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\caspol.exe.config",`
-"$srcpath\FL_caspol_exe_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\ieexec.exe.config",`
-"$srcpath\FL_caspol_exe_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\ilasm.exe.config",`
-"$srcpath\FL_caspol_exe_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\regasm.exe.config",`
-"$srcpath\FL_caspol_exe_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\regsvcs.exe.config",`
-"$srcpath\FL_caspol_exe_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\caspol.exe.config",`
-"$srcpath\FL_caspol_exe_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ieexec.exe.config",`
-"$srcpath\FL_caspol_exe_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ilasm.exe.config",`
-"$srcpath\FL_caspol_exe_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\regasm.exe.config",`
-"$srcpath\FL_caspol_exe_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\regsvcs.exe.config",`
-"$srcpath\FL_aspnet_isapi_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\aspnet_isapi.dll",`
-"$srcpath\dw20.adm_0001_2052_2052.F0DF3458_A845_11D3_8D0A_0050046416B9" , "$env:SystemRoot\inf\AER_2052.ADM",`
-"$srcpath\FL_mscorlib_tlb_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\mscorlib.tlb",`
-"$srcpath\dw20.adm_0001_1031_1031.F0DF3458_A845_11D3_8D0A_0050046416B9" , "$env:SystemRoot\inf\AER_1031.ADM",`
-"$srcpath\Microsoft_VisualBasic_Compatibility_dll_2_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\Microsoft.VisualBasic.Compatibility\8.0.0.0__b03f5f7f11d50a3a\Microsoft.VisualBasic.Compatibility.dll",`
-"$srcpath\Microsoft_VisualBasic_Compatibility_dll_2_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Microsoft.VisualBasic.Compatibility.dll",`
-"$srcpath\Vsavb7rtUI_dll_2_ENU_X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\1033\Vsavb7rtUI.dll",`
-"$srcpath\FL_mscorie_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\mscorie.dll",`
-"$srcpath\FL_webAdmin_master_74735_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\webAdmin.master",`
-"$srcpath\FL_Microsoft_Common_targets_106593_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Microsoft.Common.targets",`
-"$srcpath\FL_Microsoft_Common_targets_106593_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\Microsoft.Common.targets",`
-"$srcpath\vsavb7_tlb_1_____x86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\vsavb7.olb",`
-"$srcpath\FL_home1_aspx_resx_103507_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\App_LocalResources\home1.aspx.resx",`
-"$srcpath\FL_home1_aspx_resx_103507_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_LocalResources\home1.aspx.resx",`
-"$srcpath\FL_home1_aspx_resx_103507_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\App_LocalResources\home1.aspx.resx",`
-"$srcpath\msvcr80.dll.8.0.50727.1433.844EFBA7_1C24_93B2_FF1F_C8B3B9A1E18E" , "$env:SystemRoot\winsxs\amd64_Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_8.0.50727.1433_x-ww_8f022ab2\msvcr80.dll",`
-"$srcpath\FL_wizardProviderInfo_ascx_102277_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\wizardProviderInfo.ascx",`
-"$srcpath\FL_wizardProviderInfo_ascx_102277_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\wizardProviderInfo.ascx",`
-"$srcpath\FL_wizardProviderInfo_ascx_102277_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\wizardProviderInfo.ascx",`
-"$srcpath\System.Web_dll_5_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_32\System.Web\2.0.0.0__b03f5f7f11d50a3a\System.Web.dll",`
-"$srcpath\System.Web_dll_5_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.Web.dll",`
-"$srcpath\FL_IEExec_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\IEExec.exe",`
-"$srcpath\FL_AppConfigHome_aspx_102015_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\AppConfigHome.aspx",`
-"$srcpath\FL_default_aspx_74742_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\default.aspx",`
-"$srcpath\FL_default_aspx_74742_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\default.aspx",`
-"$srcpath\FL_default_aspx_74742_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\default.aspx",`
-"$srcpath\FL_msbuild_urt_config_135103_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\msbuild.exe.config",`
-"$srcpath\FL_msbuild_urt_config_135103_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\msbuild.exe.config",`
-"$srcpath\FL_System_Drawing_Design_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Drawing.Design\2.0.0.0__b03f5f7f11d50a3a\System.Drawing.Design.dll",`
-"$srcpath\FL_System_Drawing_Design_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.Drawing.Design.dll",`
-"$srcpath\FL_System_Drawing_Design_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.Drawing.Design.dll",`
-"$srcpath\FL_System_EnterpriseServices_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_64\System.EnterpriseServices\2.0.0.0__b03f5f7f11d50a3a\System.EnterpriseServices.dll",`
-"$srcpath\FL_System_EnterpriseServices_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.EnterpriseServices.dll",`
-"$srcpath\FL_EZWap_browser_93275_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\EZWap.browser",`
-"$srcpath\FL_EZWap_browser_93275_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\EZWap.browser",`
-"$srcpath\FL_System_Web_tbl_105182_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.Web.tlb",`
-"$srcpath\FL_root_web_config_comments_118268_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\web.config.comments",`
-"$srcpath\FL_root_web_config_comments_118268_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\web.config.comments",`
-"$srcpath\FL_sbs_system_data_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\sbs_system.data.dll",`
-"$srcpath\FL_sysglobl_dll_92791_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\sysglobl\2.0.0.0__b03f5f7f11d50a3a\sysglobl.dll",`
-"$srcpath\FL_sysglobl_dll_92791_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\sysglobl.dll",`
-"$srcpath\FL_sysglobl_dll_92791_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\sysglobl.dll",`
-"$srcpath\FL_web_minimaltrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\web_minimaltrust.config",`
-"$srcpath\FL_web_minimaltrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\web_minimaltrust.config.default",`
-"$srcpath\FL_web_minimaltrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\web_minimaltrust.config",`
-"$srcpath\FL_web_minimaltrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\web_minimaltrust.config.default",`
-"$srcpath\FL_netfxsbs12_hkf_76082_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\netfxsbs12.hkf",`
-"$srcpath\FL_csc_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\csc.exe",`
-"$srcpath\FL_mscorsec_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\mscorsec.dll",`
-"$srcpath\FL_mscorpe_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\mscorpe.dll",`
-"$srcpath\FL_setUpAuthentication_aspx_74802_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\setUpAuthentication.aspx",`
-"$srcpath\FL_setUpAuthentication_aspx_74802_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\setUpAuthentication.aspx",`
-"$srcpath\FL_setUpAuthentication_aspx_74802_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\setUpAuthentication.aspx",`
-"$srcpath\FL_InstallCommon_sql_74696_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\InstallCommon.sql",`
-"$srcpath\FL_InstallCommon_sql_74696_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\InstallCommon.sql",`
-"$srcpath\FL_InstallCommon_sql_74696_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\InstallCommon.sql",`
-"$srcpath\FL_InstallCommon_sql_74696_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\InstallCommon.sql",`
-"$srcpath\FL_sbs_VsaVb7rt_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\sbs_VsaVb7rt.dll",`
-"$srcpath\FL_wizardAddUser_ascx_74816_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\wizardAddUser.ascx",`
-"$srcpath\FL_vbc7ui_dll_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\1033\vbc7ui.dll",`
-"$srcpath\FL_mscordbi_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\mscordbi.dll",`
-"$srcpath\dw20.adm_0001_3082_3082.F0DF3458_A845_11D3_8D0A_0050046416B9" , "$env:SystemRoot\inf\AER_3082.ADM",`
-"$srcpath\FL_DebugAndTrace_aspx_resx_103116_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\DebugAndTrace.aspx.resx",`
-"$srcpath\FL_DebugAndTrace_aspx_resx_103116_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\DebugAndTrace.aspx.resx",`
-"$srcpath\FL_DebugAndTrace_aspx_resx_103116_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\DebugAndTrace.aspx.resx",`
-"$srcpath\FL_bopomofo_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\bopomofo.nlp",`
-"$srcpath\FL_bopomofo_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\bopomofo.nlp",`
-"$srcpath\FL_bopomofo_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\bopomofo.nlp",`
-"$srcpath\FL_bopomofo_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\bopomofo.nlp",`
-"$srcpath\FL_root_web_config_default_118269_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\web.config.default",`
-"$srcpath\FL_root_web_config_default_118269_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\web.config.default",`
-"$srcpath\msvcm80.dll.8.0.50727.1433.844EFBA7_1C24_93B2_FF1F_C8B3B9A1E18E" , "$env:SystemRoot\winsxs\amd64_Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_8.0.50727.1433_x-ww_8f022ab2\msvcm80.dll",`
-"$srcpath\FL_mscorjit_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\mscorjit.dll",`
-"$srcpath\FL_diasymreader_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\diasymreader.dll",`
-"$srcpath\FL_InstallRoles_sql_67224_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\InstallRoles.sql",`
-"$srcpath\FL_InstallRoles_sql_67224_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\InstallRoles.sql",`
-"$srcpath\FL_InstallRoles_sql_67224_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\InstallRoles.sql",`
-"$srcpath\FL_InstallRoles_sql_67224_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\InstallRoles.sql",`
-"$srcpath\FL_System_Web_Mobile_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Web.Mobile\2.0.0.0__b03f5f7f11d50a3a\System.Web.Mobile.dll",`
-"$srcpath\FL_System_Web_Mobile_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.Web.Mobile.dll",`
-"$srcpath\FL_System_Web_Mobile_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.Web.Mobile.dll",`
-"$srcpath\FL_editUser_aspx_102270_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Users\editUser.aspx",`
-"$srcpath\FL_mscorsecr_dll_ENU_X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\MUI\0409\mscorsecr.dll",`
-"$srcpath\FL_gradient_onWhite_gif_74776_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Images\gradient_onWhite.gif",`
-"$srcpath\FL_gradient_onWhite_gif_74776_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\gradient_onWhite.gif",`
-"$srcpath\FL_gradient_onWhite_gif_74776_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Images\gradient_onWhite.gif",`
-"$srcpath\FL_DefineErrorPage_aspx_resx_103112_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\DefineErrorPage.aspx.resx",`
-"$srcpath\FL_DefineErrorPage_aspx_resx_103112_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\DefineErrorPage.aspx.resx",`
-"$srcpath\FL_DefineErrorPage_aspx_resx_103112_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\DefineErrorPage.aspx.resx",`
-"$srcpath\FL_MmcAspExt_dll_95862_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\MmcAspExt.dll",`
-"$srcpath\FL_Aspnet_regsql_exe_config_116177_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Aspnet_regsql.exe.config",`
-"$srcpath\FL_Aspnet_regsql_exe_config_116177_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\Aspnet_regsql.exe.config",`
-"$srcpath\FL_UninstallWebEventSqlProvider_sql_93277_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\UninstallWebEventSqlProvider.sql",`
-"$srcpath\FL_UninstallWebEventSqlProvider_sql_93277_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\UninstallWebEventSqlProvider.sql",`
-"$srcpath\FL_UninstallWebEventSqlProvider_sql_93277_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\UninstallWebEventSqlProvider.sql",`
-"$srcpath\FL_UninstallWebEventSqlProvider_sql_93277_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\UninstallWebEventSqlProvider.sql",`
-"$srcpath\FL_AppSetting_ascx_102014_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\AppSetting.ascx",`
-"$srcpath\FL_AppConfigCommon_resx_103538_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\App_GlobalResources\AppConfigCommon.resx",`
-"$srcpath\FL_AppConfigCommon_resx_103538_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_GlobalResources\AppConfigCommon.resx",`
-"$srcpath\FL_AppConfigCommon_resx_103538_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\App_GlobalResources\AppConfigCommon.resx",`
-"$srcpath\FL_cscomp_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\cscomp.dll",`
-"$srcpath\FL_GlobalResources_resx_103539_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_GlobalResources\GlobalResources.resx",`
-"$srcpath\FL_security0_aspx_resx_103484_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\App_LocalResources\security0.aspx.resx",`
-"$srcpath\FL_security0_aspx_resx_103484_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\App_LocalResources\security0.aspx.resx",`
-"$srcpath\FL_security0_aspx_resx_103484_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\App_LocalResources\security0.aspx.resx",`
-"$srcpath\FL_System_tlb_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.tlb",`
-"$srcpath\FL_sbs_system_enterpriseservices_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\sbs_system.enterpriseservices.dll",`
-"$srcpath\FL_adonetdiag_mof_106906_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\adonetdiag.mof",`
-"$srcpath\FL_adonetdiag_mof_106906_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\adonetdiag.mof",`
-"$srcpath\FL_mscorsn_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\mscorsn.dll",`
-"$srcpath\FL_normnfkd_nlp_66377_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\normnfkd.nlp",`
-"$srcpath\FL_normnfkd_nlp_66377_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\normnfkd.nlp",`
-"$srcpath\FL_normnfkd_nlp_66377_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\normnfkd.nlp",`
-"$srcpath\FL_normnfkd_nlp_66377_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\normnfkd.nlp",`
-"$srcpath\FL_ISymWrapper_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_32\ISymWrapper\2.0.0.0__b03f5f7f11d50a3a\ISymWrapper.dll",`
-"$srcpath\FL_ISymWrapper_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\ISymWrapper.dll",`
-"$srcpath\FL_navigationBar_ascx_74730_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\navigationBar.ascx",`
-"$srcpath\FL_EventLogMessages_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\EventLogMessages.dll",`
-"$srcpath\FL_cscomp_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\cscomp.dll",`
-"$srcpath\FL_docomo_browser_76172_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\docomo.browser",`
-"$srcpath\FL_docomo_browser_76172_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\docomo.browser",`
-"$srcpath\FL_MSBuildFramework_dll_70716_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\Microsoft.Build.Framework\2.0.0.0__b03f5f7f11d50a3a\Microsoft.Build.Framework.dll",`
-"$srcpath\FL_MSBuildFramework_dll_70716_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Microsoft.Build.Framework.dll",`
-"$srcpath\FL_MSBuildFramework_dll_70716_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\Microsoft.Build.Framework.dll",`
-"$srcpath\FL_InstallPersonalization_sql_67221_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\InstallPersonalization.sql",`
-"$srcpath\FL_InstallPersonalization_sql_67221_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\InstallPersonalization.sql",`
-"$srcpath\FL_InstallPersonalization_sql_67221_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\InstallPersonalization.sql",`
-"$srcpath\FL_InstallPersonalization_sql_67221_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\InstallPersonalization.sql",`
-"$srcpath\FL_CORPerfMonExt_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CORPerfMonExt.dll",`
-"$srcpath\FL_ilasm_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ilasm.exe",`
-"$srcpath\FL_web_config_74734_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\web.config",`
-"$srcpath\FL_WebAdminHelp_Security_aspx_119294_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\ASP.NETWebAdminFiles\WebAdminHelp_Security.aspx",`
-"$srcpath\FL_WebAdminHelp_Security_aspx_119294_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\WebAdminHelp_Security.aspx",`
-"$srcpath\FL_WebAdminHelp_Security_aspx_119294_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\WebAdminHelp_Security.aspx",`
-"$srcpath\FL_WebAdminHelp_Security_aspx_119294_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\WebAdminHelp_Security.aspx",`
-"$srcpath\FL_CvtResUI_dll_109387_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\1033\CvtResUI.dll",`
-"$srcpath\FL_aspnet_perf_ini_ENU_X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\aspnet_perf.ini",`
-"$srcpath\FL_System_Data_OracleClient_dll_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_64\System.Data.OracleClient\2.0.0.0__b77a5c561934e089\System.Data.OracleClient.dll",`
-"$srcpath\FL_System_Data_OracleClient_dll_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.Data.OracleClient.dll",`
-"$srcpath\FL_TLBREF_DLL_97713_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\TLBREF.DLL",`
-"$srcpath\FL_mscorlib_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\mscorlib.dll",`
-"$srcpath\FL_mscorlib_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\mscorlib.dll",`
-"$srcpath\FL_aspnet_wp_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\aspnet_wp.exe",`
-"$srcpath\FL_shfusion_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\shfusion.dll",`
-"$srcpath\FL_normalization_dll_66379_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\normalization.dll",`
-"$srcpath\FL_sbs_microsoft_vsa_vb_codedomprocessor_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\sbs_microsoft.vsa.vb.codedomprocessor.dll",`
-"$srcpath\FL_Jataayu_browser_93274_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\Jataayu.browser",`
-"$srcpath\FL_Jataayu_browser_93274_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\Jataayu.browser",`
-"$srcpath\FL_yellowCORNER_gif_74760_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Images\yellowCORNER.gif",`
-"$srcpath\FL_yellowCORNER_gif_74760_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\yellowCORNER.gif",`
-"$srcpath\FL_yellowCORNER_gif_74760_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Images\yellowCORNER.gif",`
-"$srcpath\FL_System_Data_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_32\System.Data\2.0.0.0__b77a5c561934e089\System.Data.dll",`
-"$srcpath\FL_System_Data_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.Data.dll",`
-"$srcpath\FL_createPermission_aspx_resx_103211_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\Permissions\App_LocalResources\createPermission.aspx.resx",`
-"$srcpath\FL_createPermission_aspx_resx_103211_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Permissions\App_LocalResources\createPermission.aspx.resx",`
-"$srcpath\FL_createPermission_aspx_resx_103211_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\Permissions\App_LocalResources\createPermission.aspx.resx",`
-"$srcpath\dw20.adm_1025_1025.D0DF3458_A845_11D3_8D0A_0050046416B9" , "$env:SystemRoot\inf\AER_1025.ADM",`
-"$srcpath\FL_System_Data_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_64\System.Data\2.0.0.0__b77a5c561934e089\System.Data.dll",`
-"$srcpath\FL_System_Data_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.Data.dll",`
-"$srcpath\manifest.8.0.50727.1433.4F6D20F0_CCE5_1492_FF1F_C8B3B9A1E18E" , "$env:SystemRoot\winsxs\Policies\amd64_policy.8.0.Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_x-ww_d780e993\8.0.50727.1433.policy",`
-"$srcpath\FL_aspnet_compiler_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\aspnet_compiler.exe",`
-"$srcpath\FL_WebAdminHelp_Internals_aspx_resx_122113_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\App_LocalResources\WebAdminHelp_Internals.aspx.resx",`
-"$srcpath\FL_WebAdminHelp_Internals_aspx_resx_122113_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_LocalResources\WebAdminHelp_Internals.aspx.resx",`
-"$srcpath\FL_WebAdminHelp_Internals_aspx_resx_122113_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\App_LocalResources\WebAdminHelp_Internals.aspx.resx",`
-"$srcpath\FL_normalization_dll_66379_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\normalization.dll",`
-"$srcpath\FL_fusion_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\fusion.dll",`
-"$srcpath\FL_aspnet_state_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\aspnet_state.exe",`
-"$srcpath\FL_webAdminNoButtonRow_master_74738_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\webAdminNoButtonRow.master",`
-"$srcpath\FL_webAdminNoButtonRow_master_74738_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\webAdminNoButtonRow.master",`
-"$srcpath\FL_webAdminNoButtonRow_master_74738_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\webAdminNoButtonRow.master",`
-"$srcpath\FL_MmcAspExt_dll_95862_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\MmcAspExt.dll",`
-"$srcpath\FL_requiredBang_gif_74755_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Images\requiredBang.gif",`
-"$srcpath\FL_requiredBang_gif_74755_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\requiredBang.gif",`
-"$srcpath\FL_requiredBang_gif_74755_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Images\requiredBang.gif",`
-"$srcpath\FL_aspnet_rc_dll_1_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\aspnet_rc.dll",`
-"$srcpath\FL_aspnet_filter_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\aspnet_filter.dll",`
-"$srcpath\FL_System_Web_tbl_105182_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.Web.tlb",`
-"$srcpath\FL_default_aspx_resx_103509_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\App_LocalResources\default.aspx.resx",`
-"$srcpath\FL_default_aspx_resx_103509_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_LocalResources\default.aspx.resx",`
-"$srcpath\FL_default_aspx_resx_103509_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\App_LocalResources\default.aspx.resx",`
-"$srcpath\FL_folder_gif_74774_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Images\folder.gif",`
-"$srcpath\FL_folder_gif_74774_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\folder.gif",`
-"$srcpath\FL_folder_gif_74774_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Images\folder.gif",`
-"$srcpath\FL_avantgo_browser_76169_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\avantgo.browser",`
-"$srcpath\FL_avantgo_browser_76169_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\avantgo.browser",`
-"$srcpath\Microsoft_VisualBasic_Compatibility_Data_dll_2_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\Microsoft.VisualBasic.Compatibility.Data\8.0.0.0__b03f5f7f11d50a3a\Microsoft.VisualBasic.Compatibility.Data.dll",`
-"$srcpath\Microsoft_VisualBasic_Compatibility_Data_dll_2_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Microsoft.VisualBasic.Compatibility.Data.dll",`
-"$srcpath\FL_UninstallPersonalization_sql_67220_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\UninstallPersonalization.sql",`
-"$srcpath\FL_UninstallPersonalization_sql_67220_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\UninstallPersonalization.sql",`
-"$srcpath\FL_UninstallPersonalization_sql_67220_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\UninstallPersonalization.sql",`
-"$srcpath\FL_UninstallPersonalization_sql_67220_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\UninstallPersonalization.sql",`
-"$srcpath\FL_aspnet_isapi_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\aspnet_isapi.dll",`
-"$srcpath\FL_regtlib_exe_1_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\regtlibv12.exe",`
-"$srcpath\catalog.8.0.50727.1433.844EFBA7_1C24_93B2_FF1F_C8B3B9A1E18E" , "$env:SystemRoot\winsxs\manifests\amd64_Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_8.0.50727.1433_x-ww_8f022ab2.cat",`
-"$srcpath\FL_vbc_rsp_76080_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\vbc.rsp",`
-"$srcpath\FL_vbc_rsp_76080_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\vbc.rsp",`
-"$srcpath\FL_findUsers_aspx_resx_103468_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\Users\App_LocalResources\findUsers.aspx.resx",`
-"$srcpath\FL_findUsers_aspx_resx_103468_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Users\App_LocalResources\findUsers.aspx.resx",`
-"$srcpath\FL_findUsers_aspx_resx_103468_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\Users\App_LocalResources\findUsers.aspx.resx",`
-"$srcpath\FL_generic_browser_76175_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\generic.browser",`
-"$srcpath\FL_generic_browser_76175_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\generic.browser",`
-"$srcpath\FL_ProviderList_ascx_92846_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Providers\ProviderList.ascx",`
-"$srcpath\FL_navigationBar_ascx_resx_103510_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\App_LocalResources\navigationBar.ascx.resx",`
-"$srcpath\FL_navigationBar_ascx_resx_103510_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_LocalResources\navigationBar.ascx.resx",`
-"$srcpath\FL_navigationBar_ascx_resx_103510_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\App_LocalResources\navigationBar.ascx.resx",`
-"$srcpath\FL_AppSetting_ascx_resx_103115_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\AppSetting.ascx.resx",`
-"$srcpath\FL_AppSetting_ascx_resx_103115_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\AppSetting.ascx.resx",`
-"$srcpath\FL_AppSetting_ascx_resx_103115_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\AppSetting.ascx.resx",`
-"$srcpath\FL_wizardAuthentication_ascx_74817_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\wizardAuthentication.ascx",`
-"$srcpath\FL_wizardAuthentication_ascx_74817_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\wizardAuthentication.ascx",`
-"$srcpath\FL_wizardAuthentication_ascx_74817_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\wizardAuthentication.ascx",`
-"$srcpath\FL_System_Transactions_dll_75016_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_32\System.Transactions\2.0.0.0__b77a5c561934e089\System.Transactions.dll",`
-"$srcpath\FL_System_Transactions_dll_75016_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.Transactions.dll",`
-"$srcpath\FL_goAmerica_browser_76155_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\goAmerica.browser",`
-"$srcpath\FL_goAmerica_browser_76155_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\goAmerica.browser",`
-"$srcpath\FL_aspnet_state_perf_ini_76106_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\aspnet_state_perf.ini",`
-"$srcpath\FL_aspnet_state_perf_ini_76106_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\aspnet_state_perf.ini",`
-"$srcpath\VsaVb7rt_dll_2_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\VsaVb7rt.dll",`
-"$srcpath\dw20.adm_0001_1042_1042.F0DF3458_A845_11D3_8D0A_0050046416B9" , "$env:SystemRoot\inf\AER_1042.ADM",`
-"$srcpath\jsc_exe_1_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\jsc.exe",`
-"$srcpath\FL_big5_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\big5.nlp",`
-"$srcpath\FL_big5_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\big5.nlp",`
-"$srcpath\FL_big5_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\big5.nlp",`
-"$srcpath\FL_big5_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\big5.nlp",`
-"$srcpath\FL_cassio_browser_76170_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\cassio.browser",`
-"$srcpath\FL_cassio_browser_76170_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\cassio.browser",`
-"$srcpath\dw20.adm_0001_1040_1040.F0DF3458_A845_11D3_8D0A_0050046416B9" , "$env:SystemRoot\inf\AER_1040.ADM",`
-"$srcpath\FL_mscorsvc_dll_93043_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\mscorsvc.dll",`
-"$srcpath\FL_UninstallPersistSqlState_sql_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\UninstallPersistSqlState.sql",`
-"$srcpath\FL_UninstallPersistSqlState_sql_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\UninstallPersistSqlState.sql",`
-"$srcpath\FL_UninstallPersistSqlState_sql_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\UninstallPersistSqlState.sql",`
-"$srcpath\FL_UninstallPersistSqlState_sql_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\UninstallPersistSqlState.sql",`
-"$srcpath\FL_aspx_file_gif_102053_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Images\aspx_file.gif",`
-"$srcpath\FL_aspx_file_gif_102053_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\aspx_file.gif",`
-"$srcpath\FL_aspx_file_gif_102053_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Images\aspx_file.gif",`
-"$srcpath\FL_sbs_microsoft_jscript_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\sbs_microsoft.jscript.dll",`
-"$srcpath\FL_AspNetMMCExt_dll_66806_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\AspNetMMCExt\2.0.0.0__b03f5f7f11d50a3a\AspNetMMCExt.dll",`
-"$srcpath\FL_AspNetMMCExt_dll_66806_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\AspNetMMCExt.dll",`
-"$srcpath\FL_AdoNetDiag_dll_106905_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\AdoNetDiag.dll",`
-"$srcpath\FL_machine_config_comments_105748_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\machine.config.comments",`
-"$srcpath\FL_machine_config_comments_105748_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\machine.config.comments",`
-"$srcpath\FL_chooseProviderManagement_aspx_102160_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Providers\chooseProviderManagement.aspx",`
-"$srcpath\FL_chooseProviderManagement_aspx_102160_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Providers\chooseProviderManagement.aspx",`
-"$srcpath\FL_chooseProviderManagement_aspx_102160_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Providers\chooseProviderManagement.aspx",`
-"$srcpath\mscorwks_dll_4_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\mscorwks.dll",`
-"$srcpath\FL_mscordbc_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\mscordbc.dll",`
-"$srcpath\FL_Culture_dll_102451_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\Culture.dll",`
-"$srcpath\FL_Microsoft_BuildTasks_67856_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Microsoft.Common.Tasks",`
-"$srcpath\FL_Microsoft_BuildTasks_67856_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\Microsoft.Common.Tasks",`
-"$srcpath\FL_mscorjit_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\mscorjit.dll",`
-"$srcpath\FL_regsvcs_exe_config_79704_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v1.1.4322\regsvcs.exe.config",`
-"$srcpath\FL_vbc_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\vbc.exe",`
-"$srcpath\FL_error_aspx_resx_103504_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\App_LocalResources\error.aspx.resx",`
-"$srcpath\FL_error_aspx_resx_103504_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_LocalResources\error.aspx.resx",`
-"$srcpath\FL_error_aspx_resx_103504_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\App_LocalResources\error.aspx.resx",`
-"$srcpath\FL_GroupedProviders_xml_117816_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\App_Data\GroupedProviders.xml",`
-"$srcpath\FL_GroupedProviders_xml_117816_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_Data\GroupedProviders.xml",`
-"$srcpath\FL_GroupedProviders_xml_117816_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\App_Data\GroupedProviders.xml",`
-"$srcpath\FL_aspnet_regbrowsers_exe_76177_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\aspnet_regbrowsers.exe",`
-"$srcpath\FL_Aspnet_perf_dll_113116_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Aspnet_perf.dll",`
-"$srcpath\FL_mscories_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\syswow64\mscories.dll",`
-"$srcpath\FL_manageAllRoles_aspx_resx_103495_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\Roles\App_LocalResources\manageAllRoles.aspx.resx",`
-"$srcpath\FL_manageAllRoles_aspx_resx_103495_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Roles\App_LocalResources\manageAllRoles.aspx.resx",`
-"$srcpath\FL_manageAllRoles_aspx_resx_103495_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\Roles\App_LocalResources\manageAllRoles.aspx.resx",`
-"$srcpath\FL_error_aspx_74743_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\error.aspx",`
-"$srcpath\FL_error_aspx_74743_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\error.aspx",`
-"$srcpath\FL_error_aspx_74743_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\error.aspx",`
-"$srcpath\FL__DataPerfCounters_h_108891_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\_DataPerfCounters.h",`
-"$srcpath\FL__DataPerfCounters_h_108891_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\_DataPerfCounters.h",`
-"$srcpath\FL__DataPerfCounters_h_108891_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\_DataPerfCounters.h",`
-"$srcpath\FL__DataPerfCounters_h_108891_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\_DataPerfCounters.h",`
-"$srcpath\manifest.8.0.50727.1433.63E949F6_03BC_5C40_FF1F_C8B3B9A1E18E" , "$env:SystemRoot\winsxs\Policies\x86_policy.8.0.Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_x-ww_77c24773\8.0.50727.1433.policy",`
-"$srcpath\FL_webhightrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\web_hightrust.config.default",`
-"$srcpath\FL_webhightrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\web_hightrust.config.default",`
-"$srcpath\FL_System_DeploymentFramework_dll_66796_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Deployment\2.0.0.0__b03f5f7f11d50a3a\System.Deployment.dll",`
-"$srcpath\FL_System_DeploymentFramework_dll_66796_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.Deployment.dll",`
-"$srcpath\FL_System_DeploymentFramework_dll_66796_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.Deployment.dll",`
-"$srcpath\FL_UninstallSqlState_sql_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\UninstallSqlState.sql",`
-"$srcpath\FL_UninstallSqlState_sql_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\UninstallSqlState.sql",`
-"$srcpath\FL_UninstallSqlState_sql_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\UninstallSqlState.sql",`
-"$srcpath\FL_UninstallSqlState_sql_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\UninstallSqlState.sql",`
-"$srcpath\FL_ngen_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\ngen.exe",`
-"$srcpath\FL_aspnet_rc_dll_1_ENU_X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\aspnet_rc.dll",`
-"$srcpath\FL_System_Data_SqlXml_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Data.SqlXml\2.0.0.0__b77a5c561934e089\System.Data.SqlXml.dll",`
-"$srcpath\FL_System_Data_SqlXml_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.Data.SqlXml.dll",`
-"$srcpath\FL_System_Data_SqlXml_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.Data.SqlXml.dll",`
-"$srcpath\FL_darkBlue_GRAD_jpg_74769_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Images\darkBlue_GRAD.jpg",`
-"$srcpath\FL_darkBlue_GRAD_jpg_74769_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\darkBlue_GRAD.jpg",`
-"$srcpath\FL_darkBlue_GRAD_jpg_74769_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Images\darkBlue_GRAD.jpg",`
-"$srcpath\FL_UnInstallProfile_SQL_104242_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\UnInstallProfile.SQL",`
-"$srcpath\FL_UnInstallProfile_SQL_104242_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\UnInstallProfile.SQL",`
-"$srcpath\FL_UnInstallProfile_SQL_104242_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\UnInstallProfile.SQL",`
-"$srcpath\FL_UnInstallProfile_SQL_104242_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\UnInstallProfile.SQL",`
-"$srcpath\FL_wizardFinish_ascx_74819_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\wizardFinish.ascx",`
-"$srcpath\FL_wizardFinish_ascx_74819_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\wizardFinish.ascx",`
-"$srcpath\FL_wizardFinish_ascx_74819_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\wizardFinish.ascx",`
-"$srcpath\msvcm80.dll.8.0.50727.1433.98CB24AD_52FB_DB5F_FF1F_C8B3B9A1E18E" , "$env:SystemRoot\winsxs\x86_Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_8.0.50727.1433_x-ww_5cf844d2\msvcm80.dll",`
-"$srcpath\FL_InstallPersistSqlState_sql_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\InstallPersistSqlState.sql",`
-"$srcpath\FL_InstallPersistSqlState_sql_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\InstallPersistSqlState.sql",`
-"$srcpath\FL_manageUsers_aspx_74815_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Users\manageUsers.aspx",`
-"$srcpath\FL__Networkingperfcounters_ini_1_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\_Networkingperfcounters.ini",`
-"$srcpath\FL__Networkingperfcounters_ini_1_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\_Networkingperfcounters.ini",`
-"$srcpath\FL_mscorpe_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\mscorpe.dll",`
-"$srcpath\FL_MSBuildTasks_dll_67855_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\Microsoft.Build.Tasks\2.0.0.0__b03f5f7f11d50a3a\Microsoft.Build.Tasks.dll",`
-"$srcpath\FL_MSBuildTasks_dll_67855_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Microsoft.Build.Tasks.dll",`
-"$srcpath\FL_MSBuildTasks_dll_67855_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\Microsoft.Build.Tasks.dll",`
-"$srcpath\FL__DataOracleClientPerfCounters_shared12__106790_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\_DataOracleClientPerfCounters_shared12_neutral.h",`
-"$srcpath\FL__DataOracleClientPerfCounters_shared12__106790_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\_dataperfcounters_shared12_neutral.h",`
-"$srcpath\FL__DataOracleClientPerfCounters_shared12__106790_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\_DataOracleClientPerfCounters_shared12_neutral.h",`
-"$srcpath\FL__DataOracleClientPerfCounters_shared12__106790_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\_dataperfcounters_shared12_neutral.h",`
-"$srcpath\FL__DataOracleClientPerfCounters_shared12__106790_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\_DataOracleClientPerfCounters_shared12_neutral.h",`
-"$srcpath\FL__DataOracleClientPerfCounters_shared12__106790_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\_dataperfcounters_shared12_neutral.h",`
-"$srcpath\FL__DataOracleClientPerfCounters_shared12__106790_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\_DataOracleClientPerfCounters_shared12_neutral.h",`
-"$srcpath\FL__DataOracleClientPerfCounters_shared12__106790_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\_dataperfcounters_shared12_neutral.h",`
-"$srcpath\FL_InstallUtilLib_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\InstallUtilLib.dll",`
-"$srcpath\FL_Microsoft_VisualBasic_targets_106592_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Microsoft.VisualBasic.targets",`
-"$srcpath\FL_Microsoft_VisualBasic_targets_106592_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\Microsoft.VisualBasic.targets",`
-"$srcpath\Microsoft_Vsa_tlb_1_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Microsoft.Vsa.tlb",`
-"$srcpath\FL_System_EnterpriseServices_Thunk_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.EnterpriseServices.Thunk.dll",`
-"$srcpath\FL_almsgs_dll_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\1033\alinkui.dll",`
-"$srcpath\ShFusRes_dll_1_ENU_X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\ShFusRes.dll",`
-"$srcpath\FL_System_DirectoryServices_Protocols_dll_101362_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.DirectoryServices.Protocols\2.0.0.0__b03f5f7f11d50a3a\System.DirectoryServices.Protocols.dll",`
-"$srcpath\FL_System_DirectoryServices_Protocols_dll_101362_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.DirectoryServices.Protocols.dll",`
-"$srcpath\FL_System_DirectoryServices_Protocols_dll_101362_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.DirectoryServices.Protocols.dll",`
-"$srcpath\FL_home2_aspx_74746_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\home2.aspx",`
-"$srcpath\FL_home2_aspx_74746_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\home2.aspx",`
-"$srcpath\FL_home2_aspx_74746_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\home2.aspx",`
-"$srcpath\manifest.8.0.50727.1433.844EFBA7_1C24_93B2_FF1F_C8B3B9A1E18E" , "$env:SystemRoot\winsxs\manifests\amd64_Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_8.0.50727.1433_x-ww_8f022ab2.manifest",`
-"$srcpath\FL_System_Management_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Management\2.0.0.0__b03f5f7f11d50a3a\System.Management.dll",`
-"$srcpath\FL_System_Management_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.Management.dll",`
-"$srcpath\FL_System_Management_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.Management.dll",`
-"$srcpath\FL_SmtpSettings_aspx_resx_103109_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\SmtpSettings.aspx.resx",`
-"$srcpath\FL_SmtpSettings_aspx_resx_103109_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\SmtpSettings.aspx.resx",`
-"$srcpath\FL_SmtpSettings_aspx_resx_103109_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\SmtpSettings.aspx.resx",`
-"$srcpath\FL_EditAppSetting_aspx_102020_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\AppConfig\EditAppSetting.aspx",`
-"$srcpath\FL_EditAppSetting_aspx_102020_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\EditAppSetting.aspx",`
-"$srcpath\FL_EditAppSetting_aspx_102020_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\AppConfig\EditAppSetting.aspx",`
-"$srcpath\FL_WebAdminHelp_Provider_aspx_119293_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\ASP.NETWebAdminFiles\WebAdminHelp_Provider.aspx",`
-"$srcpath\FL_WebAdminHelp_Provider_aspx_119293_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\WebAdminHelp_Provider.aspx",`
-"$srcpath\FL_WebAdminHelp_Provider_aspx_119293_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\WebAdminHelp_Provider.aspx",`
-"$srcpath\FL_WebAdminHelp_Provider_aspx_119293_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\WebAdminHelp_Provider.aspx",`
-"$srcpath\FL_AdoNetDiag_dll_106905_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\AdoNetDiag.dll",`
-"$srcpath\FL_managePermissions_aspx_74808_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Permissions\managePermissions.aspx",`
-"$srcpath\FL_InstallUtilLib_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\InstallUtilLib.dll",`
-"$srcpath\FL_WebAdminHelp_aspx_119289_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\ASP.NETWebAdminFiles\WebAdminHelp.aspx",`
-"$srcpath\FL_WebAdminHelp_aspx_119289_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\WebAdminHelp.aspx",`
-"$srcpath\FL_WebAdminHelp_aspx_119289_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\WebAdminHelp.aspx",`
-"$srcpath\FL_WebAdminHelp_aspx_119289_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\WebAdminHelp.aspx",`
-"$srcpath\cvtres_exe_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\cvtres.exe",`
-"$srcpath\FL_branding_Full2_gif_102054_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Images\branding_Full2.gif",`
-"$srcpath\FL_branding_Full2_gif_102054_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\branding_Full2.gif",`
-"$srcpath\FL_branding_Full2_gif_102054_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Images\branding_Full2.gif",`
-"$srcpath\FL_selectedTab_leftCorner_gif_102049_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Images\selectedTab_leftCorner.gif",`
-"$srcpath\FL_selectedTab_leftCorner_gif_102049_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Images\unSelectedTab_leftCorner.gif",`
-"$srcpath\FL_selectedTab_leftCorner_gif_102049_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\selectedTab_leftCorner.gif",`
-"$srcpath\FL_selectedTab_leftCorner_gif_102049_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\unSelectedTab_leftCorner.gif",`
-"$srcpath\FL_selectedTab_leftCorner_gif_102049_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Images\selectedTab_leftCorner.gif",`
-"$srcpath\FL_selectedTab_leftCorner_gif_102049_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Images\unSelectedTab_leftCorner.gif",`
-"$srcpath\FL_RegSvcs_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\RegSvcs.exe",`
-"$srcpath\FL_RegSvcs_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\RegSvcs.exe",`
-"$srcpath\FL_IEExecRemote_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\IEExecRemote\2.0.0.0__b03f5f7f11d50a3a\IEExecRemote.dll",`
-"$srcpath\FL_IEExecRemote_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\IEExecRemote.dll",`
-"$srcpath\FL_IEExecRemote_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\IEExecRemote.dll",`
-"$srcpath\FL_InstallProfile_SQL_104241_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\InstallProfile.SQL",`
-"$srcpath\FL_InstallProfile_SQL_104241_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\InstallProfile.SQL",`
-"$srcpath\FL_InstallProfile_SQL_104241_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\InstallProfile.SQL",`
-"$srcpath\FL_InstallProfile_SQL_104241_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\InstallProfile.SQL",`
-"$srcpath\FL_webAdminButtonRow_master_74737_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\webAdminButtonRow.master",`
-"$srcpath\FL_webAdminButtonRow_master_74737_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\webAdminButtonRow.master",`
-"$srcpath\FL_webAdminButtonRow_master_74737_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\webAdminButtonRow.master",`
-"$srcpath\FL_manageSingleRole_aspx_resx_103494_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\Roles\App_LocalResources\manageSingleRole.aspx.resx",`
-"$srcpath\FL_manageSingleRole_aspx_resx_103494_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Roles\App_LocalResources\manageSingleRole.aspx.resx",`
-"$srcpath\FL_manageSingleRole_aspx_resx_103494_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\Roles\App_LocalResources\manageSingleRole.aspx.resx",`
-"$srcpath\FL_System_EnterpriseServices_Wrapper_dll_76457_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_32\System.EnterpriseServices\2.0.0.0__b03f5f7f11d50a3a\System.EnterpriseServices.Wrapper.dll",`
-"$srcpath\FL_System_EnterpriseServices_Wrapper_dll_76457_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.EnterpriseServices.Wrapper.dll",`
-"$srcpath\mscoree_tlb_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\mscoree.tlb",`
-"$srcpath\FL_mscories_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\system32\mscories.dll",`
-"$srcpath\FL_InstallSqlStateTemplate_sql_116231_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\InstallSqlStateTemplate.sql",`
-"$srcpath\FL_InstallSqlStateTemplate_sql_116231_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\InstallSqlStateTemplate.sql",`
-"$srcpath\FL_AppConfigHome_aspx_resx_103114_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\AppConfigHome.aspx.resx",`
-"$srcpath\FL_AppConfigHome_aspx_resx_103114_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\AppConfigHome.aspx.resx",`
-"$srcpath\FL_AppConfigHome_aspx_resx_103114_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\AppConfigHome.aspx.resx",`
-"$srcpath\FL_security_aspx_74800_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\security.aspx",`
-"$srcpath\FL_WizardPage_cs_102042_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_Code\WizardPage.cs",`
-"$srcpath\FL_manageUsers_aspx_resx_103467_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\Users\App_LocalResources\manageUsers.aspx.resx",`
-"$srcpath\FL_manageUsers_aspx_resx_103467_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Users\App_LocalResources\manageUsers.aspx.resx",`
-"$srcpath\FL_manageUsers_aspx_resx_103467_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\Users\App_LocalResources\manageUsers.aspx.resx",`
-"$srcpath\FL_System_tlb_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.tlb",`
-"$srcpath\FL_wizardPermission_ascx_74822_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\wizardPermission.ascx",`
-"$srcpath\FL_xiino_browser_76168_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\xiino.browser",`
-"$srcpath\FL_xiino_browser_76168_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\xiino.browser",`
-"$srcpath\FL_AppLaunch_exe_111659_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\AppLaunch.exe",`
-"$srcpath\FL_webAdminNoNavBar_master_102339_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\webAdminNoNavBar.master",`
-"$srcpath\FL_webAdminNoNavBar_master_102339_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\webAdminNoNavBar.master",`
-"$srcpath\FL_webAdminNoNavBar_master_102339_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\webAdminNoNavBar.master",`
-"$srcpath\FL_almsgs_dll_ENU_X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\1033\alinkui.dll",`
-"$srcpath\FL_aspnet_regiis_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\aspnet_regiis.exe",`
-"$srcpath\FL__DataOracleClientPerfCounters_shared12__106788_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\_DataOracleClientPerfCounters_shared12_neutral.ini",`
-"$srcpath\FL__DataOracleClientPerfCounters_shared12__106788_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\_DataOracleClientPerfCounters_shared12_neutral.ini",`
-"$srcpath\FL_cscompmgd_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\cscompmgd\8.0.0.0__b03f5f7f11d50a3a\cscompmgd.dll",`
-"$srcpath\FL_cscompmgd_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\cscompmgd.dll",`
-"$srcpath\FL_cscompmgd_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\cscompmgd.dll",`
-"$srcpath\FL_confirmation_ascx_resx_110690_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\confirmation.ascx.resx",`
-"$srcpath\FL_confirmation_ascx_resx_110690_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\confirmation.ascx.resx",`
-"$srcpath\FL_confirmation_ascx_resx_110690_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\confirmation.ascx.resx",`
-"$srcpath\jsc_exe_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\jsc.exe",`
-"$srcpath\FL_TLBREF_DLL_97713_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\TLBREF.DLL",`
-"$srcpath\FL_findUsers_aspx_102268_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Users\findUsers.aspx",`
-"$srcpath\FL_UninstallMembership_sql_67219_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\UninstallMembership.sql",`
-"$srcpath\FL_UninstallMembership_sql_67219_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\UninstallMembership.sql",`
-"$srcpath\FL_UninstallMembership_sql_67219_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\UninstallMembership.sql",`
-"$srcpath\FL_UninstallMembership_sql_67219_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\UninstallMembership.sql",`
-"$srcpath\FL_peverify_dll_97810_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\peverify.dll",`
-"$srcpath\FL_webengine_dll_135889_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\webengine.dll",`
-"$srcpath\FL_csc_rsp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\csc.rsp",`
-"$srcpath\FL_csc_rsp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\csc.rsp",`
-"$srcpath\FL_WebAdminHelp_Provider_aspx_resx_122114_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\App_LocalResources\WebAdminHelp_Provider.aspx.resx",`
-"$srcpath\FL_WebAdminHelp_Provider_aspx_resx_122114_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_LocalResources\WebAdminHelp_Provider.aspx.resx",`
-"$srcpath\FL_WebAdminHelp_Provider_aspx_resx_122114_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\App_LocalResources\WebAdminHelp_Provider.aspx.resx",`
-"$srcpath\FL_home0_aspx_74744_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\home0.aspx",`
-"$srcpath\FL_home0_aspx_74744_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\home0.aspx",`
-"$srcpath\FL_home0_aspx_74744_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\home0.aspx",`
-"$srcpath\FL_InstallSqlState_sql_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\InstallSqlState.sql",`
-"$srcpath\FL_InstallSqlState_sql_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\InstallSqlState.sql",`
-"$srcpath\FL_weblowtrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\web_lowtrust.config",`
-"$srcpath\FL_weblowtrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\web_lowtrust.config.default",`
-"$srcpath\FL_weblowtrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\web_lowtrust.config",`
-"$srcpath\FL_weblowtrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\web_lowtrust.config.default",`
-"$srcpath\FL_System_Messaging_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Messaging\2.0.0.0__b03f5f7f11d50a3a\System.Messaging.dll",`
-"$srcpath\FL_System_Messaging_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.Messaging.dll",`
-"$srcpath\FL_System_Messaging_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.Messaging.dll",`
-"$srcpath\Microsoft_VsaVb_dll_3_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\Microsoft_VsaVb\8.0.0.0__b03f5f7f11d50a3a\Microsoft_VsaVb.dll",`
-"$srcpath\Microsoft_VsaVb_dll_3_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Microsoft_VsaVb.dll",`
-"$srcpath\FL_shfusion_chm_121725_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\shfusion.chm",`
-"$srcpath\FL_shfusion_chm_121725_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\shfusion.chm",`
-"$srcpath\FL_ProvidersPage_cs_102040_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_Code\ProvidersPage.cs",`
-"$srcpath\FL_sbs_mscorrc_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\sbs_mscorrc.dll",`
-"$srcpath\FL_ManageProviders_aspx_92850_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Providers\ManageProviders.aspx",`
-"$srcpath\FL_ManageProviders_aspx_92850_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Providers\ManageProviders.aspx",`
-"$srcpath\FL_ManageProviders_aspx_92850_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Providers\ManageProviders.aspx",`
-"$srcpath\FL_Aspnet_config_117583_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Aspnet.config",`
-"$srcpath\FL_Aspnet_config_117583_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\Aspnet.config",`
-"$srcpath\FL_CasPol_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CasPol.exe",`
-"$srcpath\FL_confirmation_ascx_102278_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\confirmation.ascx",`
-"$srcpath\FL_WebAdminHelp_Internals_aspx_119291_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\ASP.NETWebAdminFiles\WebAdminHelp_Internals.aspx",`
-"$srcpath\FL_WebAdminHelp_Internals_aspx_119291_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\WebAdminHelp_Internals.aspx",`
-"$srcpath\FL_WebAdminHelp_Internals_aspx_119291_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\WebAdminHelp_Internals.aspx",`
-"$srcpath\FL_WebAdminHelp_Internals_aspx_119291_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\WebAdminHelp_Internals.aspx",`
-"$srcpath\FL_System_Runtime_Serialization_Formatters_Soap_dl_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Runtime.Serialization.Formatters.Soap\2.0.0.0__b03f5f7f11d50a3a\System.Runtime.Serialization.Formatters.Soap.dll",`
-"$srcpath\FL_System_Runtime_Serialization_Formatters_Soap_dl_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.Runtime.Serialization.Formatters.Soap.dll",`
-"$srcpath\FL_System_Runtime_Serialization_Formatters_Soap_dl_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.Runtime.Serialization.Formatters.Soap.dll",`
-"$srcpath\FL_DefineErrorPage_aspx_102019_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\DefineErrorPage.aspx",`
-"$srcpath\prcp_nlp_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\prcp.nlp",`
-"$srcpath\prcp_nlp_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\prcp.nlp",`
-"$srcpath\prcp_nlp_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\prcp.nlp",`
-"$srcpath\prcp_nlp_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\prcp.nlp",`
-"$srcpath\FL_System_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System\2.0.0.0__b77a5c561934e089\System.dll",`
-"$srcpath\FL_System_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.dll",`
-"$srcpath\FL_System_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.dll",`
-"$srcpath\FL_aspnet_perf2_ini_ENU_X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\aspnet_perf2.ini",`
-"$srcpath\FL_WebAdminWithConfirmationNoButtonRow_mas_102343_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\WebAdminWithConfirmationNoButtonRow.master",`
-"$srcpath\FL_System_XML_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Xml\2.0.0.0__b77a5c561934e089\System.XML.dll",`
-"$srcpath\FL_System_XML_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.XML.dll",`
-"$srcpath\FL_System_XML_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.XML.dll",`
-"$srcpath\FL_mscorsec_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\mscorsec.dll",`
-"$srcpath\FL_sbs_iehost_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\sbs_iehost.dll",`
-"$srcpath\FL_CreateAppSetting_aspx_resx_103117_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\CreateAppSetting.aspx.resx",`
-"$srcpath\FL_CreateAppSetting_aspx_resx_103117_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\CreateAppSetting.aspx.resx",`
-"$srcpath\FL_CreateAppSetting_aspx_resx_103117_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\CreateAppSetting.aspx.resx",`
-"$srcpath\FL_wizardInit_ascx_74820_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\wizardInit.ascx",`
-"$srcpath\FL_wizardInit_ascx_74820_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\wizardInit.ascx",`
-"$srcpath\FL_wizardInit_ascx_74820_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\wizardInit.ascx",`
-"$srcpath\FL_mscorlib_tlb_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\mscorlib.tlb",`
-"$srcpath\FL_aspnet_filter_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\aspnet_filter.dll",`
-"$srcpath\FL_System_DeploymentFramework_Service_exe_66797_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\dfsvc.exe",`
-"$srcpath\FL_System_EnterpriseServices_tlb_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.EnterpriseServices.tlb",`
-"$srcpath\FL_machine_config_105746_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\machine.config.default",`
-"$srcpath\FL_machine_config_105746_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\machine.config.default",`
-"$srcpath\FL_NavigationBar_cs_102045_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_Code\NavigationBar.cs",`
-"$srcpath\FL_manageProviders_aspx_resx_103379_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Providers\App_LocalResources\manageProviders.aspx.resx",`
-"$srcpath\FL_manageProviders_aspx_resx_103379_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Providers\App_LocalResources\manageProviders.aspx.resx",`
-"$srcpath\FL_manageProviders_aspx_resx_103379_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Providers\App_LocalResources\manageProviders.aspx.resx",`
-"$srcpath\FL_sorttbls_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\sorttbls.nlp",`
-"$srcpath\FL_sorttbls_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\sorttbls.nlp",`
-"$srcpath\FL_sorttbls_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\sorttbls.nlp",`
-"$srcpath\FL_sorttbls_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\sorttbls.nlp",`
-"$srcpath\catalog.8.0.50727.1433.4F6D20F0_CCE5_1492_FF1F_C8B3B9A1E18E" , "$env:SystemRoot\winsxs\Policies\amd64_policy.8.0.Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_x-ww_d780e993\8.0.50727.1433.cat",`
-"$srcpath\FL_aspnet_perf_ini_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\aspnet_perf.ini",`
-"$srcpath\FL_CvtResUI_dll_109387_ENU_X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\1033\CvtResUI.dll",`
-"$srcpath\FL_WebAdminHelp_Application_aspx_resx_122111_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\App_LocalResources\WebAdminHelp_Application.aspx.resx",`
-"$srcpath\FL_WebAdminHelp_Application_aspx_resx_122111_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_LocalResources\WebAdminHelp_Application.aspx.resx",`
-"$srcpath\FL_WebAdminHelp_Application_aspx_resx_122111_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\App_LocalResources\WebAdminHelp_Application.aspx.resx",`
-"$srcpath\FL_Default_browser_76171_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\Default.browser",`
-"$srcpath\FL_Default_browser_76171_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\Default.browser",`
-"$srcpath\FL_CustomMarshalers_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_64\CustomMarshalers\2.0.0.0__b03f5f7f11d50a3a\CustomMarshalers.dll",`
-"$srcpath\FL_CustomMarshalers_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CustomMarshalers.dll",`
-"$srcpath\Microsoft.JScript_tlb_2_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Microsoft.JScript.tlb",`
-"$srcpath\FL_gateway_browser_76174_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\gateway.browser",`
-"$srcpath\FL_gateway_browser_76174_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\gateway.browser",`
-"$srcpath\FL_createPermission_aspx_74809_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Permissions\createPermission.aspx",`
-"$srcpath\CORPerfMonSymbols_h_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CORPerfMonSymbols.h",`
-"$srcpath\CORPerfMonSymbols_h_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\CORPerfMonSymbols.h",`
-"$srcpath\CORPerfMonSymbols_h_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CORPerfMonSymbols.h",`
-"$srcpath\CORPerfMonSymbols_h_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\CORPerfMonSymbols.h",`
-"$srcpath\FL_SecurityPage_cs_102041_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_Code\SecurityPage.cs",`
-"$srcpath\mscoree_tlb_1_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\mscoree.tlb",`
-"$srcpath\FL_MME_browser_76158_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\MME.browser",`
-"$srcpath\FL_MME_browser_76158_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\MME.browser",`
-"$srcpath\FL_wizardAuthentication_ascx_resx_103395_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardAuthentication.ascx.resx",`
-"$srcpath\FL_wizardAuthentication_ascx_resx_103395_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardAuthentication.ascx.resx",`
-"$srcpath\FL_wizardAuthentication_ascx_resx_103395_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardAuthentication.ascx.resx",`
-"$srcpath\FL_aspnet_mof_uninstall_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\aspnet.mof.uninstall",`
-"$srcpath\FL_aspnet_mof_uninstall_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\aspnet.mof.uninstall",`
-"$srcpath\FL_aspnet_mof_uninstall_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\aspnet.mof.uninstall",`
-"$srcpath\FL_aspnet_mof_uninstall_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\aspnet.mof.uninstall",`
-"$srcpath\catalog.8.0.50727.1433.98CB24AD_52FB_DB5F_FF1F_C8B3B9A1E18E" , "$env:SystemRoot\winsxs\manifests\x86_Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_8.0.50727.1433_x-ww_5cf844d2.cat",`
-"$srcpath\FL_ie_browser_76156_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\ie.browser",`
-"$srcpath\FL_ie_browser_76156_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\ie.browser",`
-"$srcpath\FL_SOS_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\SOS.dll",`
-"$srcpath\FL_SmtpSettings_aspx_102013_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\SmtpSettings.aspx",`
-"$srcpath\FL_AppLaunch_exe_111659_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\AppLaunch.exe",`
-"$srcpath\FL_setUpAuthentication_aspx_resx_103482_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\App_LocalResources\setUpAuthentication.aspx.resx",`
-"$srcpath\FL_setUpAuthentication_aspx_resx_103482_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\App_LocalResources\setUpAuthentication.aspx.resx",`
-"$srcpath\FL_setUpAuthentication_aspx_resx_103482_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\App_LocalResources\setUpAuthentication.aspx.resx",`
-"$srcpath\FL_providerList_ascx_resx_103378_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Providers\App_LocalResources\providerList.ascx.resx",`
-"$srcpath\FL_providerList_ascx_resx_103378_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Providers\App_LocalResources\providerList.ascx.resx",`
-"$srcpath\FL_providerList_ascx_resx_103378_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Providers\App_LocalResources\providerList.ascx.resx",`
-"$srcpath\FL_image2_gif_74785_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Images\image2.gif",`
-"$srcpath\FL_image2_gif_74785_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\image2.gif",`
-"$srcpath\FL_image2_gif_74785_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Images\image2.gif",`
-"$srcpath\FL_CasPol_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CasPol.exe",`
-"$srcpath\FL_ManageAppSettings_aspx_resx_103111_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\ManageAppSettings.aspx.resx",`
-"$srcpath\FL_ManageAppSettings_aspx_resx_103111_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\ManageAppSettings.aspx.resx",`
-"$srcpath\FL_ManageAppSettings_aspx_resx_103111_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\ManageAppSettings.aspx.resx",`
-"$srcpath\FL_winwap_browser_109069_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\winwap.browser",`
-"$srcpath\FL_winwap_browser_109069_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\winwap.browser",`
-"$srcpath\FL__NetworkingPerfCounters_h_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\_NetworkingPerfCounters.h",`
-"$srcpath\FL__NetworkingPerfCounters_h_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\_NetworkingPerfCounters_v2.h",`
-"$srcpath\FL__NetworkingPerfCounters_h_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\_NetworkingPerfCounters.h",`
-"$srcpath\FL__NetworkingPerfCounters_h_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\_NetworkingPerfCounters_v2.h",`
-"$srcpath\FL_mscorsecr_dll_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\MUI\0409\mscorsecr.dll",`
-"$srcpath\FL_InstallUtil_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\InstallUtil.exe",`
-"$srcpath\FL_regtlib_exe_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\regtlibv12.exe",`
-"$srcpath\FL_HelpIcon_solid_gif_102058_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Images\HelpIcon_solid.gif",`
-"$srcpath\FL_HelpIcon_solid_gif_102058_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\HelpIcon_solid.gif",`
-"$srcpath\FL_HelpIcon_solid_gif_102058_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Images\HelpIcon_solid.gif",`
-"$srcpath\FL_selectedTab_rightCorner_gif_102050_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Images\selectedTab_rightCorner.gif",`
-"$srcpath\FL_selectedTab_rightCorner_gif_102050_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Images\unSelectedTab_rightCorner.gif",`
-"$srcpath\FL_selectedTab_rightCorner_gif_102050_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\selectedTab_rightCorner.gif",`
-"$srcpath\FL_selectedTab_rightCorner_gif_102050_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\unSelectedTab_rightCorner.gif",`
-"$srcpath\FL_selectedTab_rightCorner_gif_102050_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Images\selectedTab_rightCorner.gif",`
-"$srcpath\FL_selectedTab_rightCorner_gif_102050_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Images\unSelectedTab_rightCorner.gif",`
-"$srcpath\FL_System_Drawing_tlb_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.Drawing.tlb",`
-"$srcpath\FL_MSBuildEngine_dll_67852_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\Microsoft.Build.Engine\2.0.0.0__b03f5f7f11d50a3a\Microsoft.Build.Engine.dll",`
-"$srcpath\FL_MSBuildEngine_dll_67852_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Microsoft.Build.Engine.dll",`
-"$srcpath\FL_MSBuildEngine_dll_67852_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\Microsoft.Build.Engine.dll",`
-"$srcpath\FL_wizardProviderInfo_ascx_resx_103394_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardProviderInfo.ascx.resx",`
-"$srcpath\FL_wizardProviderInfo_ascx_resx_103394_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardProviderInfo.ascx.resx",`
-"$srcpath\FL_wizardProviderInfo_ascx_resx_103394_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardProviderInfo.ascx.resx",`
-"$srcpath\dw20.adm_0001_1033.F0DF3458_A845_11D3_8D0A_0050046416B9" , "$env:SystemRoot\inf\AER_1033.ADM",`
-"$srcpath\FL_MSBuild_rsp_113422_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\MSBuild.rsp",`
-"$srcpath\FL_MSBuild_rsp_113422_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\MSBuild.rsp",`
-"$srcpath\FL_MSBuild_rsp_113422_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\MSBuild.rsp",`
-"$srcpath\FL_MSBuild_rsp_113422_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\MSBuild.rsp",`
-"$srcpath\FL_MSBuild_rsp_113422_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\MSBuild.rsp",`
-"$srcpath\FL_MSBuild_rsp_113422_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\MSBuild.rsp",`
-"$srcpath\FL_mscorsn_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\mscorsn.dll",`
-"$srcpath\Microsoft.JScript_dll_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\Microsoft.JScript\8.0.0.0__b03f5f7f11d50a3a\Microsoft.JScript.dll",`
-"$srcpath\Microsoft.JScript_dll_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Microsoft.JScript.dll",`
-"$srcpath\Microsoft.JScript_dll_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\Microsoft.JScript.dll",`
-"$srcpath\FL_diasymreader_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\diasymreader.dll",`
-"$srcpath\FL_sbs_mscorsec_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\sbs_mscorsec.dll",`
-"$srcpath\FL_MSBuildUtilities_dll_70717_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\Microsoft.Build.Utilities\2.0.0.0__b03f5f7f11d50a3a\Microsoft.Build.Utilities.dll",`
-"$srcpath\FL_MSBuildUtilities_dll_70717_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Microsoft.Build.Utilities.dll",`
-"$srcpath\FL_MSBuildUtilities_dll_70717_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\Microsoft.Build.Utilities.dll",`
-"$srcpath\FL_mscortim_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\mscortim.dll",`
-"$srcpath\FL_aspnet_regsql_exe_73568_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\aspnet_regsql.exe",`
-"$srcpath\msvcr80.dll.8.0.50727.1433.98CB24AD_52FB_DB5F_FF1F_C8B3B9A1E18E" , "$env:SystemRoot\winsxs\x86_Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_8.0.50727.1433_x-ww_5cf844d2\msvcr80.dll",`
-"$srcpath\FL_cscmsgs_dll_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\1033\cscompui.dll",`
-"$srcpath\FL_aspnet_regsql_exe_73568_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\aspnet_regsql.exe",`
-"$srcpath\FL_mozilla_browser_76159_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\mozilla.browser",`
-"$srcpath\FL_mozilla_browser_76159_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\mozilla.browser",`
-"$srcpath\FL_home2_aspx_resx_103508_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\App_LocalResources\home2.aspx.resx",`
-"$srcpath\FL_home2_aspx_resx_103508_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_LocalResources\home2.aspx.resx",`
-"$srcpath\FL_home2_aspx_resx_103508_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\App_LocalResources\home2.aspx.resx",`
-"$srcpath\FL_WebAdminWithConfirmation_master_92851_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\WebAdminWithConfirmation.master",`
-"$srcpath\FL_home1_aspx_74745_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\home1.aspx",`
-"$srcpath\FL_home1_aspx_74745_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\home1.aspx",`
-"$srcpath\FL_home1_aspx_74745_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\home1.aspx",`
-"$srcpath\FL_WMINet_Utils_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\WMINet_Utils.dll",`
-"$srcpath\FL_System_Drawing_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Drawing\2.0.0.0__b03f5f7f11d50a3a\System.Drawing.dll",`
-"$srcpath\FL_System_Drawing_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.Drawing.dll",`
-"$srcpath\FL_System_Drawing_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.Drawing.dll",`
-"$srcpath\FL_RegAsm_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\RegAsm.exe",`
-"$srcpath\FL_netscape_browser_76160_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\netscape.browser",`
-"$srcpath\FL_netscape_browser_76160_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\netscape.browser",`
-"$srcpath\Microsoft.JScript_tlb_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\Microsoft.JScript.tlb",`
-"$srcpath\msvcp80.dll.8.0.50727.1433.98CB24AD_52FB_DB5F_FF1F_C8B3B9A1E18E" , "$env:SystemRoot\winsxs\x86_Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_8.0.50727.1433_x-ww_5cf844d2\msvcp80.dll",`
-"$srcpath\FL_EventLogMessages_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\EventLogMessages.dll",`
-"$srcpath\dw20.adm_0001_1028_1028.F0DF3458_A845_11D3_8D0A_0050046416B9" , "$env:SystemRoot\inf\AER_1028.ADM",`
-"$srcpath\mscorrc_dll_2_ENU_X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\mscorrc.dll",`
-"$srcpath\FL_alink_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\alink.dll",`
-"$srcpath\FL_MSBuild_exe_67853_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\MSBuild.exe",`
-"$srcpath\FL_CORPerfMonExt_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CORPerfMonExt.dll",`
-"$srcpath\FL_IIEHost_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\IIEHost\2.0.0.0__b03f5f7f11d50a3a\IIEHost.dll",`
-"$srcpath\FL_IIEHost_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\IIEHost.dll",`
-"$srcpath\FL_IIEHost_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\IIEHost.dll",`
-"$srcpath\FL_aspnet_state_perf_h_76107_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\aspnet_state_perf.h",`
-"$srcpath\FL_aspnet_state_perf_h_76107_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\aspnet_state_perf.h",`
-"$srcpath\FL_ngen_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ngen.exe",`
-"$srcpath\filler" , "$env:SystemRoot\dotnet48.installed.workaround",`
-"$srcpath\filler" , "$env:SystemRoot\assembly\NativeImages_v2.0.50727_32\index24.dat",`
-"$srcpath\filler" , "$env:SystemRoot\assembly\NativeImages_v2.0.50727_32\index25.dat",`
-"$srcpath\filler" , "$env:SystemRoot\assembly\NativeImages_v2.0.50727_64\index31.dat",`
-"$srcpath\filler" , "$env:SystemRoot\Installer\wix{F5B09CFD-F0B2-36AF-8DF4-1DF6B63FC7B4}.SchedServiceConfig.rmi",`
-"$srcpath\manifest.8.0.50727.1433.98CB24AD_52FB_DB5F_FF1F_C8B3B9A1E18E" , "$env:SystemRoot\winsxs\manifests\x86_Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_8.0.50727.1433_x-ww_5cf844d2.manifest",`
-"$srcpath\FL_opera_browser_76163_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\opera.browser",`
-"$srcpath\FL_opera_browser_76163_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\opera.browser",`
-"$srcpath\FL_normnfc_nlp_66374_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\normnfc.nlp",`
-"$srcpath\FL_normnfc_nlp_66374_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\normnfc.nlp",`
-"$srcpath\FL_normnfc_nlp_66374_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\normnfc.nlp",`
-"$srcpath\FL_normnfc_nlp_66374_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\normnfc.nlp",`
-"$srcpath\FL_sbs_diasymreader_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\sbs_diasymreader.dll",`
-"$srcpath\FL_System_Web_Services_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Web.Services\2.0.0.0__b03f5f7f11d50a3a\System.Web.Services.dll",`
-"$srcpath\FL_System_Web_Services_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.Web.Services.dll",`
-"$srcpath\FL_System_Web_Services_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.Web.Services.dll",`
-"$srcpath\FL_System_Runtime_Remoting_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Runtime.Remoting\2.0.0.0__b77a5c561934e089\System.Runtime.Remoting.dll",`
-"$srcpath\FL_System_Runtime_Remoting_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.Runtime.Remoting.dll",`
-"$srcpath\FL_System_Runtime_Remoting_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.Runtime.Remoting.dll",`
-"$srcpath\FL_aspnet_perf_h_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\aspnet_perf.h",`
-"$srcpath\FL_aspnet_perf_h_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\aspnet_perf.h",`
-"$srcpath\FL_gacutil_exe_config_79703_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v1.1.4322\gacutil.exe.config",`
-"$srcpath\FL_aspnet_regiis_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\aspnet_regiis.exe",`
-"$srcpath\FL_mscorsvc_dll_93043_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\mscorsvc.dll",`
-"$srcpath\FL_UninstallRoles_sql_67222_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\UninstallRoles.sql",`
-"$srcpath\FL_UninstallRoles_sql_67222_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\UninstallRoles.sql",`
-"$srcpath\FL_UninstallRoles_sql_67222_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\UninstallRoles.sql",`
-"$srcpath\FL_UninstallRoles_sql_67222_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\UninstallRoles.sql",`
-"$srcpath\FL_help_jpg_74778_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Images\help.jpg",`
-"$srcpath\FL_help_jpg_74778_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\help.jpg",`
-"$srcpath\FL_help_jpg_74778_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Images\help.jpg",`
-"$srcpath\FL_gradient_onBlue_gif_74775_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Images\gradient_onBlue.gif",`
-"$srcpath\FL_gradient_onBlue_gif_74775_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\gradient_onBlue.gif",`
-"$srcpath\FL_gradient_onBlue_gif_74775_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Images\gradient_onBlue.gif",`
-"$srcpath\FL_System_Design_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Design\2.0.0.0__b03f5f7f11d50a3a\System.Design.dll",`
-"$srcpath\FL_System_Design_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.Design.dll",`
-"$srcpath\FL_System_Design_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.Design.dll",`
-"$srcpath\FL_Microsoft_CSharp_targets_106591_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Microsoft.CSharp.targets",`
-"$srcpath\FL_Microsoft_CSharp_targets_106591_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\Microsoft.CSharp.targets",`
-"$srcpath\FL_System_Transactions_dll_75016_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_64\System.Transactions\2.0.0.0__b77a5c561934e089\System.Transactions.dll",`
-"$srcpath\FL_System_Transactions_dll_75016_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.Transactions.dll",`
-"$srcpath\FL_mscorpjt_dll_93058_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\mscorpjt.dll",`
-"$srcpath\FL_System_EnterpriseServices_Thunk_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.EnterpriseServices.Thunk.dll",`
-"$srcpath\FL_mscordbc_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\mscordbc.dll",`
-"$srcpath\FL_prc_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\prc.nlp",`
-"$srcpath\FL_prc_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\prc.nlp",`
-"$srcpath\FL_prc_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\prc.nlp",`
-"$srcpath\FL_prc_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\prc.nlp",`
-"$srcpath\FL_DefaultWsdlHelpGenerator_aspx_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\DefaultWsdlHelpGenerator.aspx",`
-"$srcpath\FL_DefaultWsdlHelpGenerator_aspx_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\DefaultWsdlHelpGenerator.aspx",`
-"$srcpath\FL_System_EnterpriseServices_Wrapper_dll_76457_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_64\System.EnterpriseServices\2.0.0.0__b03f5f7f11d50a3a\System.EnterpriseServices.Wrapper.dll",`
-"$srcpath\FL_System_EnterpriseServices_Wrapper_dll_76457_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.EnterpriseServices.Wrapper.dll",`
-"$srcpath\FL_mscorie_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\mscorie.dll",`
-"$srcpath\FL_DebugAndTrace_aspx_102018_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\DebugAndTrace.aspx",`
-"$srcpath\FL_shfusion_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\shfusion.dll",`
-"$srcpath\FL_addUser_aspx_resx_103469_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\Users\App_LocalResources\addUser.aspx.resx",`
-"$srcpath\FL_addUser_aspx_resx_103469_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Users\App_LocalResources\addUser.aspx.resx",`
-"$srcpath\FL_addUser_aspx_resx_103469_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\Users\App_LocalResources\addUser.aspx.resx",`
-"$srcpath\FL_System_DeploymentFramework_Service_exe_66797_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\dfsvc.exe",`
-"$srcpath\FL_mscorsvw_exe_93402_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\mscorsvw.exe",`
-"$srcpath\FL_System_Data_OracleClient_dll_2_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_32\System.Data.OracleClient\2.0.0.0__b77a5c561934e089\System.Data.OracleClient.dll",`
-"$srcpath\FL_System_Data_OracleClient_dll_2_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.Data.OracleClient.dll",`
-"$srcpath\FL_UninstallCommon_sql_74697_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\UninstallCommon.sql",`
-"$srcpath\FL_UninstallCommon_sql_74697_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\UninstallCommon.sql",`
-"$srcpath\FL_UninstallCommon_sql_74697_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\UninstallCommon.sql",`
-"$srcpath\FL_UninstallCommon_sql_74697_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\UninstallCommon.sql",`
-"$srcpath\ShFusRes_dll_1_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ShFusRes.dll",`
-"$srcpath\FL_SYSTEM_WINDOWS_FORMS_DLL_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Windows.Forms\2.0.0.0__b77a5c561934e089\System.Windows.Forms.dll",`
-"$srcpath\FL_SYSTEM_WINDOWS_FORMS_DLL_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.Windows.Forms.dll",`
-"$srcpath\FL_SYSTEM_WINDOWS_FORMS_DLL_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.Windows.Forms.dll",`
-"$srcpath\Microsoft_Vsa_tlb_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\Microsoft.Vsa.tlb",`
-"$srcpath\FL_manageAllRoles_aspx_74812_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Roles\manageAllRoles.aspx",`
-"$srcpath\FL_AssemblyList_xml_113047_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\RedistList\FrameworkList.xml",`
-"$srcpath\FL_openwave_browser_76162_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\openwave.browser",`
-"$srcpath\FL_openwave_browser_76162_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\openwave.browser",`
-"$srcpath\FL_mscordbi_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\mscordbi.dll",`
-"$srcpath\FL_dv_aspnetmmc_chm_121991_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\dv_aspnetmmc.chm",`
-"$srcpath\FL_dv_aspnetmmc_chm_121991_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\dv_aspnetmmc.chm",`
-"$srcpath\FL_dv_aspnetmmc_chm_121991_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\dv_aspnetmmc.chm",`
-"$srcpath\FL_dv_aspnetmmc_chm_121991_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\dv_aspnetmmc.chm",`
-"$srcpath\FL_panasonic_browser_76165_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\panasonic.browser",`
-"$srcpath\FL_panasonic_browser_76165_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\panasonic.browser",`
-"$srcpath\FL_System_Drawing_tlb_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.Drawing.tlb",`
-"$srcpath\FL_WMINet_Utils_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\WMINet_Utils.dll",`
-"$srcpath\FL_CreateAppSetting_aspx_102017_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\AppConfig\CreateAppSetting.aspx",`
-"$srcpath\FL_CreateAppSetting_aspx_102017_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\CreateAppSetting.aspx",`
-"$srcpath\FL_CreateAppSetting_aspx_102017_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\AppConfig\CreateAppSetting.aspx",`
-"$srcpath\FL_System_DirectoryServices_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.DirectoryServices\2.0.0.0__b03f5f7f11d50a3a\System.DirectoryServices.dll",`
-"$srcpath\FL_System_DirectoryServices_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\System.DirectoryServices.dll",`
-"$srcpath\FL_System_DirectoryServices_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\System.DirectoryServices.dll",`
-"$srcpath\FL_sbscmp10_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\sbscmp20_mscorlib.dll",`
-"$srcpath\FL_InstallWebEventSqlProvider_sql_93276_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\InstallWebEventSqlProvider.sql",`
-"$srcpath\FL_InstallWebEventSqlProvider_sql_93276_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\InstallWebEventSqlProvider.sql",`
-"$srcpath\FL_InstallWebEventSqlProvider_sql_93276_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\InstallWebEventSqlProvider.sql",`
-"$srcpath\FL_InstallWebEventSqlProvider_sql_93276_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\InstallWebEventSqlProvider.sql",`
-"$srcpath\FL_deselectedTab_1x1_gif_102056_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Images\deselectedTab_1x1.gif",`
-"$srcpath\FL_deselectedTab_1x1_gif_102056_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\deselectedTab_1x1.gif",`
-"$srcpath\FL_deselectedTab_1x1_gif_102056_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Images\deselectedTab_1x1.gif",`
-"$srcpath\mscorrc_dll_2_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\mscorrc.dll",`
-"$srcpath\FL_normnfd_nlp_66375_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\normnfd.nlp",`
-"$srcpath\FL_normnfd_nlp_66375_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\normnfd.nlp",`
-"$srcpath\FL_normnfd_nlp_66375_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\normnfd.nlp",`
-"$srcpath\FL_normnfd_nlp_66375_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\normnfd.nlp",`
-"$srcpath\FL_security_aspx_resx_103483_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\ASP.NETWebAdminFiles\Security\App_LocalResources\security.aspx.resx",`
-"$srcpath\FL_security_aspx_resx_103483_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\App_LocalResources\security.aspx.resx",`
-"$srcpath\FL_security_aspx_resx_103483_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\ASP.NETWebAdminFiles\Security\App_LocalResources\security.aspx.resx",`
-"$srcpath\FL_sortkey_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\sortkey.nlp",`
-"$srcpath\FL_sortkey_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\sortkey.nlp",`
-"$srcpath\FL_sortkey_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\sortkey.nlp",`
-"$srcpath\FL_sortkey_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\sortkey.nlp"
+"$srcpath\FL_EditAppSetting_aspx_resx_103113_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\EditAppSetting.aspx.resx",`
+"$srcpath\FL_System_EnterpriseServices_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_32\System.EnterpriseServices\2.0.0.0__b03f5f7f11d50a3a\System.EnterpriseServices.dll",`
+"$srcpath\FL_System_EnterpriseServices_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.EnterpriseServices.dll",`
+"$srcpath\FL_System_ServiceProcess_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.ServiceProcess\2.0.0.0__b03f5f7f11d50a3a\System.ServiceProcess.dll",`
+"$srcpath\FL_System_ServiceProcess_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.ServiceProcess.dll",`
+"$srcpath\FL_System_ServiceProcess_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.ServiceProcess.dll",`
+"$srcpath\FL_aspnet_perf2_ini_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\aspnet_perf2.ini",`
+"$srcpath\FL_web_mediumtrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\web_mediumtrust.config.default",`
+"$srcpath\FL_web_mediumtrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\web_mediumtrust.config.default",`
+"$srcpath\FL_WebAdminHelp_aspx_resx_122112_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_LocalResources\WebAdminHelp.aspx.resx",`
+"$srcpath\FL_alink_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\alink.dll",`
+"$srcpath\FL_headerGRADIENT_Tall_gif_102057_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\headerGRADIENT_Tall.gif",`
+"$srcpath\FL_dfdll_dll_75023_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\dfdll.dll",`
+"$srcpath\FL_mscorsvw_exe_93402_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\mscorsvw.exe",`
+"$srcpath\FL_jphone_browser_76157_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\jphone.browser",`
+"$srcpath\FL_jphone_browser_76157_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\jphone.browser",`
+"$srcpath\msvcp80.dll.8.0.50727.1433.844EFBA7_1C24_93B2_FF1F_C8B3B9A1E18E" , "$env:Temp\windows\winsxs\amd64_Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_8.0.50727.1433_x-ww_8f022ab2\msvcp80.dll",`
+"$srcpath\FL_corperfmonsymbols_ini_1_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\corperfmonsymbols.ini",`
+"$srcpath\FL_corperfmonsymbols_ini_1_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\corperfmonsymbols.ini",`
+"$srcpath\FL_IEExec_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\IEExec.exe",`
+"$srcpath\FL_home0_aspx_resx_103505_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_LocalResources\home0.aspx.resx",`
+"$srcpath\FL_UninstallSqlStateTemplate_sql_116232_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\UninstallSqlStateTemplate.sql",`
+"$srcpath\FL_UninstallSqlStateTemplate_sql_116232_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\UninstallSqlStateTemplate.sql",`
+"$srcpath\FL_CLR_mof_uninstall_126479_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CLR.mof.uninstall",`
+"$srcpath\FL_CLR_mof_uninstall_126479_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CLR.mof.uninstall",`
+"$srcpath\catalog.8.0.50727.1433.63E949F6_03BC_5C40_FF1F_C8B3B9A1E18E" , "$env:Temp\windows\winsxs\Policies\x86_policy.8.0.Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_x-ww_77c24773\8.0.50727.1433.cat",`
+"$srcpath\Microsoft_VisualBasic_dll_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\Microsoft.VisualBasic\8.0.0.0__b03f5f7f11d50a3a\Microsoft.VisualBasic.dll",`
+"$srcpath\Microsoft_VisualBasic_dll_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Microsoft.VisualBasic.dll",`
+"$srcpath\Microsoft_VisualBasic_dll_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\Microsoft.VisualBasic.dll",`
+"$srcpath\FL_System_Configuration_Install_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Configuration.Install\2.0.0.0__b03f5f7f11d50a3a\System.Configuration.Install.dll",`
+"$srcpath\FL_System_Configuration_Install_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.Configuration.Install.dll",`
+"$srcpath\FL_System_Configuration_Install_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.Configuration.Install.dll",`
+"$srcpath\FL_Microsoft_Vsa_Vb_CodeDOMProcessor_tlb_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Microsoft.Vsa.Vb.CodeDOMProcessor.tlb",`
+"$srcpath\FL_webtv_browser_76167_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\webtv.browser",`
+"$srcpath\FL_webtv_browser_76167_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\webtv.browser",`
+"$srcpath\FL_SOS_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\SOS.dll",`
+"$srcpath\FL_CLR_mof_126478_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CLR.mof",`
+"$srcpath\FL_CLR_mof_126478_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CLR.mof",`
+"$srcpath\FL_wizardAddUser_ascx_resx_103392_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardAddUser.ascx.resx",`
+"$srcpath\FL_Microsoft_Vsa_Vb_CodeDOMProcessor_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\Microsoft.Vsa.Vb.CodeDOMProcessor\8.0.0.0__b03f5f7f11d50a3a\Microsoft.Vsa.Vb.CodeDOMProcessor.dll",`
+"$srcpath\FL_Microsoft_Vsa_Vb_CodeDOMProcessor_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Microsoft.Vsa.Vb.CodeDOMProcessor.dll",`
+"$srcpath\FL_xjis_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\xjis.nlp",`
+"$srcpath\FL_xjis_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\xjis.nlp",`
+"$srcpath\FL_xjis_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\xjis.nlp",`
+"$srcpath\FL_xjis_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\xjis.nlp",`
+"$srcpath\FL_NETFXSBS10_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\NETFXSBS10.exe",`
+"$srcpath\FL_PerfCounter_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\PerfCounter.dll",`
+"$srcpath\FL_System_configuration_dll_116773_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Configuration\2.0.0.0__b03f5f7f11d50a3a\System.configuration.dll",`
+"$srcpath\FL_System_configuration_dll_116773_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.configuration.dll",`
+"$srcpath\FL_System_configuration_dll_116773_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.configuration.dll",`
+"$srcpath\dw20.adm_0001_1036_1036.F0DF3458_A845_11D3_8D0A_0050046416B9" , "$env:Temp\windows\inf\AER_1036.ADM",`
+"$srcpath\FL_System_Windows_Forms_tlb_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.Windows.Forms.tlb",`
+"$srcpath\FL_editUser_aspx_resx_103466_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Users\App_LocalResources\editUser.aspx.resx",`
+"$srcpath\FL_cscmsgs_dll_ENU_X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\1033\cscompui.dll",`
+"$srcpath\FL_chooseProviderManagement_aspx_resx_103382_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Providers\App_LocalResources\chooseProviderManagement.aspx.resx",`
+"$srcpath\FL_addUser_aspx_74814_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Users\addUser.aspx",`
+"$srcpath\dw20.adm_0001_1041_1041.F0DF3458_A845_11D3_8D0A_0050046416B9" , "$env:Temp\windows\inf\AER_1041.ADM",`
+"$srcpath\FL_Microsoft_Build_Core_xsd_117587_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\MSBuild\Microsoft.Build.Core.xsd",`
+"$srcpath\FL_Microsoft_Build_Core_xsd_117587_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\MSBuild\Microsoft.Build.Core.xsd",`
+"$srcpath\FL_sbs_mscordbi_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\sbs_mscordbi.dll",`
+"$srcpath\FL_aspnet_regbrowsers_exe_76177_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\aspnet_regbrowsers.exe",`
+"$srcpath\FL_PasswordValueTextBox_cs_102036_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_Code\PasswordValueTextBox.cs",`
+"$srcpath\FL_sbs_system_configuration_install_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\sbs_system.configuration.install.dll",`
+"$srcpath\FL_Ldr64_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\Ldr64.exe",`
+"$srcpath\FL_ericsson_browser_76173_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\ericsson.browser",`
+"$srcpath\FL_ericsson_browser_76173_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\ericsson.browser",`
+"$srcpath\FL_ASPdotNET_logo_jpg_74765_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\ASPdotNET_logo.jpg",`
+"$srcpath\FL_palm_browser_76164_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\palm.browser",`
+"$srcpath\FL_palm_browser_76164_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\palm.browser",`
+"$srcpath\FL_wizardCreateRoles_ascx_74818_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\wizardCreateRoles.ascx",`
+"$srcpath\FL_ksc_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\ksc.nlp",`
+"$srcpath\FL_ksc_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\ksc.nlp",`
+"$srcpath\FL_ksc_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\ksc.nlp",`
+"$srcpath\FL_ksc_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ksc.nlp",`
+"$srcpath\FL_csc_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\csc.exe",`
+"$srcpath\FL_wizardFinish_ascx_resx_103396_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardFinish.ascx.resx",`
+"$srcpath\FL_ManageAppSettings_aspx_102021_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\ManageAppSettings.aspx",`
+"$srcpath\FL_AssemblyList_xml_113047_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\RedistList\FrameworkList.xml",`
+"$srcpath\FL_MSBuild_exe_67853_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\MSBuild.exe",`
+"$srcpath\FL_security0_aspx_74806_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\security0.aspx",`
+"$srcpath\FL_wizard_aspx_resx_103393_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizard.aspx.resx",`
+"$srcpath\FL_InstallMembership_sql_67218_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\InstallMembership.sql",`
+"$srcpath\FL_InstallMembership_sql_67218_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\InstallMembership.sql",`
+"$srcpath\FL_Microsoft_VisualBasic_Vsa_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\Microsoft.VisualBasic.Vsa\8.0.0.0__b03f5f7f11d50a3a\Microsoft.VisualBasic.Vsa.dll",`
+"$srcpath\FL_Microsoft_VisualBasic_Vsa_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Microsoft.VisualBasic.Vsa.dll",`
+"$srcpath\FL_normidna_nlp_93185_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\normidna.nlp",`
+"$srcpath\FL_normidna_nlp_93185_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\normidna.nlp",`
+"$srcpath\FL_normidna_nlp_93185_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\normidna.nlp",`
+"$srcpath\FL_normidna_nlp_93185_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\normidna.nlp",`
+"$srcpath\FL_ilasm_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\ilasm.exe",`
+"$srcpath\FL_System_Windows_Forms_tlb_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.Windows.Forms.tlb",`
+"$srcpath\FL_mscorld_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\mscorld.dll",`
+"$srcpath\FL_ApplicationConfigurationPage_cs_102046_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_Code\ApplicationConfigurationPage.cs",`
+"$srcpath\FL_CustomMarshalers_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_32\CustomMarshalers\2.0.0.0__b03f5f7f11d50a3a\CustomMarshalers.dll",`
+"$srcpath\FL_CustomMarshalers_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CustomMarshalers.dll",`
+"$srcpath\FL_Accessibility_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\Accessibility\2.0.0.0__b03f5f7f11d50a3a\Accessibility.dll",`
+"$srcpath\FL_Accessibility_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Accessibility.dll",`
+"$srcpath\FL_Accessibility_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\Accessibility.dll",`
+"$srcpath\FL__DataPerfCounters_ini_108892_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\_DataPerfCounters.ini",`
+"$srcpath\FL__DataPerfCounters_ini_108892_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\_DataPerfCounters.ini",`
+"$srcpath\FL_peverify_dll_97810_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\peverify.dll",`
+"$srcpath\FL_mscorld_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\mscorld.dll",`
+"$srcpath\FL_Microsoft_Build_Commontypes_xsd_117588_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\MSBuild\Microsoft.Build.Commontypes.xsd",`
+"$srcpath\FL_Microsoft_Build_Commontypes_xsd_117588_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\MSBuild\Microsoft.Build.Commontypes.xsd",`
+"$srcpath\FL_alert_sml_gif_93379_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\alert_sml.gif",`
+"$srcpath\FL_alert_sml_gif_93379_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\security_watermark.jpg",`
+"$srcpath\FL_alert_sml_gif_93379_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\selectedTab_1x1.gif",`
+"$srcpath\FL_mscorlib_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\mscorlib.dll",`
+"$srcpath\FL_mscorlib_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\mscorlib.dll",`
+"$srcpath\FL_wizardCreateRoles_ascx_resx_103397_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardCreateRoles.ascx.resx",`
+"$srcpath\FL_WebAdminHelp_Security_aspx_resx_122115_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_LocalResources\WebAdminHelp_Security.aspx.resx",`
+"$srcpath\FL_webengine_dll_135889_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\webengine.dll",`
+"$srcpath\FL_normnfkc_nlp_66376_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\normnfkc.nlp",`
+"$srcpath\FL_normnfkc_nlp_66376_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\normnfkc.nlp",`
+"$srcpath\FL_normnfkc_nlp_66376_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\normnfkc.nlp",`
+"$srcpath\FL_normnfkc_nlp_66376_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\normnfkc.nlp",`
+"$srcpath\FL_PerfCounter_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\PerfCounter.dll",`
+"$srcpath\FL_ISymWrapper_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_64\ISymWrapper\2.0.0.0__b03f5f7f11d50a3a\ISymWrapper.dll",`
+"$srcpath\FL_ISymWrapper_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ISymWrapper.dll",`
+"$srcpath\FL_aspnet_compiler_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\aspnet_compiler.exe",`
+"$srcpath\FL_Culture_dll_102451_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Culture.dll",`
+"$srcpath\FL_wizardPermission_ascx_resx_103399_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardPermission.ascx.resx",`
+"$srcpath\FL_ManageConsolidatedProviders_aspx_102159_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Providers\ManageConsolidatedProviders.aspx",`
+"$srcpath\mscorwks_dll_4_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\mscorwks.dll",`
+"$srcpath\FL_sbs_wminet_utils_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\sbs_wminet_utils.dll",`
+"$srcpath\Microsoft_Vsa_dll_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\Microsoft.Vsa\8.0.0.0__b03f5f7f11d50a3a\Microsoft.Vsa.dll",`
+"$srcpath\Microsoft_Vsa_dll_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Microsoft.Vsa.dll",`
+"$srcpath\Microsoft_Vsa_dll_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\Microsoft.Vsa.dll",`
+"$srcpath\FL__dataperfcounters_ini_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\_dataperfcounters_shared12_neutral.ini",`
+"$srcpath\FL__dataperfcounters_ini_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\_dataperfcounters_shared12_neutral.ini",`
+"$srcpath\FL_pie_browser_76166_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\pie.browser",`
+"$srcpath\FL_pie_browser_76166_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\pie.browser",`
+"$srcpath\cvtres_exe_1_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\cvtres.exe",`
+"$srcpath\FL_vbc_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\vbc.exe",`
+"$srcpath\FL_aspnet_mof_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\aspnet.mof",`
+"$srcpath\FL_aspnet_mof_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\aspnet.mof",`
+"$srcpath\FL_topGradRepeat_jpg_74759_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\topGradRepeat.jpg",`
+"$srcpath\FL_vbc7ui_dll_ENU_X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\1033\vbc7ui.dll",`
+"$srcpath\FL_mscordacwks_dll_66373_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\mscordacwks.dll",`
+"$srcpath\FL_wizard_aspx_74823_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\wizard.aspx",`
+"$srcpath\FL_WebAdminPage_cs_74747_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_Code\WebAdminPage.cs",`
+"$srcpath\FL_mscortim_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\mscortim.dll",`
+"$srcpath\FL_Microsoft_Build_xsd_117586_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Microsoft.Build.xsd",`
+"$srcpath\FL_Microsoft_Build_xsd_117586_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\Microsoft.Build.xsd",`
+"$srcpath\FL_XPThemes_manifest_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\XPThemes.manifest",`
+"$srcpath\FL_XPThemes_manifest_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\XPThemes.manifest",`
+"$srcpath\FL_System_Web_RegularExpressions_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Web.RegularExpressions\2.0.0.0__b03f5f7f11d50a3a\System.Web.RegularExpressions.dll",`
+"$srcpath\FL_System_Web_RegularExpressions_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.Web.RegularExpressions.dll",`
+"$srcpath\FL_System_Web_RegularExpressions_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.Web.RegularExpressions.dll",`
+"$srcpath\FL_nokia_browser_76161_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\nokia.browser",`
+"$srcpath\FL_nokia_browser_76161_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\nokia.browser",`
+"$srcpath\FL_managePermissions_aspx_resx_103212_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Permissions\App_LocalResources\managePermissions.aspx.resx",`
+"$srcpath\FL_Microsoft_VisualC_Dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\Microsoft.VisualC\8.0.0.0__b03f5f7f11d50a3a\Microsoft.VisualC.Dll",`
+"$srcpath\FL_Microsoft_VisualC_Dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Microsoft.VisualC.Dll",`
+"$srcpath\FL_Microsoft_VisualC_Dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\Microsoft.VisualC.Dll",`
+"$srcpath\FL_Aspnet_perf_dll_113116_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\Aspnet_perf.dll",`
+"$srcpath\FL_csc_urt_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\csc.exe.config",`
+"$srcpath\FL_csc_urt_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\jsc.exe.config",`
+"$srcpath\FL_csc_urt_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\vbc.exe.config",`
+"$srcpath\FL_csc_urt_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\csc.exe.config",`
+"$srcpath\FL_csc_urt_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\vbc.exe.config",`
+"$srcpath\FL_csc_urt_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\csc.exe.config",`
+"$srcpath\FL_csc_urt_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\jsc.exe.config",`
+"$srcpath\FL_csc_urt_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\vbc.exe.config",`
+"$srcpath\FL_csc_urt_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\csc.exe.config",`
+"$srcpath\FL_csc_urt_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\vbc.exe.config",`
+"$srcpath\FL_IEHost_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\IEHost\2.0.0.0__b03f5f7f11d50a3a\IEHost.dll",`
+"$srcpath\FL_IEHost_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\IEHost.dll",`
+"$srcpath\FL_IEHost_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\IEHost.dll",`
+"$srcpath\FL_manageSingleRole_aspx_74810_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Roles\manageSingleRole.aspx",`
+"$srcpath\FL_mscordacwks_dll_66373_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\mscordacwks.dll",`
+"$srcpath\System.Web_dll_5_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_64\System.Web\2.0.0.0__b03f5f7f11d50a3a\System.Web.dll",`
+"$srcpath\System.Web_dll_5_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.Web.dll",`
+"$srcpath\FL_manageconsolidatedProviders_aspx_resx_103380_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Providers\App_LocalResources\manageconsolidatedProviders.aspx.resx",`
+"$srcpath\FL_WebAdminStyles_css_74739_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\WebAdminStyles.css",`
+"$srcpath\FL_image1_gif_74784_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\image1.gif",`
+"$srcpath\FL_legend_browser_109072_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\legend.browser",`
+"$srcpath\FL_legend_browser_109072_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\legend.browser",`
+"$srcpath\FL_WebAdminHelp_Application_aspx_119290_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\ASP.NETWebAdminFiles\WebAdminHelp_Application.aspx",`
+"$srcpath\FL_WebAdminHelp_Application_aspx_119290_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\WebAdminHelp_Application.aspx",`
+"$srcpath\FL_InstallUtil_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\InstallUtil.exe",`
+"$srcpath\FL_System_Security_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Security\2.0.0.0__b03f5f7f11d50a3a\System.Security.dll",`
+"$srcpath\FL_System_Security_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.Security.dll",`
+"$srcpath\FL_System_Security_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.Security.dll",`
+"$srcpath\FL_System_EnterpriseServices_tlb_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.EnterpriseServices.tlb",`
+"$srcpath\FL_wizardInit_ascx_resx_103398_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardInit.ascx.resx",`
+"$srcpath\FL_alert_lrg_gif_92834_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\alert_lrg.gif",`
+"$srcpath\FL_aspnet_wp_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\aspnet_wp.exe",`
+"$srcpath\FL_fusion_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\fusion.dll",`
+"$srcpath\FL_dfdll_dll_75023_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\dfdll.dll",`
+"$srcpath\FL_caspol_exe_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\caspol.exe.config",`
+"$srcpath\FL_caspol_exe_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\ieexec.exe.config",`
+"$srcpath\FL_caspol_exe_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\ilasm.exe.config",`
+"$srcpath\FL_caspol_exe_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\regasm.exe.config",`
+"$srcpath\FL_caspol_exe_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\regsvcs.exe.config",`
+"$srcpath\FL_caspol_exe_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\caspol.exe.config",`
+"$srcpath\FL_caspol_exe_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ieexec.exe.config",`
+"$srcpath\FL_caspol_exe_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ilasm.exe.config",`
+"$srcpath\FL_caspol_exe_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\regasm.exe.config",`
+"$srcpath\FL_caspol_exe_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\regsvcs.exe.config",`
+"$srcpath\FL_aspnet_isapi_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\aspnet_isapi.dll",`
+"$srcpath\dw20.adm_0001_2052_2052.F0DF3458_A845_11D3_8D0A_0050046416B9" , "$env:Temp\windows\inf\AER_2052.ADM",`
+"$srcpath\FL_mscorlib_tlb_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\mscorlib.tlb",`
+"$srcpath\dw20.adm_0001_1031_1031.F0DF3458_A845_11D3_8D0A_0050046416B9" , "$env:Temp\windows\inf\AER_1031.ADM",`
+"$srcpath\Microsoft_VisualBasic_Compatibility_dll_2_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\Microsoft.VisualBasic.Compatibility\8.0.0.0__b03f5f7f11d50a3a\Microsoft.VisualBasic.Compatibility.dll",`
+"$srcpath\Microsoft_VisualBasic_Compatibility_dll_2_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Microsoft.VisualBasic.Compatibility.dll",`
+"$srcpath\Vsavb7rtUI_dll_2_ENU_X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\1033\Vsavb7rtUI.dll",`
+"$srcpath\FL_mscorie_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\mscorie.dll",`
+"$srcpath\FL_webAdmin_master_74735_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\webAdmin.master",`
+"$srcpath\FL_Microsoft_Common_targets_106593_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Microsoft.Common.targets",`
+"$srcpath\FL_Microsoft_Common_targets_106593_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\Microsoft.Common.targets",`
+"$srcpath\vsavb7_tlb_1_____x86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\vsavb7.olb",`
+"$srcpath\FL_home1_aspx_resx_103507_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_LocalResources\home1.aspx.resx",`
+"$srcpath\msvcr80.dll.8.0.50727.1433.844EFBA7_1C24_93B2_FF1F_C8B3B9A1E18E" , "$env:Temp\windows\winsxs\amd64_Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_8.0.50727.1433_x-ww_8f022ab2\msvcr80.dll",`
+"$srcpath\FL_wizardProviderInfo_ascx_102277_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\wizardProviderInfo.ascx",`
+"$srcpath\System.Web_dll_5_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_32\System.Web\2.0.0.0__b03f5f7f11d50a3a\System.Web.dll",`
+"$srcpath\System.Web_dll_5_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.Web.dll",`
+"$srcpath\FL_IEExec_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\IEExec.exe",`
+"$srcpath\FL_AppConfigHome_aspx_102015_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\AppConfigHome.aspx",`
+"$srcpath\FL_default_aspx_74742_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\default.aspx",`
+"$srcpath\FL_msbuild_urt_config_135103_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\msbuild.exe.config",`
+"$srcpath\FL_msbuild_urt_config_135103_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\msbuild.exe.config",`
+"$srcpath\FL_System_Drawing_Design_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Drawing.Design\2.0.0.0__b03f5f7f11d50a3a\System.Drawing.Design.dll",`
+"$srcpath\FL_System_Drawing_Design_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.Drawing.Design.dll",`
+"$srcpath\FL_System_Drawing_Design_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.Drawing.Design.dll",`
+"$srcpath\FL_System_EnterpriseServices_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_64\System.EnterpriseServices\2.0.0.0__b03f5f7f11d50a3a\System.EnterpriseServices.dll",`
+"$srcpath\FL_System_EnterpriseServices_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.EnterpriseServices.dll",`
+"$srcpath\FL_EZWap_browser_93275_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\EZWap.browser",`
+"$srcpath\FL_EZWap_browser_93275_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\EZWap.browser",`
+"$srcpath\FL_System_Web_tbl_105182_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.Web.tlb",`
+"$srcpath\FL_root_web_config_comments_118268_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\web.config.comments",`
+"$srcpath\FL_root_web_config_comments_118268_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\web.config.comments",`
+"$srcpath\FL_sbs_system_data_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\sbs_system.data.dll",`
+"$srcpath\FL_sysglobl_dll_92791_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\sysglobl\2.0.0.0__b03f5f7f11d50a3a\sysglobl.dll",`
+"$srcpath\FL_sysglobl_dll_92791_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\sysglobl.dll",`
+"$srcpath\FL_sysglobl_dll_92791_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\sysglobl.dll",`
+"$srcpath\FL_web_minimaltrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\web_minimaltrust.config",`
+"$srcpath\FL_web_minimaltrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\web_minimaltrust.config.default",`
+"$srcpath\FL_web_minimaltrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\web_minimaltrust.config",`
+"$srcpath\FL_web_minimaltrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\web_minimaltrust.config.default",`
+"$srcpath\FL_netfxsbs12_hkf_76082_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\netfxsbs12.hkf",`
+"$srcpath\FL_csc_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\csc.exe",`
+"$srcpath\FL_mscorsec_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\mscorsec.dll",`
+"$srcpath\FL_mscorpe_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\mscorpe.dll",`
+"$srcpath\FL_setUpAuthentication_aspx_74802_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\setUpAuthentication.aspx",`
+"$srcpath\FL_InstallCommon_sql_74696_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\InstallCommon.sql",`
+"$srcpath\FL_InstallCommon_sql_74696_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\InstallCommon.sql",`
+"$srcpath\FL_sbs_VsaVb7rt_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\sbs_VsaVb7rt.dll",`
+"$srcpath\FL_wizardAddUser_ascx_74816_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\wizardAddUser.ascx",`
+"$srcpath\FL_vbc7ui_dll_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\1033\vbc7ui.dll",`
+"$srcpath\FL_mscordbi_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\mscordbi.dll",`
+"$srcpath\dw20.adm_0001_3082_3082.F0DF3458_A845_11D3_8D0A_0050046416B9" , "$env:Temp\windows\inf\AER_3082.ADM",`
+"$srcpath\FL_DebugAndTrace_aspx_resx_103116_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\DebugAndTrace.aspx.resx",`
+"$srcpath\FL_bopomofo_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\bopomofo.nlp",`
+"$srcpath\FL_bopomofo_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\bopomofo.nlp",`
+"$srcpath\FL_bopomofo_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\bopomofo.nlp",`
+"$srcpath\FL_bopomofo_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\bopomofo.nlp",`
+"$srcpath\FL_root_web_config_default_118269_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\web.config.default",`
+"$srcpath\FL_root_web_config_default_118269_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\web.config.default",`
+"$srcpath\msvcm80.dll.8.0.50727.1433.844EFBA7_1C24_93B2_FF1F_C8B3B9A1E18E" , "$env:Temp\windows\winsxs\amd64_Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_8.0.50727.1433_x-ww_8f022ab2\msvcm80.dll",`
+"$srcpath\FL_mscorjit_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\mscorjit.dll",`
+"$srcpath\FL_diasymreader_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\diasymreader.dll",`
+"$srcpath\FL_InstallRoles_sql_67224_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\InstallRoles.sql",`
+"$srcpath\FL_InstallRoles_sql_67224_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\InstallRoles.sql",`
+"$srcpath\FL_System_Web_Mobile_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Web.Mobile\2.0.0.0__b03f5f7f11d50a3a\System.Web.Mobile.dll",`
+"$srcpath\FL_System_Web_Mobile_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.Web.Mobile.dll",`
+"$srcpath\FL_System_Web_Mobile_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.Web.Mobile.dll",`
+"$srcpath\FL_editUser_aspx_102270_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Users\editUser.aspx",`
+"$srcpath\FL_mscorsecr_dll_ENU_X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\MUI\0409\mscorsecr.dll",`
+"$srcpath\FL_gradient_onWhite_gif_74776_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\gradient_onWhite.gif",`
+"$srcpath\FL_DefineErrorPage_aspx_resx_103112_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\DefineErrorPage.aspx.resx",`
+"$srcpath\FL_MmcAspExt_dll_95862_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\MmcAspExt.dll",`
+"$srcpath\FL_Aspnet_regsql_exe_config_116177_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Aspnet_regsql.exe.config",`
+"$srcpath\FL_Aspnet_regsql_exe_config_116177_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\Aspnet_regsql.exe.config",`
+"$srcpath\FL_UninstallWebEventSqlProvider_sql_93277_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\UninstallWebEventSqlProvider.sql",`
+"$srcpath\FL_UninstallWebEventSqlProvider_sql_93277_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\UninstallWebEventSqlProvider.sql",`
+"$srcpath\FL_AppSetting_ascx_102014_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\AppSetting.ascx",`
+"$srcpath\FL_AppConfigCommon_resx_103538_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_GlobalResources\AppConfigCommon.resx",`
+"$srcpath\FL_cscomp_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\cscomp.dll",`
+"$srcpath\FL_GlobalResources_resx_103539_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_GlobalResources\GlobalResources.resx",`
+"$srcpath\FL_security0_aspx_resx_103484_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\App_LocalResources\security0.aspx.resx",`
+"$srcpath\FL_System_tlb_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.tlb",`
+"$srcpath\FL_sbs_system_enterpriseservices_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\sbs_system.enterpriseservices.dll",`
+"$srcpath\FL_adonetdiag_mof_106906_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\adonetdiag.mof",`
+"$srcpath\FL_adonetdiag_mof_106906_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\adonetdiag.mof",`
+"$srcpath\FL_mscorsn_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\mscorsn.dll",`
+"$srcpath\FL_normnfkd_nlp_66377_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\normnfkd.nlp",`
+"$srcpath\FL_normnfkd_nlp_66377_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\normnfkd.nlp",`
+"$srcpath\FL_normnfkd_nlp_66377_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\normnfkd.nlp",`
+"$srcpath\FL_normnfkd_nlp_66377_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\normnfkd.nlp",`
+"$srcpath\FL_ISymWrapper_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_32\ISymWrapper\2.0.0.0__b03f5f7f11d50a3a\ISymWrapper.dll",`
+"$srcpath\FL_ISymWrapper_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\ISymWrapper.dll",`
+"$srcpath\FL_navigationBar_ascx_74730_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\navigationBar.ascx",`
+"$srcpath\FL_EventLogMessages_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\EventLogMessages.dll",`
+"$srcpath\FL_cscomp_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\cscomp.dll",`
+"$srcpath\FL_docomo_browser_76172_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\docomo.browser",`
+"$srcpath\FL_docomo_browser_76172_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\docomo.browser",`
+"$srcpath\FL_MSBuildFramework_dll_70716_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\Microsoft.Build.Framework\2.0.0.0__b03f5f7f11d50a3a\Microsoft.Build.Framework.dll",`
+"$srcpath\FL_MSBuildFramework_dll_70716_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Microsoft.Build.Framework.dll",`
+"$srcpath\FL_MSBuildFramework_dll_70716_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\Microsoft.Build.Framework.dll",`
+"$srcpath\FL_InstallPersonalization_sql_67221_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\InstallPersonalization.sql",`
+"$srcpath\FL_InstallPersonalization_sql_67221_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\InstallPersonalization.sql",`
+"$srcpath\FL_CORPerfMonExt_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CORPerfMonExt.dll",`
+"$srcpath\FL_ilasm_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ilasm.exe",`
+"$srcpath\FL_web_config_74734_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\web.config",`
+"$srcpath\FL_WebAdminHelp_Security_aspx_119294_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\ASP.NETWebAdminFiles\WebAdminHelp_Security.aspx",`
+"$srcpath\FL_WebAdminHelp_Security_aspx_119294_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\WebAdminHelp_Security.aspx",`
+"$srcpath\FL_CvtResUI_dll_109387_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\1033\CvtResUI.dll",`
+"$srcpath\FL_aspnet_perf_ini_ENU_X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\aspnet_perf.ini",`
+"$srcpath\FL_System_Data_OracleClient_dll_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_64\System.Data.OracleClient\2.0.0.0__b77a5c561934e089\System.Data.OracleClient.dll",`
+"$srcpath\FL_System_Data_OracleClient_dll_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.Data.OracleClient.dll",`
+"$srcpath\FL_TLBREF_DLL_97713_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\TLBREF.DLL",`
+"$srcpath\FL_mscorlib_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\mscorlib.dll",`
+"$srcpath\FL_mscorlib_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\mscorlib.dll",`
+"$srcpath\FL_aspnet_wp_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\aspnet_wp.exe",`
+"$srcpath\FL_shfusion_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\shfusion.dll",`
+"$srcpath\FL_normalization_dll_66379_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\normalization.dll",`
+"$srcpath\FL_sbs_microsoft_vsa_vb_codedomprocessor_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\sbs_microsoft.vsa.vb.codedomprocessor.dll",`
+"$srcpath\FL_Jataayu_browser_93274_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\Jataayu.browser",`
+"$srcpath\FL_Jataayu_browser_93274_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\Jataayu.browser",`
+"$srcpath\FL_yellowCORNER_gif_74760_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\yellowCORNER.gif",`
+"$srcpath\FL_System_Data_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_32\System.Data\2.0.0.0__b77a5c561934e089\System.Data.dll",`
+"$srcpath\FL_System_Data_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.Data.dll",`
+"$srcpath\FL_createPermission_aspx_resx_103211_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Permissions\App_LocalResources\createPermission.aspx.resx",`
+"$srcpath\dw20.adm_1025_1025.D0DF3458_A845_11D3_8D0A_0050046416B9" , "$env:Temp\windows\inf\AER_1025.ADM",`
+"$srcpath\FL_System_Data_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_64\System.Data\2.0.0.0__b77a5c561934e089\System.Data.dll",`
+"$srcpath\FL_System_Data_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.Data.dll",`
+"$srcpath\manifest.8.0.50727.1433.4F6D20F0_CCE5_1492_FF1F_C8B3B9A1E18E" , "$env:Temp\windows\winsxs\Policies\amd64_policy.8.0.Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_x-ww_d780e993\8.0.50727.1433.policy",`
+"$srcpath\FL_aspnet_compiler_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\aspnet_compiler.exe",`
+"$srcpath\FL_WebAdminHelp_Internals_aspx_resx_122113_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_LocalResources\WebAdminHelp_Internals.aspx.resx",`
+"$srcpath\FL_normalization_dll_66379_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\normalization.dll",`
+"$srcpath\FL_fusion_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\fusion.dll",`
+"$srcpath\FL_aspnet_state_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\aspnet_state.exe",`
+"$srcpath\FL_webAdminNoButtonRow_master_74738_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\webAdminNoButtonRow.master",`
+"$srcpath\FL_MmcAspExt_dll_95862_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\MmcAspExt.dll",`
+"$srcpath\FL_requiredBang_gif_74755_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\requiredBang.gif",`
+"$srcpath\FL_aspnet_rc_dll_1_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\aspnet_rc.dll",`
+"$srcpath\FL_aspnet_filter_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\aspnet_filter.dll",`
+"$srcpath\FL_System_Web_tbl_105182_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.Web.tlb",`
+"$srcpath\FL_default_aspx_resx_103509_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_LocalResources\default.aspx.resx",`
+"$srcpath\FL_folder_gif_74774_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\folder.gif",`
+"$srcpath\FL_avantgo_browser_76169_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\avantgo.browser",`
+"$srcpath\FL_avantgo_browser_76169_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\avantgo.browser",`
+"$srcpath\Microsoft_VisualBasic_Compatibility_Data_dll_2_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\Microsoft.VisualBasic.Compatibility.Data\8.0.0.0__b03f5f7f11d50a3a\Microsoft.VisualBasic.Compatibility.Data.dll",`
+"$srcpath\Microsoft_VisualBasic_Compatibility_Data_dll_2_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Microsoft.VisualBasic.Compatibility.Data.dll",`
+"$srcpath\FL_UninstallPersonalization_sql_67220_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\UninstallPersonalization.sql",`
+"$srcpath\FL_UninstallPersonalization_sql_67220_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\UninstallPersonalization.sql",`
+"$srcpath\FL_aspnet_isapi_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\aspnet_isapi.dll",`
+"$srcpath\FL_regtlib_exe_1_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\regtlibv12.exe",`
+"$srcpath\catalog.8.0.50727.1433.844EFBA7_1C24_93B2_FF1F_C8B3B9A1E18E" , "$env:Temp\windows\winsxs\manifests\amd64_Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_8.0.50727.1433_x-ww_8f022ab2.cat",`
+"$srcpath\FL_vbc_rsp_76080_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\vbc.rsp",`
+"$srcpath\FL_vbc_rsp_76080_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\vbc.rsp",`
+"$srcpath\FL_findUsers_aspx_resx_103468_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Users\App_LocalResources\findUsers.aspx.resx",`
+"$srcpath\FL_generic_browser_76175_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\generic.browser",`
+"$srcpath\FL_generic_browser_76175_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\generic.browser",`
+"$srcpath\FL_ProviderList_ascx_92846_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Providers\ProviderList.ascx",`
+"$srcpath\FL_navigationBar_ascx_resx_103510_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_LocalResources\navigationBar.ascx.resx",`
+"$srcpath\FL_AppSetting_ascx_resx_103115_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\AppSetting.ascx.resx",`
+"$srcpath\FL_wizardAuthentication_ascx_74817_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\wizardAuthentication.ascx",`
+"$srcpath\FL_System_Transactions_dll_75016_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_32\System.Transactions\2.0.0.0__b77a5c561934e089\System.Transactions.dll",`
+"$srcpath\FL_System_Transactions_dll_75016_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.Transactions.dll",`
+"$srcpath\FL_goAmerica_browser_76155_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\goAmerica.browser",`
+"$srcpath\FL_goAmerica_browser_76155_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\goAmerica.browser",`
+"$srcpath\FL_aspnet_state_perf_ini_76106_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\aspnet_state_perf.ini",`
+"$srcpath\FL_aspnet_state_perf_ini_76106_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\aspnet_state_perf.ini",`
+"$srcpath\VsaVb7rt_dll_2_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\VsaVb7rt.dll",`
+"$srcpath\dw20.adm_0001_1042_1042.F0DF3458_A845_11D3_8D0A_0050046416B9" , "$env:Temp\windows\inf\AER_1042.ADM",`
+"$srcpath\jsc_exe_1_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\jsc.exe",`
+"$srcpath\FL_big5_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\big5.nlp",`
+"$srcpath\FL_big5_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\big5.nlp",`
+"$srcpath\FL_big5_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\big5.nlp",`
+"$srcpath\FL_big5_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\big5.nlp",`
+"$srcpath\FL_cassio_browser_76170_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\cassio.browser",`
+"$srcpath\FL_cassio_browser_76170_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\cassio.browser",`
+"$srcpath\dw20.adm_0001_1040_1040.F0DF3458_A845_11D3_8D0A_0050046416B9" , "$env:Temp\windows\inf\AER_1040.ADM",`
+"$srcpath\FL_mscorsvc_dll_93043_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\mscorsvc.dll",`
+"$srcpath\FL_UninstallPersistSqlState_sql_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\UninstallPersistSqlState.sql",`
+"$srcpath\FL_UninstallPersistSqlState_sql_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\UninstallPersistSqlState.sql",`
+"$srcpath\FL_aspx_file_gif_102053_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\aspx_file.gif",`
+"$srcpath\FL_sbs_microsoft_jscript_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\sbs_microsoft.jscript.dll",`
+"$srcpath\FL_AspNetMMCExt_dll_66806_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\AspNetMMCExt\2.0.0.0__b03f5f7f11d50a3a\AspNetMMCExt.dll",`
+"$srcpath\FL_AspNetMMCExt_dll_66806_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\AspNetMMCExt.dll",`
+"$srcpath\FL_AdoNetDiag_dll_106905_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\AdoNetDiag.dll",`
+"$srcpath\FL_machine_config_comments_105748_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\machine.config.comments",`
+"$srcpath\FL_machine_config_comments_105748_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\machine.config.comments",`
+"$srcpath\FL_chooseProviderManagement_aspx_102160_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Providers\chooseProviderManagement.aspx",`
+"$srcpath\mscorwks_dll_4_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\mscorwks.dll",`
+"$srcpath\FL_mscordbc_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\mscordbc.dll",`
+"$srcpath\FL_Culture_dll_102451_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\Culture.dll",`
+"$srcpath\FL_Microsoft_BuildTasks_67856_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Microsoft.Common.Tasks",`
+"$srcpath\FL_Microsoft_BuildTasks_67856_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\Microsoft.Common.Tasks",`
+"$srcpath\FL_mscorjit_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\mscorjit.dll",`
+"$srcpath\FL_regsvcs_exe_config_79704_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v1.1.4322\regsvcs.exe.config",`
+"$srcpath\FL_vbc_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\vbc.exe",`
+"$srcpath\FL_error_aspx_resx_103504_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_LocalResources\error.aspx.resx",`
+"$srcpath\FL_GroupedProviders_xml_117816_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_Data\GroupedProviders.xml",`
+"$srcpath\FL_aspnet_regbrowsers_exe_76177_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\aspnet_regbrowsers.exe",`
+"$srcpath\FL_Aspnet_perf_dll_113116_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Aspnet_perf.dll",`
+"$srcpath\FL_mscories_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\syswow64\mscories.dll",`
+"$srcpath\FL_manageAllRoles_aspx_resx_103495_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Roles\App_LocalResources\manageAllRoles.aspx.resx",`
+"$srcpath\FL_error_aspx_74743_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\error.aspx",`
+"$srcpath\FL__DataPerfCounters_h_108891_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\_DataPerfCounters.h",`
+"$srcpath\FL__DataPerfCounters_h_108891_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\_DataPerfCounters.h",`
+"$srcpath\manifest.8.0.50727.1433.63E949F6_03BC_5C40_FF1F_C8B3B9A1E18E" , "$env:Temp\windows\winsxs\Policies\x86_policy.8.0.Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_x-ww_77c24773\8.0.50727.1433.policy",`
+"$srcpath\FL_webhightrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\web_hightrust.config.default",`
+"$srcpath\FL_webhightrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\web_hightrust.config.default",`
+"$srcpath\FL_System_DeploymentFramework_dll_66796_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Deployment\2.0.0.0__b03f5f7f11d50a3a\System.Deployment.dll",`
+"$srcpath\FL_System_DeploymentFramework_dll_66796_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.Deployment.dll",`
+"$srcpath\FL_System_DeploymentFramework_dll_66796_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.Deployment.dll",`
+"$srcpath\FL_UninstallSqlState_sql_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\UninstallSqlState.sql",`
+"$srcpath\FL_UninstallSqlState_sql_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\UninstallSqlState.sql",`
+"$srcpath\FL_ngen_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\ngen.exe",`
+"$srcpath\FL_aspnet_rc_dll_1_ENU_X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\aspnet_rc.dll",`
+"$srcpath\FL_System_Data_SqlXml_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Data.SqlXml\2.0.0.0__b77a5c561934e089\System.Data.SqlXml.dll",`
+"$srcpath\FL_System_Data_SqlXml_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.Data.SqlXml.dll",`
+"$srcpath\FL_System_Data_SqlXml_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.Data.SqlXml.dll",`
+"$srcpath\FL_darkBlue_GRAD_jpg_74769_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\darkBlue_GRAD.jpg",`
+"$srcpath\FL_UnInstallProfile_SQL_104242_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\UnInstallProfile.SQL",`
+"$srcpath\FL_UnInstallProfile_SQL_104242_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\UnInstallProfile.SQL",`
+"$srcpath\FL_wizardFinish_ascx_74819_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\wizardFinish.ascx",`
+"$srcpath\msvcm80.dll.8.0.50727.1433.98CB24AD_52FB_DB5F_FF1F_C8B3B9A1E18E" , "$env:Temp\windows\winsxs\x86_Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_8.0.50727.1433_x-ww_5cf844d2\msvcm80.dll",`
+"$srcpath\FL_InstallPersistSqlState_sql_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\InstallPersistSqlState.sql",`
+"$srcpath\FL_InstallPersistSqlState_sql_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\InstallPersistSqlState.sql",`
+"$srcpath\FL_manageUsers_aspx_74815_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Users\manageUsers.aspx",`
+"$srcpath\FL__Networkingperfcounters_ini_1_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\_Networkingperfcounters.ini",`
+"$srcpath\FL__Networkingperfcounters_ini_1_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\_Networkingperfcounters.ini",`
+"$srcpath\FL_mscorpe_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\mscorpe.dll",`
+"$srcpath\FL_MSBuildTasks_dll_67855_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\Microsoft.Build.Tasks\2.0.0.0__b03f5f7f11d50a3a\Microsoft.Build.Tasks.dll",`
+"$srcpath\FL_MSBuildTasks_dll_67855_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Microsoft.Build.Tasks.dll",`
+"$srcpath\FL_MSBuildTasks_dll_67855_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\Microsoft.Build.Tasks.dll",`
+"$srcpath\FL__DataOracleClientPerfCounters_shared12__106790_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\_DataOracleClientPerfCounters_shared12_neutral.h",`
+"$srcpath\FL__DataOracleClientPerfCounters_shared12__106790_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\_dataperfcounters_shared12_neutral.h",`
+"$srcpath\FL__DataOracleClientPerfCounters_shared12__106790_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\_DataOracleClientPerfCounters_shared12_neutral.h",`
+"$srcpath\FL__DataOracleClientPerfCounters_shared12__106790_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\_dataperfcounters_shared12_neutral.h",`
+"$srcpath\FL_InstallUtilLib_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\InstallUtilLib.dll",`
+"$srcpath\FL_Microsoft_VisualBasic_targets_106592_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Microsoft.VisualBasic.targets",`
+"$srcpath\FL_Microsoft_VisualBasic_targets_106592_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\Microsoft.VisualBasic.targets",`
+"$srcpath\Microsoft_Vsa_tlb_1_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Microsoft.Vsa.tlb",`
+"$srcpath\FL_System_EnterpriseServices_Thunk_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.EnterpriseServices.Thunk.dll",`
+"$srcpath\FL_almsgs_dll_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\1033\alinkui.dll",`
+"$srcpath\ShFusRes_dll_1_ENU_X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\ShFusRes.dll",`
+"$srcpath\FL_System_DirectoryServices_Protocols_dll_101362_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.DirectoryServices.Protocols\2.0.0.0__b03f5f7f11d50a3a\System.DirectoryServices.Protocols.dll",`
+"$srcpath\FL_System_DirectoryServices_Protocols_dll_101362_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.DirectoryServices.Protocols.dll",`
+"$srcpath\FL_System_DirectoryServices_Protocols_dll_101362_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.DirectoryServices.Protocols.dll",`
+"$srcpath\FL_home2_aspx_74746_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\home2.aspx",`
+"$srcpath\manifest.8.0.50727.1433.844EFBA7_1C24_93B2_FF1F_C8B3B9A1E18E" , "$env:Temp\windows\winsxs\manifests\amd64_Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_8.0.50727.1433_x-ww_8f022ab2.manifest",`
+"$srcpath\FL_System_Management_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Management\2.0.0.0__b03f5f7f11d50a3a\System.Management.dll",`
+"$srcpath\FL_System_Management_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.Management.dll",`
+"$srcpath\FL_System_Management_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.Management.dll",`
+"$srcpath\FL_SmtpSettings_aspx_resx_103109_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\SmtpSettings.aspx.resx",`
+"$srcpath\FL_EditAppSetting_aspx_102020_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\EditAppSetting.aspx",`
+"$srcpath\FL_WebAdminHelp_Provider_aspx_119293_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\ASP.NETWebAdminFiles\WebAdminHelp_Provider.aspx",`
+"$srcpath\FL_WebAdminHelp_Provider_aspx_119293_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\WebAdminHelp_Provider.aspx",`
+"$srcpath\FL_AdoNetDiag_dll_106905_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\AdoNetDiag.dll",`
+"$srcpath\FL_managePermissions_aspx_74808_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Permissions\managePermissions.aspx",`
+"$srcpath\FL_InstallUtilLib_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\InstallUtilLib.dll",`
+"$srcpath\FL_WebAdminHelp_aspx_119289_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\ASP.NETWebAdminFiles\WebAdminHelp.aspx",`
+"$srcpath\FL_WebAdminHelp_aspx_119289_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\WebAdminHelp.aspx",`
+"$srcpath\cvtres_exe_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\cvtres.exe",`
+"$srcpath\FL_branding_Full2_gif_102054_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\branding_Full2.gif",`
+"$srcpath\FL_selectedTab_leftCorner_gif_102049_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\selectedTab_leftCorner.gif",`
+"$srcpath\FL_selectedTab_leftCorner_gif_102049_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\unSelectedTab_leftCorner.gif",`
+"$srcpath\FL_RegSvcs_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\RegSvcs.exe",`
+"$srcpath\FL_RegSvcs_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\RegSvcs.exe",`
+"$srcpath\FL_IEExecRemote_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\IEExecRemote\2.0.0.0__b03f5f7f11d50a3a\IEExecRemote.dll",`
+"$srcpath\FL_IEExecRemote_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\IEExecRemote.dll",`
+"$srcpath\FL_IEExecRemote_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\IEExecRemote.dll",`
+"$srcpath\FL_InstallProfile_SQL_104241_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\InstallProfile.SQL",`
+"$srcpath\FL_InstallProfile_SQL_104241_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\InstallProfile.SQL",`
+"$srcpath\FL_webAdminButtonRow_master_74737_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\webAdminButtonRow.master",`
+"$srcpath\FL_manageSingleRole_aspx_resx_103494_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Roles\App_LocalResources\manageSingleRole.aspx.resx",`
+"$srcpath\FL_System_EnterpriseServices_Wrapper_dll_76457_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_32\System.EnterpriseServices\2.0.0.0__b03f5f7f11d50a3a\System.EnterpriseServices.Wrapper.dll",`
+"$srcpath\FL_System_EnterpriseServices_Wrapper_dll_76457_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.EnterpriseServices.Wrapper.dll",`
+"$srcpath\mscoree_tlb_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\mscoree.tlb",`
+"$srcpath\FL_mscories_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\system32\mscories.dll",`
+"$srcpath\FL_InstallSqlStateTemplate_sql_116231_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\InstallSqlStateTemplate.sql",`
+"$srcpath\FL_InstallSqlStateTemplate_sql_116231_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\InstallSqlStateTemplate.sql",`
+"$srcpath\FL_AppConfigHome_aspx_resx_103114_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\AppConfigHome.aspx.resx",`
+"$srcpath\FL_security_aspx_74800_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\security.aspx",`
+"$srcpath\FL_WizardPage_cs_102042_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_Code\WizardPage.cs",`
+"$srcpath\FL_manageUsers_aspx_resx_103467_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Users\App_LocalResources\manageUsers.aspx.resx",`
+"$srcpath\FL_System_tlb_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.tlb",`
+"$srcpath\FL_wizardPermission_ascx_74822_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\wizardPermission.ascx",`
+"$srcpath\FL_xiino_browser_76168_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\xiino.browser",`
+"$srcpath\FL_xiino_browser_76168_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\xiino.browser",`
+"$srcpath\FL_AppLaunch_exe_111659_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\AppLaunch.exe",`
+"$srcpath\FL_webAdminNoNavBar_master_102339_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\webAdminNoNavBar.master",`
+"$srcpath\FL_almsgs_dll_ENU_X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\1033\alinkui.dll",`
+"$srcpath\FL_aspnet_regiis_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\aspnet_regiis.exe",`
+"$srcpath\FL__DataOracleClientPerfCounters_shared12__106788_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\_DataOracleClientPerfCounters_shared12_neutral.ini",`
+"$srcpath\FL__DataOracleClientPerfCounters_shared12__106788_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\_DataOracleClientPerfCounters_shared12_neutral.ini",`
+"$srcpath\FL_cscompmgd_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\cscompmgd\8.0.0.0__b03f5f7f11d50a3a\cscompmgd.dll",`
+"$srcpath\FL_cscompmgd_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\cscompmgd.dll",`
+"$srcpath\FL_cscompmgd_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\cscompmgd.dll",`
+"$srcpath\FL_confirmation_ascx_resx_110690_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\confirmation.ascx.resx",`
+"$srcpath\jsc_exe_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\jsc.exe",`
+"$srcpath\FL_TLBREF_DLL_97713_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\TLBREF.DLL",`
+"$srcpath\FL_findUsers_aspx_102268_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Users\findUsers.aspx",`
+"$srcpath\FL_UninstallMembership_sql_67219_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\UninstallMembership.sql",`
+"$srcpath\FL_UninstallMembership_sql_67219_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\UninstallMembership.sql",`
+"$srcpath\FL_peverify_dll_97810_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\peverify.dll",`
+"$srcpath\FL_webengine_dll_135889_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\webengine.dll",`
+"$srcpath\FL_csc_rsp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\csc.rsp",`
+"$srcpath\FL_csc_rsp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\csc.rsp",`
+"$srcpath\FL_WebAdminHelp_Provider_aspx_resx_122114_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_LocalResources\WebAdminHelp_Provider.aspx.resx",`
+"$srcpath\FL_home0_aspx_74744_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\home0.aspx",`
+"$srcpath\FL_InstallSqlState_sql_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\InstallSqlState.sql",`
+"$srcpath\FL_InstallSqlState_sql_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\InstallSqlState.sql",`
+"$srcpath\FL_weblowtrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\web_lowtrust.config",`
+"$srcpath\FL_weblowtrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\web_lowtrust.config.default",`
+"$srcpath\FL_weblowtrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\web_lowtrust.config",`
+"$srcpath\FL_weblowtrust_config_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\web_lowtrust.config.default",`
+"$srcpath\FL_System_Messaging_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Messaging\2.0.0.0__b03f5f7f11d50a3a\System.Messaging.dll",`
+"$srcpath\FL_System_Messaging_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.Messaging.dll",`
+"$srcpath\FL_System_Messaging_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.Messaging.dll",`
+"$srcpath\Microsoft_VsaVb_dll_3_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\Microsoft_VsaVb\8.0.0.0__b03f5f7f11d50a3a\Microsoft_VsaVb.dll",`
+"$srcpath\Microsoft_VsaVb_dll_3_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Microsoft_VsaVb.dll",`
+"$srcpath\FL_shfusion_chm_121725_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\shfusion.chm",`
+"$srcpath\FL_shfusion_chm_121725_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\shfusion.chm",`
+"$srcpath\FL_ProvidersPage_cs_102040_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_Code\ProvidersPage.cs",`
+"$srcpath\FL_sbs_mscorrc_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\sbs_mscorrc.dll",`
+"$srcpath\FL_ManageProviders_aspx_92850_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Providers\ManageProviders.aspx",`
+"$srcpath\FL_Aspnet_config_117583_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Aspnet.config",`
+"$srcpath\FL_Aspnet_config_117583_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\Aspnet.config",`
+"$srcpath\FL_CasPol_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CasPol.exe",`
+"$srcpath\FL_confirmation_ascx_102278_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\confirmation.ascx",`
+"$srcpath\FL_WebAdminHelp_Internals_aspx_119291_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\ASP.NETWebAdminFiles\WebAdminHelp_Internals.aspx",`
+"$srcpath\FL_WebAdminHelp_Internals_aspx_119291_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\WebAdminHelp_Internals.aspx",`
+"$srcpath\FL_System_Runtime_Serialization_Formatters_Soap_dl_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Runtime.Serialization.Formatters.Soap\2.0.0.0__b03f5f7f11d50a3a\System.Runtime.Serialization.Formatters.Soap.dll",`
+"$srcpath\FL_System_Runtime_Serialization_Formatters_Soap_dl_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.Runtime.Serialization.Formatters.Soap.dll",`
+"$srcpath\FL_System_Runtime_Serialization_Formatters_Soap_dl_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.Runtime.Serialization.Formatters.Soap.dll",`
+"$srcpath\FL_DefineErrorPage_aspx_102019_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\DefineErrorPage.aspx",`
+"$srcpath\prcp_nlp_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\prcp.nlp",`
+"$srcpath\prcp_nlp_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\prcp.nlp",`
+"$srcpath\prcp_nlp_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\prcp.nlp",`
+"$srcpath\prcp_nlp_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\prcp.nlp",`
+"$srcpath\FL_System_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System\2.0.0.0__b77a5c561934e089\System.dll",`
+"$srcpath\FL_System_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.dll",`
+"$srcpath\FL_System_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.dll",`
+"$srcpath\FL_aspnet_perf2_ini_ENU_X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\aspnet_perf2.ini",`
+"$srcpath\FL_WebAdminWithConfirmationNoButtonRow_mas_102343_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\WebAdminWithConfirmationNoButtonRow.master",`
+"$srcpath\FL_System_XML_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Xml\2.0.0.0__b77a5c561934e089\System.XML.dll",`
+"$srcpath\FL_System_XML_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.XML.dll",`
+"$srcpath\FL_System_XML_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.XML.dll",`
+"$srcpath\FL_mscorsec_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\mscorsec.dll",`
+"$srcpath\FL_sbs_iehost_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\sbs_iehost.dll",`
+"$srcpath\FL_CreateAppSetting_aspx_resx_103117_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\CreateAppSetting.aspx.resx",`
+"$srcpath\FL_wizardInit_ascx_74820_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\wizardInit.ascx",`
+"$srcpath\FL_mscorlib_tlb_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\mscorlib.tlb",`
+"$srcpath\FL_aspnet_filter_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\aspnet_filter.dll",`
+"$srcpath\FL_System_DeploymentFramework_Service_exe_66797_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\dfsvc.exe",`
+"$srcpath\FL_System_EnterpriseServices_tlb_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.EnterpriseServices.tlb",`
+"$srcpath\FL_machine_config_105746_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\machine.config.default",`
+"$srcpath\FL_machine_config_105746_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\machine.config.default",`
+"$srcpath\FL_NavigationBar_cs_102045_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_Code\NavigationBar.cs",`
+"$srcpath\FL_manageProviders_aspx_resx_103379_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Providers\App_LocalResources\manageProviders.aspx.resx",`
+"$srcpath\FL_sorttbls_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\sorttbls.nlp",`
+"$srcpath\FL_sorttbls_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\sorttbls.nlp",`
+"$srcpath\FL_sorttbls_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\sorttbls.nlp",`
+"$srcpath\FL_sorttbls_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\sorttbls.nlp",`
+"$srcpath\catalog.8.0.50727.1433.4F6D20F0_CCE5_1492_FF1F_C8B3B9A1E18E" , "$env:Temp\windows\winsxs\Policies\amd64_policy.8.0.Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_x-ww_d780e993\8.0.50727.1433.cat",`
+"$srcpath\FL_aspnet_perf_ini_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\aspnet_perf.ini",`
+"$srcpath\FL_CvtResUI_dll_109387_ENU_X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\1033\CvtResUI.dll",`
+"$srcpath\FL_WebAdminHelp_Application_aspx_resx_122111_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_LocalResources\WebAdminHelp_Application.aspx.resx",`
+"$srcpath\FL_Default_browser_76171_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\Default.browser",`
+"$srcpath\FL_Default_browser_76171_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\Default.browser",`
+"$srcpath\FL_CustomMarshalers_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_64\CustomMarshalers\2.0.0.0__b03f5f7f11d50a3a\CustomMarshalers.dll",`
+"$srcpath\FL_CustomMarshalers_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CustomMarshalers.dll",`
+"$srcpath\Microsoft.JScript_tlb_2_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Microsoft.JScript.tlb",`
+"$srcpath\FL_gateway_browser_76174_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\gateway.browser",`
+"$srcpath\FL_gateway_browser_76174_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\gateway.browser",`
+"$srcpath\FL_createPermission_aspx_74809_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Permissions\createPermission.aspx",`
+"$srcpath\CORPerfMonSymbols_h_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CORPerfMonSymbols.h",`
+"$srcpath\CORPerfMonSymbols_h_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CORPerfMonSymbols.h",`
+"$srcpath\FL_SecurityPage_cs_102041_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_Code\SecurityPage.cs",`
+"$srcpath\mscoree_tlb_1_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\mscoree.tlb",`
+"$srcpath\FL_MME_browser_76158_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\MME.browser",`
+"$srcpath\FL_MME_browser_76158_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\MME.browser",`
+"$srcpath\FL_wizardAuthentication_ascx_resx_103395_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardAuthentication.ascx.resx",`
+"$srcpath\FL_aspnet_mof_uninstall_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\aspnet.mof.uninstall",`
+"$srcpath\FL_aspnet_mof_uninstall_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\aspnet.mof.uninstall",`
+"$srcpath\catalog.8.0.50727.1433.98CB24AD_52FB_DB5F_FF1F_C8B3B9A1E18E" , "$env:Temp\windows\winsxs\manifests\x86_Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_8.0.50727.1433_x-ww_5cf844d2.cat",`
+"$srcpath\FL_ie_browser_76156_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\ie.browser",`
+"$srcpath\FL_ie_browser_76156_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\ie.browser",`
+"$srcpath\FL_SOS_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\SOS.dll",`
+"$srcpath\FL_SmtpSettings_aspx_102013_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\SmtpSettings.aspx",`
+"$srcpath\FL_AppLaunch_exe_111659_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\AppLaunch.exe",`
+"$srcpath\FL_setUpAuthentication_aspx_resx_103482_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\App_LocalResources\setUpAuthentication.aspx.resx",`
+"$srcpath\FL_providerList_ascx_resx_103378_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Providers\App_LocalResources\providerList.ascx.resx",`
+"$srcpath\FL_image2_gif_74785_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\image2.gif",`
+"$srcpath\FL_CasPol_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CasPol.exe",`
+"$srcpath\FL_ManageAppSettings_aspx_resx_103111_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\App_LocalResources\ManageAppSettings.aspx.resx",`
+"$srcpath\FL_winwap_browser_109069_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\winwap.browser",`
+"$srcpath\FL_winwap_browser_109069_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\winwap.browser",`
+"$srcpath\FL__NetworkingPerfCounters_h_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\_NetworkingPerfCounters.h",`
+"$srcpath\FL__NetworkingPerfCounters_h_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\_NetworkingPerfCounters.h",`
+"$srcpath\FL_mscorsecr_dll_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\MUI\0409\mscorsecr.dll",`
+"$srcpath\FL_InstallUtil_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\InstallUtil.exe",`
+"$srcpath\FL_regtlib_exe_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\regtlibv12.exe",`
+"$srcpath\FL_HelpIcon_solid_gif_102058_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\HelpIcon_solid.gif",`
+"$srcpath\FL_selectedTab_rightCorner_gif_102050_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\selectedTab_rightCorner.gif",`
+"$srcpath\FL_selectedTab_rightCorner_gif_102050_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\unSelectedTab_rightCorner.gif",`
+"$srcpath\FL_System_Drawing_tlb_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.Drawing.tlb",`
+"$srcpath\FL_MSBuildEngine_dll_67852_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\Microsoft.Build.Engine\2.0.0.0__b03f5f7f11d50a3a\Microsoft.Build.Engine.dll",`
+"$srcpath\FL_MSBuildEngine_dll_67852_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Microsoft.Build.Engine.dll",`
+"$srcpath\FL_MSBuildEngine_dll_67852_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\Microsoft.Build.Engine.dll",`
+"$srcpath\FL_wizardProviderInfo_ascx_resx_103394_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Wizard\App_LocalResources\wizardProviderInfo.ascx.resx",`
+"$srcpath\dw20.adm_0001_1033.F0DF3458_A845_11D3_8D0A_0050046416B9" , "$env:Temp\windows\inf\AER_1033.ADM",`
+"$srcpath\FL_MSBuild_rsp_113422_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\MSBuild.rsp",`
+"$srcpath\FL_MSBuild_rsp_113422_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\MSBuild.rsp",`
+"$srcpath\FL_MSBuild_rsp_113422_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\MSBuild.rsp",`
+"$srcpath\FL_MSBuild_rsp_113422_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\MSBuild.rsp",`
+"$srcpath\FL_mscorsn_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\mscorsn.dll",`
+"$srcpath\Microsoft.JScript_dll_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\Microsoft.JScript\8.0.0.0__b03f5f7f11d50a3a\Microsoft.JScript.dll",`
+"$srcpath\Microsoft.JScript_dll_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Microsoft.JScript.dll",`
+"$srcpath\Microsoft.JScript_dll_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\Microsoft.JScript.dll",`
+"$srcpath\FL_diasymreader_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\diasymreader.dll",`
+"$srcpath\FL_sbs_mscorsec_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\sbs_mscorsec.dll",`
+"$srcpath\FL_MSBuildUtilities_dll_70717_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\Microsoft.Build.Utilities\2.0.0.0__b03f5f7f11d50a3a\Microsoft.Build.Utilities.dll",`
+"$srcpath\FL_MSBuildUtilities_dll_70717_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Microsoft.Build.Utilities.dll",`
+"$srcpath\FL_MSBuildUtilities_dll_70717_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\Microsoft.Build.Utilities.dll",`
+"$srcpath\FL_mscortim_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\mscortim.dll",`
+"$srcpath\FL_aspnet_regsql_exe_73568_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\aspnet_regsql.exe",`
+"$srcpath\msvcr80.dll.8.0.50727.1433.98CB24AD_52FB_DB5F_FF1F_C8B3B9A1E18E" , "$env:Temp\windows\winsxs\x86_Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_8.0.50727.1433_x-ww_5cf844d2\msvcr80.dll",`
+"$srcpath\FL_cscmsgs_dll_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\1033\cscompui.dll",`
+"$srcpath\FL_aspnet_regsql_exe_73568_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\aspnet_regsql.exe",`
+"$srcpath\FL_mozilla_browser_76159_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\mozilla.browser",`
+"$srcpath\FL_mozilla_browser_76159_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\mozilla.browser",`
+"$srcpath\FL_home2_aspx_resx_103508_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\App_LocalResources\home2.aspx.resx",`
+"$srcpath\FL_WebAdminWithConfirmation_master_92851_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\WebAdminWithConfirmation.master",`
+"$srcpath\FL_home1_aspx_74745_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\home1.aspx",`
+"$srcpath\FL_WMINet_Utils_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\WMINet_Utils.dll",`
+"$srcpath\FL_System_Drawing_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Drawing\2.0.0.0__b03f5f7f11d50a3a\System.Drawing.dll",`
+"$srcpath\FL_System_Drawing_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.Drawing.dll",`
+"$srcpath\FL_System_Drawing_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.Drawing.dll",`
+"$srcpath\FL_RegAsm_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\RegAsm.exe",`
+"$srcpath\FL_netscape_browser_76160_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\netscape.browser",`
+"$srcpath\FL_netscape_browser_76160_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\netscape.browser",`
+"$srcpath\Microsoft.JScript_tlb_2_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\Microsoft.JScript.tlb",`
+"$srcpath\msvcp80.dll.8.0.50727.1433.98CB24AD_52FB_DB5F_FF1F_C8B3B9A1E18E" , "$env:Temp\windows\winsxs\x86_Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_8.0.50727.1433_x-ww_5cf844d2\msvcp80.dll",`
+"$srcpath\FL_EventLogMessages_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\EventLogMessages.dll",`
+"$srcpath\dw20.adm_0001_1028_1028.F0DF3458_A845_11D3_8D0A_0050046416B9" , "$env:Temp\windows\inf\AER_1028.ADM",`
+"$srcpath\mscorrc_dll_2_ENU_X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\mscorrc.dll",`
+"$srcpath\FL_alink_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\alink.dll",`
+"$srcpath\FL_MSBuild_exe_67853_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\MSBuild.exe",`
+"$srcpath\FL_CORPerfMonExt_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CORPerfMonExt.dll",`
+"$srcpath\FL_IIEHost_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\IIEHost\2.0.0.0__b03f5f7f11d50a3a\IIEHost.dll",`
+"$srcpath\FL_IIEHost_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\IIEHost.dll",`
+"$srcpath\FL_IIEHost_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\IIEHost.dll",`
+"$srcpath\FL_aspnet_state_perf_h_76107_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\aspnet_state_perf.h",`
+"$srcpath\FL_aspnet_state_perf_h_76107_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\aspnet_state_perf.h",`
+"$srcpath\FL_ngen_exe_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ngen.exe",`
+"$srcpath\filler" , "$env:Temp\windows\assembly\NativeImages_v2.0.50727_32\index24.dat",`
+"$srcpath\filler" , "$env:Temp\windows\assembly\NativeImages_v2.0.50727_32\index25.dat",`
+"$srcpath\filler" , "$env:Temp\windows\assembly\NativeImages_v2.0.50727_64\index31.dat",`
+"$srcpath\filler" , "$env:Temp\windows\Installer\wix{F5B09CFD-F0B2-36AF-8DF4-1DF6B63FC7B4}.SchedServiceConfig.rmi",`
+"$srcpath\manifest.8.0.50727.1433.98CB24AD_52FB_DB5F_FF1F_C8B3B9A1E18E" , "$env:Temp\windows\winsxs\manifests\x86_Microsoft.VC80.CRT_1fc8b3b9a1e18e3b_8.0.50727.1433_x-ww_5cf844d2.manifest",`
+"$srcpath\FL_opera_browser_76163_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\opera.browser",`
+"$srcpath\FL_opera_browser_76163_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\opera.browser",`
+"$srcpath\FL_normnfc_nlp_66374_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\normnfc.nlp",`
+"$srcpath\FL_normnfc_nlp_66374_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\normnfc.nlp",`
+"$srcpath\FL_normnfc_nlp_66374_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\normnfc.nlp",`
+"$srcpath\FL_normnfc_nlp_66374_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\normnfc.nlp",`
+"$srcpath\FL_sbs_diasymreader_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\sbs_diasymreader.dll",`
+"$srcpath\FL_System_Web_Services_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Web.Services\2.0.0.0__b03f5f7f11d50a3a\System.Web.Services.dll",`
+"$srcpath\FL_System_Web_Services_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.Web.Services.dll",`
+"$srcpath\FL_System_Web_Services_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.Web.Services.dll",`
+"$srcpath\FL_System_Runtime_Remoting_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Runtime.Remoting\2.0.0.0__b77a5c561934e089\System.Runtime.Remoting.dll",`
+"$srcpath\FL_System_Runtime_Remoting_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.Runtime.Remoting.dll",`
+"$srcpath\FL_System_Runtime_Remoting_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.Runtime.Remoting.dll",`
+"$srcpath\FL_aspnet_perf_h_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\aspnet_perf.h",`
+"$srcpath\FL_aspnet_perf_h_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\aspnet_perf.h",`
+"$srcpath\FL_gacutil_exe_config_79703_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v1.1.4322\gacutil.exe.config",`
+"$srcpath\FL_aspnet_regiis_exe_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\aspnet_regiis.exe",`
+"$srcpath\FL_mscorsvc_dll_93043_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\mscorsvc.dll",`
+"$srcpath\FL_UninstallRoles_sql_67222_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\UninstallRoles.sql",`
+"$srcpath\FL_UninstallRoles_sql_67222_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\UninstallRoles.sql",`
+"$srcpath\FL_help_jpg_74778_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\help.jpg",`
+"$srcpath\FL_gradient_onBlue_gif_74775_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\gradient_onBlue.gif",`
+"$srcpath\FL_System_Design_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Design\2.0.0.0__b03f5f7f11d50a3a\System.Design.dll",`
+"$srcpath\FL_System_Design_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.Design.dll",`
+"$srcpath\FL_System_Design_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.Design.dll",`
+"$srcpath\FL_Microsoft_CSharp_targets_106591_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Microsoft.CSharp.targets",`
+"$srcpath\FL_Microsoft_CSharp_targets_106591_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\Microsoft.CSharp.targets",`
+"$srcpath\FL_System_Transactions_dll_75016_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_64\System.Transactions\2.0.0.0__b77a5c561934e089\System.Transactions.dll",`
+"$srcpath\FL_System_Transactions_dll_75016_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.Transactions.dll",`
+"$srcpath\FL_mscorpjt_dll_93058_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\mscorpjt.dll",`
+"$srcpath\FL_System_EnterpriseServices_Thunk_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.EnterpriseServices.Thunk.dll",`
+"$srcpath\FL_mscordbc_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\mscordbc.dll",`
+"$srcpath\FL_prc_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\prc.nlp",`
+"$srcpath\FL_prc_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\prc.nlp",`
+"$srcpath\FL_prc_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\prc.nlp",`
+"$srcpath\FL_prc_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\prc.nlp",`
+"$srcpath\FL_DefaultWsdlHelpGenerator_aspx_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\DefaultWsdlHelpGenerator.aspx",`
+"$srcpath\FL_DefaultWsdlHelpGenerator_aspx_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\DefaultWsdlHelpGenerator.aspx",`
+"$srcpath\FL_System_EnterpriseServices_Wrapper_dll_76457_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_64\System.EnterpriseServices\2.0.0.0__b03f5f7f11d50a3a\System.EnterpriseServices.Wrapper.dll",`
+"$srcpath\FL_System_EnterpriseServices_Wrapper_dll_76457_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.EnterpriseServices.Wrapper.dll",`
+"$srcpath\FL_mscorie_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\mscorie.dll",`
+"$srcpath\FL_DebugAndTrace_aspx_102018_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\DebugAndTrace.aspx",`
+"$srcpath\FL_shfusion_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\shfusion.dll",`
+"$srcpath\FL_addUser_aspx_resx_103469_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Users\App_LocalResources\addUser.aspx.resx",`
+"$srcpath\FL_System_DeploymentFramework_Service_exe_66797_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\dfsvc.exe",`
+"$srcpath\FL_mscorsvw_exe_93402_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\mscorsvw.exe",`
+"$srcpath\FL_System_Data_OracleClient_dll_2_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_32\System.Data.OracleClient\2.0.0.0__b77a5c561934e089\System.Data.OracleClient.dll",`
+"$srcpath\FL_System_Data_OracleClient_dll_2_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.Data.OracleClient.dll",`
+"$srcpath\FL_UninstallCommon_sql_74697_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\UninstallCommon.sql",`
+"$srcpath\FL_UninstallCommon_sql_74697_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\UninstallCommon.sql",`
+"$srcpath\ShFusRes_dll_1_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ShFusRes.dll",`
+"$srcpath\FL_SYSTEM_WINDOWS_FORMS_DLL_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Windows.Forms\2.0.0.0__b77a5c561934e089\System.Windows.Forms.dll",`
+"$srcpath\FL_SYSTEM_WINDOWS_FORMS_DLL_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.Windows.Forms.dll",`
+"$srcpath\FL_SYSTEM_WINDOWS_FORMS_DLL_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.Windows.Forms.dll",`
+"$srcpath\Microsoft_Vsa_tlb_1_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\Microsoft.Vsa.tlb",`
+"$srcpath\FL_manageAllRoles_aspx_74812_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\Roles\manageAllRoles.aspx",`
+"$srcpath\FL_AssemblyList_xml_113047_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\RedistList\FrameworkList.xml",`
+"$srcpath\FL_openwave_browser_76162_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\openwave.browser",`
+"$srcpath\FL_openwave_browser_76162_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\openwave.browser",`
+"$srcpath\FL_mscordbi_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\mscordbi.dll",`
+"$srcpath\FL_dv_aspnetmmc_chm_121991_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\dv_aspnetmmc.chm",`
+"$srcpath\FL_dv_aspnetmmc_chm_121991_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\dv_aspnetmmc.chm",`
+"$srcpath\FL_panasonic_browser_76165_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\CONFIG\Browsers\panasonic.browser",`
+"$srcpath\FL_panasonic_browser_76165_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\CONFIG\Browsers\panasonic.browser",`
+"$srcpath\FL_System_Drawing_tlb_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.Drawing.tlb",`
+"$srcpath\FL_WMINet_Utils_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\WMINet_Utils.dll",`
+"$srcpath\FL_CreateAppSetting_aspx_102017_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\AppConfig\CreateAppSetting.aspx",`
+"$srcpath\FL_System_DirectoryServices_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.DirectoryServices\2.0.0.0__b03f5f7f11d50a3a\System.DirectoryServices.dll",`
+"$srcpath\FL_System_DirectoryServices_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\System.DirectoryServices.dll",`
+"$srcpath\FL_System_DirectoryServices_dll_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\System.DirectoryServices.dll",`
+"$srcpath\FL_sbscmp10_dll_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\sbscmp20_mscorlib.dll",`
+"$srcpath\FL_InstallWebEventSqlProvider_sql_93276_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\InstallWebEventSqlProvider.sql",`
+"$srcpath\FL_InstallWebEventSqlProvider_sql_93276_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\InstallWebEventSqlProvider.sql",`
+"$srcpath\FL_deselectedTab_1x1_gif_102056_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Images\deselectedTab_1x1.gif",`
+"$srcpath\mscorrc_dll_2_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\mscorrc.dll",`
+"$srcpath\FL_normnfd_nlp_66375_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\normnfd.nlp",`
+"$srcpath\FL_normnfd_nlp_66375_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\normnfd.nlp",`
+"$srcpath\FL_normnfd_nlp_66375_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\normnfd.nlp",`
+"$srcpath\FL_normnfd_nlp_66375_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\normnfd.nlp",`
+"$srcpath\FL_security_aspx_resx_103483_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\ASP.NETWebAdminFiles\Security\App_LocalResources\security.aspx.resx",`
+"$srcpath\FL_sortkey_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_32\mscorlib\2.0.0.0__b77a5c561934e089\sortkey.nlp",`
+"$srcpath\FL_sortkey_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_64\mscorlib\2.0.0.0__b77a5c561934e089\sortkey.nlp",`
+"$srcpath\FL_sortkey_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\sortkey.nlp",`
+"$srcpath\FL_sortkey_nlp_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\sortkey.nlp"
 
 for ( $j = 0; $j -lt $dotnet20.count; $j+=2 ) {
     Copy-Item -recurse -Path $dotnet20[$j] -Destination ( Join-Path (New-item -Type Directory -Force $(Split-Path -Path $dotnet20[$j+1]))   $(Split-Path -Leaf $dotnet20[$j+1])   ) -Force  -Verbose }
@@ -3120,244 +3137,232 @@ for ( $j = 0; $j -lt $dotnet20.count; $j+=2 ) {
     $srcpath="$env:TEMP\dotnet35\wcu\dotNetFramework\dotNetFX35\extr"
 
 [array]$dotnet35 = `
-"$srcpath\System.Net_dll_x86_gc.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Net\3.5.0.0__b03f5f7f11d50a3a\System.Net.dll",`
-"$srcpath\WapRes_dll_amd64_heb.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1037.dll",`
-"$srcpath\FL_npwpf_dll_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\Windows Presentation Foundation\NPWPF.dll",`
-"$srcpath\FL_eula_exp_txt_amd64_chs.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.2052.rtf",`
-"$srcpath\FL_DirectoryServices_AccountManagement_dll_Gac_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.DirectoryServices.AccountManagement\3.5.0.0__b77a5c561934e089\System.DirectoryServices.AccountManagement.dll",`
-"$srcpath\FL_setupres_dll_amd64_cht.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1028.dll",`
-"$srcpath\FL_logo_bmp_97496_97496_cn_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\logo.bmp",`
-"$srcpath\policy.21022.08.policy_9_0_Microsoft_VC90_CRT_x86.RTM" , "$env:SystemRoot\winsxs\Policies\x86_policy.9.0.Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_x-ww_b7353f75\9.0.21022.8.policy",`
-"$srcpath\FL_setupres_dll_amd64_dan.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1030.dll",`
-"$srcpath\msvcp90.dll.21022.08.Microsoft_VC90_CRT_x64.RTM" , "$env:SystemRoot\winsxs\amd64_Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_9.0.21022.8_x-ww_0296e955\msvcp90.dll",`
-"$srcpath\SQLServer_Targets_v35_x86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\SqlServer.targets",`
-"$srcpath\catalog.21022.08.policy_9_0_Microsoft_VC90_CRT_x86.RTM" , "$env:SystemRoot\winsxs\Policies\x86_policy.9.0.Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_x-ww_b7353f75\9.0.21022.8.cat",`
-"$srcpath\CSD_SYSTEM_WORKFLOWSERVICES_DLL_3500amd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.WorkflowServices\3.5.0.0__31bf3856ad364e35\System.WorkflowServices.dll",`
-"$srcpath\FL_Microsoft_Build_xsd_v35_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\Microsoft.Build.xsd",`
-"$srcpath\FL_Microsoft_Build_xsd_v35_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\Microsoft.Build.xsd",`
-"$srcpath\FL_Microsoft_Build_xsd_v35_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft.Build.xsd",`
-"$srcpath\FL_Microsoft_Build_xsd_v35_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\Microsoft.Build.xsd",`
-"$srcpath\FL_setupres_dll_amd64_jpn.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1041.dll",`
-"$srcpath\FL_eula_exp_txt_amd64_nld.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1043.rtf",`
-"$srcpath\FL_vbc_exe_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\vbc.exe",`
-"$srcpath\WapRes_dll_amd64_nld.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1043.dll",`
-"$srcpath\FL_vbc7ui_dll_20030_x86_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\1033\vbc7ui.dll",`
-"$srcpath\FL_eula_exp_txt_amd64_sve.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1053.rtf",`
-"$srcpath\FL_eula_exp_txt_amd64_fra.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1036.rtf",`
-"$srcpath\FL_setupres_dll_amd64_nor.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1044.dll",`
-"$srcpath\FL_setupres_dll_amd64_trk.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1055.dll",`
-"$srcpath\FL_System_AddIn_Con_dll_Gac_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.AddIn.Contract\2.0.0.0__b03f5f7f11d50a3a\System.AddIn.Contract.dll",`
-"$srcpath\Microsoft_WinFX_Targets_v35_amd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\Microsoft.WinFx.targets",`
-"$srcpath\Microsoft_WinFX_Targets_v35_amd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft.WinFx.targets",`
-"$srcpath\FL_MSITOSIT_dll_96104_96104_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\vs_setup.dll",`
-"$srcpath\csc_exe_amd64.config" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\csc.exe.config",`
-"$srcpath\csc_exe_amd64.config" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\jsc.exe.config",`
-"$srcpath\csc_exe_amd64.config" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\vbc.exe.config",`
-"$srcpath\csc_exe_amd64.config" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\csc.exe.config",`
-"$srcpath\csc_exe_amd64.config" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\vbc.exe.config",`
-"$srcpath\csc_exe_amd64.config" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\csc.exe.config",`
-"$srcpath\csc_exe_amd64.config" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\jsc.exe.config",`
-"$srcpath\csc_exe_amd64.config" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\vbc.exe.config",`
-"$srcpath\csc_exe_amd64.config" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\csc.exe.config",`
-"$srcpath\csc_exe_amd64.config" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\vbc.exe.config",`
-"$srcpath\FL_DeleteTemp_exe_96108_96108_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\DeleteTemp.exe",`
-"$srcpath\FL_netfx35_setup_pdi_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\vs_setup.pdi",`
-"$srcpath\CSD_CDF_INSTALLER_EXEamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\WFServicesReg.exe",`
-"$srcpath\FL_eula_exp_txt_amd64_jpn.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1041.rtf",`
-"$srcpath\WapRes_dll_amd64_jpn.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1041.dll",`
-"$srcpath\CFX_SERVICEMODEL35_MOF_UNINSTALLamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\MOF\ServiceModel35.mof.uninstall",`
-"$srcpath\CFX_SERVICEMODEL35_MOF_UNINSTALLamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\MOF\ServiceModel35.mof.uninstall",`
-"$srcpath\CFX_SERVICEMODEL35_MOF_UNINSTALLamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\MOF\ServiceModel35.mof.uninstall",`
-"$srcpath\CFX_SERVICEMODEL35_MOF_UNINSTALLamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\MOF\ServiceModel35.mof.uninstall",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1025.ini",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1028.ini",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1029.ini",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1030.ini",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1031.ini",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1032.ini",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1035.ini",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1036.ini",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1037.ini",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1038.ini",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1040.ini",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1041.ini",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1042.ini",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1043.ini",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1044.ini",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1045.ini",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1046.ini",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1049.ini",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1053.ini",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1055.ini",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.2052.ini",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.2070.ini",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.3082.ini",`
-"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.ini",`
-"$srcpath\FL_AddInUtil_exe_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\AddInUtil.exe",`
-"$srcpath\FL_setupres_dll_amd64_kor.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1042.dll",`
-"$srcpath\WapRes_dll_amd64_cht.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1028.dll",`
-"$srcpath\FL_setupres_dll_amd64_deu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1031.dll",`
-"$srcpath\FL_AddInProcess_exe_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\AddInProcess.exe",`
-"$srcpath\FL_AddInProcess32_exe_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\AddInProcess32.exe",`
-"$srcpath\FL_setupres_dll_amd64_nld.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1043.dll",`
-"$srcpath\FL_setupres_dll_amd64_fin.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1035.dll",`
-"$srcpath\msvcm90.dll.21022.08.Microsoft_VC90_CRT_x64.RTM" , "$env:SystemRoot\winsxs\amd64_Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_9.0.21022.8_x-ww_0296e955\msvcm90.dll",`
-"$srcpath\FL_gencomp_dll_98507_98507_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\gencomp.dll",`
-"$srcpath\WapRes_dll_amd64_deu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1031.dll",`
-"$srcpath\CFX_SERVICEMODEL35_MOFamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\MOF\ServiceModel35.mof",`
-"$srcpath\CFX_SERVICEMODEL35_MOFamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\MOF\ServiceModel35.mof",`
-"$srcpath\FL_MSBuildTasks_dll_GAC_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft.Build.Tasks.v3.5.dll",`
-"$srcpath\FL_AddInUtil_exe_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\AddInUtil.exe",`
-"$srcpath\FL_AddInProcess32_exe_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\AddInProcess32.exe",`
-"$srcpath\FL_Microsoft_BuildTasks_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\Microsoft.Common.Tasks",`
-"$srcpath\FL_Microsoft_BuildTasks_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft.Common.Tasks",`
-"$srcpath\FL_eula_exp_txt_amd64_trk.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1055.rtf",`
-"$srcpath\FL_Microsoft_CSharp_targets_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\Microsoft.CSharp.targets",`
-"$srcpath\FL_Microsoft_CSharp_targets_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft.CSharp.targets",`
-"$srcpath\FL_System_Management_Instrumentation_dll_GAC_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Management.Instrumentation\3.5.0.0__b77a5c561934e089\System.Management.Instrumentation.dll",`
-"$srcpath\msvcp90.dll.21022.08.Microsoft_VC90_CRT_x86.RTM" , "$env:SystemRoot\winsxs\x86_Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_9.0.21022.8_x-ww_d08d0375\msvcp90.dll",`
-"$srcpath\WapRes_dll_amd64_nor.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1044.dll",`
-"$srcpath\CFX_SQL_FILE_LOGIC_DROPamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\SQL\EN\DropSqlPersistenceProviderLogic.sql",`
-"$srcpath\CFX_SQL_FILE_LOGIC_DROPamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\SQL\EN\DropSqlPersistenceProviderLogic.sql",`
-"$srcpath\catalog.21022.08.Microsoft_VC90_CRT_x86.RTM" , "$env:SystemRoot\winsxs\manifests\x86_Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_9.0.21022.8_x-ww_d08d0375.cat",`
-"$srcpath\csc_amd64.exe" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\csc.exe",`
-"$srcpath\WapRes_dll_amd64_fin.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1035.dll",`
-"$srcpath\CSD_CDF_INSTALLER_EXEx86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\WFServicesReg.exe",`
-"$srcpath\WapRes_dll_amd64_chs.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.2052.dll",`
-"$srcpath\FL_MSBuildFramework_dll_GAC_v35_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\Microsoft.Build.Framework\3.5.0.0__b03f5f7f11d50a3a\Microsoft.Build.Framework.dll",`
-"$srcpath\CFX_SQL_FILE_LOGICamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\SQL\EN\SqlPersistenceProviderLogic.sql",`
-"$srcpath\CFX_SQL_FILE_LOGICamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\SQL\EN\SqlPersistenceProviderLogic.sql",`
-"$srcpath\FL_eula_exp_txt_amd64_hun.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1038.rtf",`
-"$srcpath\FL_Microsoft_VisualC_STLCLR_dll_1_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft.VisualC.STLCLR.dll",`
-"$srcpath\WapRes_dll_amd64_ita.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1040.dll",`
-"$srcpath\FL_eula_exp_txt_amd64_ara.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1025.rtf",`
-"$srcpath\policy.21022.08.policy_9_0_Microsoft_VC90_CRT_x64.RTM" , "$env:SystemRoot\winsxs\Policies\amd64_policy.9.0.Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_x-ww_16f3e195\9.0.21022.8.policy",`
-"$srcpath\FL_SITSetup_dll_96093_96093_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\SITSetup.dll",`
-"$srcpath\csc_x86.exe" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\csc.exe",`
-"$srcpath\FL_DLinq_dll_24763_GAC_x86_ln.B588F0AF_A1DC_445b_ABE8_B3EDA2EA2F31" , "$env:SystemRoot\assembly\GAC_MSIL\System.Data.Linq\3.5.0.0__b77a5c561934e089\System.Data.Linq.dll",`
-"$srcpath\FL_setupres_dll_amd64_rus.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1049.dll",`
-"$srcpath\FL_eula_exp_txt_amd64_ptg.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.2070.rtf",`
-"$srcpath\FL_setupres_dll_amd64_heb.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1037.dll",`
-"$srcpath\FL_setupres_dll_amd64_csy.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1029.dll",`
-"$srcpath\FL_eula_exp_txt_amd64_nor.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1044.rtf",`
-"$srcpath\FL_Microsoft_VisualC_STLCLR_dll_1_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\Microsoft.VisualC.STLCLR\1.0.0.0__b03f5f7f11d50a3a\Microsoft.VisualC.STLCLR.dll",`
-"$srcpath\FL_Microsoft_VisualC_STLCLR_dll_1_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\Microsoft.VisualC.STLCLR.dll",`
-"$srcpath\FL_AddInProcess_exe_config_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\AddInProcess.exe.config",`
-"$srcpath\FL_AddInProcess_exe_config_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\AddInProcess32.exe.config",`
-"$srcpath\FL_AddInProcess_exe_config_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\AddInUtil.exe.config",`
-"$srcpath\FL_AddInProcess_exe_config_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\AddInProcess.exe.config",`
-"$srcpath\FL_AddInProcess_exe_config_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\AddInProcess32.exe.config",`
-"$srcpath\FL_AddInProcess_exe_config_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\AddInUtil.exe.config",`
-"$srcpath\FL_setupres_dll_amd64_esn.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.3082.dll",`
-"$srcpath\FL_setupres_dll_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.dll",`
-"$srcpath\FL_eula_exp_txt_amd64_ptb.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1046.rtf",`
-"$srcpath\CFX_SQL_FILE_SCHEMAamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\SQL\EN\SqlPersistenceProviderSchema.sql",`
-"$srcpath\CFX_SQL_FILE_SCHEMAamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\SQL\en\SqlPersistenceProviderSchema.sql",`
-"$srcpath\CFX_SQL_FILE_SCHEMAamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\SQL\EN\SqlPersistenceProviderSchema.sql",`
-"$srcpath\CFX_SQL_FILE_SCHEMAamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\SQL\en\SqlPersistenceProviderSchema.sql",`
-"$srcpath\cscrsp_amd64.rsp" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\csc.rsp",`
-"$srcpath\cscrsp_amd64.rsp" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\csc.rsp",`
-"$srcpath\FL_Microsoft_Build_Conversion_dll_GAC_v35_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\Microsoft.Build.Conversion.v3.5\3.5.0.0__b03f5f7f11d50a3a\Microsoft.Build.Conversion.v3.5.dll",`
-"$srcpath\FL_eula_exp_txt_amd64_esn.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.3082.rtf",`
-"$srcpath\WapRes_dll_amd64_ara.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1025.dll",`
-"$srcpath\FL_MSBuildEngine_dll_GAC_v35_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\Microsoft.Build.Engine\3.5.0.0__b03f5f7f11d50a3a\Microsoft.Build.Engine.dll",`
-"$srcpath\catalog.21022.08.Microsoft_VC90_CRT_x64.RTM" , "$env:SystemRoot\winsxs\manifests\amd64_Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_9.0.21022.8_x-ww_0296e955.cat",`
-"$srcpath\FL_setupres_dll_amd64_ptb.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1046.dll",`
-"$srcpath\FL_AddInProcess_exe_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\AddInProcess.exe",`
-"$srcpath\FL_eula_exp_txt_amd64_ita.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1040.rtf",`
-"$srcpath\FL_eula_exp_txt_amd64_ell.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1032.rtf",`
-"$srcpath\FL_dlmgr_dll_100069_100069_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\dlmgr.dll",`
-"$srcpath\FL_deffactory_dat_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\deffactory.dat",`
-"$srcpath\FL_Microsoft_Build_Core_xsd_v35_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\MSBuild\Microsoft.Build.Core.xsd",`
-"$srcpath\FL_Microsoft_Build_Core_xsd_v35_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\MSBuild\Microsoft.Build.Core.xsd",`
-"$srcpath\CFX_SQL_FILE_SCHEMA_DROPamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\SQL\EN\DropSqlPersistenceProviderSchema.sql",`
-"$srcpath\CFX_SQL_FILE_SCHEMA_DROPamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\SQL\en\DropSqlPersistenceProviderSchema.sql",`
-"$srcpath\CFX_SQL_FILE_SCHEMA_DROPamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\SQL\EN\DropSqlPersistenceProviderSchema.sql",`
-"$srcpath\CFX_SQL_FILE_SCHEMA_DROPamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\SQL\en\DropSqlPersistenceProviderSchema.sql",`
-"$srcpath\FL_System_Core_dll_24763_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Core\3.5.0.0__b77a5c561934e089\System.Core.dll",`
-"$srcpath\CSD_SYSTEM_SERVICEMODEL_WEB_DLL_3500amd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.ServiceModel.Web\3.5.0.0__31bf3856ad364e35\System.ServiceModel.Web.dll",`
-"$srcpath\FL_setup_sdb_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setup.sdb",`
-"$srcpath\WapRes_dll_amd64_hun.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1038.dll",`
-"$srcpath\FL_Microsoft_Common_targets_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\Microsoft.Common.targets",`
-"$srcpath\FL_Microsoft_Common_targets_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft.Common.targets",`
-"$srcpath\FL_System_Data_DataSetExtensions_dll_Gac_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Data.DataSetExtensions\3.5.0.0__b77a5c561934e089\System.Data.DataSetExtensions.dll",`
-"$srcpath\WapRes_dll_amd64_csy.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1029.dll",`
-"$srcpath\FL_System_Windows_Presentation_dll_gac_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Windows.Presentation\3.5.0.0__b77a5c561934e089\System.Windows.Presentation.dll",`
-"$srcpath\WapRes_dll_amd64_dan.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1030.dll",`
-"$srcpath\WapRes_dll_amd64_rus.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1049.dll",`
-"$srcpath\FL_vbc_rsp_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\vbc.rsp",`
-"$srcpath\FL_vbc_rsp_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\vbc.rsp",`
-"$srcpath\FL_setupres_dll_amd64_ell.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1032.dll",`
-"$srcpath\FL_HtmlLite_dll_96198_96198_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\HtmlLite.dll",`
-"$srcpath\FL_MSBuild_exe_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\MSBuild.exe",`
-"$srcpath\WapRes_dll_amd64_plk.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1045.dll",`
-"$srcpath\msvcm90.dll.21022.08.Microsoft_VC90_CRT_x86.RTM" , "$env:SystemRoot\winsxs\x86_Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_9.0.21022.8_x-ww_d08d0375\msvcm90.dll",`
-"$srcpath\FL_vbc7ui_dll_20030_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\1033\vbc7ui.dll",`
-"$srcpath\FL_MSBuildUtilities_DLL_GAC_v35_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\Microsoft.Build.Utilities.v3.5\3.5.0.0__b03f5f7f11d50a3a\Microsoft.Build.Utilities.v3.5.dll",`
-"$srcpath\FL_Microsoft_VisualBasic_targets_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\Microsoft.VisualBasic.targets",`
-"$srcpath\FL_Microsoft_VisualBasic_targets_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft.VisualBasic.targets",`
-"$srcpath\FL_setupres_dll_amd64_ara.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1025.dll",`
-"$srcpath\FL_eula_exp_txt_amd64_fin.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1035.rtf",`
-"$srcpath\FL_MSBuildTasks_dll_GAC_v35_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\Microsoft.Build.Tasks.v3.5\3.5.0.0__b03f5f7f11d50a3a\Microsoft.Build.Tasks.v3.5.dll",`
-"$srcpath\FL_MSBuildTasks_dll_GAC_v35_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\Microsoft.Build.Tasks.v3.5.dll",`
-"$srcpath\default_win32manifest_amd64" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\default.win32manifest",`
-"$srcpath\default_win32manifest_amd64" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\default.win32manifest",`
-"$srcpath\default_win32manifest_amd64" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\default.win32manifest",`
-"$srcpath\default_win32manifest_amd64" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\default.win32manifest",`
-"$srcpath\FL_setupres_dll_amd64_plk.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1045.dll",`
-"$srcpath\FL_eula_exp_txt_amd64_heb.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1037.rtf",`
-"$srcpath\FL_setupres_dll_amd64_ita.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1040.dll",`
-"$srcpath\WapRes_dll_amd64_kor.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1042.dll",`
-"$srcpath\FL_vs70uimgr_dll_96106_96106_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\vs70uimgr.dll",`
-"$srcpath\cscompui_x86.dll" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\1033\cscompui.dll",`
-"$srcpath\FL_XLinq_dll_Gac_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Xml.Linq\3.5.0.0__b77a5c561934e089\System.Xml.Linq.dll",`
-"$srcpath\FL_eula_exp_txt_amd64_rus.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1049.rtf",`
-"$srcpath\WapRes_dll_amd64_esn.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.3082.dll",`
-"$srcpath\FL_Microsoft_Build_Commontypes_xsd_v35_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\MSBuild\Microsoft.Build.Commontypes.xsd",`
-"$srcpath\FL_Microsoft_Build_Commontypes_xsd_v35_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\MSBuild\Microsoft.Build.Commontypes.xsd",`
-"$srcpath\FL_eula_exp_txt_amd64_cht.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1028.rtf",`
-"$srcpath\FL_MSBuild_rsp_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\MSBuild.rsp",`
-"$srcpath\FL_MSBuild_rsp_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\MSBuild.rsp",`
-"$srcpath\FL_MSBuild_rsp_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\MSBuild.rsp",`
-"$srcpath\FL_MSBuild_rsp_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\MSBuild.rsp",`
-"$srcpath\FL_MSBuild_rsp_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\MSBuild.rsp",`
-"$srcpath\FL_MSBuild_rsp_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\MSBuild.rsp",`
-"$srcpath\FL_eula_exp_txt_amd64_kor.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1042.rtf",`
-"$srcpath\WapRes_dll_amd64_ell.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1032.dll",`
-"$srcpath\WapRes_dll_amd64_sve.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1053.dll",`
-"$srcpath\WapRes_dll_amd64_ptg.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.2070.dll",`
-"$srcpath\FL_eula_exp_txt_amd64_dan.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1030.rtf",`
-"$srcpath\catalog.21022.08.policy_9_0_Microsoft_VC90_CRT_x64.RTM" , "$env:SystemRoot\winsxs\Policies\amd64_policy.9.0.Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_x-ww_16f3e195\9.0.21022.8.cat",`
-"$srcpath\FL_WapUI_dll_amd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapUI.dll",`
-"$srcpath\FL_MSBuild_exe_v35_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\MSBuild.exe",`
-"$srcpath\FL_setupres_dll_amd64_ptg.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.2070.dll",`
-"$srcpath\FL_eula_exp_txt_amd64_csy.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1029.rtf",`
-"$srcpath\msvcr90.dll.21022.08.Microsoft_VC90_CRT_x64.RTM" , "$env:SystemRoot\winsxs\amd64_Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_9.0.21022.8_x-ww_0296e955\msvcr90.dll",`
-"$srcpath\FL_System_AddIn_dll_Gac_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.AddIn\3.5.0.0__b77a5c561934e089\System.AddIn.dll",`
-"$srcpath\FL_baseline_dat_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\baseline.dat",`
-"$srcpath\WapRes_dll_amd64_ptb.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1046.dll",`
-"$srcpath\FL_vbc_exe_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\vbc.exe",`
-"$srcpath\FL_setupres_dll_amd64_hun.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1038.dll",`
-"$srcpath\FL_setupres_dll_amd64_fra.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1036.dll",`
-"$srcpath\FL_setupres_dll_amd64_sve.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1053.dll",`
-"$srcpath\System.Web.Extensions_dll_x86_gc.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Web.Extensions\3.5.0.0__31bf3856ad364e35\System.Web.Extensions.dll",`
-"$srcpath\msvcr90.dll.21022.08.Microsoft_VC90_CRT_x86.RTM" , "$env:SystemRoot\winsxs\x86_Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_9.0.21022.8_x-ww_d08d0375\msvcr90.dll",`
-"$srcpath\FL_vsscenario_dll_98517_98517_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\vsscenario.dll",`
-"$srcpath\manifest.21022.08.Microsoft_VC90_CRT_x64.RTM" , "$env:SystemRoot\winsxs\manifests\amd64_Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_9.0.21022.8_x-ww_0296e955.manifest",`
-"$srcpath\FL_eula_exp_txt_amd64_plk.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1045.rtf",`
-"$srcpath\FL_setupres_dll_amd64_chs.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.2052.dll",`
-"$srcpath\FL_eula_exp_txt_amd64_deu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1031.rtf",`
-"$srcpath\WapRes_dll_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.dll",`
-"$srcpath\System.Web.Extensions.Design_dll_x86_gc.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Web.Extensions.Design\3.5.0.0__31bf3856ad364e35\System.Web.Extensions.Design.dll",`
-"$srcpath\WapRes_dll_amd64_fra.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1036.dll",`
-"$srcpath\FL_eula_exp_txt_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1033.rtf",`
-"$srcpath\FL_msbuild_urt_config_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.5\msbuild.exe.config",`
-"$srcpath\FL_msbuild_urt_config_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\msbuild.exe.config",`
-"$srcpath\FL_vsbasereqs_dll_98508_98508_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\vsbasereqs.dll",`
-"$srcpath\cscompui_amd64.dll" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\1033\cscompui.dll",`
-"$srcpath\WapRes_dll_amd64_trk.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1055.dll",`
-"$srcpath\FL_setup_exe_96103_96103_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setup.exe",`
-"$srcpath\manifest.21022.08.Microsoft_VC90_CRT_x86.RTM" , "$env:SystemRoot\winsxs\manifests\x86_Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_9.0.21022.8_x-ww_d08d0375.manifest"
+"$srcpath\System.Net_dll_x86_gc.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Net\3.5.0.0__b03f5f7f11d50a3a\System.Net.dll",`
+"$srcpath\WapRes_dll_amd64_heb.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1037.dll",`
+"$srcpath\FL_npwpf_dll_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\Windows Presentation Foundation\NPWPF.dll",`
+"$srcpath\FL_eula_exp_txt_amd64_chs.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.2052.rtf",`
+"$srcpath\FL_DirectoryServices_AccountManagement_dll_Gac_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.DirectoryServices.AccountManagement\3.5.0.0__b77a5c561934e089\System.DirectoryServices.AccountManagement.dll",`
+"$srcpath\FL_setupres_dll_amd64_cht.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1028.dll",`
+"$srcpath\FL_logo_bmp_97496_97496_cn_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\logo.bmp",`
+"$srcpath\policy.21022.08.policy_9_0_Microsoft_VC90_CRT_x86.RTM" , "$env:Temp\windows\winsxs\Policies\x86_policy.9.0.Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_x-ww_b7353f75\9.0.21022.8.policy",`
+"$srcpath\FL_setupres_dll_amd64_dan.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1030.dll",`
+"$srcpath\msvcp90.dll.21022.08.Microsoft_VC90_CRT_x64.RTM" , "$env:Temp\windows\winsxs\amd64_Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_9.0.21022.8_x-ww_0296e955\msvcp90.dll",`
+"$srcpath\SQLServer_Targets_v35_x86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\SqlServer.targets",`
+"$srcpath\catalog.21022.08.policy_9_0_Microsoft_VC90_CRT_x86.RTM" , "$env:Temp\windows\winsxs\Policies\x86_policy.9.0.Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_x-ww_b7353f75\9.0.21022.8.cat",`
+"$srcpath\CSD_SYSTEM_WORKFLOWSERVICES_DLL_3500amd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.WorkflowServices\3.5.0.0__31bf3856ad364e35\System.WorkflowServices.dll",`
+"$srcpath\FL_Microsoft_Build_xsd_v35_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\Microsoft.Build.xsd",`
+"$srcpath\FL_Microsoft_Build_xsd_v35_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft.Build.xsd",`
+"$srcpath\FL_setupres_dll_amd64_jpn.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1041.dll",`
+"$srcpath\FL_eula_exp_txt_amd64_nld.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1043.rtf",`
+"$srcpath\FL_vbc_exe_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\vbc.exe",`
+"$srcpath\WapRes_dll_amd64_nld.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1043.dll",`
+"$srcpath\FL_vbc7ui_dll_20030_x86_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\1033\vbc7ui.dll",`
+"$srcpath\FL_eula_exp_txt_amd64_sve.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1053.rtf",`
+"$srcpath\FL_eula_exp_txt_amd64_fra.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1036.rtf",`
+"$srcpath\FL_setupres_dll_amd64_nor.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1044.dll",`
+"$srcpath\FL_setupres_dll_amd64_trk.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1055.dll",`
+"$srcpath\FL_System_AddIn_Con_dll_Gac_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.AddIn.Contract\2.0.0.0__b03f5f7f11d50a3a\System.AddIn.Contract.dll",`
+"$srcpath\Microsoft_WinFX_Targets_v35_amd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\Microsoft.WinFx.targets",`
+"$srcpath\Microsoft_WinFX_Targets_v35_amd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft.WinFx.targets",`
+"$srcpath\FL_MSITOSIT_dll_96104_96104_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\vs_setup.dll",`
+"$srcpath\csc_exe_amd64.config" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\csc.exe.config",`
+"$srcpath\csc_exe_amd64.config" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\jsc.exe.config",`
+"$srcpath\csc_exe_amd64.config" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\vbc.exe.config",`
+"$srcpath\csc_exe_amd64.config" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\csc.exe.config",`
+"$srcpath\csc_exe_amd64.config" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\vbc.exe.config",`
+"$srcpath\csc_exe_amd64.config" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\csc.exe.config",`
+"$srcpath\csc_exe_amd64.config" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\jsc.exe.config",`
+"$srcpath\csc_exe_amd64.config" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\vbc.exe.config",`
+"$srcpath\csc_exe_amd64.config" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\csc.exe.config",`
+"$srcpath\csc_exe_amd64.config" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\vbc.exe.config",`
+"$srcpath\FL_DeleteTemp_exe_96108_96108_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\DeleteTemp.exe",`
+"$srcpath\FL_netfx35_setup_pdi_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\vs_setup.pdi",`
+"$srcpath\CSD_CDF_INSTALLER_EXEamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\WFServicesReg.exe",`
+"$srcpath\FL_eula_exp_txt_amd64_jpn.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1041.rtf",`
+"$srcpath\WapRes_dll_amd64_jpn.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1041.dll",`
+"$srcpath\CFX_SERVICEMODEL35_MOF_UNINSTALLamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\MOF\ServiceModel35.mof.uninstall",`
+"$srcpath\CFX_SERVICEMODEL35_MOF_UNINSTALLamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\MOF\ServiceModel35.mof.uninstall",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1025.ini",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1028.ini",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1029.ini",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1030.ini",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1031.ini",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1032.ini",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1035.ini",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1036.ini",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1037.ini",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1038.ini",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1040.ini",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1041.ini",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1042.ini",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1043.ini",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1044.ini",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1045.ini",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1046.ini",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1049.ini",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1053.ini",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.1055.ini",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.2052.ini",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.2070.ini",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.3082.ini",`
+"$srcpath\FL_locdata_ini_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\locdata.ini",`
+"$srcpath\FL_AddInUtil_exe_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\AddInUtil.exe",`
+"$srcpath\FL_setupres_dll_amd64_kor.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1042.dll",`
+"$srcpath\WapRes_dll_amd64_cht.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1028.dll",`
+"$srcpath\FL_setupres_dll_amd64_deu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1031.dll",`
+"$srcpath\FL_AddInProcess_exe_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\AddInProcess.exe",`
+"$srcpath\FL_AddInProcess32_exe_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\AddInProcess32.exe",`
+"$srcpath\FL_setupres_dll_amd64_nld.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1043.dll",`
+"$srcpath\FL_setupres_dll_amd64_fin.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1035.dll",`
+"$srcpath\msvcm90.dll.21022.08.Microsoft_VC90_CRT_x64.RTM" , "$env:Temp\windows\winsxs\amd64_Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_9.0.21022.8_x-ww_0296e955\msvcm90.dll",`
+"$srcpath\FL_gencomp_dll_98507_98507_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\gencomp.dll",`
+"$srcpath\WapRes_dll_amd64_deu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1031.dll",`
+"$srcpath\CFX_SERVICEMODEL35_MOFamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\MOF\ServiceModel35.mof",`
+"$srcpath\CFX_SERVICEMODEL35_MOFamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\MOF\ServiceModel35.mof",`
+"$srcpath\FL_MSBuildTasks_dll_GAC_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft.Build.Tasks.v3.5.dll",`
+"$srcpath\FL_AddInUtil_exe_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\AddInUtil.exe",`
+"$srcpath\FL_AddInProcess32_exe_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\AddInProcess32.exe",`
+"$srcpath\FL_Microsoft_BuildTasks_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\Microsoft.Common.Tasks",`
+"$srcpath\FL_Microsoft_BuildTasks_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft.Common.Tasks",`
+"$srcpath\FL_eula_exp_txt_amd64_trk.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1055.rtf",`
+"$srcpath\FL_Microsoft_CSharp_targets_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\Microsoft.CSharp.targets",`
+"$srcpath\FL_Microsoft_CSharp_targets_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft.CSharp.targets",`
+"$srcpath\FL_System_Management_Instrumentation_dll_GAC_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Management.Instrumentation\3.5.0.0__b77a5c561934e089\System.Management.Instrumentation.dll",`
+"$srcpath\msvcp90.dll.21022.08.Microsoft_VC90_CRT_x86.RTM" , "$env:Temp\windows\winsxs\x86_Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_9.0.21022.8_x-ww_d08d0375\msvcp90.dll",`
+"$srcpath\WapRes_dll_amd64_nor.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1044.dll",`
+"$srcpath\CFX_SQL_FILE_LOGIC_DROPamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\SQL\EN\DropSqlPersistenceProviderLogic.sql",`
+"$srcpath\CFX_SQL_FILE_LOGIC_DROPamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\SQL\EN\DropSqlPersistenceProviderLogic.sql",`
+"$srcpath\catalog.21022.08.Microsoft_VC90_CRT_x86.RTM" , "$env:Temp\windows\winsxs\manifests\x86_Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_9.0.21022.8_x-ww_d08d0375.cat",`
+"$srcpath\csc_amd64.exe" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\csc.exe",`
+"$srcpath\WapRes_dll_amd64_fin.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1035.dll",`
+"$srcpath\CSD_CDF_INSTALLER_EXEx86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\WFServicesReg.exe",`
+"$srcpath\WapRes_dll_amd64_chs.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.2052.dll",`
+"$srcpath\FL_MSBuildFramework_dll_GAC_v35_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\Microsoft.Build.Framework\3.5.0.0__b03f5f7f11d50a3a\Microsoft.Build.Framework.dll",`
+"$srcpath\CFX_SQL_FILE_LOGICamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\SQL\EN\SqlPersistenceProviderLogic.sql",`
+"$srcpath\CFX_SQL_FILE_LOGICamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\SQL\EN\SqlPersistenceProviderLogic.sql",`
+"$srcpath\FL_eula_exp_txt_amd64_hun.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1038.rtf",`
+"$srcpath\FL_Microsoft_VisualC_STLCLR_dll_1_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft.VisualC.STLCLR.dll",`
+"$srcpath\WapRes_dll_amd64_ita.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1040.dll",`
+"$srcpath\FL_eula_exp_txt_amd64_ara.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1025.rtf",`
+"$srcpath\policy.21022.08.policy_9_0_Microsoft_VC90_CRT_x64.RTM" , "$env:Temp\windows\winsxs\Policies\amd64_policy.9.0.Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_x-ww_16f3e195\9.0.21022.8.policy",`
+"$srcpath\FL_SITSetup_dll_96093_96093_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\SITSetup.dll",`
+"$srcpath\csc_x86.exe" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\csc.exe",`
+"$srcpath\FL_DLinq_dll_24763_GAC_x86_ln.B588F0AF_A1DC_445b_ABE8_B3EDA2EA2F31" , "$env:Temp\windows\assembly\GAC_MSIL\System.Data.Linq\3.5.0.0__b77a5c561934e089\System.Data.Linq.dll",`
+"$srcpath\FL_setupres_dll_amd64_rus.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1049.dll",`
+"$srcpath\FL_eula_exp_txt_amd64_ptg.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.2070.rtf",`
+"$srcpath\FL_setupres_dll_amd64_heb.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1037.dll",`
+"$srcpath\FL_setupres_dll_amd64_csy.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1029.dll",`
+"$srcpath\FL_eula_exp_txt_amd64_nor.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1044.rtf",`
+"$srcpath\FL_Microsoft_VisualC_STLCLR_dll_1_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\Microsoft.VisualC.STLCLR\1.0.0.0__b03f5f7f11d50a3a\Microsoft.VisualC.STLCLR.dll",`
+"$srcpath\FL_Microsoft_VisualC_STLCLR_dll_1_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\Microsoft.VisualC.STLCLR.dll",`
+"$srcpath\FL_AddInProcess_exe_config_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\AddInProcess.exe.config",`
+"$srcpath\FL_AddInProcess_exe_config_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\AddInProcess32.exe.config",`
+"$srcpath\FL_AddInProcess_exe_config_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\AddInUtil.exe.config",`
+"$srcpath\FL_AddInProcess_exe_config_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\AddInProcess.exe.config",`
+"$srcpath\FL_AddInProcess_exe_config_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\AddInProcess32.exe.config",`
+"$srcpath\FL_AddInProcess_exe_config_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\AddInUtil.exe.config",`
+"$srcpath\FL_setupres_dll_amd64_esn.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.3082.dll",`
+"$srcpath\FL_setupres_dll_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.dll",`
+"$srcpath\FL_eula_exp_txt_amd64_ptb.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1046.rtf",`
+"$srcpath\CFX_SQL_FILE_SCHEMAamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\SQL\EN\SqlPersistenceProviderSchema.sql",`
+"$srcpath\CFX_SQL_FILE_SCHEMAamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\SQL\EN\SqlPersistenceProviderSchema.sql",`
+"$srcpath\cscrsp_amd64.rsp" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\csc.rsp",`
+"$srcpath\cscrsp_amd64.rsp" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\csc.rsp",`
+"$srcpath\FL_Microsoft_Build_Conversion_dll_GAC_v35_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\Microsoft.Build.Conversion.v3.5\3.5.0.0__b03f5f7f11d50a3a\Microsoft.Build.Conversion.v3.5.dll",`
+"$srcpath\FL_eula_exp_txt_amd64_esn.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.3082.rtf",`
+"$srcpath\WapRes_dll_amd64_ara.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1025.dll",`
+"$srcpath\FL_MSBuildEngine_dll_GAC_v35_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\Microsoft.Build.Engine\3.5.0.0__b03f5f7f11d50a3a\Microsoft.Build.Engine.dll",`
+"$srcpath\catalog.21022.08.Microsoft_VC90_CRT_x64.RTM" , "$env:Temp\windows\winsxs\manifests\amd64_Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_9.0.21022.8_x-ww_0296e955.cat",`
+"$srcpath\FL_setupres_dll_amd64_ptb.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1046.dll",`
+"$srcpath\FL_AddInProcess_exe_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\AddInProcess.exe",`
+"$srcpath\FL_eula_exp_txt_amd64_ita.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1040.rtf",`
+"$srcpath\FL_eula_exp_txt_amd64_ell.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1032.rtf",`
+"$srcpath\FL_dlmgr_dll_100069_100069_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\dlmgr.dll",`
+"$srcpath\FL_deffactory_dat_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\deffactory.dat",`
+"$srcpath\FL_Microsoft_Build_Core_xsd_v35_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\MSBuild\Microsoft.Build.Core.xsd",`
+"$srcpath\FL_Microsoft_Build_Core_xsd_v35_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\MSBuild\Microsoft.Build.Core.xsd",`
+"$srcpath\CFX_SQL_FILE_SCHEMA_DROPamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\SQL\EN\DropSqlPersistenceProviderSchema.sql",`
+"$srcpath\CFX_SQL_FILE_SCHEMA_DROPamd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\SQL\EN\DropSqlPersistenceProviderSchema.sql",`
+"$srcpath\FL_System_Core_dll_24763_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Core\3.5.0.0__b77a5c561934e089\System.Core.dll",`
+"$srcpath\CSD_SYSTEM_SERVICEMODEL_WEB_DLL_3500amd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.ServiceModel.Web\3.5.0.0__31bf3856ad364e35\System.ServiceModel.Web.dll",`
+"$srcpath\FL_setup_sdb_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setup.sdb",`
+"$srcpath\WapRes_dll_amd64_hun.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1038.dll",`
+"$srcpath\FL_Microsoft_Common_targets_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\Microsoft.Common.targets",`
+"$srcpath\FL_Microsoft_Common_targets_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft.Common.targets",`
+"$srcpath\FL_System_Data_DataSetExtensions_dll_Gac_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Data.DataSetExtensions\3.5.0.0__b77a5c561934e089\System.Data.DataSetExtensions.dll",`
+"$srcpath\WapRes_dll_amd64_csy.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1029.dll",`
+"$srcpath\FL_System_Windows_Presentation_dll_gac_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Windows.Presentation\3.5.0.0__b77a5c561934e089\System.Windows.Presentation.dll",`
+"$srcpath\WapRes_dll_amd64_dan.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1030.dll",`
+"$srcpath\WapRes_dll_amd64_rus.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1049.dll",`
+"$srcpath\FL_vbc_rsp_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\vbc.rsp",`
+"$srcpath\FL_vbc_rsp_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\vbc.rsp",`
+"$srcpath\FL_setupres_dll_amd64_ell.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1032.dll",`
+"$srcpath\FL_HtmlLite_dll_96198_96198_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\HtmlLite.dll",`
+"$srcpath\FL_MSBuild_exe_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\MSBuild.exe",`
+"$srcpath\WapRes_dll_amd64_plk.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1045.dll",`
+"$srcpath\msvcm90.dll.21022.08.Microsoft_VC90_CRT_x86.RTM" , "$env:Temp\windows\winsxs\x86_Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_9.0.21022.8_x-ww_d08d0375\msvcm90.dll",`
+"$srcpath\FL_vbc7ui_dll_20030_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\1033\vbc7ui.dll",`
+"$srcpath\FL_MSBuildUtilities_DLL_GAC_v35_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\Microsoft.Build.Utilities.v3.5\3.5.0.0__b03f5f7f11d50a3a\Microsoft.Build.Utilities.v3.5.dll",`
+"$srcpath\FL_Microsoft_VisualBasic_targets_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\Microsoft.VisualBasic.targets",`
+"$srcpath\FL_Microsoft_VisualBasic_targets_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft.VisualBasic.targets",`
+"$srcpath\FL_setupres_dll_amd64_ara.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1025.dll",`
+"$srcpath\FL_eula_exp_txt_amd64_fin.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1035.rtf",`
+"$srcpath\FL_MSBuildTasks_dll_GAC_v35_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\Microsoft.Build.Tasks.v3.5\3.5.0.0__b03f5f7f11d50a3a\Microsoft.Build.Tasks.v3.5.dll",`
+"$srcpath\FL_MSBuildTasks_dll_GAC_v35_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\Microsoft.Build.Tasks.v3.5.dll",`
+"$srcpath\default_win32manifest_amd64" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\default.win32manifest",`
+"$srcpath\default_win32manifest_amd64" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\default.win32manifest",`
+"$srcpath\FL_setupres_dll_amd64_plk.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1045.dll",`
+"$srcpath\FL_eula_exp_txt_amd64_heb.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1037.rtf",`
+"$srcpath\FL_setupres_dll_amd64_ita.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1040.dll",`
+"$srcpath\WapRes_dll_amd64_kor.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1042.dll",`
+"$srcpath\FL_vs70uimgr_dll_96106_96106_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\vs70uimgr.dll",`
+"$srcpath\cscompui_x86.dll" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\1033\cscompui.dll",`
+"$srcpath\FL_XLinq_dll_Gac_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Xml.Linq\3.5.0.0__b77a5c561934e089\System.Xml.Linq.dll",`
+"$srcpath\FL_eula_exp_txt_amd64_rus.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1049.rtf",`
+"$srcpath\WapRes_dll_amd64_esn.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.3082.dll",`
+"$srcpath\FL_Microsoft_Build_Commontypes_xsd_v35_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\MSBuild\Microsoft.Build.Commontypes.xsd",`
+"$srcpath\FL_Microsoft_Build_Commontypes_xsd_v35_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\MSBuild\Microsoft.Build.Commontypes.xsd",`
+"$srcpath\FL_eula_exp_txt_amd64_cht.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1028.rtf",`
+"$srcpath\FL_MSBuild_rsp_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\MSBuild.rsp",`
+"$srcpath\FL_MSBuild_rsp_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\MSBuild.rsp",`
+"$srcpath\FL_MSBuild_rsp_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\MSBuild.rsp",`
+"$srcpath\FL_MSBuild_rsp_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\MSBuild.rsp",`
+"$srcpath\FL_eula_exp_txt_amd64_kor.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1042.rtf",`
+"$srcpath\WapRes_dll_amd64_ell.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1032.dll",`
+"$srcpath\WapRes_dll_amd64_sve.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1053.dll",`
+"$srcpath\WapRes_dll_amd64_ptg.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.2070.dll",`
+"$srcpath\FL_eula_exp_txt_amd64_dan.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1030.rtf",`
+"$srcpath\catalog.21022.08.policy_9_0_Microsoft_VC90_CRT_x64.RTM" , "$env:Temp\windows\winsxs\Policies\amd64_policy.9.0.Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_x-ww_16f3e195\9.0.21022.8.cat",`
+"$srcpath\FL_WapUI_dll_amd64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapUI.dll",`
+"$srcpath\FL_MSBuild_exe_v35_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\MSBuild.exe",`
+"$srcpath\FL_setupres_dll_amd64_ptg.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.2070.dll",`
+"$srcpath\FL_eula_exp_txt_amd64_csy.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1029.rtf",`
+"$srcpath\msvcr90.dll.21022.08.Microsoft_VC90_CRT_x64.RTM" , "$env:Temp\windows\winsxs\amd64_Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_9.0.21022.8_x-ww_0296e955\msvcr90.dll",`
+"$srcpath\FL_System_AddIn_dll_Gac_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.AddIn\3.5.0.0__b77a5c561934e089\System.AddIn.dll",`
+"$srcpath\FL_baseline_dat_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\baseline.dat",`
+"$srcpath\WapRes_dll_amd64_ptb.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1046.dll",`
+"$srcpath\FL_vbc_exe_x86_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\vbc.exe",`
+"$srcpath\FL_setupres_dll_amd64_hun.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1038.dll",`
+"$srcpath\FL_setupres_dll_amd64_fra.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1036.dll",`
+"$srcpath\FL_setupres_dll_amd64_sve.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.1053.dll",`
+"$srcpath\System.Web.Extensions_dll_x86_gc.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Web.Extensions\3.5.0.0__31bf3856ad364e35\System.Web.Extensions.dll",`
+"$srcpath\msvcr90.dll.21022.08.Microsoft_VC90_CRT_x86.RTM" , "$env:Temp\windows\winsxs\x86_Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_9.0.21022.8_x-ww_d08d0375\msvcr90.dll",`
+"$srcpath\FL_vsscenario_dll_98517_98517_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\vsscenario.dll",`
+"$srcpath\manifest.21022.08.Microsoft_VC90_CRT_x64.RTM" , "$env:Temp\windows\winsxs\manifests\amd64_Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_9.0.21022.8_x-ww_0296e955.manifest",`
+"$srcpath\FL_eula_exp_txt_amd64_plk.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1045.rtf",`
+"$srcpath\FL_setupres_dll_amd64_chs.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setupres.2052.dll",`
+"$srcpath\FL_eula_exp_txt_amd64_deu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1031.rtf",`
+"$srcpath\WapRes_dll_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.dll",`
+"$srcpath\System.Web.Extensions.Design_dll_x86_gc.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Web.Extensions.Design\3.5.0.0__31bf3856ad364e35\System.Web.Extensions.Design.dll",`
+"$srcpath\WapRes_dll_amd64_fra.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1036.dll",`
+"$srcpath\FL_eula_exp_txt_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\eula.1033.rtf",`
+"$srcpath\FL_msbuild_urt_config_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.5\msbuild.exe.config",`
+"$srcpath\FL_msbuild_urt_config_v35_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\msbuild.exe.config",`
+"$srcpath\FL_vsbasereqs_dll_98508_98508_amd64_ln.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\vsbasereqs.dll",`
+"$srcpath\cscompui_amd64.dll" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\1033\cscompui.dll",`
+"$srcpath\WapRes_dll_amd64_trk.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\WapRes.1055.dll",`
+"$srcpath\FL_setup_exe_96103_96103_amd64_enu.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.5\Microsoft .NET Framework 3.5\setup.exe",`
+"$srcpath\manifest.21022.08.Microsoft_VC90_CRT_x86.RTM" , "$env:Temp\windows\winsxs\manifests\x86_Microsoft.VC90.CRT_1fc8b3b9a1e18e3b_9.0.21022.8_x-ww_d08d0375.manifest"
 
 for ( $j = 0; $j -lt $dotnet35.count; $j+=2 ) {
     Copy-Item -recurse -Path $dotnet35[$j] -Destination ( Join-Path (New-item -Type Directory -Force $(Split-Path -Path $dotnet35[$j+1]))   $(Split-Path -Leaf $dotnet35[$j+1])   ) -Force  -Verbose }
@@ -3374,223 +3379,201 @@ for ( $j = 0; $j -lt $dotnet35.count; $j+=2 ) {
     $srcpath="$env:TEMP\dotnet35\wcu\dotNetFramework\dotNetFX30\extr"
 
 [array]$dotnet30 = `
-"$srcpath\XamlViewer_X86.xbap" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\WPF\XamlViewer\XamlViewer_v0300.xbap",`
-"$srcpath\PresentationHostDLL_X86.dll.mui" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\WPF\en-us\PresentationHostDLL.dll.mui",`
-"$srcpath\PresentationHost_X86.exe.mui" , "$env:SystemRoot\syswow64\en-us\PresentationHost.exe.mui",`
-"$srcpath\NlsData0009_A64.dll" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\WPF\NlsData0009.dll",`
-"$srcpath\FL_infocardcpl_cpl_134629_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\syswow64\infocardcpl.cpl",`
-"$srcpath\UIAutomationClient_A64.dll" , "$env:SystemRoot\assembly\GAC_MSIL\UIAutomationClient\3.0.0.0__31bf3856ad364e35\UIAutomationClient.dll",`
-"$srcpath\PenIMC_X86.dll" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\WPF\PenIMC.dll",`
-"$srcpath\FL__ServiceModelEndpointPerfCounters_ini_134737_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelEndpointPerfCounters.ini",`
-"$srcpath\FL__ServiceModelEndpointPerfCounters_ini_134737_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelEndpointPerfCounters.ini",`
-"$srcpath\WindowsBase_A64.dll" , "$env:SystemRoot\assembly\GAC_MSIL\WindowsBase\3.0.0.0__31bf3856ad364e35\WindowsBase.dll",`
-"$srcpath\XamlViewer_X86.exe.manifest" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\WPF\XamlViewer\XamlViewer_v0300.exe.manifest",`
-"$srcpath\ReachFramework_A64.dll" , "$env:SystemRoot\assembly\GAC_MSIL\ReachFramework\3.0.0.0__31bf3856ad364e35\ReachFramework.dll",`
-"$srcpath\PresentationNative_X86.dll" , "$env:SystemRoot\syswow64\PresentationNative_v0300.dll",`
-"$srcpath\UIAutomationCore_X86.dll" , "$env:SystemRoot\syswow64\uiautomationcore.dll",`
-"$srcpath\XamlViewer_X86.exe" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\WPF\XamlViewer\XamlViewer_v0300.exe",`
-"$srcpath\FL__TransactionBridgePerfCounters_h_133787_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_TransactionBridgePerfCounters.h",`
-"$srcpath\FL__TransactionBridgePerfCounters_h_133787_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\_TransactionBridgePerfCounters.h",`
-"$srcpath\FL__TransactionBridgePerfCounters_h_133787_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_TransactionBridgePerfCounters.h",`
-"$srcpath\FL__TransactionBridgePerfCounters_h_133787_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\_TransactionBridgePerfCounters.h",`
-"$srcpath\PenIMC_A64.dll" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\WPF\PenIMC.dll",`
-"$srcpath\cPerfCnt.ini.246A212A_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Workflow Foundation\PerfCounters.ini",`
-"$srcpath\GlobalMonospace.CompositeFont" , "$env:SystemRoot\Fonts\GlobalMonospace.CompositeFont",`
-"$srcpath\GlobalMonospace.CompositeFont" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\WPF\GlobalMonospace.CompositeFont",`
-"$srcpath\GlobalMonospace.CompositeFont" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\WPF\Fonts\GlobalMonospace.CompositeFont",`
-"$srcpath\GlobalMonospace.CompositeFont" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\WPF\GlobalMonospace.CompositeFont",`
-"$srcpath\GlobalMonospace.CompositeFont" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\WPF\Fonts\GlobalMonospace.CompositeFont",`
-"$srcpath\FL_WsatConfig_exe_148103_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\WsatConfig.exe",`
-"$srcpath\FL_WsatConfig_exe_148103_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\WsatConfig.exe",`
-"$srcpath\cPerfCnt.reg.246A212A_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Workflow Foundation\PerfCounters.reg",`
-"$srcpath\FL__ServiceModelEndpointPerfCounters_h_134738_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelEndpointPerfCounters.h",`
-"$srcpath\FL__ServiceModelEndpointPerfCounters_h_134738_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\_ServiceModelEndpointPerfCounters.h",`
-"$srcpath\FL__ServiceModelEndpointPerfCounters_h_134738_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelEndpointPerfCounters.h",`
-"$srcpath\FL__ServiceModelEndpointPerfCounters_h_134738_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\_ServiceModelEndpointPerfCounters.h",`
-"$srcpath\XPSViewer_X86.exe.mui" , "$env:SystemRoot\syswow64\XPSViewer\en-us\XPSViewer.exe.mui",`
-"$srcpath\PresentationUI_A64.dll" , "$env:SystemRoot\assembly\GAC_MSIL\PresentationUI\3.0.0.0__31bf3856ad364e35\PresentationUI.dll",`
-"$srcpath\PresentationUI_A64.dll" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\WPF\PresentationUI.dll",`
-"$srcpath\FL_System_ServiceModel_dll_133679_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.ServiceModel\3.0.0.0__b77a5c561934e089\System.ServiceModel.dll",`
-"$srcpath\FL_System_ServiceModel_dll_133679_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\System.ServiceModel.dll",`
-"$srcpath\FL_System_ServiceModel_dll_133679_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\System.ServiceModel.dll",`
-"$srcpath\milcore_X86.dll" , "$env:SystemRoot\syswow64\milcore.dll",`
-"$srcpath\UIAutomationClientsideProviders_A64.dll" , "$env:SystemRoot\assembly\GAC_MSIL\UIAutomationClientsideProviders\3.0.0.0__31bf3856ad364e35\UIAutomationClientsideProviders.dll",`
-"$srcpath\FL__TransactionBridgePerfCounters_reg_133789_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_TransactionBridgePerfCounters.reg",`
-"$srcpath\FL__TransactionBridgePerfCounters_reg_133789_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_TransactionBridgePerfCounters.reg",`
-"$srcpath\FL_icardagt_exe_134628_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\syswow64\icardagt.exe",`
-"$srcpath\fTrackSchema_EN.246A212B_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Workflow Foundation\SQL\EN\Tracking_Schema.sql",`
-"$srcpath\cPerfCnt.vrg.246A212A_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Workflow Foundation\PerfCounters.vrg",`
-"$srcpath\FL_ServiceModelEvents_dll_mui_148753_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\ServiceModelEvents.dll.mui",`
-"$srcpath\FL_ServiceModelEvents_dll_mui_148753_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\MUI\0409\ServiceModelEvents.dll.mui",`
-"$srcpath\FL_System_ServiceModel_WasHosting_dll_134736_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.ServiceModel.WasHosting\3.0.0.0__b77a5c561934e089\System.ServiceModel.WasHosting.dll",`
-"$srcpath\FL_System_ServiceModel_WasHosting_dll_134736_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\System.ServiceModel.WasHosting.dll",`
-"$srcpath\FL_System_ServiceModel_WasHosting_dll_134736_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\System.ServiceModel.WasHosting.dll",`
-"$srcpath\fWEAct.dll.I_IL.2C0646A5_257B_44EA_803B_3C8E81C4F428" , "$env:SystemRoot\assembly\GAC_MSIL\System.Workflow.Activities\3.0.0.0__31bf3856ad364e35\System.Workflow.Activities.dll",`
-"$srcpath\FL_icardagt_exe_134628_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\system32\icardagt.exe",`
-"$srcpath\UIAutomationTypes_A64.dll" , "$env:SystemRoot\assembly\GAC_MSIL\UIAutomationTypes\3.0.0.0__31bf3856ad364e35\UIAutomationTypes.dll",`
-"$srcpath\FL__ServiceModelOperationPerfCounters_ini_134194_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelOperationPerfCounters.ini",`
-"$srcpath\FL__ServiceModelOperationPerfCounters_ini_134194_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelOperationPerfCounters.ini",`
-"$srcpath\XamlViewer_A64.exe.manifest" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\WPF\XamlViewer\XamlViewer_v0300.exe.manifest",`
-"$srcpath\GlobalSansSerif.CompositeFont" , "$env:SystemRoot\Fonts\GlobalSansSerif.CompositeFont",`
-"$srcpath\GlobalSansSerif.CompositeFont" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\WPF\GlobalSansSerif.CompositeFont",`
-"$srcpath\GlobalSansSerif.CompositeFont" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\WPF\Fonts\GlobalSansSerif.CompositeFont",`
-"$srcpath\GlobalSansSerif.CompositeFont" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\WPF\GlobalSansSerif.CompositeFont",`
-"$srcpath\GlobalSansSerif.CompositeFont" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\WPF\Fonts\GlobalSansSerif.CompositeFont",`
-"$srcpath\FL__ServiceModelOperationPerfCounters_vrg_134196_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelOperationPerfCounters.vrg",`
-"$srcpath\FL__ServiceModelOperationPerfCounters_vrg_134196_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelOperationPerfCounters.vrg",`
-"$srcpath\System.Printing_GAC_X86.dll" , "$env:SystemRoot\assembly\GAC_32\System.Printing\3.0.0.0__31bf3856ad364e35\System.Printing.dll",`
-"$srcpath\PresentationHostDLL_A64.dll" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\WPF\PresentationHostDLL.dll",`
-"$srcpath\FL__SMSvcHostPerfCounters_ini_143455_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_SMSvcHostPerfCounters.ini",`
-"$srcpath\FL__SMSvcHostPerfCounters_ini_143455_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_SMSvcHostPerfCounters.ini",`
-"$srcpath\fSqlSrvcSch_EN.246A212B_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Workflow Foundation\SQL\EN\SqlPersistenceService_Schema.sql",`
-"$srcpath\fSqlSrvcSch_EN.246A212B_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\SQL\en\SqlPersistenceService_Schema.sql",`
-"$srcpath\fSqlSrvcSch_EN.246A212B_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\SQL\en\SqlPersistenceService_Schema.sql",`
-"$srcpath\Speech_A64.dll" , "$env:SystemRoot\assembly\GAC_MSIL\System.Speech\3.0.0.0__31bf3856ad364e35\System.Speech.dll",`
-"$srcpath\PresentationCFFRasterizerNative_A64.dll" , "$env:SystemRoot\system32\PresentationCFFRasterizerNative_v0300.dll",`
-"$srcpath\WFSet.ico.246A212A_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Workflow Foundation\Setup.ico",`
-"$srcpath\FL_ServiceMonikerSupport_dll_133768_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\ServiceMonikerSupport.dll",`
-"$srcpath\FL__ServiceModelServicePerfCounters_ini_134741_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelServicePerfCounters.ini",`
-"$srcpath\FL__ServiceModelServicePerfCounters_ini_134741_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelServicePerfCounters.ini",`
-"$srcpath\FL__ServiceModelOperationPerfCounters_reg_134195_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelOperationPerfCounters.reg",`
-"$srcpath\FL__ServiceModelOperationPerfCounters_reg_134195_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelOperationPerfCounters.reg",`
-"$srcpath\FL__SMSvcHostPerfCounters_vrg_143458_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_SMSvcHostPerfCounters.vrg",`
-"$srcpath\FL__SMSvcHostPerfCounters_vrg_143458_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_SMSvcHostPerfCounters.vrg",`
-"$srcpath\FL_ServiceModelEvents_dll_mui_148753_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\ServiceModelEvents.dll.mui",`
-"$srcpath\FL_ServiceModelEvents_dll_mui_148753_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\MUI\0409\ServiceModelEvents.dll.mui",`
-"$srcpath\PresentationCFFRasterizerNative_X86.dll" , "$env:SystemRoot\syswow64\PresentationCFFRasterizerNative_v0300.dll",`
-"$srcpath\UIAutomationCore_A64.dll.mui" , "$env:SystemRoot\system32\en-us\UIAutomationCore.dll.mui",`
-"$srcpath\fTracLogic_EN.246A212B_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Workflow Foundation\SQL\EN\Tracking_Logic.sql",`
-"$srcpath\fTracLogic_EN.246A212B_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\SQL\en\Tracking_Logic.sql",`
-"$srcpath\fTracLogic_EN.246A212B_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\SQL\en\Tracking_Logic.sql",`
-"$srcpath\FL__ServiceModelEndpointPerfCounters_vrg_134740_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelEndpointPerfCounters.vrg",`
-"$srcpath\FL__ServiceModelEndpointPerfCounters_vrg_134740_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelEndpointPerfCounters.vrg",`
-"$srcpath\PresentationFontCache_A64.cat" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\WPF\PresentationFontCache.cat",`
-"$srcpath\PresentationFontCache_A64.cat" , "$env:SystemRoot\system32\catroot\{f750e6c3-38ee-11d1-85e5-00c04fc295ee}\PresentationFontCache.cat",`
-"$srcpath\FL_servicemodel_mof_uninstall_143451_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\ServiceModel.mof.uninstall",`
-"$srcpath\FL_servicemodel_mof_uninstall_143451_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\MOF\ServiceModel.mof.uninstall",`
-"$srcpath\FL_servicemodel_mof_uninstall_143451_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\ServiceModel.mof.uninstall",`
-"$srcpath\FL_servicemodel_mof_uninstall_143451_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\MOF\ServiceModel.mof.uninstall",`
-"$srcpath\NlsData0009_X86.dll" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\WPF\NlsData0009.dll",`
-"$srcpath\PresentationCFFRasterizer_GAC_X86.dll" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\WPF\PresentationCFFRasterizer.dll",`
-"$srcpath\FL__TransactionBridgePerfCounters_vrg_133790_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_TransactionBridgePerfCounters.vrg",`
-"$srcpath\FL__TransactionBridgePerfCounters_vrg_133790_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_TransactionBridgePerfCounters.vrg",`
-"$srcpath\TSWPFWrp_X86.exe" , "$env:SystemRoot\syswow64\tswpfwrp.exe",`
-"$srcpath\FL_inforcardapi_dll_134627_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\syswow64\infocardapi.dll",`
-"$srcpath\GlobalUserInterface.CompositeFont" , "$env:SystemRoot\Fonts\GlobalUserInterface.CompositeFont",`
-"$srcpath\PresentationUI_GAC_X86.dll" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\WPF\PresentationUI.dll",`
-"$srcpath\PresentationCore_A64.dll" , "$env:SystemRoot\assembly\GAC_64\PresentationCore\3.0.0.0__31bf3856ad364e35\PresentationCore.dll",`
-"$srcpath\XPSViewerManifest_X86.xml" , "$env:SystemRoot\syswow64\XPSViewer\XPSViewerManifest.xml",`
-"$srcpath\milcore_A64.dll" , "$env:SystemRoot\system32\milcore.dll",`
-"$srcpath\PresentationFontCache_A64.exe" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\WPF\PresentationFontCache.exe",`
-"$srcpath\PresentationFramework.Classic_A64.dll" , "$env:SystemRoot\assembly\GAC_MSIL\PresentationFramework.Classic\3.0.0.0__31bf3856ad364e35\PresentationFramework.Classic.dll",`
-"$srcpath\FL_ServiceMonikerSupport_dll_133768_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\ServiceMonikerSupport.dll",`
-"$srcpath\UIAutomationCore_X86.dll.mui" , "$env:SystemRoot\syswow64\en-us\UIAutomationCore.dll.mui",`
-"$srcpath\FL_SMSvcHost_exe_config_143453_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\SMSvcHost.exe.config",`
-"$srcpath\FL_SMSvcHost_exe_config_143453_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\SMSvcHost.exe.config",`
-"$srcpath\FL_icardres_dll_mui_149310_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\system32\icardres.dll.mui",`
-"$srcpath\FL_icardres_dll_mui_149310_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\system32\mui\0409\icardres.dll.mui",`
-"$srcpath\FL__ServiceModelServicePerfCounters_reg_134744_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelServicePerfCounters.reg",`
-"$srcpath\FL__ServiceModelServicePerfCounters_reg_134744_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelServicePerfCounters.reg",`
-"$srcpath\NaturalLanguage6_A64.dll" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\WPF\NaturalLanguage6.dll",`
-"$srcpath\FL_ServiceModelEvents_dll_143449_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\ServiceModelEvents.dll",`
-"$srcpath\PresentationFramework.Luna_A64.dll" , "$env:SystemRoot\assembly\GAC_MSIL\PresentationFramework.Luna\3.0.0.0__31bf3856ad364e35\PresentationFramework.Luna.dll",`
-"$srcpath\System.Printing_A64.dll" , "$env:SystemRoot\assembly\GAC_64\System.Printing\3.0.0.0__31bf3856ad364e35\System.Printing.dll",`
-"$srcpath\NaturalLanguage6_X86.dll" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\WPF\NaturalLanguage6.dll",`
-"$srcpath\FL_infocard_exe_134626_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\infocard.exe",`
-"$srcpath\PresentationCFFRasterizer_A64.dll" , "$env:SystemRoot\assembly\GAC_MSIL\PresentationCFFRasterizer\3.0.0.0__31bf3856ad364e35\PresentationCFFRasterizer.dll",`
-"$srcpath\PresentationCFFRasterizer_A64.dll" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\WPF\PresentationCFFRasterizer.dll",`
-"$srcpath\FL_System_ServiceModel_Install_dll_133794_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.ServiceModel.Install\3.0.0.0__b77a5c561934e089\System.ServiceModel.Install.dll",`
-"$srcpath\FL_System_ServiceModel_Install_dll_133794_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\System.ServiceModel.Install.dll",`
-"$srcpath\FL_System_ServiceModel_Install_dll_133794_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\System.ServiceModel.Install.dll",`
-"$srcpath\FL__ServiceModelEndpointPerfCounters_reg_134739_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelEndpointPerfCounters.reg",`
-"$srcpath\FL__ServiceModelEndpointPerfCounters_reg_134739_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelEndpointPerfCounters.reg",`
-"$srcpath\FL_system_identitymodel_selectors_dll_147068_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.IdentityModel.Selectors\3.0.0.0__b77a5c561934e089\System.IdentityModel.Selectors.dll",`
-"$srcpath\cPerfCnt.exe.246A212A_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Workflow Foundation\PerformanceCounterInstaller.exe",`
-"$srcpath\PresentationCore_GAC_X86.dll" , "$env:SystemRoot\assembly\GAC_32\PresentationCore\3.0.0.0__31bf3856ad364e35\PresentationCore.dll",`
-"$srcpath\FL__ServiceModelOperationPerfCounters_h_134193_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelOperationPerfCounters.h",`
-"$srcpath\FL__ServiceModelOperationPerfCounters_h_134193_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\_ServiceModelOperationPerfCounters.h",`
-"$srcpath\FL__ServiceModelOperationPerfCounters_h_134193_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelOperationPerfCounters.h",`
-"$srcpath\FL__ServiceModelOperationPerfCounters_h_134193_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\_ServiceModelOperationPerfCounters.h",`
-"$srcpath\fCompdll.I_IL.2C0646A5_257B_44EA_803B_3C8E81C4F428" , "$env:SystemRoot\assembly\GAC_MSIL\System.Workflow.ComponentModel\3.0.0.0__31bf3856ad364e35\System.Workflow.ComponentModel.dll",`
-"$srcpath\XamlViewer_A64.exe" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\WPF\XamlViewer\XamlViewer_v0300.exe",`
-"$srcpath\FL_ServiceModelReg_exe_143454_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\ServiceModelReg.exe",`
-"$srcpath\FL_ServiceModelReg_exe_143454_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\ServiceModelReg.exe",`
-"$srcpath\PresentationFramework.Aero_A64.dll" , "$env:SystemRoot\assembly\GAC_MSIL\PresentationFramework.Aero\3.0.0.0__31bf3856ad364e35\PresentationFramework.Aero.dll",`
-"$srcpath\NlsLexicons0009_X86.dll" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\WPF\NlsLexicons0009.dll",`
-"$srcpath\fWEExec.dll.I_IL.2C0646A5_257B_44EA_803B_3C8E81C4F428" , "$env:SystemRoot\assembly\GAC_MSIL\System.Workflow.Runtime\3.0.0.0__31bf3856ad364e35\System.Workflow.Runtime.dll",`
-"$srcpath\XamlViewer_A64.xbap" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\WPF\XamlViewer\XamlViewer_v0300.xbap",`
-"$srcpath\PresentationBuildTasks_A64.dll" , "$env:SystemRoot\assembly\GAC_MSIL\PresentationBuildTasks\3.0.0.0__31bf3856ad364e35\PresentationBuildTasks.dll",`
-"$srcpath\FL__TransactionBridgePerfCounters_ini_133788_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_TransactionBridgePerfCounters.ini",`
-"$srcpath\FL__TransactionBridgePerfCounters_ini_133788_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_TransactionBridgePerfCounters.ini",`
-"$srcpath\FL_SMSvcHost_exe_143452_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\SMSvcHost.exe",`
-"$srcpath\FL_SMSvcHost_exe_143452_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\SMSvcHost.exe",`
-"$srcpath\FL_SMDiagnostics_dll_147054_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\SMDiagnostics\3.0.0.0__b77a5c561934e089\SMdiagnostics.dll",`
-"$srcpath\FL_SMDiagnostics_dll_147054_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\SMDiagnostics.dll",`
-"$srcpath\FL_SMDiagnostics_dll_147054_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\SMDiagnostics.dll",`
-"$srcpath\FL_ComSvcConfig_exe_133774_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\ComSvcConfig.exe",`
-"$srcpath\FL_ComSvcConfig_exe_133774_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\ComSvcConfig.exe",`
-"$srcpath\FL__ServiceModelServicePerfCounters_vrg_134743_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelServicePerfCounters.vrg",`
-"$srcpath\FL__ServiceModelServicePerfCounters_vrg_134743_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelServicePerfCounters.vrg",`
-"$srcpath\FL_icardres_dll_142943_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\system32\icardres.dll",`
-"$srcpath\FL_infocard_exe_134626_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\infocard.exe",`
-"$srcpath\PresentationFramework_A64.dll" , "$env:SystemRoot\assembly\GAC_MSIL\PresentationFramework\3.0.0.0__31bf3856ad364e35\PresentationFramework.dll",`
-"$srcpath\PresentationHostDLL_X86.dll" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\WPF\PresentationHostDLL.dll",`
-"$srcpath\WindowsFormsIntegration_A64.dll" , "$env:SystemRoot\assembly\GAC_MSIL\WindowsFormsIntegration\3.0.0.0__31bf3856ad364e35\WindowsFormsIntegration.dll",`
-"$srcpath\GlobalSerif.CompositeFont" , "$env:SystemRoot\Fonts\GlobalSerif.CompositeFont",`
-"$srcpath\GlobalSerif.CompositeFont" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\WPF\GlobalSerif.CompositeFont",`
-"$srcpath\GlobalSerif.CompositeFont" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\WPF\Fonts\GlobalSerif.CompositeFont",`
-"$srcpath\GlobalSerif.CompositeFont" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\WPF\GlobalSerif.CompositeFont",`
-"$srcpath\GlobalSerif.CompositeFont" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\WPF\Fonts\GlobalSerif.CompositeFont",`
-"$srcpath\PresentationFramework.Royale_A64.dll" , "$env:SystemRoot\assembly\GAC_MSIL\PresentationFramework.Royale\3.0.0.0__31bf3856ad364e35\PresentationFramework.Royale.dll",`
-"$srcpath\FL_inforcardapi_dll_134627_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\system32\infocardapi.dll",`
-"$srcpath\FL_System_IO_Log_dll_133671_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.IO.Log\3.0.0.0__b03f5f7f11d50a3a\System.IO.Log.dll",`
-"$srcpath\FL__SMSvcHostPerfCounters_h_143456_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_SMSvcHostPerfCounters.h",`
-"$srcpath\FL__SMSvcHostPerfCounters_h_143456_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\_SMSvcHostPerfCounters.h",`
-"$srcpath\FL__SMSvcHostPerfCounters_h_143456_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_SMSvcHostPerfCounters.h",`
-"$srcpath\FL__SMSvcHostPerfCounters_h_143456_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\_SMSvcHostPerfCounters.h",`
-"$srcpath\NlsLexicons0009_A64.dll" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\WPF\NlsLexicons0009.dll",`
-"$srcpath\FL__SMSvcHostPerfCounters_reg_143457_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_SMSvcHostPerfCounters.reg",`
-"$srcpath\FL__SMSvcHostPerfCounters_reg_143457_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_SMSvcHostPerfCounters.reg",`
-"$srcpath\fSqlPersSLgic_EN.246A212B_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Workflow Foundation\SQL\EN\SqlPersistenceService_Logic.sql",`
-"$srcpath\FL_icardres_dll_mui_149310_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\syswow64\icardres.dll.mui",`
-"$srcpath\FL_icardres_dll_mui_149310_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\syswow64\mui\0409\icardres.dll.mui",`
-"$srcpath\FL_infocardcpl_cpl_134629_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\system32\infocardcpl.cpl",`
-"$srcpath\FL_system_identitymodel_dll_147070_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.IdentityModel\3.0.0.0__b77a5c561934e089\System.IdentityModel.dll",`
-"$srcpath\FL_Microsoft_Transactions_Bridge_dll_133653_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\Microsoft.Transactions.Bridge\3.0.0.0__b03f5f7f11d50a3a\Microsoft.Transactions.Bridge.dll",`
-"$srcpath\FL_Microsoft_Transactions_Bridge_dll_133653_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\Microsoft.Transactions.Bridge.dll",`
-"$srcpath\FL_Microsoft_Transactions_Bridge_dll_133653_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\Microsoft.Transactions.Bridge.dll",`
-"$srcpath\FL_Microsoft_Transactions_Bridge_DTC_dll_133669_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_32\Microsoft.Transactions.Bridge.Dtc\3.0.0.0__b03f5f7f11d50a3a\Microsoft.Transactions.Bridge.Dtc.dll",`
-"$srcpath\FL_Microsoft_Transactions_Bridge_DTC_dll_133669_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\Microsoft.Transactions.Bridge.Dtc.dll",`
-"$srcpath\UIAutomationProvider_A64.dll" , "$env:SystemRoot\assembly\GAC_MSIL\UIAutomationProvider\3.0.0.0__31bf3856ad364e35\UIAutomationProvider.dll",`
-"$srcpath\Microsoft.WinFX_A64.targets" , "$env:SystemRoot\Microsoft.NET\Framework\v2.0.50727\Microsoft.WinFX.targets",`
-"$srcpath\Microsoft.WinFX_A64.targets" , "$env:SystemRoot\Microsoft.NET\Framework64\v2.0.50727\Microsoft.WinFX.targets",`
-"$srcpath\TSWPFWrp_A64.exe" , "$env:SystemRoot\system32\tswpfwrp.exe",`
-"$srcpath\UIAutomationCore_A64.dll" , "$env:SystemRoot\system32\uiautomationcore.dll",`
-"$srcpath\cPerfCnt.h.246A212A_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Workflow Foundation\PerfCounters.h",`
-"$srcpath\cPerfCnt.h.246A212A_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:SystemRoot\Microsoft.NET\Framework\v4.0.30319\PerfCounters.h",`
-"$srcpath\cPerfCnt.h.246A212A_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:SystemRoot\Microsoft.NET\Framework64\v4.0.30319\PerfCounters.h",`
-"$srcpath\XPSViewer_X86.exe" , "$env:SystemRoot\syswow64\XPSViewer\XPSViewer.exe",`
-"$srcpath\filler" , "$env:SystemRoot\dotnet48.installed.workaround",`
-"$srcpath\filler" , "$env:SystemRoot\assembly\NativeImages_v2.0.50727_32\index24.dat",`
-"$srcpath\filler" , "$env:SystemRoot\assembly\NativeImages_v2.0.50727_32\index25.dat",`
-"$srcpath\filler" , "$env:SystemRoot\assembly\NativeImages_v2.0.50727_64\index31.dat",`
-"$srcpath\filler" , "$env:SystemRoot\Installer\wix{F5B09CFD-F0B2-36AF-8DF4-1DF6B63FC7B4}.SchedServiceConfig.rmi",`
-"$srcpath\FL_servicemodel_mof_143450_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\ServiceModel.mof",`
-"$srcpath\FL_servicemodel_mof_143450_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\ServiceModel.mof",`
-"$srcpath\FL_ServiceModelEvents_dll_143449_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\ServiceModelEvents.dll",`
-"$srcpath\FL_System_Runtime_Serialization_dll_133675_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_MSIL\System.Runtime.Serialization\3.0.0.0__b77a5c561934e089\System.Runtime.Serialization.dll",`
-"$srcpath\FL_System_Runtime_Serialization_dll_133675_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\System.Runtime.Serialization.dll",`
-"$srcpath\FL_System_Runtime_Serialization_dll_133675_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\System.Runtime.Serialization.dll",`
-"$srcpath\PresentationHostDLL_A64.dll.mui" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\WPF\en-us\PresentationHostDLL.dll.mui",`
-"$srcpath\FL_Microsoft_Transactions_Bridge_DTC_dll_133669_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\assembly\GAC_64\Microsoft.Transactions.Bridge.Dtc\3.0.0.0__b03f5f7f11d50a3a\Microsoft.Transactions.Bridge.Dtc.dll",`
-"$srcpath\FL_Microsoft_Transactions_Bridge_DTC_dll_133669_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\Microsoft.Transactions.Bridge.Dtc.dll",`
-"$srcpath\PresentationNative_A64.dll" , "$env:SystemRoot\system32\PresentationNative_v0300.dll",`
-"$srcpath\FL__ServiceModelServicePerfCounters_h_134742_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelServicePerfCounters.h",`
-"$srcpath\FL__ServiceModelServicePerfCounters_h_134742_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelServicePerfCounters.h",`
-"$srcpath\FL_icardres_dll_142943_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:SystemRoot\syswow64\icardres.dll"
+"$srcpath\XamlViewer_X86.xbap" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\WPF\XamlViewer\XamlViewer_v0300.xbap",`
+"$srcpath\PresentationHostDLL_X86.dll.mui" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\WPF\en-us\PresentationHostDLL.dll.mui",`
+"$srcpath\PresentationHost_X86.exe.mui" , "$env:Temp\windows\syswow64\en-us\PresentationHost.exe.mui",`
+"$srcpath\NlsData0009_A64.dll" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\WPF\NlsData0009.dll",`
+"$srcpath\FL_infocardcpl_cpl_134629_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\syswow64\infocardcpl.cpl",`
+"$srcpath\UIAutomationClient_A64.dll" , "$env:Temp\windows\assembly\GAC_MSIL\UIAutomationClient\3.0.0.0__31bf3856ad364e35\UIAutomationClient.dll",`
+"$srcpath\PenIMC_X86.dll" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\WPF\PenIMC.dll",`
+"$srcpath\FL__ServiceModelEndpointPerfCounters_ini_134737_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelEndpointPerfCounters.ini",`
+"$srcpath\FL__ServiceModelEndpointPerfCounters_ini_134737_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelEndpointPerfCounters.ini",`
+"$srcpath\WindowsBase_A64.dll" , "$env:Temp\windows\assembly\GAC_MSIL\WindowsBase\3.0.0.0__31bf3856ad364e35\WindowsBase.dll",`
+"$srcpath\XamlViewer_X86.exe.manifest" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\WPF\XamlViewer\XamlViewer_v0300.exe.manifest",`
+"$srcpath\ReachFramework_A64.dll" , "$env:Temp\windows\assembly\GAC_MSIL\ReachFramework\3.0.0.0__31bf3856ad364e35\ReachFramework.dll",`
+"$srcpath\PresentationNative_X86.dll" , "$env:Temp\windows\syswow64\PresentationNative_v0300.dll",`
+"$srcpath\XamlViewer_X86.exe" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\WPF\XamlViewer\XamlViewer_v0300.exe",`
+"$srcpath\FL__TransactionBridgePerfCounters_h_133787_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_TransactionBridgePerfCounters.h",`
+"$srcpath\FL__TransactionBridgePerfCounters_h_133787_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_TransactionBridgePerfCounters.h",`
+"$srcpath\PenIMC_A64.dll" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\WPF\PenIMC.dll",`
+"$srcpath\cPerfCnt.ini.246A212A_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Workflow Foundation\PerfCounters.ini",`
+"$srcpath\GlobalMonospace.CompositeFont" , "$env:Temp\windows\Fonts\GlobalMonospace.CompositeFont",`
+"$srcpath\FL_WsatConfig_exe_148103_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\WsatConfig.exe",`
+"$srcpath\FL_WsatConfig_exe_148103_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\WsatConfig.exe",`
+"$srcpath\cPerfCnt.reg.246A212A_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Workflow Foundation\PerfCounters.reg",`
+"$srcpath\FL__ServiceModelEndpointPerfCounters_h_134738_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelEndpointPerfCounters.h",`
+"$srcpath\FL__ServiceModelEndpointPerfCounters_h_134738_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelEndpointPerfCounters.h",`
+"$srcpath\XPSViewer_X86.exe.mui" , "$env:Temp\windows\syswow64\XPSViewer\en-us\XPSViewer.exe.mui",`
+"$srcpath\PresentationUI_A64.dll" , "$env:Temp\windows\assembly\GAC_MSIL\PresentationUI\3.0.0.0__31bf3856ad364e35\PresentationUI.dll",`
+"$srcpath\PresentationUI_A64.dll" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\WPF\PresentationUI.dll",`
+"$srcpath\FL_System_ServiceModel_dll_133679_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.ServiceModel\3.0.0.0__b77a5c561934e089\System.ServiceModel.dll",`
+"$srcpath\FL_System_ServiceModel_dll_133679_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\System.ServiceModel.dll",`
+"$srcpath\FL_System_ServiceModel_dll_133679_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\System.ServiceModel.dll",`
+"$srcpath\milcore_X86.dll" , "$env:Temp\windows\syswow64\milcore.dll",`
+"$srcpath\UIAutomationClientsideProviders_A64.dll" , "$env:Temp\windows\assembly\GAC_MSIL\UIAutomationClientsideProviders\3.0.0.0__31bf3856ad364e35\UIAutomationClientsideProviders.dll",`
+"$srcpath\FL__TransactionBridgePerfCounters_reg_133789_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_TransactionBridgePerfCounters.reg",`
+"$srcpath\FL__TransactionBridgePerfCounters_reg_133789_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_TransactionBridgePerfCounters.reg",`
+"$srcpath\FL_icardagt_exe_134628_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\syswow64\icardagt.exe",`
+"$srcpath\fTrackSchema_EN.246A212B_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Workflow Foundation\SQL\EN\Tracking_Schema.sql",`
+"$srcpath\cPerfCnt.vrg.246A212A_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Workflow Foundation\PerfCounters.vrg",`
+"$srcpath\FL_ServiceModelEvents_dll_mui_148753_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\ServiceModelEvents.dll.mui",`
+"$srcpath\FL_ServiceModelEvents_dll_mui_148753_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\MUI\0409\ServiceModelEvents.dll.mui",`
+"$srcpath\FL_System_ServiceModel_WasHosting_dll_134736_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.ServiceModel.WasHosting\3.0.0.0__b77a5c561934e089\System.ServiceModel.WasHosting.dll",`
+"$srcpath\FL_System_ServiceModel_WasHosting_dll_134736_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\System.ServiceModel.WasHosting.dll",`
+"$srcpath\FL_System_ServiceModel_WasHosting_dll_134736_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\System.ServiceModel.WasHosting.dll",`
+"$srcpath\fWEAct.dll.I_IL.2C0646A5_257B_44EA_803B_3C8E81C4F428" , "$env:Temp\windows\assembly\GAC_MSIL\System.Workflow.Activities\3.0.0.0__31bf3856ad364e35\System.Workflow.Activities.dll",`
+"$srcpath\FL_icardagt_exe_134628_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\system32\icardagt.exe",`
+"$srcpath\UIAutomationTypes_A64.dll" , "$env:Temp\windows\assembly\GAC_MSIL\UIAutomationTypes\3.0.0.0__31bf3856ad364e35\UIAutomationTypes.dll",`
+"$srcpath\FL__ServiceModelOperationPerfCounters_ini_134194_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelOperationPerfCounters.ini",`
+"$srcpath\FL__ServiceModelOperationPerfCounters_ini_134194_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelOperationPerfCounters.ini",`
+"$srcpath\XamlViewer_A64.exe.manifest" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\WPF\XamlViewer\XamlViewer_v0300.exe.manifest",`
+"$srcpath\GlobalSansSerif.CompositeFont" , "$env:Temp\windows\Fonts\GlobalSansSerif.CompositeFont",`
+"$srcpath\FL__ServiceModelOperationPerfCounters_vrg_134196_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelOperationPerfCounters.vrg",`
+"$srcpath\FL__ServiceModelOperationPerfCounters_vrg_134196_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelOperationPerfCounters.vrg",`
+"$srcpath\System.Printing_GAC_X86.dll" , "$env:Temp\windows\assembly\GAC_32\System.Printing\3.0.0.0__31bf3856ad364e35\System.Printing.dll",`
+"$srcpath\PresentationHostDLL_A64.dll" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\WPF\PresentationHostDLL.dll",`
+"$srcpath\FL__SMSvcHostPerfCounters_ini_143455_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_SMSvcHostPerfCounters.ini",`
+"$srcpath\FL__SMSvcHostPerfCounters_ini_143455_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_SMSvcHostPerfCounters.ini",`
+"$srcpath\fSqlSrvcSch_EN.246A212B_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Workflow Foundation\SQL\EN\SqlPersistenceService_Schema.sql",`
+"$srcpath\Speech_A64.dll" , "$env:Temp\windows\assembly\GAC_MSIL\System.Speech\3.0.0.0__31bf3856ad364e35\System.Speech.dll",`
+"$srcpath\PresentationCFFRasterizerNative_A64.dll" , "$env:Temp\windows\system32\PresentationCFFRasterizerNative_v0300.dll",`
+"$srcpath\WFSet.ico.246A212A_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Workflow Foundation\Setup.ico",`
+"$srcpath\FL_ServiceMonikerSupport_dll_133768_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\ServiceMonikerSupport.dll",`
+"$srcpath\FL__ServiceModelServicePerfCounters_ini_134741_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelServicePerfCounters.ini",`
+"$srcpath\FL__ServiceModelServicePerfCounters_ini_134741_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelServicePerfCounters.ini",`
+"$srcpath\FL__ServiceModelOperationPerfCounters_reg_134195_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelOperationPerfCounters.reg",`
+"$srcpath\FL__ServiceModelOperationPerfCounters_reg_134195_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelOperationPerfCounters.reg",`
+"$srcpath\FL__SMSvcHostPerfCounters_vrg_143458_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_SMSvcHostPerfCounters.vrg",`
+"$srcpath\FL__SMSvcHostPerfCounters_vrg_143458_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_SMSvcHostPerfCounters.vrg",`
+"$srcpath\FL_ServiceModelEvents_dll_mui_148753_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\ServiceModelEvents.dll.mui",`
+"$srcpath\FL_ServiceModelEvents_dll_mui_148753_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\MUI\0409\ServiceModelEvents.dll.mui",`
+"$srcpath\PresentationCFFRasterizerNative_X86.dll" , "$env:Temp\windows\syswow64\PresentationCFFRasterizerNative_v0300.dll",`
+"$srcpath\UIAutomationCore_A64.dll.mui" , "$env:Temp\windows\system32\en-us\UIAutomationCore.dll.mui",`
+"$srcpath\fTracLogic_EN.246A212B_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Workflow Foundation\SQL\EN\Tracking_Logic.sql",`
+"$srcpath\FL__ServiceModelEndpointPerfCounters_vrg_134740_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelEndpointPerfCounters.vrg",`
+"$srcpath\FL__ServiceModelEndpointPerfCounters_vrg_134740_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelEndpointPerfCounters.vrg",`
+"$srcpath\PresentationFontCache_A64.cat" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\WPF\PresentationFontCache.cat",`
+"$srcpath\PresentationFontCache_A64.cat" , "$env:Temp\windows\system32\catroot\{f750e6c3-38ee-11d1-85e5-00c04fc295ee}\PresentationFontCache.cat",`
+"$srcpath\FL_servicemodel_mof_uninstall_143451_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\ServiceModel.mof.uninstall",`
+"$srcpath\FL_servicemodel_mof_uninstall_143451_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\ServiceModel.mof.uninstall",`
+"$srcpath\NlsData0009_X86.dll" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\WPF\NlsData0009.dll",`
+"$srcpath\PresentationCFFRasterizer_GAC_X86.dll" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\WPF\PresentationCFFRasterizer.dll",`
+"$srcpath\FL__TransactionBridgePerfCounters_vrg_133790_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_TransactionBridgePerfCounters.vrg",`
+"$srcpath\FL__TransactionBridgePerfCounters_vrg_133790_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_TransactionBridgePerfCounters.vrg",`
+"$srcpath\TSWPFWrp_X86.exe" , "$env:Temp\windows\syswow64\tswpfwrp.exe",`
+"$srcpath\FL_inforcardapi_dll_134627_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\syswow64\infocardapi.dll",`
+"$srcpath\GlobalUserInterface.CompositeFont" , "$env:Temp\windows\Fonts\GlobalUserInterface.CompositeFont",`
+"$srcpath\PresentationUI_GAC_X86.dll" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\WPF\PresentationUI.dll",`
+"$srcpath\PresentationCore_A64.dll" , "$env:Temp\windows\assembly\GAC_64\PresentationCore\3.0.0.0__31bf3856ad364e35\PresentationCore.dll",`
+"$srcpath\XPSViewerManifest_X86.xml" , "$env:Temp\windows\syswow64\XPSViewer\XPSViewerManifest.xml",`
+"$srcpath\milcore_A64.dll" , "$env:Temp\windows\system32\milcore.dll",`
+"$srcpath\PresentationFontCache_A64.exe" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\WPF\PresentationFontCache.exe",`
+"$srcpath\PresentationFramework.Classic_A64.dll" , "$env:Temp\windows\assembly\GAC_MSIL\PresentationFramework.Classic\3.0.0.0__31bf3856ad364e35\PresentationFramework.Classic.dll",`
+"$srcpath\FL_ServiceMonikerSupport_dll_133768_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\ServiceMonikerSupport.dll",`
+"$srcpath\UIAutomationCore_X86.dll.mui" , "$env:Temp\windows\syswow64\en-us\UIAutomationCore.dll.mui",`
+"$srcpath\FL_SMSvcHost_exe_config_143453_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\SMSvcHost.exe.config",`
+"$srcpath\FL_SMSvcHost_exe_config_143453_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\SMSvcHost.exe.config",`
+"$srcpath\FL_icardres_dll_mui_149310_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\system32\icardres.dll.mui",`
+"$srcpath\FL_icardres_dll_mui_149310_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\system32\mui\0409\icardres.dll.mui",`
+"$srcpath\FL__ServiceModelServicePerfCounters_reg_134744_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelServicePerfCounters.reg",`
+"$srcpath\FL__ServiceModelServicePerfCounters_reg_134744_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelServicePerfCounters.reg",`
+"$srcpath\NaturalLanguage6_A64.dll" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\WPF\NaturalLanguage6.dll",`
+"$srcpath\FL_ServiceModelEvents_dll_143449_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\ServiceModelEvents.dll",`
+"$srcpath\PresentationFramework.Luna_A64.dll" , "$env:Temp\windows\assembly\GAC_MSIL\PresentationFramework.Luna\3.0.0.0__31bf3856ad364e35\PresentationFramework.Luna.dll",`
+"$srcpath\System.Printing_A64.dll" , "$env:Temp\windows\assembly\GAC_64\System.Printing\3.0.0.0__31bf3856ad364e35\System.Printing.dll",`
+"$srcpath\NaturalLanguage6_X86.dll" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\WPF\NaturalLanguage6.dll",`
+"$srcpath\FL_infocard_exe_134626_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\infocard.exe",`
+"$srcpath\PresentationCFFRasterizer_A64.dll" , "$env:Temp\windows\assembly\GAC_MSIL\PresentationCFFRasterizer\3.0.0.0__31bf3856ad364e35\PresentationCFFRasterizer.dll",`
+"$srcpath\PresentationCFFRasterizer_A64.dll" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\WPF\PresentationCFFRasterizer.dll",`
+"$srcpath\FL_System_ServiceModel_Install_dll_133794_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.ServiceModel.Install\3.0.0.0__b77a5c561934e089\System.ServiceModel.Install.dll",`
+"$srcpath\FL_System_ServiceModel_Install_dll_133794_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\System.ServiceModel.Install.dll",`
+"$srcpath\FL_System_ServiceModel_Install_dll_133794_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\System.ServiceModel.Install.dll",`
+"$srcpath\FL__ServiceModelEndpointPerfCounters_reg_134739_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelEndpointPerfCounters.reg",`
+"$srcpath\FL__ServiceModelEndpointPerfCounters_reg_134739_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelEndpointPerfCounters.reg",`
+"$srcpath\FL_system_identitymodel_selectors_dll_147068_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.IdentityModel.Selectors\3.0.0.0__b77a5c561934e089\System.IdentityModel.Selectors.dll",`
+"$srcpath\cPerfCnt.exe.246A212A_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Workflow Foundation\PerformanceCounterInstaller.exe",`
+"$srcpath\PresentationCore_GAC_X86.dll" , "$env:Temp\windows\assembly\GAC_32\PresentationCore\3.0.0.0__31bf3856ad364e35\PresentationCore.dll",`
+"$srcpath\FL__ServiceModelOperationPerfCounters_h_134193_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelOperationPerfCounters.h",`
+"$srcpath\FL__ServiceModelOperationPerfCounters_h_134193_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelOperationPerfCounters.h",`
+"$srcpath\fCompdll.I_IL.2C0646A5_257B_44EA_803B_3C8E81C4F428" , "$env:Temp\windows\assembly\GAC_MSIL\System.Workflow.ComponentModel\3.0.0.0__31bf3856ad364e35\System.Workflow.ComponentModel.dll",`
+"$srcpath\XamlViewer_A64.exe" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\WPF\XamlViewer\XamlViewer_v0300.exe",`
+"$srcpath\FL_ServiceModelReg_exe_143454_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\ServiceModelReg.exe",`
+"$srcpath\FL_ServiceModelReg_exe_143454_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\ServiceModelReg.exe",`
+"$srcpath\PresentationFramework.Aero_A64.dll" , "$env:Temp\windows\assembly\GAC_MSIL\PresentationFramework.Aero\3.0.0.0__31bf3856ad364e35\PresentationFramework.Aero.dll",`
+"$srcpath\NlsLexicons0009_X86.dll" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\WPF\NlsLexicons0009.dll",`
+"$srcpath\fWEExec.dll.I_IL.2C0646A5_257B_44EA_803B_3C8E81C4F428" , "$env:Temp\windows\assembly\GAC_MSIL\System.Workflow.Runtime\3.0.0.0__31bf3856ad364e35\System.Workflow.Runtime.dll",`
+"$srcpath\XamlViewer_A64.xbap" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\WPF\XamlViewer\XamlViewer_v0300.xbap",`
+"$srcpath\PresentationBuildTasks_A64.dll" , "$env:Temp\windows\assembly\GAC_MSIL\PresentationBuildTasks\3.0.0.0__31bf3856ad364e35\PresentationBuildTasks.dll",`
+"$srcpath\FL__TransactionBridgePerfCounters_ini_133788_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_TransactionBridgePerfCounters.ini",`
+"$srcpath\FL__TransactionBridgePerfCounters_ini_133788_ENU_A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_TransactionBridgePerfCounters.ini",`
+"$srcpath\FL_SMSvcHost_exe_143452_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\SMSvcHost.exe",`
+"$srcpath\FL_SMSvcHost_exe_143452_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\SMSvcHost.exe",`
+"$srcpath\FL_SMDiagnostics_dll_147054_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\SMDiagnostics\3.0.0.0__b77a5c561934e089\SMdiagnostics.dll",`
+"$srcpath\FL_SMDiagnostics_dll_147054_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\SMDiagnostics.dll",`
+"$srcpath\FL_SMDiagnostics_dll_147054_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\SMDiagnostics.dll",`
+"$srcpath\FL_ComSvcConfig_exe_133774_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\ComSvcConfig.exe",`
+"$srcpath\FL_ComSvcConfig_exe_133774_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\ComSvcConfig.exe",`
+"$srcpath\FL__ServiceModelServicePerfCounters_vrg_134743_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelServicePerfCounters.vrg",`
+"$srcpath\FL__ServiceModelServicePerfCounters_vrg_134743_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelServicePerfCounters.vrg",`
+"$srcpath\FL_icardres_dll_142943_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\system32\icardres.dll",`
+"$srcpath\FL_infocard_exe_134626_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\infocard.exe",`
+"$srcpath\PresentationFramework_A64.dll" , "$env:Temp\windows\assembly\GAC_MSIL\PresentationFramework\3.0.0.0__31bf3856ad364e35\PresentationFramework.dll",`
+"$srcpath\PresentationHostDLL_X86.dll" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\WPF\PresentationHostDLL.dll",`
+"$srcpath\WindowsFormsIntegration_A64.dll" , "$env:Temp\windows\assembly\GAC_MSIL\WindowsFormsIntegration\3.0.0.0__31bf3856ad364e35\WindowsFormsIntegration.dll",`
+"$srcpath\GlobalSerif.CompositeFont" , "$env:Temp\windows\Fonts\GlobalSerif.CompositeFont",`
+"$srcpath\PresentationFramework.Royale_A64.dll" , "$env:Temp\windows\assembly\GAC_MSIL\PresentationFramework.Royale\3.0.0.0__31bf3856ad364e35\PresentationFramework.Royale.dll",`
+"$srcpath\FL_inforcardapi_dll_134627_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\system32\infocardapi.dll",`
+"$srcpath\FL_System_IO_Log_dll_133671_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.IO.Log\3.0.0.0__b03f5f7f11d50a3a\System.IO.Log.dll",`
+"$srcpath\FL__SMSvcHostPerfCounters_h_143456_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_SMSvcHostPerfCounters.h",`
+"$srcpath\FL__SMSvcHostPerfCounters_h_143456_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_SMSvcHostPerfCounters.h",`
+"$srcpath\NlsLexicons0009_A64.dll" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\WPF\NlsLexicons0009.dll",`
+"$srcpath\FL__SMSvcHostPerfCounters_reg_143457_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_SMSvcHostPerfCounters.reg",`
+"$srcpath\FL__SMSvcHostPerfCounters_reg_143457_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_SMSvcHostPerfCounters.reg",`
+"$srcpath\fSqlPersSLgic_EN.246A212B_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Workflow Foundation\SQL\EN\SqlPersistenceService_Logic.sql",`
+"$srcpath\FL_icardres_dll_mui_149310_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\syswow64\icardres.dll.mui",`
+"$srcpath\FL_icardres_dll_mui_149310_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\syswow64\mui\0409\icardres.dll.mui",`
+"$srcpath\FL_infocardcpl_cpl_134629_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\system32\infocardcpl.cpl",`
+"$srcpath\FL_system_identitymodel_dll_147070_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.IdentityModel\3.0.0.0__b77a5c561934e089\System.IdentityModel.dll",`
+"$srcpath\FL_Microsoft_Transactions_Bridge_dll_133653_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\Microsoft.Transactions.Bridge\3.0.0.0__b03f5f7f11d50a3a\Microsoft.Transactions.Bridge.dll",`
+"$srcpath\FL_Microsoft_Transactions_Bridge_dll_133653_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\Microsoft.Transactions.Bridge.dll",`
+"$srcpath\FL_Microsoft_Transactions_Bridge_dll_133653_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\Microsoft.Transactions.Bridge.dll",`
+"$srcpath\FL_Microsoft_Transactions_Bridge_DTC_dll_133669_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_32\Microsoft.Transactions.Bridge.Dtc\3.0.0.0__b03f5f7f11d50a3a\Microsoft.Transactions.Bridge.Dtc.dll",`
+"$srcpath\FL_Microsoft_Transactions_Bridge_DTC_dll_133669_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\Microsoft.Transactions.Bridge.Dtc.dll",`
+"$srcpath\UIAutomationProvider_A64.dll" , "$env:Temp\windows\assembly\GAC_MSIL\UIAutomationProvider\3.0.0.0__31bf3856ad364e35\UIAutomationProvider.dll",`
+"$srcpath\Microsoft.WinFX_A64.targets" , "$env:Temp\windows\Microsoft.NET\Framework\v2.0.50727\Microsoft.WinFX.targets",`
+"$srcpath\Microsoft.WinFX_A64.targets" , "$env:Temp\windows\Microsoft.NET\Framework64\v2.0.50727\Microsoft.WinFX.targets",`
+"$srcpath\TSWPFWrp_A64.exe" , "$env:Temp\windows\system32\tswpfwrp.exe",`
+"$srcpath\cPerfCnt.h.246A212A_8E55_48AF_B8DC_0E9A4E0AD039" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Workflow Foundation\PerfCounters.h",`
+"$srcpath\XPSViewer_X86.exe" , "$env:Temp\windows\syswow64\XPSViewer\XPSViewer.exe",`
+"$srcpath\filler" , "$env:Temp\windows\assembly\NativeImages_v2.0.50727_32\index24.dat",`
+"$srcpath\filler" , "$env:Temp\windows\assembly\NativeImages_v2.0.50727_32\index25.dat",`
+"$srcpath\filler" , "$env:Temp\windows\assembly\NativeImages_v2.0.50727_64\index31.dat",`
+"$srcpath\filler" , "$env:Temp\windows\Installer\wix{F5B09CFD-F0B2-36AF-8DF4-1DF6B63FC7B4}.SchedServiceConfig.rmi",`
+"$srcpath\FL_servicemodel_mof_143450_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\ServiceModel.mof",`
+"$srcpath\FL_servicemodel_mof_143450_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\ServiceModel.mof",`
+"$srcpath\FL_ServiceModelEvents_dll_143449_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\ServiceModelEvents.dll",`
+"$srcpath\FL_System_Runtime_Serialization_dll_133675_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_MSIL\System.Runtime.Serialization\3.0.0.0__b77a5c561934e089\System.Runtime.Serialization.dll",`
+"$srcpath\FL_System_Runtime_Serialization_dll_133675_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\System.Runtime.Serialization.dll",`
+"$srcpath\FL_System_Runtime_Serialization_dll_133675_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\System.Runtime.Serialization.dll",`
+"$srcpath\PresentationHostDLL_A64.dll.mui" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\WPF\en-us\PresentationHostDLL.dll.mui",`
+"$srcpath\FL_Microsoft_Transactions_Bridge_DTC_dll_133669_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\assembly\GAC_64\Microsoft.Transactions.Bridge.Dtc\3.0.0.0__b03f5f7f11d50a3a\Microsoft.Transactions.Bridge.Dtc.dll",`
+"$srcpath\FL_Microsoft_Transactions_Bridge_DTC_dll_133669_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\Microsoft.Transactions.Bridge.Dtc.dll",`
+"$srcpath\PresentationNative_A64.dll" , "$env:Temp\windows\system32\PresentationNative_v0300.dll",`
+"$srcpath\FL__ServiceModelServicePerfCounters_h_134742_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework\v3.0\Windows Communication Foundation\_ServiceModelServicePerfCounters.h",`
+"$srcpath\FL__ServiceModelServicePerfCounters_h_134742_____A64.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\Microsoft.NET\Framework64\v3.0\Windows Communication Foundation\_ServiceModelServicePerfCounters.h",`
+"$srcpath\FL_icardres_dll_142943_____X86.3643236F_FC70_11D3_A536_0090278A1BB8" , "$env:Temp\windows\syswow64\icardres.dll"
 
 for ( $j = 0; $j -lt $dotnet30.count; $j+=2 ) {
     Copy-Item -recurse -Path $dotnet30[$j] -Destination ( Join-Path (New-item -Type Directory -Force $(Split-Path -Path $dotnet30[$j+1]))   $(Split-Path -Leaf $dotnet30[$j+1])   ) -Force  -Verbose }
+
+7z a -r -t7z -m0=lzma2 -mx=9 -mfb=273 -md=29 -ms=8g -mmt=off -mmtf=off -mqs=on -bt -bb3 "$cachedir\$(verb)\$(verb).7z" "$env:TEMP\windows"
+
+Remove-Item -Force -Recurse  "$env:TEMP\windows"
+Remove-Item -Force -Recurse  "$env:TEMP\dotnet35"
+Remove-Item -Force "$env:TEMP\dotnetfx35.exe"
+}
+
+7z x "$cachedir\$(verb)\$(verb).7z" -o"$env:SystemDrive" -y
 
 $regkey = @"
 REGEDIT4
@@ -3631,6 +3614,7 @@ function write_keys_from_manifest{
 
                 $Regname = switch ($value.Name) {
                     '' { ‘(Default)’ }
+                    'registryValue' { ‘(Default)’ } <#FIXME Bugs in script...#>
                     default { $value.Name }
                 }
                 #If ($propertyType -eq "Binary") { $value.Value = [System.Text.Encoding]::Unicode.GetBytes($value.Value + "000") ; $value.Value.Replace(" ",",")}
@@ -3723,8 +3707,8 @@ function install_from_manifest ( [parameter(position=0)] [string] $manifestfile,
 function func_dotnet481
 {
     w_download_to $(verb) "https://download.visualstudio.microsoft.com/download/pr/6f083c7e-bd40-44d4-9e3f-ffba71ec8b09/3951fd5af6098f2c7e8ff5c331a0679c/ndp481-x86-x64-allos-enu.exe" "ndp481-x86-x64-allos-enu.exe" 
-    7z x $cachedir\\$(verb)\\ndp481-x86-x64-allos-enu.exe "-o$env:TEMP\\$(verb)\\" -y; quit?(7z)
-    7z x $env:TEMP\\$(verb)\\x64-Windows10.0-KB5011048-x64.cab "-o$env:TEMP\\$(verb)\\" -y; quit?(7z)
+    7z x $cachedir\\$(verb)\\ndp481-x86-x64-allos-enu.exe "-o$env:TEMP\\$(verb)\\" "x64-Windows10.0-KB5011048-x64.cab" -y; quit?(7z)
+    7z x $env:TEMP\\$(verb)\\x64-Windows10.0-KB5011048-x64.cab "-o$env:TEMP\\$(verb)\\" "amd64*/*" "x86*/*" "wow64*/*" "*.manifest" -y; quit?(7z)
 
     Stop-Process -Name mscorsvw -ErrorAction SilentlyContinue <# otherwise some dlls fail to be replaced as they are in use by mscorvw; only mscoreei.dll has to be copied manually afaict as it is in use by pwsh #>
 
@@ -3733,6 +3717,8 @@ function func_dotnet481
 
     foreach ($i in $(Get-ChildItem $env:TEMP\\dotnet481\\*.manifest).FullName ) { write_keys_from_manifest($i) }
     Write-Host -foregroundColor yellow 'Done , hopefully nothing''s screwed up ;)' 
+
+    Remove-Item -Force -Recurse "$env:TEMP\\dotnet481"
 
     <# FIXME:  mscoreei.dll is not installed as it is in use by pwsh.exe #>
     #Start-Process -FilePath $env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.3031\\ngen.exe -NoNewWindow -ArgumentList "eqi"
@@ -3802,12 +3788,16 @@ function func_install_dll_from_msu
 
 function func_affinity_requirements
 {
+if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.15 ) { 
+    Add-Type -AssemblyName System.Windows.Forms
+    $result = [System.Windows.Forms.MessageBox]::Show("Use latest wine release (>8.15), this verb is not compatible with older wine-versions" , "Info" , 'OK',48)
+    return
+}
+
 winecfg /v win11
 func_renderer=vulkan
 func_winmetadata
 func_wine_wintypes
-
-if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.15 ) { func_wine_dxcore }
 }
 
 function func_webview2
@@ -3816,6 +3806,40 @@ foreach($i in 'wldp') { dlloverride 'disabled' $i }
 winecfg /v win7
 choco install webview2-runtime
 foreach($i in 'wldp') { dlloverride 'builtin' $i }
+}
+
+function func_mspaint
+{
+choco install wget
+
+wget.exe -P "$env:TEMP\"  --referer 'https://win7games.com/' 'https://win7games.com/download/ClassicPaint.zip'
+
+7z x "$env:TEMP\ClassicPaint.zip" "-o$env:TEMP"
+
+& "$env:TEMP\ClassicPaint-1.1-setup.exe " /silent
+
+func_mfc42
+func_uiribbon
+func_msxml3
+
+7z e "$cachedir\aik70\F1_WINPE.WIM" "-o$env:ProgramFiles\Classic Paint" "Windows/winsxs/x86_microsoft-windows-shlwapi_31bf3856ad364e35_6.1.7600.16385_none_f9b00828060280bb/shlwapi.dll" -y 
+
+w_download_to "wine_kernelbase" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_kernelbase.7z" "wine_kernelbase.7z"
+7z e "$cachedir\\wine_kernelbase\\wine_kernelbase.7z" "-o$env:ProgramFiles\Classic Paint" "32/kernelbase.dll" -aoa 
+        
+if(!(Test-Path "HKCU:\\Software\\Wine\\AppDefaults\\mspaint1.exe")) {New-Item  -Path "HKCU:\\Software\\Wine\\AppDefaults\\mspaint1.exe"}
+if(!(Test-Path "HKCU:\\Software\\Wine\\AppDefaults\\mspaint1.exe\\DllOverrides")) {New-Item  -Path "HKCU:\\Software\\Wine\\AppDefaults\\mspaint1.exe\\DllOverrides"}
+New-ItemProperty -Path "HKCU:\\Software\\Wine\\AppDefaults\\mspaint1.exe\\DllOverrides" -Name "kernelbase" -Value 'native,builtin' -PropertyType 'String' -force
+New-ItemProperty -Path "HKCU:\\Software\\Wine\\AppDefaults\\mspaint1.exe\\DllOverrides" -Name "shlwapi" -Value 'native,builtin' -PropertyType 'String' -force
+}
+
+function func_winrt_hacks
+{
+    func_wine_combase
+    func_wine_windows.ui
+    func_wine_wintypes
+    func_winmetadata
+    func_dotnet481
 }
 
 <# Main function #> 
