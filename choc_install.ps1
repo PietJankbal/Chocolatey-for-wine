@@ -141,7 +141,7 @@ if($env:FirstRun -eq '2') {
 }
 if($env:FirstRun -eq '1') { $env:FirstRun=2 }
 
-if($([System.Diagnostics.Process]::GetCurrentProcess().Parent.processname) -eq 'ConEmuC64' ) {Write-Host -Foregroundcolor yellow Running Power Shell Core 7.1.5 on $ntdll::wine_get_build_id(); Write-Host ""}
+if($([System.Diagnostics.Process]::GetCurrentProcess().Parent.processname) -eq 'ConEmuC64' ) {Write-Host -Foregroundcolor yellow Running Power Shell Core $PSVersionTable.PSVersion.ToString() on $ntdll::wine_get_build_id(); Write-Host ""}
 
 <# if wineprefix is updated by running another wine version we have to update the hack for ConEmu bug https://bugs.winehq.org/show_bug.cgi?id=48761 #>
 if( !( (Get-FileHash C:\windows\system32\user32.dll).Hash -eq (Get-FileHash C:\windows\system32\user32dummy.dll).Hash) ) {
@@ -188,7 +188,6 @@ function QPR.wusa { <# wusa.exe replacement, Query program replacement for wusa.
      exit 0;
 }
 '@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.wusa\QPR.wusa.psm1 -Force )
-
 ################################################################################################################################ 
 #                                                                                                                              #
 #  profile_winetricks_caller.ps1                   #
@@ -255,6 +254,8 @@ $profile_winetricks_caller_ps1 = @'
                "winmetadata", "various *.winmd files, use in combination with wine_wintypes",
                "wine_wintypes", "wine wintypes.dll patched (based on ElementalWarrior) for Affinity, https://forum.affinity.serif.com/index.php?/topic/182758-affinity-suite-v204-on-linux-wine/page/1/",
                "wine_windows.ui","wine windows.ui.dll patched for bug https://bugs.winehq.org/show_bug.cgi?id=55640",
+               "winrt_hacks","WIP, enable all included wine hacks for (hopefully) bit more winrt ",
+               "wine_combase", "wine combase with a few hacks",
                "dotnet35", "dotnet35",
                "dotnet481", "experimental dotnet481 install (includes System.Runtime.WindowsRuntime.dll)",
                "font_lucida", "Lucida Console font",
@@ -556,239 +557,6 @@ function QPR.ping
 }
 '@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.ping\QPR.ping.psm1 -Force )
 
-@'
-#https://stackoverflow.com/questions/53522016/how-to-measure-tcp-and-icmp-connection-time-on-remote-machine-like-ping
-function QPR_ping { <# ping.exe replacement #>
-    <#
-        .SYNOPSIS
-            Implementation PS du ping + tcp-Ping
-        .DESCRIPTION
-            retourne les temps de reponce ICMP (port 0) et TCP (port 1-65535)
-        .PARAMETER HostAddress
-            HostName ou IP a tester,
-            pour le HostName une resolution DNS est faite a chaque boucle
-        .PARAMETER ports
-            Liste des ports TCP-IP a tester, le port 0 pour l'ICMP
-        .PARAMETER timeout
-            TimeOut des test individuel
-        .PARAMETER loop
-            nombre de boucle a effectuer, par defaut Infini
-        .PARAMETER Intervale
-            intervale entre chaque series de test
-        .PARAMETER ComputerName
-            permet de faire ce Ping en total remote,
-            si ComputerName est fournis, joignable et different de localhost alors c'est lui qui executera ce code et retourne le resultat
-            Requiere "Enable-PSRemoting -force"
-        .EXAMPLE
-            Ping sur ICMP + TCP:53,80,666 timeout 80ms (par test)
-            Ping 8.8.8.8 -ports 0,53,80,666 -timeout 80 | ft
-        .EXAMPLE
-            3 ping en remote depuis le serveur vdiv05 sur ICMP,3389,6516 le tous dans une jolie fenetre
-            ping 10.48.50.27 0,3389,6516 -ComputerName vdiv05 -count 3 | Out-GridView
-        .NOTES
-            Alban LOPEZ 2018
-            alban.lopez @t gmail.com
-        #>
-    Param(
-        [string]$HostAddress = 'vps.opt2', 
-        [ValidateRange(0, 65535)]
-        [int[]]$ports =  @(80),                                         # @(0, 22, 135), 
-        [ValidateRange(0, 2000)]
-        [int]$timeout = 200,
-        [int32]$n = 4,                                  # [int32]::MaxValue,  68 annees !
-        [ValidateSet(250, 500, 1000, 2000, 4000, 10000)]
-        [int]$Intervale = 2000,
-        $l = 32,                                                        # 1Kb,
-        $ComputerName = $null
-    )
-    
-    
-    
-    begin {     
-        if ($computerName -and $computerName -notmatch "^(\.|localhost|127.0.0.1)$|^$($env:computername)" -and (Test-TcpPort -DestNodes $computerName -ConfirmIfDown)) {
-            $pingScriptBlock = Include-ToScriptblock -functions 'write-logStep', 'write-color', 'Write-Host', 'ping', 'Test-TcpPort', 'Include-ToScriptblock'
-        } else {
-            $ComputerName = $null
-            $ObjPing = [pscustomobject]@{
-                DateTime   = $null
-                IP         = $null
-                Status     = $null
-                hasChanged = $null
-            }
-            $ObjPings = $test = @()
-            if (!$ports) {$ports = @(0)}
-            $Ports | ForEach-Object {
-                if ($_) {
-                    # TCP
-                    $ObjPing | Add-Member -MemberType NoteProperty -Name "Tcp-$_" -Value $null
-                    $test += "Tcp-$_"
-                }
-                else {
-                    # ICMP
-                    $ping = new-object System.Net.NetworkInformation.Ping
-                    $ObjPing | Add-Member -MemberType NoteProperty -Name ICMP -Value $null
-
-                    $ObjPing | Add-Member -MemberType NoteProperty -Name 'ICMP-Ttl' -Value $null
-                    # $ObjPing | Add-Member -MemberType NoteProperty -Name 'ICMP-Size' -Value $l
-                    $buffer = [byte[]](1..$l | ForEach-Object {get-random -Minimum 20 -Maximum 255})
-                    $test += "ICMP ($l Octs)"
-                }
-            }
-            # Write-LogStep -prefixe 'L.%Line% Ping' "Ping [$DestNode] ", ($test -join(' + ')) ok
-        }
-        
-    #statistics calculations
-    $averageTime = -1;
-    $minimumTime = $timeout;
-    $maximumTime = 0
-    $count = $n;
-        
-    }
-    process {
-        if(!$ComputerName){
-
-           if (!($HostAddress -as [System.Net.IPAddress])){
-           
-             try { $entry = [System.Net.Dns]::GetHostEntry($HostAddress) }
-             catch { Write-Host "Ping request could not find host $HostAddress. Please check the name and try again."; return}
-              $DestNode = $entry.AddressList | Where-Object -Property AddressFamily -eq -Value "InternetWork" |Get-random
-              $HostName = $entry.HostName
-           if(!$HostAddress){break}
-           } else {
-               $DestNode = [System.Net.IPAddress]$HostAddress
-                $HostName = $HostAddress
-           }
-
-            Write-Host ""
-            Write-Host "pinging $HostAddress [$DestNode] with $l bytes of data:"
-
-                        $ObjPing.DateTime = (get-date)
-                        $ObjPing.status = $ObjPing.haschanged = $null
-                        $ObjPing.IP = [string][System.Net.Dns]::GetHostAddresses($DestNode).IPAddressToString
-                                While ($n--) {
-                $ms = (Measure-Command {
-                    try {
-                        #$ObjPing.DateTime = (get-date)
-                       # $ObjPing.status = $ObjPing.haschanged = $null
-                       # $ObjPing.IP = [string][System.Net.Dns]::GetHostAddresses($DestNode).IPAddressToString
-                        #Write-LogStep -prefixe 'L.%Line% Ping' "Ping $DestNode", $ObjPing.IP wait
-                            foreach ($port in $ports) {
-                                if ($port) {
-                                    # TCP
-                                    $ObjPing."Tcp-$port" = $iar = $null
-                                    try {
-                                        $tcpclient = new-Object system.Net.Sockets.TcpClient # Create TCP Client
-                                        $iar = $tcpclient.BeginConnect($ObjPing.IP, $port, $null, $null) # Tell TCP Client to connect to machine on Port
-                                        $timeMs = (Measure-Command {
-                                                $wait = $iar.AsyncWaitHandle.WaitOne($timeout, $false) # Set the wait time
-                                            }).TotalMilliseconds
-                                    }
-                                    catch {
-                                        # Write-verbose $_
-                                    }
-                                    # Write-LogStep -prefixe 'L.%Line% Ping' "Tcp-$port", $x.status, $timeMs ok
-                                    # Check to see if the connection is done
-                                    if (!$wait) {
-                                        # Close the connection and report timeout
-                                        $ObjPing."Tcp-$port" = 'TimeOut'
-                                        $tcpclient.Close()
-                                    }
-                                    else {
-                                        try {
-                                            $ObjPing."Tcp-$port" = [int]$timeMs
-                                            $ObjPing.status ++
-                                            # Write-LogStep -prefixe 'L.%Line% Ping' 'TCP ', "$($ObjPing."Tcp-$port") ms" ok
-                                            $tcpclient.EndConnect($iar) | out-Null
-                                            $tcpclient.Close()
-                                        }
-                                        catch {
-                                            # $ObjPing."Tcp-$port" = 'Unknow Host'
-                                        }
-                                    }
-                                    if ($tcpclient) {
-                                        $tcpclient.Dispose()
-                                        $tcpclient.Close()
-                                    }
-                                }
-                                else {
-                                    # ICMP
-                                    $ObjPing.ICMP = $ObjPing."ICMP-Ttl"  = $null # $ObjPing."ICMP-Size"
-                                    try {
-                                        $x = $ping.send($ObjPing.IP, $timeOut, $Buffer)
-                                        if ($x.status -like 'Success') {
-                                            $ObjPing."ICMP" = [int]$x.RoundtripTime
-                                            $ObjPing."ICMP-Ttl" = $x.Options.Ttl
-                                            # $ObjPing."ICMP-Size" = $x.Buffer.Length
-                                            $ObjPing.status ++
-                                            # Write-LogStep -prefixe 'L.%Line% Ping' 'ICMP ', "$($x.RoundtripTime) ms", $x.Options.Ttl, $x.Buffer.Length ok
-                                        }
-                                        else {
-                                            # Write-LogStep -prefixe 'L.%Line% Ping' 'ICMP ', "$($x.RoundtripTime) ms", $x.Options.Ttl, $x.Buffer.Length Warn
-                                            $ObjPing."ICMP" = $x.status
-                                            $ObjPing."ICMP-Ttl" = $ObjPing."ICMP-Size" = '-'
-                                        }
-                                    }
-                                    catch {
-                                        # $ObjPing.ICMP =  'Unknow Host'
-                                    }
-                                }
-                            }
-                        }
-                        catch {
-                            # Write-LogStep -prefixe 'L.%Line% Ping' '', 'Inpossible de determiner le noeud de destination !' error
-                            $ObjPing.Status = 0
-                        }
-                        #$ObjPing.status = "$([int]([Math]::Round($ObjPing.status / $ports.count,2) * 100))%"
-                        #$ObjPing.hasChanged = !($ObjPing.Status -eq $last -and $ObjPing.IP -eq $IP )
-                        $last = $ObjPing.Status
-                        $IP = $ObjPing.IP
-                        ipconfig /flushdns
-                    }).TotalMilliseconds
-
-                $ObjPings += $ObjPing
-
-                
-                if($timeMs  -lt 200) { Write-Host Reply from "$IP": bytes=$l time="$timeMs"ms TTL=123
-                
-                            if ($timeMs -gt $maximumTime)
-            {
-                $maximumTime = $timeMs;
-            }
-            if ($timeMs -lt $minimumTime)
-            {
-                $minimumTime = $timeMs;
-            }
-   
-        $averageTime += $timeMs;
-               
-                }
-                else    { Write-Host "Request timed out" }
-
-                if ($n -and $Intervale - $ms -gt 0) {
-                    start-sleep -m ($Intervale - $ms)
-                }
-            }    
-            
-            
-           Write-Host ""
-           Write-Host  "Ping statistics for ${IP}:"
-           Write-Host "	Packets: Sent = $count, Received = $count, Lost = 0 <0% loss>,"
-           Write-Host "Approximate round trip times in milli-seconds:" 
-           Write-Host "	Minimum = ${minimumTime}ms, Maximum = ${maximumTime}ms, Average = $($averageTime/$count)ms" 
-                        
-                         
-        }
-    }
-    end {
-        if ($computerName) {
-            $pingScriptBlock = $pingScriptBlock | Include-ToScriptblock -StringBlocks "Ping -DestNode $DestNode -ports $($ports -join(',')) -timeout $timeout -loop $n -Intervale $Intervale"
-            Invoke-Command -ComputerName $ComputerName -ScriptBlock $pingScriptBlock | Select-Object -Property * -ExcludeProperty RunspaceID
-        }
-     exit 0
-    }
-}
-'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR_ping\QPR_ping.psm1 -Force )
-
 ################################################################################################################################ 
 #                                                                                                                              #
 #  Install dotnet48, ConEmu, Chocolatey, 7z, arial, d3dcompiler_47 and a few extras (wine robocopy + wine taskschd)                   #
@@ -841,8 +609,9 @@ function QPR_ping { <# ping.exe replacement #>
     Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\ConEmuPack.230724.7z -o$env:SystemDrive\ConEmu";
     #& $env:TEMP\\install2.ps1  <# ConEmu install #>
             
-    Remove-Item -force  "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{55B609D4-ABF3-52AF-8723-C81E75B86D50}" -recurse
-    Remove-Item -force  "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{9F22663D-4E4B-5B49-A04C-22EDFD519AC5}" -recurse
+    foreach($i in $(Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*)) {
+        if($i.DisplayName -match 'Mono') { Remove-Item -force  $i.PSPath -recurse  }
+    }
     Remove-Item -force -recurse "$env:systemroot\mono"
     
     New-Item  -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{DE293FDE-C181-46C0-8DCC-1F75EA35833D}"
@@ -884,6 +653,10 @@ function QPR_ping { <# ping.exe replacement #>
 #  Based on https://github.com/nylyst/PowerShell/blob/master/Send-KeyPress.ps1 -> so credits to that author       #
 #  Could be replaced with [System.Windows.Forms.SendKeys]::SendWait("{ENTER}") if that one day works in wine...   #
 ###################################################################################################################
+#    while(!$p) {$p = Get-Process | Where-Object { $_.MainWindowTitle -Match "Conemu" }; Start-Sleep -Milliseconds 200}
+#    [void][System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms')
+#    [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+
     <# add a C# class to access the WIN32 API SetForegroundWindow #>
     Add-Type @"
     using System;
@@ -1024,8 +797,8 @@ function QPR_ping { <# ping.exe replacement #>
             }
     }
 "@
-
     [Synthesize_Keystrokes]::SendKeyStroke() <# Dismiss ConEmu's fast configuration window by hitting enter #>
+
 ################################################################################################################### 
 #                                                                                                                 #
 #  Finish installation and some app specific tweaks                                                               #
@@ -1082,6 +855,5 @@ d3d9.shaderModel = 1
 d3d9.shaderModel = 1
 "@
     $dxvkconf | Out-File -FilePath $env:ProgramData\\dxvk.conf
-
 #    Start-Process $env:systemroot\Microsoft.NET\Framework64\v4.0.30319\ngen.exe -NoNewWindow -Wait -ArgumentList  "eqi"
 #    Start-Process $env:systemroot\Microsoft.NET\Framework\v4.0.30319\ngen.exe -NoNewWindow -Wait -ArgumentList "eqi"
