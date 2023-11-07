@@ -1,8 +1,8 @@
 # Chocolatey-for-wine
-Chocolatey packagemanager automatic installer in wine, handy to install quickly programs in wine
+Chocolatey packagemanager automatic installer in wine, handy to install quickly programs in wine (and subsequently find bugs in wine ;) )
 
 Install :
-- Download and unzip the release zip-file and do 'wine ChoCinstaller_0.5o.715.exe' (takes about a minute to complete)
+- Download and unzip the release zip-file and do 'wine ChoCinstaller_0.5a.735.exe' (takes about a minute to complete)
 
 Optional:
 - Check if things went well: "choco install chromium" and  "start chrome.exe (--no-sandbox not needed anymore as of wine-8,4)" 
@@ -11,12 +11,12 @@ Optional:
   
 Optional:
 
-- Run the installer like 'SAVEINSTALLFILES=1 wine ChoCinstaller_0.5o.715.exe' , then the install files (like Powershell*.msi and dotnet48) are saved in
+- Run the installer like 'SAVEINSTALLFILES=1 wine ChoCinstaller_0.5a.735.exe' , then the install files (like Powershell*.msi and dotnet48) are saved in 
   '$HOME/.cache/choc_install_files' and they don't need to be downloaded again if you create a new prefix)
 
 Optional:
-- Install (rudimentary) powershell 5.1 via winetricks (see below) to get better compability: occasionally a chocolatey install scripts might fail as it is written for Windows Powershell (not for Powershell Core). Installing powershell 5.1 and enabling builtin powershell host probably helps workaround this:
-    - winetricks ps51 (takes very long time to complete!)
+- Install (rudimentary) powershell 5.1 via winetricks (see below) to get better compability for scripts: occasionally a chocolatey install script might fail as it is written for Windows Powershell (not for Powershell Core). Installing powershell 5.1 and enabling builtin powershell host might help workaround this:
+    - winetricks ps51 (takes very long time to complete!, see below)
     - choco.exe feature enable --name=powershellHost 
   
 ![Screenshot from 2022-08-26 12-31-18](https://user-images.githubusercontent.com/26839562/186885380-d5a617c4-9cf4-4831-a475-2bd85a3b5784.png)
@@ -56,7 +56,7 @@ About winetricks(.ps1):
 - If you don't call it ('winetricks' in powershell-console) , nothing gets downloaded so no overhead there. 
 - A lot of verbs (like powershell 5.1) need a few essential files to extract stuff from msu packages. Installing these essential files requires first huge downloads , and  takes lots of time during 1st time usage. But after things are cached it goes quickly . For example if you might wanna try 'winetricks ps51' first, it will take about  approx. 15 minutes. Some other verbs might take 5 minutes on first time usage. But after you called a verb once this nuisance is gone.
 - Files are cached in directory '$HOME/.cache/winetrickxs'. If you call all verbs it'll take about 800 MB there.
-- Hopefully some better 64-bit support for some verbs.
+- Hopefully some better 64-bit support for various verbs.
 - Possibility to extract a file and (try) install from an msu file. Do 'winetricks install_dll_from_msu' to see how.
 - A rudimentary Powershell 5.1.
 - experimental dotnet481 installation, and dotnet35 (might be needed by apps not satisfied with current dotnet48 installation).
@@ -67,14 +67,14 @@ About winetricks(.ps1):
 - A special verb to install requirements to get Affinity Photo/Designer started.
 - Special verb (winetricks vs19)to install a working Visual Studio Community 2019 (see screenshot, >10 mins to install and requires approx. 10GB!, after install start devenv.exe from directory c:\Program\ Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE/)
   ![screenshot](https://github.com/PietJankbal/Chocolatey-for-wine/assets/26839562/d576a619-c752-4eb1-81c2-6f6b66b50ff6)
-- Special verb to get access to various unix commands like grep,sed, file, less etc. etc. (winetricks git.portable, Disclaimer: some commands do not yet work due to wine bugs
+- Special verb to get access to various unix commands like grep,sed, file, less, curl etc. etc. (winetricks git.portable, Disclaimer: some commands do not yet work due to wine bugs
 - Also included a few powershell scripts adapted from codesnippets found on the internet:
     - How to embed an exe in a powershell script via Invoke-ReflectivePEInjection (the exe won't show up in tasklist).
     - How to make fancy messageboxes
     - Convert a powershell script (ps1) into an exe.
     - And a few other
  
-    - 
+     
 About system programs:
 
 Feature is added to replace simple system programs like for example setx.exe by a function in
@@ -98,5 +98,5 @@ Notes:
 Compile:
   - If you want to compile yourself instead of downloading binaries: see compilation instructions in mainv1.c  
   - Then copy choc_install.ps1 into the same directory
-  - Then do 'wine ChoCinstaller_0.5o.715.exe'
+  - Then do 'wine ChoCinstaller_0.5a.735.exe'
   
