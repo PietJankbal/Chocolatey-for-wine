@@ -148,7 +148,7 @@ if( !( (Get-FileHash C:\windows\system32\user32.dll).Hash -eq (Get-FileHash C:\w
     Copy-Item $env:SystemRoot\\system32\\user32.dll $env:SystemRoot\\system32\\user32dummy.dll -force -erroraction silentlycontinue
 }
 
-if( [System.Convert]::ToDecimal( $ntdll::wine_get_version())  -lt 7.16 ){ <# hack incompatible for older wine versions#>
+if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) )  -lt 7.16 ){ <# hack incompatible for older wine versions#>
     $null = New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ConEmu64.exe\\DllOverrides' -force -Name 'user32' -Value 'builtin' -PropertyType 'String'}
 else {
      $null = New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ConEmu64.exe\\DllOverrides' -force -Name 'user32' -Value 'native,builtin' -PropertyType 'String'}
@@ -206,6 +206,7 @@ $profile_winetricks_caller_ps1 = @'
                "msado15","MDAC and Jet40: some minimal mdac dlls (msado15.dll, oledb32.dll, dao360.dll)",`
                "expand", "native expand.exe, it's renamed to expnd_.exe to not interfere with wine's expand",`
                "wmp", "some wmp (windows media player) dlls, makes e-Sword start",`
+               "wmf", "some media foundation dlls",`
                "vcrun2019", "vcredist2019 (concrt140.dll, msvcp140.dll, msvcp140_1.dll, msvcp140_2.dll, vcruntime140.dll, vcruntime140_1.dll, ucrtbase.dll)",`
                "mshtml", "experimental, dangerzone, might break things, only use on a per app base;ie8 dlls: mshtml.dll, ieframe.dll, urlmon.dll, jscript.dll, wininet.dll, shlwapi.dll, iertutil.dll",`
                "wine_hnetcfg", "wine hnetcfg.dll with fix for https://bugs.winehq.org/show_bug.cgi?id=45432",`
@@ -219,6 +220,7 @@ $profile_winetricks_caller_ps1 = @'
                "sapi", "Speech api (sapi.dll), experimental, makes Balabolka work",`
                "ps51", "rudimentary PowerShell 5.1 (downloads yet another huge amount of Mb`s!)",`
                "ps51_ise", "PowerShell 5.1 Integrated Scripting Environment",`
+               "bitstransfer", "Add Bitstransfer cmdlets to Powershell 5.1",`            
                "msvbvm60", "msvbvm60.dll",`
                "msdelta", "msdelta.dll",`
                "xmllite", "xmllite.dll",`
@@ -824,7 +826,7 @@ function QPR.ping
     <# Backup files if wanted #>
     if (Test-Path 'env:SAVEINSTALLFILES') { 
         New-Item -Path "$env:WINEHOMEDIR\.cache\".substring(4) -Name "choc_install_files" -ItemType "directory" -ErrorAction SilentlyContinue
-        foreach($i in 'net48', 'PowerShell-7.1.5-win-x64.msi', 'arial32.exe', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2201-x64.exe', 'sevenzipextractor.1.0.17.nupkg', 'ConEmuPack.230724.7z') {
+        foreach($i in 'net48', 'PowerShell-7.3.5-win-x64.msi', 'arial32.exe', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2201-x64.exe', 'sevenzipextractor.1.0.17.nupkg', 'ConEmuPack.230724.7z') {
             Copy-Item -Path $env:TEMP\\$i -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4) -recurse -force }
     }
     <# install wine robocopy and (custom) wine tasksch.dll #>
