@@ -1,7 +1,15 @@
 patch by Craig Schulstad &lt;craigaschulstad(a)gmail.com&gt;
-
 Add rudimentary mui resource support
 
+patch by Fabian Maurer:
+Basic hack that helps for chromium issues
+
+https://bugs.winehq.org/show_bug.cgi?id=29384
+https://bugs.winehq.org/attachment.cgi?id=75727&action=diff
+
+patch by Mark Jansen:
+
+https://gitlab.winehq.org/wine/wine/-/merge_requests/1263
 diff --git a/dlls/kernelbase/loader.c b/dlls/kernelbase/loader.c
 index 59b91596f13..2b4b72e6ba5 100644
 --- a/dlls/kernelbase/loader.c
@@ -217,3 +225,43 @@ index 59b91596f13..2b4b72e6ba5 100644
      if (!set_ntstatus( LdrAccessResource( module, (IMAGE_RESOURCE_DATA_ENTRY *)rsrc, &ret, NULL )))
          return 0;
      return ret;
+diff --git a/dlls/kernelbase/memory.c b/dlls/kernelbase/memory.c
+index 4f4bba9a13b..de42395b33b 100644
+--- a/dlls/kernelbase/memory.c
++++ b/dlls/kernelbase/memory.c
+@@ -481,7 +481,9 @@ BOOL WINAPI DECLSPEC_HOTPATCH  VirtualLock( void *addr, SIZE_T size )
+  */
+ BOOL WINAPI DECLSPEC_HOTPATCH VirtualProtect( void *addr, SIZE_T size, DWORD new_prot, DWORD *old_prot )
+ {
+-    return VirtualProtectEx( GetCurrentProcess(), addr, size, new_prot, old_prot );
++    BOOL ret = VirtualProtectEx( GetCurrentProcess(), addr, size, new_prot, old_prot );
++    if (*old_prot == PAGE_WRITECOPY) *old_prot = PAGE_READWRITE;
++    return ret;
+ }
+ 
+ 
+diff --git a/dlls/kernelbase/version.c b/dlls/kernelbase/version.c
+index 0636634badb..fee18b26b4b 100644
+--- a/dlls/kernelbase/version.c
++++ b/dlls/kernelbase/version.c
+@@ -1069,6 +1069,7 @@ static BOOL VersionInfo16_QueryValue( const VS_VERSION_INFO_STRUCT16 *info, LPCS
+ static BOOL VersionInfo32_QueryValue( const VS_VERSION_INFO_STRUCT32 *info, LPCWSTR lpSubBlock,
+                                       LPVOID *lplpBuffer, UINT *puLen, BOOL *pbText )
+ {
++    PVOID Ptr;
+     TRACE("lpSubBlock : (%s)\n", debugstr_w(lpSubBlock));
+ 
+     while ( *lpSubBlock )
+@@ -1100,7 +1101,11 @@ static BOOL VersionInfo32_QueryValue( const VS_VERSION_INFO_STRUCT32 *info, LPCW
+     }
+ 
+     /* Return value */
+-    *lplpBuffer = VersionInfo32_Value( info );
++    Ptr = VersionInfo32_Value(info);
++    if ((PBYTE)Ptr >= ((PBYTE)info + info->wLength))
++        Ptr = (WCHAR*)info->szKey + wcslen(info->szKey);
++
++    *lplpBuffer = Ptr;
+     if (puLen)
+         *puLen = info->wValueLength;
+     if (pbText)
