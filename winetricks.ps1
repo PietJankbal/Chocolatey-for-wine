@@ -270,8 +270,8 @@ function func_wsh57
     foreach($i in 'dispex.dll', 'jscript.dll', 'scrobj.dll', 'scrrun.dll', 'vbscript.dll', 'msscript.ocx', 'wshom.ocx', 'wscript.exe', 'cscript.exe') { dlloverride 'native' $i }
 
     foreach($i in 'msscript.ocx', 'jscript.dll', 'scrobj.dll', 'scrrun.dll', 'vbscript.dll', 'wshcon.dll', 'wshom.ocx', 'dispex.dll') {
-        & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\$i"
-        & "$env:systemroot\\system32\\regsvr32"  "$env:systemroot\\system32\\$i" }
+        & "$env:systemroot\\syswow64\\regsvr32" /s "$env:systemroot\\syswow64\\$i"
+        & "$env:systemroot\\system32\\regsvr32" /s "$env:systemroot\\system32\\$i" }
 
 } <# end wsh57 #>
 
@@ -344,23 +344,23 @@ function func_msado15
 
     foreach($i in 'msado15', 'oledb32') { dlloverride 'native' $i }
 
-    & "$env:systemroot\\system32\\regsvr32"  "$env:CommonProgramFiles\\System\\ADO\\msado15.dll"
-    & "$env:systemroot\\syswow64\\regsvr32"  "${env:CommonProgramFiles`(x86`)}\\System\\ADO\\msado15.dll"
-    & "$env:systemroot\\system32\\regsvr32"  "$env:CommonProgramFiles\\System\\ADO\\msadox.dll"
-    & "$env:systemroot\\syswow64\\regsvr32"  "${env:CommonProgramFiles`(x86`)}\\System\\ADO\\msadox.dll"
-    & "$env:systemroot\\system32\\regsvr32"  "$env:CommonProgramFiles\\System\\ADO\\msadrh15.dll"
-    & "$env:systemroot\\syswow64\\regsvr32"  "${env:CommonProgramFiles`(x86`)}\\System\\ADO\\msadrh15.dll"
-    & "$env:systemroot\\system32\\regsvr32"  "$env:CommonProgramFiles\\System\\OLE DB\\oledb32.dll"
-    & "$env:systemroot\\syswow64\\regsvr32"  "${env:CommonProgramFiles`(x86`)}\\System\\OLE DB\\oledb32.dll"
-    & "$env:systemroot\\system32\\regsvr32"  "$env:CommonProgramFiles\\System\\MSADC\\msadce.dll"
-    & "$env:systemroot\\syswow64\\regsvr32"  "${env:CommonProgramFiles`(x86`)}\\System\\MSADC\\msadce.dll"
+    & "$env:systemroot\\system32\\regsvr32" /s "$env:CommonProgramFiles\\System\\ADO\\msado15.dll"
+    & "$env:systemroot\\syswow64\\regsvr32" /s "${env:CommonProgramFiles`(x86`)}\\System\\ADO\\msado15.dll"
+    & "$env:systemroot\\system32\\regsvr32" /s "$env:CommonProgramFiles\\System\\ADO\\msadox.dll"
+    & "$env:systemroot\\syswow64\\regsvr32" /s "${env:CommonProgramFiles`(x86`)}\\System\\ADO\\msadox.dll"
+    & "$env:systemroot\\system32\\regsvr32" /s "$env:CommonProgramFiles\\System\\ADO\\msadrh15.dll"
+    & "$env:systemroot\\syswow64\\regsvr32" /s "${env:CommonProgramFiles`(x86`)}\\System\\ADO\\msadrh15.dll"
+    & "$env:systemroot\\system32\\regsvr32" /s "$env:CommonProgramFiles\\System\\OLE DB\\oledb32.dll"
+    & "$env:systemroot\\syswow64\\regsvr32" /s "${env:CommonProgramFiles`(x86`)}\\System\\OLE DB\\oledb32.dll"
+    & "$env:systemroot\\system32\\regsvr32" /s "$env:CommonProgramFiles\\System\\MSADC\\msadce.dll"
+    & "$env:systemroot\\syswow64\\regsvr32" /s "${env:CommonProgramFiles`(x86`)}\\System\\MSADC\\msadce.dll"
     foreach($i in 'msjet40.dll', 'msjetoledb40.dll', 'msrd2x40.dll', 'msrd3x40.dll', 'msexch40.dll', 'msexcl40.dll', 'msltus40.dll', 'mspbde40.dll', 'mstext40.dll', 'msxbde40.dll', 'msjtes40.dll') {
-        & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\$i" }
+        & "$env:systemroot\\syswow64\\regsvr32" /s "$env:systemroot\\syswow64\\$i" }
 #    & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\msjet40.dll"
 #    & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\msrd2x40.dll"
 #    & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\msrd3x40.dll"
 #    & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\msjetoledb40.dll"
-    & "$env:systemroot\\syswow64\\regsvr32"  "${env:CommonProgramFiles`(x86`)}\\Microsoft Shared\\DAO\\dao360.dll"
+    & "$env:systemroot\\syswow64\\regsvr32" /s "${env:CommonProgramFiles`(x86`)}\\Microsoft Shared\\DAO\\dao360.dll"
 
 $regkey = @"
 REGEDIT4
@@ -627,23 +627,311 @@ function func_wmp
     if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
         check_msu_sanity $url $cab;
         foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
-        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\amd64*" "$cachedir\$(verb)\x86*" "$cachedir\$(verb)\amd64*" "$cachedir\$(verb)\wow64*"; quit?('7z')
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\amd64*" "$cachedir\$(verb)\x86*" "$cachedir\$(verb)\wow64*"; quit?('7z')
 
         foreach($i in 'amd64', 'x86', 'wow64') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" }
     }
 
     Remove-Item -Force "$cachedir\$(verb)\$cab" -ErrorAction SilentlyContinue
 
-    7z e "$cachedir\$(verb)\$(verb).7z" amd64_microsoft-windows-directx-directinput_31bf3856ad364e35_10.0.16299.461_none_2b0b3955768ab66e\* -o"$env:systemroot\\system32" -aoa
-    7z e "$cachedir\$(verb)\$(verb).7z" x86_microsoft-windows-directx-directinput_31bf3856ad364e35_10.0.16299.461_none_ceec9dd1be2d4538\* -o"$env:systemroot\\syswow64" -aoa ; quit?('7z')
+    7z e "$cachedir\$(verb)\$(verb).7z" amd64_*\* -o"$env:systemroot\\system32" -aoa
+    7z e "$cachedir\$(verb)\$(verb).7z" x86_*\* -o"$env:systemroot\\syswow64" -aoa
+    7z e "$cachedir\$(verb)\$(verb).7z" wow64_*\* -o"$env:systemroot\\syswow64" -aoa ; quit?('7z')
   
     foreach($i in 'wmp') { dlloverride 'native' $i }
 
     foreach($i in 'wmp', 'wmpdxm') {
-        & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\$i"
-        & "$env:systemroot\\system32\\regsvr32"  "$env:systemroot\\system32\\$i" }
+        & "$env:systemroot\\syswow64\\regsvr32" /s "$env:systemroot\\syswow64\\$i.dll"
+        & "$env:systemroot\\system32\\regsvr32" /s "$env:systemroot\\system32\\$i.dll" }
 } <# end wmp #>
- 
+
+function func_wmf
+{
+    $url = "http://download.windowsupdate.com/d/msdownload/update/software/updt/2016/05/windows6.1-kb3125574-v4-x64_2dafb1d203c8964239af3048b5dd4b1264cd93b9.msu"
+    $cab = "Windows6.1-KB3125574-v4-x64.cab"
+    $sourcefile = @('colorcnv.dll', 'mf.dll', 'mfps.dll', 'mferror.dll', 'mfplat.dll', 'mfplay.dll', 'mfreadwrite.dll', 'msmpeg2adec.dll', 'msmpeg2vdec.dll', 'sqmapi.dll', 'wmadmod.dll', 'wmvdecod.dll', 'wow64_microsoft-windows-mediafoundation_31bf3856ad364e35_6.1.7601.23403_none_056d1a0e70d89a35.manifest', 'amd64_microsoft-windows-mediafoundation_31bf3856ad364e35_6.1.7601.23403_none_fb186fbc3c77d83a.manifest')
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
+        check_msu_sanity $url $cab;
+        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\amd64_*" "$cachedir\$(verb)\x86_*" "$cachedir\$(verb)\wow64_*"; quit?('7z')
+    }
+
+    foreach($i in "$cab", "amd64", "x86", "wow64") { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" -Erroraction SilentlyContinue }
+
+    check_aik_sanity;
+  
+    7z e "$cachedir\$(verb)\$(verb).7z" amd64_*\* -o"$env:systemroot\\system32" -aoa
+    7z e "$cachedir\$(verb)\$(verb).7z" x86_*\* -o"$env:systemroot\\syswow64" -aoa
+    7z e "$cachedir\$(verb)\$(verb).7z" wow64_*\* -o"$env:systemroot\\syswow64" -aoa ; quit?('7z')
+    
+    foreach($i in 'mf', 'mferror', 'mfplat', <# 'mfplay',#> 'mfreadwrite', 'msmpeg2adec', 'msmpeg2vdec') { dlloverride 'native' $i }
+     
+    foreach($i in 'colorcnv', 'msmpeg2adec', 'msmpeg2vdec', 'wmadmod', 'wmvdecod', 'mfps' <#, 'mf'#>) {
+        & "$env:systemroot\\syswow64\\regsvr32" /s "$env:systemroot\\syswow64\\$i.dll"
+        & "$env:systemroot\\system32\\regsvr32" /s "$env:systemroot\\system32\\$i.dll" }
+        
+        $mfregkey = @"
+REGEDIT4
+[HKEY_LOCAL_MACHINE\Software\Wine\LicenseInformation]
+"msmpeg2adec-AACDecoderV2AddInEnable"=dword:00000001
+"msmpeg2adec-AACDecoderV2InSKU"=dword:00000001
+"msmpeg2adec-DolbyDigitalDecoderV2AddInEnable"=dword:00000001
+"msmpeg2adec-DolbyDigitalDecoderV2InSKU"=dword:00000001
+"msmpeg2vdec-H264VideoDecoderV2AddInEnable"=dword:00000001
+"msmpeg2vdec-H264VideoDecoderV2InSKU"=dword:00000001
+"msmpeg2vdec-MPEG2VideoDecoderV2AddInEnable"=dword:00000001
+"msmpeg2vdec-MPEG2VideoDecoderV2InSKU"=dword:00000001
+
+[HKEY_CLASSES_ROOT\CLSID\{271C3902-6095-4c45-A22F-20091816EE9E}]
+@="MPEG4 Byte Stream Handler"
+
+[HKEY_CLASSES_ROOT\CLSID\{271C3902-6095-4c45-A22F-20091816EE9E}\InprocServer32]
+@="mf.dll"
+"ThreadingModel"="Both"
+
+[HKEY_CLASSES_ROOT\CLSID\{477EC299-1421-4bdd-971F-7CCB933F21AD}]
+@="File Scheme Handler"
+
+[HKEY_CLASSES_ROOT\CLSID\{477EC299-1421-4bdd-971F-7CCB933F21AD}\InprocServer32]
+@="mf.dll"
+"ThreadingModel"="Both"
+
+[HKEY_CLASSES_ROOT\CLSID\{48e2ed0f-98c2-4a37-bed5-166312ddd83f}]
+@="MFReadWrite Class Factory"
+
+[HKEY_CLASSES_ROOT\CLSID\{48e2ed0f-98c2-4a37-bed5-166312ddd83f}\InprocServer32]
+@="mfreadwrite.dll"
+"ThreadingModel"="Both"
+"@
+
+    reg_edit $mfregkey
+    
+        $wmfregkey = @"
+REGEDIT4
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation]
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers]
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\.3g2]
+"{271C3902-6095-4c45-A22F-20091816EE9E}"="MPEG4 Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\.3gp]
+"{271C3902-6095-4c45-A22F-20091816EE9E}"="MPEG4 Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\.3gp2]
+"{271C3902-6095-4c45-A22F-20091816EE9E}"="MPEG4 Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\.3gpp]
+"{271C3902-6095-4c45-A22F-20091816EE9E}"="MPEG4 Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\.aac]
+"{926f41f7-003e-4382-9e84-9e953be10562}"="ADTS Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\.adt]
+"{926f41f7-003e-4382-9e84-9e953be10562}"="ADTS Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\.adts]
+"{926f41f7-003e-4382-9e84-9e953be10562}"="ADTS Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\.asf]
+"{41457294-644C-4298-A28A-BD69F2C0CF3B}"="ASF Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\.avi]
+"{7AFA253E-F823-42f6-A5D9-714BDE467412}"="AVI Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\.dvr-ms]
+"{a8721937-e2fb-4d7a-a9ee-4eb08c890b6e}"="MF SBE Source ByteStreamHandler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\.m4a]
+"{271C3902-6095-4c45-A22F-20091816EE9E}"="MPEG4 Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\.m4v]
+"{271C3902-6095-4c45-A22F-20091816EE9E}"="MPEG4 Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\.mov]
+"{271C3902-6095-4c45-A22F-20091816EE9E}"="MPEG4 Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\.mp3]
+"{A82E50BA-8E92-41eb-9DF2-433F50EC2993}"="MP3 Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\.mp4]
+"{271C3902-6095-4c45-A22F-20091816EE9E}"="MPEG4 Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\.mp4v]
+"{271C3902-6095-4c45-A22F-20091816EE9E}"="MPEG4 Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\.nsc]
+"{B084785C-DDE0-4d30-8CA8-05A373E185BE}"="NSC Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\.sami]
+"{7A56C4CB-D678-4188-85A8-BA2EF68FA10D}"="SAMI Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\.smi]
+"{7A56C4CB-D678-4188-85A8-BA2EF68FA10D}"="SAMI Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\.wav]
+"{42C9B9F5-16FC-47ef-AF22-DA05F7C842E3}"="WAV Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\.wm]
+"{41457294-644C-4298-A28A-BD69F2C0CF3B}"="ASF Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\.wma]
+"{41457294-644C-4298-A28A-BD69F2C0CF3B}"="ASF Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\.wmv]
+"{41457294-644C-4298-A28A-BD69F2C0CF3B}"="ASF Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\audio/3gpp]
+"{271C3902-6095-4c45-A22F-20091816EE9E}"="MPEG4 Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\audio/3gpp2]
+"{271C3902-6095-4c45-A22F-20091816EE9E}"="MPEG4 Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\audio/aac]
+"{926f41f7-003e-4382-9e84-9e953be10562}"="ADTS Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\audio/aacp]
+"{926f41f7-003e-4382-9e84-9e953be10562}"="ADTS Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\audio/L16]
+"{3FFB3B8C-EB99-472b-8902-E1C1B05F07CF}"="LPCM Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\audio/mp4]
+"{271C3902-6095-4c45-A22F-20091816EE9E}"="MPEG4 Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\audio/mpeg]
+"{A82E50BA-8E92-41eb-9DF2-433F50EC2993}"="MP3 Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\audio/vnd.dlna.adts]
+"{926f41f7-003e-4382-9e84-9e953be10562}"="ADTS Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\audio/wav]
+"{42C9B9F5-16FC-47ef-AF22-DA05F7C842E3}"="WAV Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\audio/x-aac]
+"{926f41f7-003e-4382-9e84-9e953be10562}"="ADTS Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\audio/x-mp3]
+"{A82E50BA-8E92-41eb-9DF2-433F50EC2993}"="MP3 Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\audio/x-mpeg]
+"{A82E50BA-8E92-41eb-9DF2-433F50EC2993}"="MP3 Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\audio/x-ms-wma]
+"{41457294-644C-4298-A28A-BD69F2C0CF3B}"="ASF Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\audio/x-wav]
+"{42C9B9F5-16FC-47ef-AF22-DA05F7C842E3}"="WAV Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\video/3gpp]
+"{271C3902-6095-4c45-A22F-20091816EE9E}"="MPEG4 Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\video/3gpp2]
+"{271C3902-6095-4c45-A22F-20091816EE9E}"="MPEG4 Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\video/avi]
+"{7AFA253E-F823-42f6-A5D9-714BDE467412}"="AVI Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\video/mp4]
+"{271C3902-6095-4c45-A22F-20091816EE9E}"="MPEG4 Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\video/msvideo]
+"{7AFA253E-F823-42f6-A5D9-714BDE467412}"="AVI Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\video/x-ms-asf]
+"{41457294-644C-4298-A28A-BD69F2C0CF3B}"="ASF Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\video/x-ms-wm]
+"{41457294-644C-4298-A28A-BD69F2C0CF3B}"="ASF Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\video/x-ms-wmv]
+"{41457294-644C-4298-A28A-BD69F2C0CF3B}"="ASF Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\ByteStreamHandlers\video/x-msvideo]
+"{7AFA253E-F823-42f6-A5D9-714BDE467412}"="AVI Byte Stream Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\HardwareMFT]
+"EnableDecoders"=dword:00000000
+"EnableEncoders"=dword:00000001
+"EnableVideoProcessors"=dword:00000001
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\Platform]
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\Platform\EVR]
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\Platform\EVR\{16260968-C914-4aa1-8736-B7A6F3C5AE9B}]
+"SWVideoDecodePowerLevel"=dword:00000000
+"OptimizationFlags"=dword:00000590
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\Platform\EVR\{5C67A112-A4C9-483f-B4A7-1D473BECAFDC}]
+"SWVideoDecodePowerLevel"=dword:00000064
+"OptimizationFlags"=dword:00000a10
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\Platform\EVR\{651288E5-A7ED-4076-A96B-6CC62D848FE1}]
+"SWVideoDecodePowerLevel"=dword:00000032
+"OptimizationFlags"=dword:00000590
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\RemoteDesktop]
+"PluginCLSID"="{636c15cf-df63-4790-866a-117163d10a46}"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\SchemeHandlers]
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\SchemeHandlers\file:]
+"{477EC299-1421-4bdd-971F-7CCB933F21AD}"="File Scheme Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\SchemeHandlers\http:]
+"{9EC4B4F9-3029-45ad-947B-344DE2A249E2}"="Urlmon Scheme Handler"
+"{E9F4EBAB-D97B-463e-A2B1-C54EE3F9414D}"="Net Scheme Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\SchemeHandlers\httpd:]
+"{44CB442B-9DA9-49df-B3FD-023777B16E50}"="Http Scheme Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\SchemeHandlers\httpnd:]
+"{2EEEED04-0908-4cdb-AF8F-AC5B768A34C9}"="Drm Scheme Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\SchemeHandlers\https:]
+"{37A61C8B-7F8E-4d08-B12B-248D73E9AB4F}"="Secure Http Scheme Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\SchemeHandlers\httpsd:]
+"{37A61C8B-7F8E-4d08-B12B-248D73E9AB4F}"="Secure Http Scheme Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\SchemeHandlers\httpt:]
+"{E9F4EBAB-D97B-463e-A2B1-C54EE3F9414D}"="Net Scheme Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\SchemeHandlers\httpu:]
+"{E9F4EBAB-D97B-463e-A2B1-C54EE3F9414D}"="Net Scheme Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\SchemeHandlers\mcast:]
+"{E9F4EBAB-D97B-463e-A2B1-C54EE3F9414D}"="Net Scheme Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\SchemeHandlers\mms:]
+"{E9F4EBAB-D97B-463e-A2B1-C54EE3F9414D}"="Net Scheme Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\SchemeHandlers\rtsp:]
+"{E9F4EBAB-D97B-463e-A2B1-C54EE3F9414D}"="Net Scheme Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\SchemeHandlers\rtspt:]
+"{E9F4EBAB-D97B-463e-A2B1-C54EE3F9414D}"="Net Scheme Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\SchemeHandlers\rtspu:]
+"{E9F4EBAB-D97B-463e-A2B1-C54EE3F9414D}"="Net Scheme Handler"
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows Media Foundation\SchemeHandlers\sdp:]
+"{E9F4EBAB-D97B-463e-A2B1-C54EE3F9414D}"="Net Scheme Handler"
+
+"@
+
+   # reg_edit $wmfregkey
+   
+   7z e "$cachedir\$(verb)\$(verb).7z" amd64_microsoft-windows-mediafoundation_31bf3856ad364e35_6.1.7601.23403_none_fb186fbc3c77d83a.manifest -o"$env:systemroot\\system32" -aoa
+   7z e "$cachedir\$(verb)\$(verb).7z" wow64_microsoft-windows-mediafoundation_31bf3856ad364e35_6.1.7601.23403_none_056d1a0e70d89a35.manifest -o"$env:systemroot\\syswow64" -aoa
+
+   write_keys_from_manifest "$env:systemroot\\system32\\amd64_microsoft-windows-mediafoundation_31bf3856ad364e35_6.1.7601.23403_none_fb186fbc3c77d83a.manifest"
+   write_keys_from_manifest "$env:systemroot\\syswow64\\wow64_microsoft-windows-mediafoundation_31bf3856ad364e35_6.1.7601.23403_none_056d1a0e70d89a35.manifest"
+
+} <# end wmf #>
+
 function func_msdelta <#  msdelta and dpx from windows 10 #>
 {
     $url = "https://catalog.s.download.windowsupdate.com/c/msdownload/update/software/updt/2018/08/windows10.0-kb4343893-x64_bdae9c9c28d4102a673a24d37c371ed73d053338.msu"
@@ -697,11 +985,11 @@ function func_sapi <# Speech api #>
     iex "msiexec /i $cachedir\\$dldir\\64\\SpeechPlatformRuntime.msi INSTALLDIR='$env:SystemRoot\\system32\\Speech\\Engines' /q "
     iex "msiexec /i $cachedir\\$dldir\\32\\SpeechPlatformRuntime.msi INSTALLDIR='$env:SystemRoot\\syswow64\\Speech\\Engines' /q "
 
-    foreach ($i in 'sapi') { dlloverride 'native' $i } 
+    foreach ($i in 'sapi', 'msttsengine') { dlloverride 'native' $i } 
 
     foreach($i in 'sapi.dll') {
-        & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\Speech\\Common\\$i"
-        & "$env:systemroot\\system32\\regsvr32"  "$env:systemroot\\system32\\Speech\\Common\\$i" }
+        & "$env:systemroot\\syswow64\\regsvr32" /s "$env:systemroot\\syswow64\\Speech\\Common\\$i"
+        & "$env:systemroot\\system32\\regsvr32" /s "$env:systemroot\\system32\\Speech\\Common\\$i" }
 
     w_download_to "$dldir" "https://download.microsoft.com/download/4/0/D/40D6347A-AFA5-417D-A9BB-173D937BEED4/MSSpeech_TTS_en-US_ZiraPro.msi" "MSSpeech_TTS_en-US_ZiraPro.msi"
 
@@ -753,9 +1041,9 @@ function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
                     'microsoft.powershell.security.dll', 'microsoft.wsman.runtime.dll', 'microsoft.wsman.management.dll', 'microsoft.powershell.graphicalhost.dll',`
                     'powershell.exe', 'microsoft.management.infrastructure.native.dll', 'microsoft.powershell.management.psd1', 'microsoft.powershell.utility.psd1',`
                     'microsoft.powershell.utility.psm1', 'microsoft.powershell.archive.psm1', 'microsoft.powershell.archive.psd1', 'microsoft.powershell.diagnostics.psd1',`
-                    'microsoft.powershell.security.psd1')
-
-    if("$($ntdll::wine_get_build_id())".Contains('(Staging)')) { #Temporary workaround: In staging running ps51.exe frequently hangs in recent versions (e.g. 8.15)
+                    'microsoft.powershell.security.psd1', 'Policy.1.0.System.Management.Automation.config', 'Policy.1.0.System.Management.Automation.dll')
+    <# #Temporary workaround: In staging running ps51.exe frequently hangs in recent versions (e.g. 8.15)
+    if("$($ntdll::wine_get_build_id())".Contains('(Staging)')) { 
         func_wine_shell32
         if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe'}
         if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe\\DllOverrides'}
@@ -765,6 +1053,10 @@ function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
         if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe'}
         if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe\\DllOverrides'}
         New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe\\DllOverrides' -Name 'shell32' -Value 'builtin' -PropertyType 'String' -force
+    }
+    #>
+    if( [System.IO.File]::Exists( $([IO.Path]::Combine($cachedir,  $(verb), "$(verb).7z") )) -and !($(7z l Z:\home\louis\.cache\winetrickxs\ps51\ps51.7z |findstr /C:' 30 files'))  ) {
+        Remove-Item -Force  "$cachedir\$(verb)\$(verb).7z" 
     }
     
     if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb), "$(verb).7z") ) ) {
@@ -783,7 +1075,14 @@ function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
 
         foreach ($i in (gci "$cachedir\$(verb)\msil_*\*").FullName ) {
          
-            $assembly=[System.Reflection.AssemblyName]::GetAssemblyName($i)
+            
+            if("$(([System.IO.FileInfo]$i).Extension)" -eq '.config') {
+                $assembly=[System.Reflection.AssemblyName]::GetAssemblyName($($i -replace '.config' , '.dll'))
+            }
+            else {
+                $assembly=[System.Reflection.AssemblyName]::GetAssemblyName($i)
+            }
+            
             $publickeytoken = ($assembly.GetPublicKeyToken() |ForEach-Object ToString x2) -join '' 
       
             $destdir = "$env:SystemRoot" + "\" + "Microsoft.NET\assembly\GAC_MSIL\" + $assembly.Name + '\' + 'v4.0_' + $assembly.Version.ToString() + '__' + $publickeytoken
@@ -846,9 +1145,9 @@ $profile51 = @"
 #FIXME: following causes a hang when running pwsh from ps51 console:
 #`$env:PSModulepath = 'c:\windows\system32\WindowsPowershell\v1.0\Modules' + `$env:PSModulepath
 
-`$env:PSMOdulePath="`$env:SystemRoot\WindowsPowershell\v1.0\Modules"
+`$env:PSMOdulePath="`$env:SystemRoot\system32\WindowsPowershell\v1.0\Modules"
 
-Import-Module `$env:SystemRoot\system32\WindowsPowerShell\v1.0\Modules\microsoft.powershell.utility\microsoft.powershell.utility.psm1
+#Import-Module `$env:SystemRoot\system32\WindowsPowerShell\v1.0\Modules\microsoft.powershell.utility\microsoft.powershell.utility.psm1
 
 `$env:PS51 = 1
 
@@ -1052,6 +1351,66 @@ REGEDIT4
 	  
 } <# end windows.ui.xaml #>
 
+function func_bitstransfer <# bitstransfer cmdlets for ps51 #>
+{
+    $url = "http://download.windowsupdate.com/c/msdownload/update/software/updt/2016/11/windows10.0-kb3205436-x64_45c915e7a85a7cc7fc211022ecd38255297049c3.msu"
+    $cab = "Windows10.0-KB3205436-x64.cab"
+    $sourcefile = @('BitsTransfer.psd1', 'BitsTransfer.Format.ps1xml', 'Microsoft.BackgroundIntelligentTransfer.Management.Interop.dll', 'Microsoft.BackgroundIntelligentTransfer.Management.dll')
+
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
+
+        Write-Host -foregroundcolor yellow "**********************************************************"
+        Write-Host -foregroundcolor yellow "*                                                        *"
+        Write-Host -foregroundcolor yellow "*        Downloading file(s) and extracting might        *"
+        Write-Host -foregroundcolor yellow "*        take several minutes!                           *"
+        Write-Host -foregroundcolor yellow "*        Patience please!                                *"
+        Write-Host -foregroundcolor yellow "*                                                        *"
+        Write-Host -foregroundcolor yellow "**********************************************************"
+        
+        $httpClient = New-Object System.Net.Http.HttpClient
+        $httpClient.Timeout = 9000000000 <# 15 min. #>
+        $response = $httpClient.GetAsync($url)  <# or $response.Wait() ??? #>
+        $response.GetAwaiter().GetResult()
+        #$sevenZipStream = [System.IO.MemoryStream]::new(($response.Result.Content.ReadAsByteArrayAsync().Result))
+        Add-Type -path $env:systemroot\system32\WindowsPowerShell\v1.0\SevenZipExtractor.dll
+        $szExtractor = New-Object -TypeName SevenZipExtractor.ArchiveFile -ArgumentList @([System.IO.MemoryStream]::new(($response.Result.Content.ReadAsByteArrayAsync().Result)))
+
+        ($szextractor.Entries[1]).Extract($([IO.Path]::Combine($cachedir,  $(verb),  $cab)))
+
+        <# See below example howto extract to a new stream, from which yet another extraction has to done (e.g. extract msu from zip, then extract msu)   
+        $memStream = [System.IO.MemoryStream]::new()
+        ($szextractor.Entries[1]).Extract($memstream)
+        $newExtractor = New-Object -TypeName SevenZipExtractor.ArchiveFile -ArgumentList @([System.IO.MemoryStream]::new($memStream.ToArray()))
+        $newExtractor.Entries[7].Extract()  #>
+
+        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\amd64*" "$cachedir\$(verb)\wow*" "$cachedir\$(verb)\msil*"; quit?('7z')
+
+        foreach($i in 'amd64', 'x86', 'wow64', 'msil') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" }
+    }
+
+    Remove-Item -Force "$cachedir\$(verb)\$cab" -Recurse -ErrorAction SilentlyContinue
+
+    7z e "$cachedir\$(verb)\$(verb).7z" "amd64*\*" -o"$env:systemroot\\system32\\WindowsPowerShell\\v1.0\\Modules\\bitstransfer" -aoa
+    7z e "$cachedir\$(verb)\$(verb).7z" "wow64*\*" -o"$env:systemroot\\syswow64\\WindowsPowerShell\\v1.0\\Modules\\bitstransfer" -aoa
+ 
+    7z e "$cachedir\$(verb)\$(verb).7z" "msil*\*" -o"$env:TEMP\\msil" -aoa
+    
+    foreach ($i in (gci "$env:TEMP\\msil").FullName ) {
+         
+        $assembly=[System.Reflection.AssemblyName]::GetAssemblyName($i)
+        $publickeytoken = ($assembly.GetPublicKeyToken() |ForEach-Object ToString x2) -join '' 
+      
+        $destdir = "$env:SystemRoot" + "\" + "Microsoft.NET\assembly\GAC_MSIL\" + $assembly.Name + '\' + 'v4.0_' + $assembly.Version.ToString() + '__' + $publickeytoken
+
+	    7z e "$cachedir\$(verb)\$(verb).7z" "msil*\$(([System.IO.FileInfo]$i).name)" -o"$destdir" -aoa
+	}
+	        
+	Remove-Item -Force -Recurse "$env:TEMP\\msil" -ErrorAction SilentlyContinue
+	
+	func_wine_combase
+} <# end bitstransfer #>
+
 function func_uianimation <# experimental... #>
 {
     $url = "http://download.windowsupdate.com/c/msdownload/update/software/updt/2016/11/windows10.0-kb3205436-x64_45c915e7a85a7cc7fc211022ecd38255297049c3.msu"
@@ -1130,8 +1489,8 @@ function func_dshow
     foreach($i in 'amstream', 'qasf', 'qcap', 'qdvd', 'qedit' , 'quartz') { dlloverride 'native' $i }
 
     foreach($i in  'amstream.dll', 'qasf.dll', 'qcap.dll', 'qdvd.dll', 'qedit.dll' , 'quartz.dll') {
-        & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\$i"
-        & "$env:systemroot\\system32\\regsvr32"  "$env:systemroot\\system32\\$i" }
+        & "$env:systemroot\\syswow64\\regsvr32" /s "$env:systemroot\\syswow64\\$i"
+        & "$env:systemroot\\system32\\regsvr32" /s "$env:systemroot\\system32\\$i" }
 } <# end dshow #>
 
 function func_uiribbon
@@ -1162,8 +1521,8 @@ function func_uiribbon
     foreach($i in 'uiribbon') { dlloverride 'native' $i }
 
     foreach($i in  'uiribbon.dll') {
-        & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\$i"
-        & "$env:systemroot\\system32\\regsvr32"  "$env:systemroot\\system32\\$i" }
+        & "$env:systemroot\\syswow64\\regsvr32" /s "$env:systemroot\\syswow64\\$i"
+        & "$env:systemroot\\system32\\regsvr32" /s "$env:systemroot\\system32\\$i" }
 } <# end uiribbon #>
 
 function func_findstr
@@ -1482,8 +1841,8 @@ function func_directmusic <# native dmusic #>
     7z e "$cachedir\$(verb)\$(verb).7z" "-o$env:systemroot\syswow64" "32\*"  -y
     
     foreach ($i in 'dmusic.dll', 'dmband.dll', 'dmime.dll', 'dmloader.dll', 'dmscript.dll', 'dmstyle.dll', 'dmsynth.dll', 'dsound.dll', 'dswave.dll' <#, 'dcompos.dll', 'dmusic32.dll' #>) {
-        dlloverride 'native' $i
-        & "$env:systemroot\\syswow64\\regsvr32"  "$env:systemroot\\syswow64\\$i"
+        dlloverride 'native' $i.Split('.')[0]
+        & "$env:systemroot\\syswow64\\regsvr32" /s "$env:systemroot\\syswow64\\$i" /s
     }
 } <# end directmusic #>
 
@@ -1598,6 +1957,10 @@ function func_wine_msi <# wine msi with some hacks faking success #>
 
 function func_wine_kernelbase <# wine kernelbase with rudimentary MUI support  #>
 {
+    if( [System.IO.File]::Exists( $([IO.Path]::Combine($cachedir,  $(verb), "$(verb).7z") )) -and ( (Get-FileHash  "$cachedir\$(verb)\$(verb).7z").Hash -ne '4D79D6137E1273D8BAA128787C37B40F9DB9A217FDDEF96BBECEA3B072386E16') )  {
+        Remove-Item -Force  "$cachedir\$(verb)\$(verb).7z" 
+    }
+
     w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
 
     #https://4sysops.com/archives/how-to-create-an-open-file-folder-dialog-box-with-powershell/
@@ -2117,8 +2480,8 @@ function func_vs22
     func_wine_advapi32
     if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.16 ) {
         func_wine_ole32 }
-    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.13 ) {
-      func_wine_combase }
+    #if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.13 ) {
+      func_wine_combase #}
     func_wine_shell32
     func_wine_wintypes
     func_winmetadata
@@ -2134,7 +2497,7 @@ function func_vs22
 
     $startInfo = New-Object System.Diagnostics.ProcessStartInfo
     $startInfo.FileName = "$env:Temp\vs_community.exe"
-    $startInfo.Arguments = "--downloadThenInstall --quiet --productId Microsoft.VisualStudio.Product.Community  --channelId VisualStudio.17.Release  --channelUri `"https://aka.ms/vs/17/release/channel`" --add Microsoft.VisualStudio.Workload.NativeDesktop --includeRecommended --wait"
+    $startInfo.Arguments = "--downloadThenInstall --quiet --productId Microsoft.VisualStudio.Product.Community  --channelId VisualStudio.17.Release  --channelUri `"https://aka.ms/vs/17/release/channel`" --add Microsoft.VisualStudio.Workload.NativeDesktop --includeRecommended --wait" 
     $process = New-Object System.Diagnostics.Process
     $process.StartInfo = $startInfo
     $process.Start()
@@ -2314,7 +2677,7 @@ function func_vanara
     func_vanara2
 }
 
-function func_vulkansamples
+function func_vulkansamples  <# force a full software rendering for Vulkan and OpenGL:  LIBGL_ALWAYS_SOFTWARE=1 __GLX_VENDOR_LIBRARY_NAME=mesa VK_DRIVER_FILES=/usr/share/vulkan/icd.d/lvp_icd.i686.json:/usr/share/vulkan/icd.d/lvp_icd.x86_64.json #>
 {   <# https://www.saschawillems.de/blog/2017/03/25/updated-vulkan-example-binaries/ #>
     w_download_to $(verb) "http://vulkan.gpuinfo.org/downloads/examples/vulkan_examples_windows_x64.7z" "vulkan_examples_windows_x64.7z" 
     w_download_to $(verb) "http://vulkan.gpuinfo.org/downloads/examples/vulkan_examples_mediapack.7z" "vulkan_examples_mediapack.7z" 
@@ -3781,6 +4144,7 @@ function func_install_dll_from_msu
 
     for($n=0 ; $n -lt $output.count; $n++) {
         install_from_manifest $($([System.IO.FileInfo]$verbose[$n].Split(' ')[1]).FullName) $([System.IO.FileInfo]$output[$n].Split(' ')[1]).FullName
+        write_keys_from_manifest $($([System.IO.FileInfo]$verbose[$n].Split(' ')[1]).FullName)
     }
     
     Remove-Item -force  $env:TEMP\\$dest\\*.cab; Remove-Item -force  $env:TEMP\\$dest\\*.1cab
@@ -3840,6 +4204,14 @@ function func_winrt_hacks
     func_wine_wintypes
     func_winmetadata
     func_dotnet481
+}
+
+function func_chocolatey_upgrade
+{
+    func_ps51
+    choco pin remove -n chocolatey
+    choco.exe feature enable --name=powershellHost
+    choco upgrade chocolatey    
 }
 
 <# Main function #> 
