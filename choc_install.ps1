@@ -669,10 +669,6 @@ function QPR.ping
 #  Based on https://github.com/nylyst/PowerShell/blob/master/Send-KeyPress.ps1 -> so credits to that author       #
 #  Could be replaced with [System.Windows.Forms.SendKeys]::SendWait("{ENTER}") if that one day works in wine...   #
 ###################################################################################################################
-#    while(!$p) {$p = Get-Process | Where-Object { $_.MainWindowTitle -Match "Conemu" }; Start-Sleep -Milliseconds 200}
-#    [void][System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms')
-#    [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
-
     <# add a C# class to access the WIN32 API SetForegroundWindow #>
     Add-Type @"
     using System;
@@ -685,136 +681,18 @@ function QPR.ping
     }
 "@
     <# get the application and window handle and set it to foreground #>
+    $MethodDefinition = @"
+    [DllImport("ntdll.dll", CharSet = CharSet.Ansi)] public static extern string wine_get_version();
+"@
+    $ntdll = Add-Type -MemberDefinition $MethodDefinition -Name 'ntdll' -PassThru
+    
     while(!$p) {$p = Get-Process | Where-Object { $_.MainWindowTitle -Match "Conemu" }; Start-Sleep -Milliseconds 200}
     $h = $p[0].MainWindowHandle
     [void] [StartActivateProgramClass]::SetForegroundWindow($h)
-    <# add a C# class to access the WIN32 API SendInput #>
-    Add-Type @"
-    using System;
-    using System.Collections.Generic;
-    using System.Runtime.InteropServices;
-
-    public static class Synthesize_Keystrokes {    
-        public enum InputType : uint {
-            INPUT_MOUSE = 0,
-            INPUT_KEYBOARD = 1,
-            INPUT_HARDWARE = 3
-        }
-
-        [Flags]
-        internal enum KEYEVENTF : uint
-        {
-            KEYDOWN = 0x0,
-            EXTENDEDKEY = 0x0001,
-            KEYUP = 0x0002,
-            SCANCODE = 0x0008,
-            UNICODE = 0x0004
-        }
-
-        [Flags]
-        internal enum MOUSEEVENTF : uint
-        {
-            ABSOLUTE = 0x8000,
-            HWHEEL = 0x01000,
-            MOVE = 0x0001,
-            MOVE_NOCOALESCE = 0x2000,
-            LEFTDOWN = 0x0002,
-            LEFTUP = 0x0004,
-            RIGHTDOWN = 0x0008,
-            RIGHTUP = 0x0010,
-            MIDDLEDOWN = 0x0020,
-            MIDDLEUP = 0x0040,
-            VIRTUALDESK = 0x4000,
-            WHEEL = 0x0800,
-            XDOWN = 0x0080,
-            XUP = 0x0100
-        }
-
-        [StructLayout(LayoutKind.Sequential)] /* Master Input structure */
-        public struct lpInput {
-            internal InputType type;
-            internal InputUnion Data;
-            internal static int Size { get { return Marshal.SizeOf(typeof(lpInput)); } }            
-        }
-        [StructLayout(LayoutKind.Explicit)] /* Union structure */
-        internal struct InputUnion {
-            [FieldOffset(0)]
-            internal MOUSEINPUT mi;
-            [FieldOffset(0)]
-            internal KEYBDINPUT ki;
-            [FieldOffset(0)]
-            internal HARDWAREINPUT hi;
-        }
-
-        [StructLayout(LayoutKind.Sequential)] /* Input Types */
-        internal struct MOUSEINPUT
-        {
-            internal int dx;
-            internal int dy;
-            internal int mouseData;
-            internal MOUSEEVENTF dwFlags;
-            internal uint time;
-            internal UIntPtr dwExtraInfo;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        internal struct KEYBDINPUT
-        {
-            internal short wVk;
-            internal short wScan;
-            internal KEYEVENTF dwFlags;
-            internal int time;
-            internal UIntPtr dwExtraInfo;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        internal struct HARDWAREINPUT
-        {
-            internal int uMsg;
-            internal short wParamL;
-            internal short wParamH;
-        }
-
-        private class unmanaged {
-            [DllImport("user32.dll", SetLastError = true)]
-            internal static extern uint SendInput (
-                uint cInputs, 
-                [MarshalAs(UnmanagedType.LPArray)]
-                lpInput[] inputs,
-                int cbSize
-            );
-
-            [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-            public static extern short VkKeyScan(char ch);
-        }
-
-        internal static uint SendInput(uint cInputs, lpInput[] inputs, int cbSize) {
-            return unmanaged.SendInput(cInputs, inputs, cbSize);
-        }
-
-        public static void SendKeyStroke() {
-            lpInput[] KeyInputs = new lpInput[2];
-            lpInput KeyInput = new lpInput();
-            /* Generic Keyboard Event */
-            KeyInput.type = InputType.INPUT_KEYBOARD;
-            KeyInput.Data.ki.wScan = 0;
-            KeyInput.Data.ki.time = 0;
-            KeyInput.Data.ki.dwExtraInfo = UIntPtr.Zero;
-            /* Emulate keypress */
-            KeyInput.Data.ki.wVk = 13; /* VK_RETURN */
-            KeyInput.Data.ki.dwFlags = KEYEVENTF.KEYDOWN;
-            KeyInputs[0] = KeyInput;
-            KeyInput.Data.ki.wVk = 13; /* VK_RETURN */
-            KeyInput.Data.ki.dwFlags = KEYEVENTF.KEYUP;
-            KeyInputs[1] = KeyInput;
-            
-            SendInput(2, KeyInputs, lpInput.Size);
-            return;
-            }
-    }
-"@
-    [Synthesize_Keystrokes]::SendKeyStroke() <# Dismiss ConEmu's fast configuration window by hitting enter #>
-
+    [void][System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms')
+    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) )  -gt 8.19 ){
+        [System.Windows.Forms.SendKeys]::SendWait("{ENTER}") 
+    } <# Dismiss ConEmu's fast configuration window by hitting enter #>
 ################################################################################################################### 
 #                                                                                                                 #
 #  Finish installation and some app specific tweaks                                                               #
@@ -840,7 +718,7 @@ function QPR.ping
     <# Backup files if wanted #>
     if (Test-Path 'env:SAVEINSTALLFILES') { 
         New-Item -Path "$env:WINEHOMEDIR\.cache\".substring(4) -Name "choc_install_files" -ItemType "directory" -ErrorAction SilentlyContinue
-        foreach($i in 'net48', 'PowerShell-7.3.5-win-x64.msi', 'arial32.exe', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2201-x64.exe', 'sevenzipextractor.1.0.17.nupkg', 'ConEmuPack.230724.7z') {
+        foreach($i in 'net48', 'PowerShell-7.4.1-win-x64.msi', 'arial32.exe', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2201-x64.exe', 'sevenzipextractor.1.0.17.nupkg', 'ConEmuPack.230724.7z') {
             Copy-Item -Path $env:TEMP\\$i -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4) -recurse -force }
     }
     <# install wine robocopy and (custom) wine tasksch.dll #>
