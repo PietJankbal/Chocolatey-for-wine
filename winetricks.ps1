@@ -1087,7 +1087,7 @@ function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
 
  
     
-    <# #Temporary workaround: In staging running ps51.exe frequently hangs in recent versions (e.g. 8.15)
+     #Temporary workaround: In staging running ps51.exe frequently hangs in recent versions (e.g. 8.15)
     if("$($ntdll::wine_get_build_id())".Contains('(Staging)')) { 
         func_wine_shell32
         if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe'}
@@ -1099,7 +1099,7 @@ function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
         if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe\\DllOverrides'}
         New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe\\DllOverrides' -Name 'shell32' -Value 'builtin' -PropertyType 'String' -force
     }
-    #>
+    
     if( [System.IO.File]::Exists( $([IO.Path]::Combine($cachedir,  $(verb), "$(verb).7z") )) -and !($( & 7z l $([IO.Path]::Combine($cachedir,  $(verb), "$(verb).7z") ) |findstr /C:' 171 files'))  ) {
         Remove-Item -Force  "$cachedir\$(verb)\$(verb).7z" 
     }
@@ -1124,7 +1124,7 @@ function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
 
         #foreach ($i in (gci "$cachedir\$(verb)\*.manifest").Name) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
 
-
+        mkdir "$env:TEMP\$(verb)"
         
         foreach ($i in (gci "$cachedir\$(verb)\*.manifest")) {
             $Xml = [xml](Get-Content -Path $i.FullName )
@@ -1132,12 +1132,12 @@ function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
             $file_names= $Xml.assembly.file | Where-Object -Property name
             
             foreach ($name in $file_names.name ) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$name $([IO.Path]::Combine($cachedir,  $(verb) ) ) 
-            install_from_manifest $i.FullName  $([IO.Path]::Combine($cachedir,  $(verb), $i.BaseName, $name ) )  "$env:TEMP"}
+            install_from_manifest $i.FullName  $([IO.Path]::Combine($cachedir,  $(verb), $i.BaseName, $name ) )  "$env:TEMP\$(verb)"}
         }
         
         & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:"powershell.exe" $([IO.Path]::Combine($cachedir,  $(verb) ) )
-Copy-Item -Path  $([IO.Path]::Combine($cachedir,  $(verb), "amd64_microsoft-windows-powershell-exe_31bf3856ad364e35_7.3.7601.16384_none_48be7e79e188387e", "powershell.exe" ) ) -destination  "$env:TEMP\c:\windows\system32\WindowsPowershell\v1.0\ps51.exe" -verbose
-Copy-Item -Path  $([IO.Path]::Combine($cachedir,  $(verb), "wow64_microsoft-windows-powershell-exe_31bf3856ad364e35_7.3.7601.16384_none_531328cc15e8fa79", "powershell.exe" ) ) -destination  "$env:TEMP\c:\windows\syswow64\WindowsPowershell\v1.0\ps51.exe" -verbose
+Copy-Item -Path  $([IO.Path]::Combine($cachedir,  $(verb), "amd64_microsoft-windows-powershell-exe_31bf3856ad364e35_7.3.7601.16384_none_48be7e79e188387e", "powershell.exe" ) ) -destination  "$env:TEMP\$(verb)\c:\windows\system32\WindowsPowershell\v1.0\ps51.exe" -verbose
+Copy-Item -Path  $([IO.Path]::Combine($cachedir,  $(verb), "wow64_microsoft-windows-powershell-exe_31bf3856ad364e35_7.3.7601.16384_none_531328cc15e8fa79", "powershell.exe" ) ) -destination  "$env:TEMP\$(verb)\c:\windows\syswow64\WindowsPowershell\v1.0\ps51.exe" -verbose
 
         Remove-Item -Force "$cachedir\$(verb)\$cab" -ErrorAction SilentlyContinue
         foreach($i in 'amd64', 'x86', 'wow64', 'msil') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" }
@@ -1149,12 +1149,14 @@ Copy-Item -Path  $([IO.Path]::Combine($cachedir,  $(verb), "wow64_microsoft-wind
        # Write-Host -foregroundColor yellow 'Starting copying files , this takes a while (> 3 minutes), patience...'    
        # foreach ($i in $(Get-ChildItem "$cachedir\$(verb)\*.manifest").FullName) { install_from_manifest($i, $i.Replace('manifest','\\') + $name) }
 
-       Push-Location ; Set-Location $env:TEMP 
-       7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on  "$cachedir\$(verb)\$(verb).7z" ".\c:\"
+       Push-Location ; Set-Location "$env:TEMP\$(verb)"
+       7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on  "$cachedir\$(verb)\$(verb).7z" ".\c:\" ; quit?(7z)
        Pop-Location 
+       
+       Remove-Item -recurse -force "$env:TEMP\$(verb)"
  }       
         7z x -spf "$cachedir\$(verb)\$(verb).7z" -aoa
-            
+         
             
 $regkey51 = @"
 REGEDIT4
@@ -4039,7 +4041,8 @@ REGEDIT4
 }
 
 function write_keys_from_manifest([parameter(position=0)] [string] $manifest, [switch] $to_file){
-   
+
+    Remove-Item -force   "$env:TEMP\reg_keys.ps1" -erroraction silentlycontinue 
     
     $Xml = [xml](Get-Content -Path "$manifest")
 
@@ -4185,18 +4188,20 @@ function func_dotnet481
     Stop-Process -Name mscorsvw -ErrorAction SilentlyContinue <# otherwise some dlls fail to be replaced as they are in use by mscorvw; only mscoreei.dll has to be copied manually afaict as it is in use by pwsh #>
 
     Write-Host -foregroundColor yellow 'Starting copying files , this takes a while (> 3 minutes), patience...'    
-    foreach ($i in $(Get-ChildItem $env:TEMP\\dotnet481\\*.manifest).FullName) { install_from_manifest -manifestfile $i -prefix "$env:TEMP"  }
+    foreach ($i in $(Get-ChildItem $env:TEMP\\dotnet481\\*.manifest).FullName) { install_from_manifest -manifestfile $i -prefix "$env:TEMP\$(verb)"  }
 
     foreach ($i in $(Get-ChildItem $env:TEMP\\dotnet481\\*.manifest).FullName ) { write_keys_from_manifest $i -to_file }
     Write-Host -foregroundColor yellow 'Done , hopefully nothing''s screwed up ;)' 
 
-    Remove-Item -Force -Recurse "$env:TEMP\\dotnet481"
 
-    Push-Location ; Set-Location $env:TEMP 
+
+    Push-Location ; Set-Location "$env:TEMP\$(verb)"
     7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on  "$cachedir\$(verb)\$(verb).7z" ".\c:\"
     Pop-Location
-    
+
     7z a -spf -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on  "$cachedir\$(verb)\$(verb).7z" "$env:TEMP\reg_keys.ps1"  
+ 
+    Remove-Item -Force -Recurse "$env:TEMP\$(verb)"
     }  
   
       $sourcefile = @(
@@ -4214,8 +4219,8 @@ function func_dotnet481
         #Move-Item "$env:TEMP\$(([System.IO.FileInfo]$i).Name)" $i -force -verbose
      }
   
-    Write-HOST SGAHSJGGGGGGGGGGGGGGGGGGGGGH
-    7z x -spf "$cachedir\$(verb)\$(verb).7z" -aoa 
+
+    & 'C:\Program Files\7-Zip\7z.exe' x -spf "$cachedir\$(verb)\$(verb).7z" -aoa 
     $null =  . "$env:TEMP\reg_keys.ps1"
 
     
