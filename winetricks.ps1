@@ -1074,14 +1074,7 @@ function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
 'amd64_microsoft.packagemanagement.msiprovider_31bf3856ad364e35_7.3.7601.16384_none_ae42a045a84e072e.manifest',
 'wow64_microsoft.packagemanagement.msiprovider_31bf3856ad364e35_7.3.7601.16384_none_b8974a97dcaec929.manifest'
     )
-    
-    #https://devblogs.microsoft.com/powershell/when-powershellget-v1-fails-to-install-the-nuget-provider/
-        <#$sourcefile = @(,, 
-    NEED SPECIAL TREATMENT!!!!!!!!!!!!!!!!!!!!!!!                 ,
-    
-                    'powershell.exe', --->> done 'microsoft.management.infrastructure.native.dll',
-                     , 'Policy.1.0.System.Management.Automation.config', 'Policy.1.0.System.Management.Automation.dll') #>
-    
+
 
     
 
@@ -1142,12 +1135,7 @@ Copy-Item -Path  $([IO.Path]::Combine($cachedir,  $(verb), "wow64_microsoft-wind
         Remove-Item -Force "$cachedir\$(verb)\$cab" -ErrorAction SilentlyContinue
         foreach($i in 'amd64', 'x86', 'wow64', 'msil') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" }
        Remove-Item -Force "$cachedir\$(verb)\*.manifest" -ErrorAction SilentlyContinue
-        
-#amd64_microsoft-windows-powershell-exe_31bf3856ad364e35_7.3.7601.16384_none_48be7e79e188387e.manifest
-#wow64_microsoft-windows-powershell-exe_31bf3856ad364e35_7.3.7601.16384_none_531328cc15e8fa79.manifest
 
-       # Write-Host -foregroundColor yellow 'Starting copying files , this takes a while (> 3 minutes), patience...'    
-       # foreach ($i in $(Get-ChildItem "$cachedir\$(verb)\*.manifest").FullName) { install_from_manifest($i, $i.Replace('manifest','\\') + $name) }
 
        Push-Location ; Set-Location "$env:TEMP\$(verb)"
        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on  "$cachedir\$(verb)\$(verb).7z" ".\c:\" ; quit?(7z)
@@ -1266,57 +1254,8 @@ if ((Get-process -Name powershell_ise -erroraction silentlycontinue)) {
     $profile51 | Out-File $env:SystemRoot\\syswow64\\WindowsPowerShell\v1.0\\profile.ps1
 
         
-        
-        exit
-        foreach ($i in (gci "$cachedir\$(verb)\msil_*\*").FullName ) {
-         
-            
-            if("$(([System.IO.FileInfo]$i).Extension)" -eq '.config') {
-                $assembly=[System.Reflection.AssemblyName]::GetAssemblyName($($i -replace '.config' , '.dll'))
-            }
-            else {
-                $assembly=[System.Reflection.AssemblyName]::GetAssemblyName($i)
-            }
-            
-            $publickeytoken = ($assembly.GetPublicKeyToken() |ForEach-Object ToString x2) -join '' 
-      
-            $destdir = "$env:SystemRoot" + "\" + "Microsoft.NET\assembly\GAC_MSIL\" + $assembly.Name + '\' + 'v4.0_' + $assembly.Version.ToString() + '__' + $publickeytoken
-        
-            7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" $i; quit?('7z')
-            7z rn "$cachedir\$(verb)\$(verb).7z" "$(([System.IO.FileInfo]$i).Name)" "$destdir\$(([System.IO.FileInfo]$i).Name)" ; quit?('7z')
-        }
 
-        foreach ($i in 'powershell.exe', 'microsoft.management.infrastructure.native.dll' ) {
- 
-            foreach ($j in (gci "$cachedir\$(verb)\*\$i" ).FullName) {
-                if( $(([System.IO.FileInfo]$j).Directory).Name.SubString(0,3) -eq 'amd' ) {$arch = 'system32'} else {$arch = 'syswow64'}
-                if( $(([System.IO.FileInfo]$j).Name) -eq 'powershell.exe') {$destfile = 'ps51.exe'} else {$destfile = $(([System.IO.FileInfo]$j).Name)}
 
-                7z a -spf -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" $j; quit?('7z')
-                7z rn "$cachedir\$(verb)\$(verb).7z" "$j" "$env:SystemRoot\$arch\WindowsPowershell\v1.0\$destfile" ; quit?('7z')
-            } 
-         }
-
-         foreach ($i in 'microsoft.powershell.management.psd1', 'microsoft.powershell.utility.psd1', 'microsoft.powershell.utility.psm1',`
-                 'microsoft.powershell.archive.psm1', 'microsoft.powershell.archive.psd1', 'microsoft.powershell.diagnostics.psd1', 'microsoft.powershell.security.psd1' ) {
- 
-             foreach ($j in (gci "$cachedir\$(verb)\*\$i" ).FullName) {
-                  7z a -spf -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" $j; quit?('7z')
-
-                  if( $(([System.IO.FileInfo]$j).Directory).Name.SubString(0,3) -eq 'amd' ) {$arch = 'system32'} else {$arch = 'syswow64'}
-                  7z rn "$cachedir\$(verb)\$(verb).7z" "$j" "$env:SystemRoot\$arch\WindowsPowershell\v1.0\Modules\$(([System.IO.FileInfo]$j).BaseName)\$(([System.IO.FileInfo]$j).Name)" ; quit?('7z')
-             }
-         }
-    #}
-
-    foreach($i in 'amd64', 'x86', 'wow64', 'msil') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" }
-
-    7z x -spf "$cachedir\$(verb)\$(verb).7z" -aoa
-
-    Copy-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.management.infrastructure.native.dll" -Destination (New-item -Name "Microsoft.Management.Infrastructure\v4.0_1.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_64" -Force) -Force 
-    Copy-Item -Path "$env:systemroot\syswow64\WindowsPowershell\v1.0\microsoft.management.infrastructure.native.dll" -Destination (New-item -Name "Microsoft.Management.Infrastructure\v4.0_1.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_32" -Force) -Force 
-
-    #if ( ( (Get-PSCallStack)[1].Command -ne 'func_ps51_ise') -and ( (Get-PSCallStack)[1].Command -ne 'func_access_winrt_from_powershell2')  ) { ps51 }
 
 } <# end ps51 #>
 
