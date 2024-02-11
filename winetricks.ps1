@@ -1036,12 +1036,57 @@ function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
     $url = "/Win7AndW2K8R2-KB3191566-x64.msu" <# download is zip file, so no download url of the msu #>
     $cab = "Windows6.1-KB3191566-x64.cab"
 
-    $sourcefile = @('system.management.automation.dll', 'microsoft.powershell.commands.diagnostics.dll', 'microsoft.powershell.commands.utility.dll',`
-                    'microsoft.powershell.consolehost.dll', 'microsoft.powershell.commands.management.dll', 'microsoft.management.infrastructure.dll',`
-                    'microsoft.powershell.security.dll', 'microsoft.wsman.runtime.dll', 'microsoft.wsman.management.dll', 'microsoft.powershell.graphicalhost.dll',`
-                    'powershell.exe', 'microsoft.management.infrastructure.native.dll', 'microsoft.powershell.management.psd1', 'microsoft.powershell.utility.psd1',`
-                    'microsoft.powershell.utility.psm1', 'microsoft.powershell.archive.psm1', 'microsoft.powershell.archive.psd1', 'microsoft.powershell.diagnostics.psd1',`
-                    'microsoft.powershell.security.psd1', 'Policy.1.0.System.Management.Automation.config', 'Policy.1.0.System.Management.Automation.dll')
+    $sourcefile = @('wow64_microsoft.powershell.packagemanagement_31bf3856ad364e35_7.3.7601.16384_none_be98c8f8cfb32e06.manifest',
+    'amd64_microsoft.powershell.packagemanagement_31bf3856ad364e35_7.3.7601.16384_none_b4441ea69b526c0b.manifest',
+    'msil_microsoft.powershell.consolehost_31bf3856ad364e35_7.3.7601.16384_none_8634e813855724c9.manifest',
+    'amd64_microsoft.managemen..frastructure.native_31bf3856ad364e35_7.3.7601.16384_none_8ab57567838da803.manifest',
+    'x86_microsoft.managemen..frastructure.native_31bf3856ad364e35_7.3.7601.16384_none_d262ac3e9809d109.manifest'
+    'amd64_microsoft.powershell.archive_31bf3856ad364e35_7.3.7601.16384_none_f7ab4242f320bef0.manifest',
+    'msil_microsoft.powershell.security_31bf3856ad364e35_7.3.7601.16384_none_64c18e3e0eafee92.manifest',
+    'amd64_microsoft.packagemanagement.common_31bf3856ad364e35_7.3.7601.16384_none_ee66270965c165ab.manifest',
+    'wow64_microsoft.packagemanagement.common_31bf3856ad364e35_7.3.7601.16384_none_f8bad15b9a2227a6.manifest',
+    'amd64_microsoft.packagemanagement_31bf3856ad364e35_7.3.7601.16384_none_f23f0a687ff51c88.manifest',
+                    'wow64_microsoft.packagemanagement_31bf3856ad364e35_7.3.7601.16384_none_fc93b4bab455de83.manifest',
+                    'msil_system.management.automation_31bf3856ad364e35_7.3.7601.16384_none_85266a48f56bfafc.manifest',
+                    'msil_microsoft.powershel..ommands.diagnostics_31bf3856ad364e35_7.3.7601.16384_none_3cbfce2c3881d318.manifest',
+                    'msil_microsoft.wsman.management_31bf3856ad364e35_7.3.7601.16384_none_60964e40b40fafee.manifest',
+                    'msil_microsoft.powershell.commands.management_31bf3856ad364e35_7.3.7601.16384_none_c1a0335546714b23.manifest',
+                    'msil_microsoft.powershell.commands.utility_31bf3856ad364e35_7.3.7601.16384_none_d96091fd5568ce18.manifest',
+                    'msil_microsoft.management.infrastructure_31bf3856ad364e35_7.3.7601.16384_none_8310156aa31a52f1.manifest',
+                    'msil_microsoft.wsman.runtime_31bf3856ad364e35_7.3.7601.16384_none_a19b148df40272fb.manifest',
+                    'msil_microsoft.powershell.graphicalhost_31bf3856ad364e35_7.3.7601.16384_none_c32121af2a1808d4.manifest',
+                    'amd64_microsoft.powershell.psget_31bf3856ad364e35_7.3.7601.16384_none_c9db05c823f10f09.manifest',
+                    'wow64_microsoft.powershell.psget_31bf3856ad364e35_7.3.7601.16384_none_d42fb01a5851d104.manifest',
+                    'msil_policy.1.0.system.management.automation_31bf3856ad364e35_7.3.7601.16384_none_79a60ff187b4c325.manifest',
+                    'wow64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_8187c53a975bb9ea.manifest',
+                    'amd64_microsoft.windows.powershell.v3.common_31bf3856ad364e35_7.3.7601.16384_none_77331ae862faf7ef.manifest',
+                    'wow64_microsoft.packagema..provider.powershell_31bf3856ad364e35_7.3.7601.16384_none_f50f549afdaf3c10.manifest',
+                    'amd64_microsoft.packagema..provider.powershell_31bf3856ad364e35_7.3.7601.16384_none_eabaaa48c94e7a15.manifest',
+                    'wow64_microsoft.packagema..ement.coreproviders_31bf3856ad364e35_7.3.7601.16384_none_f05cb06fdbbd6e3c.manifest',
+'amd64_microsoft.packagema..ement.coreproviders_31bf3856ad364e35_7.3.7601.16384_none_e608061da75cac41.manifest',
+
+
+'amd64_microsoft.packagema..t.archiverproviders_31bf3856ad364e35_7.3.7601.16384_none_a98e3ebb18648eb6.manifest',
+
+'wow64_microsoft.packagema..t.archiverproviders_31bf3856ad364e35_7.3.7601.16384_none_b3e2e90d4cc550b1.manifest',
+
+
+'amd64_microsoft.packagemanagement.msiprovider_31bf3856ad364e35_7.3.7601.16384_none_ae42a045a84e072e.manifest',
+'wow64_microsoft.packagemanagement.msiprovider_31bf3856ad364e35_7.3.7601.16384_none_b8974a97dcaec929.manifest'
+    )
+    
+    #https://devblogs.microsoft.com/powershell/when-powershellget-v1-fails-to-install-the-nuget-provider/
+        <#$sourcefile = @(,, 
+    NEED SPECIAL TREATMENT!!!!!!!!!!!!!!!!!!!!!!!                 ,
+    
+                    'powershell.exe', --->> done 'microsoft.management.infrastructure.native.dll',
+                     , 'Policy.1.0.System.Management.Automation.config', 'Policy.1.0.System.Management.Automation.dll') #>
+    
+
+    
+
+ 
+    
     <# #Temporary workaround: In staging running ps51.exe frequently hangs in recent versions (e.g. 8.15)
     if("$($ntdll::wine_get_build_id())".Contains('(Staging)')) { 
         func_wine_shell32
@@ -1055,7 +1100,7 @@ function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
         New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe\\DllOverrides' -Name 'shell32' -Value 'builtin' -PropertyType 'String' -force
     }
     #>
-    if( [System.IO.File]::Exists( $([IO.Path]::Combine($cachedir,  $(verb), "$(verb).7z") )) -and !($(7z l Z:\home\louis\.cache\winetrickxs\ps51\ps51.7z |findstr /C:' 30 files'))  ) {
+    if( [System.IO.File]::Exists( $([IO.Path]::Combine($cachedir,  $(verb), "$(verb).7z") )) -and !($( & 7z l $([IO.Path]::Combine($cachedir,  $(verb), "$(verb).7z") ) |findstr /C:' 171 files'))  ) {
         Remove-Item -Force  "$cachedir\$(verb)\$(verb).7z" 
     }
     
@@ -1064,60 +1109,53 @@ function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
         if ( ![System.IO.File]::Exists( [IO.Path]::Combine($cachedir,  $(verb), "Win7AndW2K8R2-KB3191566-x64.zip" ) ) ) {
             w_download_to $(verb) "https://download.microsoft.com/download/6/F/5/6F5FF66C-6775-42B0-86C4-47D41F2DA187/Win7AndW2K8R2-KB3191566-x64.zip" "Win7AndW2K8R2-KB3191566-x64.zip"
             7z e "$cachedir\$(verb)\Win7AndW2K8R2-KB3191566-x64.zip" "-o$cachedir\$(verb)" "Win7AndW2K8R2-KB3191566-x64.msu" -y | Select-String 'ok'; quit?('7z')
-            check_msu_sanity $url $cab;
+            Remove-Item -Force $([IO.Path]::Combine($cachedir,  $(verb), "Win7AndW2K8R2-KB3191566-x64.zip") ) -ErrorAction SilentlyContinue
+            7z e "$cachedir\$(verb)\Win7AndW2K8R2-KB3191566-x64.msu" "-o$cachedir\$(verb)" "$cab" -y | Select-String 'ok'; quit?('7z')
+            Remove-Item -Force $([IO.Path]::Combine($cachedir,  $(verb), "Win7AndW2K8R2-KB3191566-x64.msu") ) -ErrorAction SilentlyContinue
+
+            foreach ($i in $sourcefile) {7z e "$cachedir\$(verb)\$cab" "-o$cachedir\$(verb)" $i -y} 
+            
         }
+        
+       if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:systemroot, "system32", "dpx.dll")  ))
+       {Write-Host 'Downloading and extracting some files needed for expansion' ; func_expand;
+        }
+        
 
-        Remove-Item -Force $([IO.Path]::Combine($cachedir,  $(verb), "Win7AndW2K8R2-KB3191566-x64.zip") ) -ErrorAction SilentlyContinue
+        #foreach ($i in (gci "$cachedir\$(verb)\*.manifest").Name) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
 
-        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
+
+        
+        foreach ($i in (gci "$cachedir\$(verb)\*.manifest")) {
+            $Xml = [xml](Get-Content -Path $i.FullName )
+        
+            $file_names= $Xml.assembly.file | Where-Object -Property name
+            
+            foreach ($name in $file_names.name ) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$name $([IO.Path]::Combine($cachedir,  $(verb) ) ) 
+            install_from_manifest $i.FullName  $([IO.Path]::Combine($cachedir,  $(verb), $i.BaseName, $name ) )  "$env:TEMP"}
+        }
+        
+        & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:"powershell.exe" $([IO.Path]::Combine($cachedir,  $(verb) ) )
+Copy-Item -Path  $([IO.Path]::Combine($cachedir,  $(verb), "amd64_microsoft-windows-powershell-exe_31bf3856ad364e35_7.3.7601.16384_none_48be7e79e188387e", "powershell.exe" ) ) -destination  "$env:TEMP\c:\windows\system32\WindowsPowershell\v1.0\ps51.exe" -verbose
+Copy-Item -Path  $([IO.Path]::Combine($cachedir,  $(verb), "wow64_microsoft-windows-powershell-exe_31bf3856ad364e35_7.3.7601.16384_none_531328cc15e8fa79", "powershell.exe" ) ) -destination  "$env:TEMP\c:\windows\syswow64\WindowsPowershell\v1.0\ps51.exe" -verbose
 
         Remove-Item -Force "$cachedir\$(verb)\$cab" -ErrorAction SilentlyContinue
-
-        foreach ($i in (gci "$cachedir\$(verb)\msil_*\*").FullName ) {
-         
-            
-            if("$(([System.IO.FileInfo]$i).Extension)" -eq '.config') {
-                $assembly=[System.Reflection.AssemblyName]::GetAssemblyName($($i -replace '.config' , '.dll'))
-            }
-            else {
-                $assembly=[System.Reflection.AssemblyName]::GetAssemblyName($i)
-            }
-            
-            $publickeytoken = ($assembly.GetPublicKeyToken() |ForEach-Object ToString x2) -join '' 
-      
-            $destdir = "$env:SystemRoot" + "\" + "Microsoft.NET\assembly\GAC_MSIL\" + $assembly.Name + '\' + 'v4.0_' + $assembly.Version.ToString() + '__' + $publickeytoken
+        foreach($i in 'amd64', 'x86', 'wow64', 'msil') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" }
+       Remove-Item -Force "$cachedir\$(verb)\*.manifest" -ErrorAction SilentlyContinue
         
-            7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" $i; quit?('7z')
-            7z rn "$cachedir\$(verb)\$(verb).7z" "$(([System.IO.FileInfo]$i).Name)" "$destdir\$(([System.IO.FileInfo]$i).Name)" ; quit?('7z')
-        }
+#amd64_microsoft-windows-powershell-exe_31bf3856ad364e35_7.3.7601.16384_none_48be7e79e188387e.manifest
+#wow64_microsoft-windows-powershell-exe_31bf3856ad364e35_7.3.7601.16384_none_531328cc15e8fa79.manifest
 
-        foreach ($i in 'powershell.exe', 'microsoft.management.infrastructure.native.dll' ) {
- 
-            foreach ($j in (gci "$cachedir\$(verb)\*\$i" ).FullName) {
-                if( $(([System.IO.FileInfo]$j).Directory).Name.SubString(0,3) -eq 'amd' ) {$arch = 'system32'} else {$arch = 'syswow64'}
-                if( $(([System.IO.FileInfo]$j).Name) -eq 'powershell.exe') {$destfile = 'ps51.exe'} else {$destfile = $(([System.IO.FileInfo]$j).Name)}
+       # Write-Host -foregroundColor yellow 'Starting copying files , this takes a while (> 3 minutes), patience...'    
+       # foreach ($i in $(Get-ChildItem "$cachedir\$(verb)\*.manifest").FullName) { install_from_manifest($i, $i.Replace('manifest','\\') + $name) }
 
-                7z a -spf -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" $j; quit?('7z')
-                7z rn "$cachedir\$(verb)\$(verb).7z" "$j" "$env:SystemRoot\$arch\WindowsPowershell\v1.0\$destfile" ; quit?('7z')
-            } 
-         }
-
-         foreach ($i in 'microsoft.powershell.management.psd1', 'microsoft.powershell.utility.psd1', 'microsoft.powershell.utility.psm1',`
-                 'microsoft.powershell.archive.psm1', 'microsoft.powershell.archive.psd1', 'microsoft.powershell.diagnostics.psd1', 'microsoft.powershell.security.psd1' ) {
- 
-             foreach ($j in (gci "$cachedir\$(verb)\*\$i" ).FullName) {
-                  7z a -spf -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" $j; quit?('7z')
-
-                  if( $(([System.IO.FileInfo]$j).Directory).Name.SubString(0,3) -eq 'amd' ) {$arch = 'system32'} else {$arch = 'syswow64'}
-                  7z rn "$cachedir\$(verb)\$(verb).7z" "$j" "$env:SystemRoot\$arch\WindowsPowershell\v1.0\Modules\$(([System.IO.FileInfo]$j).BaseName)\$(([System.IO.FileInfo]$j).Name)" ; quit?('7z')
-             }
-         }
-    }
-
-    foreach($i in 'amd64', 'x86', 'wow64', 'msil') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" }
-
-    7z x -spf "$cachedir\$(verb)\$(verb).7z" -aoa
-    
+       Push-Location ; Set-Location $env:TEMP 
+       7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on  "$cachedir\$(verb)\$(verb).7z" ".\c:\"
+       Pop-Location 
+ }       
+        7z x -spf "$cachedir\$(verb)\$(verb).7z" -aoa
+            
+            
 $regkey51 = @"
 REGEDIT4
 
@@ -1145,11 +1183,14 @@ $profile51 = @"
 #FIXME: following causes a hang when running pwsh from ps51 console:
 #`$env:PSModulepath = 'c:\windows\system32\WindowsPowershell\v1.0\Modules' + `$env:PSModulepath
 
-`$env:PSMOdulePath="`$env:SystemRoot\system32\WindowsPowershell\v1.0\Modules"
+`$env:PSMOdulePath="`$env:SystemRoot\system32\WindowsPowershell\v1.0\Modules;`$env:ProgramFiles(x86)\WindowsPowerShell\Modules;`$env:ProgramFiles\WindowsPowerShell\Modules"
 
 #Import-Module `$env:SystemRoot\system32\WindowsPowerShell\v1.0\Modules\microsoft.powershell.utility\microsoft.powershell.utility.psm1
 
 `$env:PS51 = 1
+
+Set-ItemProperty -Path 'HKLM:\SOFTWARE\Wow6432Node\Microsoft\.NetFramework\v4.0.30319' -Name 'SchUseStrongCrypto' -Value '1' -Type DWord
+Set-ItemProperty -Path 'HKLM:\SOFTWARE\Microsoft\.NetFramework\v4.0.30319' -Name 'SchUseStrongCrypto' -Value '1' -Type DWord
 
 function Get-CIMInstance ( [parameter(position=0)] [string]`$classname, [string[]]`$property="*")
 {
@@ -1221,6 +1262,54 @@ if ((Get-process -Name powershell_ise -erroraction silentlycontinue)) {
 "@
     $profile51 | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\profile.ps1
     $profile51 | Out-File $env:SystemRoot\\syswow64\\WindowsPowerShell\v1.0\\profile.ps1
+
+        
+        
+        exit
+        foreach ($i in (gci "$cachedir\$(verb)\msil_*\*").FullName ) {
+         
+            
+            if("$(([System.IO.FileInfo]$i).Extension)" -eq '.config') {
+                $assembly=[System.Reflection.AssemblyName]::GetAssemblyName($($i -replace '.config' , '.dll'))
+            }
+            else {
+                $assembly=[System.Reflection.AssemblyName]::GetAssemblyName($i)
+            }
+            
+            $publickeytoken = ($assembly.GetPublicKeyToken() |ForEach-Object ToString x2) -join '' 
+      
+            $destdir = "$env:SystemRoot" + "\" + "Microsoft.NET\assembly\GAC_MSIL\" + $assembly.Name + '\' + 'v4.0_' + $assembly.Version.ToString() + '__' + $publickeytoken
+        
+            7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" $i; quit?('7z')
+            7z rn "$cachedir\$(verb)\$(verb).7z" "$(([System.IO.FileInfo]$i).Name)" "$destdir\$(([System.IO.FileInfo]$i).Name)" ; quit?('7z')
+        }
+
+        foreach ($i in 'powershell.exe', 'microsoft.management.infrastructure.native.dll' ) {
+ 
+            foreach ($j in (gci "$cachedir\$(verb)\*\$i" ).FullName) {
+                if( $(([System.IO.FileInfo]$j).Directory).Name.SubString(0,3) -eq 'amd' ) {$arch = 'system32'} else {$arch = 'syswow64'}
+                if( $(([System.IO.FileInfo]$j).Name) -eq 'powershell.exe') {$destfile = 'ps51.exe'} else {$destfile = $(([System.IO.FileInfo]$j).Name)}
+
+                7z a -spf -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" $j; quit?('7z')
+                7z rn "$cachedir\$(verb)\$(verb).7z" "$j" "$env:SystemRoot\$arch\WindowsPowershell\v1.0\$destfile" ; quit?('7z')
+            } 
+         }
+
+         foreach ($i in 'microsoft.powershell.management.psd1', 'microsoft.powershell.utility.psd1', 'microsoft.powershell.utility.psm1',`
+                 'microsoft.powershell.archive.psm1', 'microsoft.powershell.archive.psd1', 'microsoft.powershell.diagnostics.psd1', 'microsoft.powershell.security.psd1' ) {
+ 
+             foreach ($j in (gci "$cachedir\$(verb)\*\$i" ).FullName) {
+                  7z a -spf -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" $j; quit?('7z')
+
+                  if( $(([System.IO.FileInfo]$j).Directory).Name.SubString(0,3) -eq 'amd' ) {$arch = 'system32'} else {$arch = 'syswow64'}
+                  7z rn "$cachedir\$(verb)\$(verb).7z" "$j" "$env:SystemRoot\$arch\WindowsPowershell\v1.0\Modules\$(([System.IO.FileInfo]$j).BaseName)\$(([System.IO.FileInfo]$j).Name)" ; quit?('7z')
+             }
+         }
+    #}
+
+    foreach($i in 'amd64', 'x86', 'wow64', 'msil') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" }
+
+    7z x -spf "$cachedir\$(verb)\$(verb).7z" -aoa
 
     Copy-Item -Path "$env:systemroot\system32\WindowsPowershell\v1.0\microsoft.management.infrastructure.native.dll" -Destination (New-item -Name "Microsoft.Management.Infrastructure\v4.0_1.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_64" -Force) -Force 
     Copy-Item -Path "$env:systemroot\syswow64\WindowsPowershell\v1.0\microsoft.management.infrastructure.native.dll" -Destination (New-item -Name "Microsoft.Management.Infrastructure\v4.0_1.0.0.0__31bf3856ad364e35" -Type directory -Path "$env:systemroot\Microsoft.NET/assembly/GAC_32" -Force) -Force 
@@ -1865,7 +1954,7 @@ function func_wine_advapi32 <# wine advapi32 with some hacks  #>
         7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
 } <# end advapi32 #>
 
-function func_wine_ole32 <# wine ole32 with some hack  #>
+function func_wine_shell32 <# wine shell32 with some hack  #>
 {
     w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
 
@@ -1873,7 +1962,7 @@ function func_wine_ole32 <# wine ole32 with some hack  #>
         7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$env:systemroot\system32" "64/$i.dll" -aoa | Select-String 'ok' 
         7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
     foreach($i in $(verb).substring(5) ) { dlloverride 'native' $i }
-} <# end ole32 #>
+} <# end shell32 #>
 
 function func_wine_combase <# wine combase with some hacks  #>
 {
@@ -2729,11 +2818,11 @@ function func_dotnet35
     #so we have to filter them away: perform the code below to find the copy-operations that really should be performed,
     # and save verbose output (4>log.txt)    
     # $Qenu = @(`
-    #("C:\users\louis\Temp\dotnet35\wcu\dotNetFramework\dotNetFX20\extr\windows\Microsoft.NET\assembly\GAC_MSIL\System.Web.DynamicData.Design\v4.0_4.0.0.0__31bf3856ad364e35\System.Web.DynamicData.Design.dll","002FE23572625BB228D1F4F34B6F599A8AE0A16C0EE8065D03EAC542C06378B1"),`
-    #("C:\users\louis\Temp\dotnet35\wcu\dotNetFramework\dotNetFX20\extr\windows\Microsoft.NET\Framework\v4.0.30319\System.Web.DynamicData.Design.dll","002FE23572625BB228D1F4F34B6F599A8AE0A16C0EE8065D03EAC542C06378B1"),`
+    #("C:\users\silly\Temp\dotnet35\wcu\dotNetFramework\dotNetFX20\extr\windows\Microsoft.NET\assembly\GAC_MSIL\System.Web.DynamicData.Design\v4.0_4.0.0.0__31bf3856ad364e35\System.Web.DynamicData.Design.dll","002FE23572625BB228D1F4F34B6F599A8AE0A16C0EE8065D03EAC542C06378B1"),`
+    #("C:\users\silly\Temp\dotnet35\wcu\dotNetFramework\dotNetFX20\extr\windows\Microsoft.NET\Framework\v4.0.30319\System.Web.DynamicData.Design.dll","002FE23572625BB228D1F4F34B6F599A8AE0A16C0EE8065D03EAC542C06378B1"),`
     #.
     #.
-    #("C:\users\louis\Temp\dotnet35\wcu\dotNetFramework\dotNetFX20\extr\windows\Microsoft.NET\Framework64\v4.0.30319\System.Threading.dll","FFCBBC3F80176FD79780CB713D57C61C518DEA465B4F787139AF081BA97BF554")`
+    #("C:\users\silly\Temp\dotnet35\wcu\dotNetFramework\dotNetFX20\extr\windows\Microsoft.NET\Framework64\v4.0.30319\System.Threading.dll","FFCBBC3F80176FD79780CB713D57C61C518DEA465B4F787139AF081BA97BF554")`
     #)
 
     #for ( $j = 0; $j -lt $Qenu.count; $j+=1 ) { 
@@ -3949,8 +4038,8 @@ REGEDIT4
     foreach ($i in 'mscorwks') { dlloverride 'native' $i }
 }
 
-function write_keys_from_manifest{
-    param ($manifest)
+function write_keys_from_manifest([parameter(position=0)] [string] $manifest, [switch] $to_file){
+   
     
     $Xml = [xml](Get-Content -Path "$manifest")
 
@@ -3995,15 +4084,18 @@ function write_keys_from_manifest{
 
                    if( $value.Value ) { $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.windows)')),"$env:systemroot" -replace ([Regex]::Escape('$(runtime.inf)')),"$env:systemroot\\inf" }
 
-                   $null = New-ItemProperty -Path $path -Name $Regname -Value $value.Value -PropertyType $propertyType -Force -ErrorAction SilentlyContinue   #-Verbose
-                }
+                   if(!$to_file) { $null = New-ItemProperty -Path $path -Name $Regname -Value $value.Value -PropertyType $propertyType -Force -ErrorAction SilentlyContinue }  #-Verbose
+                   else { 'if(!(Test-Path ''' + $path + ''' )) {New-Item -Path ''' + $path +''' -Force};' + 'New-ItemProperty -Path ''' + $path +''' -Name ''' + $Regname + ''' -Value ''' + $value.Value +''' -PropertyType '''+ $propertyType + ''' -Force' |out-file "$env:TEMP\reg_keys.ps1" -append } #-Verbose
+                } 
             }
         }
         }
 } <# end write_keys_from_manifest #>
 
 <# FIXME, very fragile!!! / bogus parts!!! / bugs!!! #>
-function install_from_manifest ( [parameter(position=0)] [string] $manifestfile, [parameter(position=1)] [string] $file ) { <# installs files to systemdirs using info from manifestfile #>
+function install_from_manifest ( [parameter(position=0)] [string] $manifestfile, [parameter(position=1)] [string] $file , [parameter(position=2)] [string] $prefix) { <# installs files to systemdirs using info from manifestfile #>
+
+
 
     $Xml = [xml](Get-Content -Path $manifestfile )
     if($file) { $file_names= $Xml.assembly.file | Where-Object -Property name -eq -Value $(([System.IO.FileInfo]$file).Name) }
@@ -4023,6 +4115,8 @@ function install_from_manifest ( [parameter(position=0)] [string] $manifestfile,
                 }
 
                 $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.windows)')),"$env:systemroot" -replace ([Regex]::Escape('$(runtime.inf)')),"$env:systemroot\\inf"
+
+                if($prefix) {$finalpath = join-path $prefix $finalpath}######
 
                 if (-not (Test-Path -Path $finalpath )) { New-Item -Path $finalpath -ItemType directory -Force }
                 if($file) {
@@ -4050,6 +4144,8 @@ function install_from_manifest ( [parameter(position=0)] [string] $manifestfile,
 
                 $finalpath = $finalpath -replace ([Regex]::Escape('$(runtime.windows)')),"$env:systemroot" -replace ([Regex]::Escape('$(runtime.inf)')),"$env:systemroot\\inf"
 
+                if($prefix) {$finalpath = join-path $prefix $finalpath}######
+
                 if (-not (Test-Path -Path ([system.io.fileinfo]$finalpath).DirectoryName )) { New-Item -Path ([system.io.fileinfo]$finalpath).DirectoryName -ItemType directory -Force }
 
                 Copy-Item -Path $($manifestfile.Replace('.manifest','\') + ([system.io.fileinfo]$finalpath).Name<#$Xml.assembly.file.name?'*'#>) -Destination $finalpath -Force -verbose
@@ -4059,16 +4155,29 @@ function install_from_manifest ( [parameter(position=0)] [string] $manifestfile,
         }
     }
         elseif ( $Xml.assembly.assemblyIdentity.processorArchitecture -eq 'msil' -and -not $file_names.destinationpath) {
-                 $finalpath = "$env:systemroot\Microsoft.NET\assembly\GAC_MSIL\" + "$($Xml.assembly.assemblyIdentity.name)\" + "v4.0_" + "$([System.Reflection.AssemblyName]::GetAssemblyName($file).Version.ToString())" + "__" + "$($Xml.assembly.assemblyIdentity.publicKeyToken)\"
-
-            if (-not (Test-Path -Path $finalpath )) { New-Item -Path $finalpath -ItemType directory -Force }
-            Copy-Item -Path $file -Destination $finalpath -Force  -verbose # -ErrorAction SilentlyContinue 
+                if( ([system.io.fileinfo]$file).Extension -eq '.config' ) { $dummy = $($file -replace '.config' , '.dll') } else {$dummy = $file}
+                 $finalpath = "$env:systemroot\Microsoft.NET\assembly\GAC_MSIL\" + "$($Xml.assembly.assemblyIdentity.name)\" + "v4.0_" + "$([System.Reflection.AssemblyName]::GetAssemblyName($dummy).Version.ToString())" + "__" + "$($Xml.assembly.assemblyIdentity.publicKeyToken)\"
+                 if($prefix) {$finalpath = join-path $prefix $finalpath}######
+                 
+                if (-not (Test-Path -Path $finalpath )) { New-Item -Path $finalpath -ItemType directory -Force }
+                Copy-Item -Path $file -Destination $finalpath -Force  -verbose # -ErrorAction SilentlyContinue 
+        }        
+        elseif ( $Xml.assembly.assemblyIdentity.processorArchitecture -eq 'amd64' -and -not $file_names.destinationpath) { # no destinationpath, put it in GAC_64
+            $finalpath = "$env:systemroot\Microsoft.NET\assembly\GAC_64";if($prefix) {$finalpath = join-path $prefix $finalpath};                if (-not (Test-Path -Path $finalpath )) { New-Item -Path $finalpath -ItemType directory -Force }######
+            if($file) {Copy-Item -Path $file -Destination $finalpath -Force  -verbose} # -ErrorAction SilentlyContinue 
+        }
+        elseif ( $Xml.assembly.assemblyIdentity.processorArchitecture -eq 'x86' -and -not $file_names.destinationpath) { # no destinationpath, put it in GAC_64
+            $finalpath = "$env:systemroot\Microsoft.NET\assembly\GAC_32";if($prefix) {$finalpath = join-path $prefix $finalpath};                if (-not (Test-Path -Path $finalpath )) { New-Item -Path $finalpath -ItemType directory -Force }
+######
+            if($file) {Copy-Item -Path $file -Destination $finalpath -Force  -verbose } #-ErrorAction SilentlyContinue 
         }
         else { if($file) { Write-Host -foregroundcolor yellow "***  No way found to install the file, copy it manually from location $file  ***" } else {Write-Host $null}<#FIXME#>}
 } <# end function install_from_manifest #>
 
 function func_dotnet481
 {
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z" ) ) ){
+
     w_download_to $(verb) "https://download.visualstudio.microsoft.com/download/pr/6f083c7e-bd40-44d4-9e3f-ffba71ec8b09/3951fd5af6098f2c7e8ff5c331a0679c/ndp481-x86-x64-allos-enu.exe" "ndp481-x86-x64-allos-enu.exe" 
     7z x $cachedir\\$(verb)\\ndp481-x86-x64-allos-enu.exe "-o$env:TEMP\\$(verb)\\" "x64-Windows10.0-KB5011048-x64.cab" -y; quit?(7z)
     7z x $env:TEMP\\$(verb)\\x64-Windows10.0-KB5011048-x64.cab "-o$env:TEMP\\$(verb)\\" "amd64*/*" "x86*/*" "wow64*/*" "*.manifest" -y; quit?(7z)
@@ -4076,13 +4185,40 @@ function func_dotnet481
     Stop-Process -Name mscorsvw -ErrorAction SilentlyContinue <# otherwise some dlls fail to be replaced as they are in use by mscorvw; only mscoreei.dll has to be copied manually afaict as it is in use by pwsh #>
 
     Write-Host -foregroundColor yellow 'Starting copying files , this takes a while (> 3 minutes), patience...'    
-    foreach ($i in $(Get-ChildItem $env:TEMP\\dotnet481\\*.manifest).FullName) { install_from_manifest($i) }
+    foreach ($i in $(Get-ChildItem $env:TEMP\\dotnet481\\*.manifest).FullName) { install_from_manifest -manifestfile $i -prefix "$env:TEMP"  }
 
-    foreach ($i in $(Get-ChildItem $env:TEMP\\dotnet481\\*.manifest).FullName ) { write_keys_from_manifest($i) }
+    foreach ($i in $(Get-ChildItem $env:TEMP\\dotnet481\\*.manifest).FullName ) { write_keys_from_manifest $i -to_file }
     Write-Host -foregroundColor yellow 'Done , hopefully nothing''s screwed up ;)' 
 
     Remove-Item -Force -Recurse "$env:TEMP\\dotnet481"
 
+    Push-Location ; Set-Location $env:TEMP 
+    7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on  "$cachedir\$(verb)\$(verb).7z" ".\c:\"
+    Pop-Location
+    
+    7z a -spf -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on  "$cachedir\$(verb)\$(verb).7z" "$env:TEMP\reg_keys.ps1"  
+    }  
+  
+      $sourcefile = @(
+   'C:\windows\Microsoft.NET\assembly\GAC_MSIL\System\v4.0_4.0.0.0__b77a5c561934e089\System.dll',
+ 'C:\windows\Microsoft.NET\assembly\GAC_MSIL\System.Core\v4.0_4.0.0.0__b77a5c561934e089\System.Core.dll',
+ 'C:\windows\Microsoft.NET\Framework64\v4.0.30319\clr.dll',
+ 'C:\windows\Microsoft.NET\Framework64\v4.0.30319\clrjit.dll',
+'C:\windows\Microsoft.NET\Framework64\v4.0.30319\mscoreei.dll',
+'C:\windows\system32\ucrtbase_clr0400.dll',
+ 'C:\windows\system32\vcruntime140_clr0400.dll'
+)
+    foreach($i in $sourcefile){
+   # Remove-Item $i -force -erroraction silentlycontinue
+    #    7z e "$cachedir\$(verb)\$(verb).7z" -o"$env:TEMP" $i -aoa
+        #Move-Item "$env:TEMP\$(([System.IO.FileInfo]$i).Name)" $i -force -verbose
+     }
+  
+    Write-HOST SGAHSJGGGGGGGGGGGGGGGGGGGGGH
+    7z x -spf "$cachedir\$(verb)\$(verb).7z" -aoa 
+    $null =  . "$env:TEMP\reg_keys.ps1"
+
+    
     <# FIXME:  mscoreei.dll is not installed as it is in use by pwsh.exe #>
     #Start-Process -FilePath $env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.3031\\ngen.exe -NoNewWindow -ArgumentList "eqi"
     #Start-Process -FilePath $env:SystemRoot\\Microsoft.NET\\Framework\\v4.0.3031\\ngen.exe -NoNewWindow -ArgumentList "eqi"
