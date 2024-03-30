@@ -24,66 +24,19 @@
  */
 #include <windows.h>
 #include <winternl.h> 
+#include <stdio.h>
 
 static inline BOOL is_single_or_last_option (WCHAR *opt)
 {
-    return ( ( ( !_wcsnicmp( opt, L"-c", 2 ) && _wcsnicmp( opt, L"-config", 7 ) ) || !_wcsnicmp( opt, L"-n", 2 ) || !_wcsnicmp( opt, L"-enc", 4 ) ||\
-                 !_wcsnicmp( opt, L"-m", 2 ) || !_wcsnicmp( opt, L"-s", 2 )  || !wcscmp( opt, L"-" ) || !_wcsnicmp( opt, L"-f", 2 ) ) ? TRUE : FALSE );
-}
-/* following code for reading console is shamelessly stolen (and adapted) from wine/programs/find/find.c */
-static inline BOOL read_char_from_handle(HANDLE handle, char *char_out)
-{
-    static char buffer[4096];
-    static DWORD buffer_max = 0, buffer_pos = 0;
-    /* Read next content into buffer */
-    if (buffer_pos >= buffer_max)
-    {
-        BOOL success = ReadFile(handle, buffer, 4096, &buffer_max, NULL);
-        if (!success || !buffer_max) return FALSE;
-        buffer_pos = 0;
-    }
-    *char_out = buffer[buffer_pos++];
-    return TRUE;
-}
-/* Read a line from a handle, returns NULL if the end is reached */
-static inline WCHAR* read_line_from_handle(HANDLE handle, BOOL replace_cr)
-{
-    int line_max = 4096, length = 0, line_converted_length;
-    WCHAR *line_converted;
-    BOOL success;
-    char *line = (char *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, line_max);
-
-    for (;;)
-    {
-        char c;
-        success = read_char_from_handle(handle, &c); //MessageBoxW(0, tmpp , 0, 0);
-        /* Check for EOF */
-        if (!success) { if (length == 0) return NULL; else break; }
-        if (c == '\n') break;
-        if (length + 2 >= line_max) /* Make sure buffer is large enough */
-        { 
-            line_max *= 2;
-            line = line ? (char *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, line_max) :  (char *)HeapReAlloc(GetProcessHeap(), 0, line, line_max);
-        }
-        if (c == '"')  line[length++] = '\\';    /* escape the double quotes so they won`t get lost */
-        //if (c == '\'') line[length++] = '\'';  /* escape the single quote so they won`t get lost */
-        if (c == '\r' && replace_cr) c = ';';    /* carriage return replacement */
-        line[length++] = c;   
-    }
-    line[length] = 0; /* Strip \r of windows line endings */
-    if (length - 1 >= 0 && line[length - 1] == '\r') line[length - 1] = 0;
-    line_converted_length = MultiByteToWideChar(CP_ACP, 0, line, -1, 0, 0);
-    line_converted = (WCHAR *)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, line_converted_length * sizeof(WCHAR)); 
-    MultiByteToWideChar(CP_ACP, 0, line, -1, line_converted, line_converted_length);
-    HeapFree(GetProcessHeap(), 0, line);
-    return line_converted;
+    return ( ( ( !_wcsnicmp( opt, L"-c", 2 ) && _wcsnicmp( opt, L"-config", 7 ) ) || !_wcsnicmp( opt, L"-n", 2 ) || !_wcsnicmp( opt, L"-f", 2 ) ||\
+                 !wcscmp( opt, L"-" ) || !_wcsnicmp( opt, L"-enc", 4 ) || !_wcsnicmp( opt, L"-m", 2 ) || !_wcsnicmp( opt, L"-s", 2 ) ) ? TRUE : FALSE );
 }
 
 __attribute__((externally_visible))  /* for -fwhole-program */
 int mainCRTStartup(void)
 {
     BOOL read_from_stdin = FALSE, ps_console = FALSE;
-    wchar_t conemu_pathW[MAX_PATH]=L"", cmdlineW[4096]=L"", pwsh_pathW[MAX_PATH] =L"", bufW[MAX_PATH] = L"", drive[MAX_PATH] , dir[_MAX_FNAME], filenameW[_MAX_FNAME], **argv;;
+    wchar_t cmdlineW[4096]=L"", pwsh_pathW[MAX_PATH] =L"", bufW[MAX_PATH] = L"", drive[MAX_PATH] , dir[_MAX_FNAME], filenameW[_MAX_FNAME], **argv;
     DWORD exitcode;       
     STARTUPINFOW si = {0};
     PROCESS_INFORMATION pi = {0};
@@ -93,7 +46,6 @@ int mainCRTStartup(void)
     _wsplitpath( argv[0], drive, dir, filenameW, NULL );
 
     ExpandEnvironmentStringsW(L"%ProgramW6432%\\Powershell\\7\\pwsh.exe", pwsh_pathW, MAX_PATH+1);
-    ExpandEnvironmentStringsW(L"%SystemDrive%\\ConEmu\\ConEmu64.exe", conemu_pathW, MAX_PATH+1);
     /* Download and Install */
     if ( !wcsncmp( filenameW , L"ChoCinstaller_" , 14 ) )
     {    
@@ -167,23 +119,21 @@ int mainCRTStartup(void)
     if ( GetEnvironmentVariableW( L"PS51", bufW, MAX_PATH + 1 ) && !wcscmp( bufW, L"1") ) 
         ExpandEnvironmentStringsW( L"%SystemRoot%\\system32\\WindowsPowershell\\v1.0\\ps51.exe ", pwsh_pathW, MAX_PATH + 1 );
     /* support pipeline to handle something like " '$(get-date) | powershell - ' */
-    if( read_from_stdin ) {
-        WCHAR *line;
+    if( read_from_stdin ) { 
+        WCHAR defline[4096]; char line[4096];
         HANDLE input = GetStdHandle(STD_INPUT_HANDLE); DWORD type = GetFileType(input);
         /* handle pipe */
-        if ( type == FILE_TYPE_CHAR ) goto exec; /* not redirected (FILE_TYPE_PIPE or FILE_TYPE_DISK) */
-        if( !wcscmp(argv[argc-1], L"-" ) && _wcsnicmp(argv[argc-2], L"-c", 2 ) ) wcscat(cmdlineW, L" -c ");
-        wcscat(cmdlineW, L" \"& {"); /* embed cmdline in scriptblock */
-        while ((line = read_line_from_handle( input, TRUE )) != NULL) wcscat( cmdlineW, line); 
-        wcscat(cmdlineW, L"}\"");
+        if ( type != FILE_TYPE_CHAR ) { /* not redirected (FILE_TYPE_PIPE or FILE_TYPE_DISK) */
+            if( !wcscmp(argv[argc-1], L"-" ) && _wcsnicmp(argv[argc-2], L"-c", 2 ) ) wcscat(cmdlineW, L" -c ");
+            wcscat(cmdlineW, L" ");
+            while( fgets(line, 4096, stdin) != NULL ) { mbstowcs(defline, line, 4096); wcscat(cmdlineW, defline);}
+        }
     } /* end support pipeline */
     if ( i == argc && !read_from_stdin ) ps_console = TRUE;
 exec: 
-    bufW[0] = 0; /* Execute the command through pwsh.exe (or start PSconsole via ConEmu if no command found) */
-    CreateProcessW( pwsh_pathW, !ps_console ? cmdlineW : wcscat( wcscat ( wcscat( wcscat( wcscat( \
-                    bufW, L" -c " ) , conemu_pathW ) , L" -NoUpdate -LoadRegistry -run "), pwsh_pathW ), cmdlineW ), 0, 0, 0, 0, 0, 0, &si, &pi );
+    if ( ps_console ) ExpandEnvironmentStringsW( L" -c %SystemDrive%\\ConEmu\\ConEmu64.exe -NoUpdate -LoadRegistry -run %ProgramW6432%\\Powershell\\7\\pwsh.exe ", bufW, MAX_PATH+1);
+    CreateProcessW( pwsh_pathW, ps_console ? wcscat( bufW , cmdlineW ) : cmdlineW, 0, 0, 0, 0, 0, 0, &si, &pi );
     WaitForSingleObject( pi.hProcess, INFINITE ); GetExitCodeProcess( pi.hProcess, &exitcode ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );    
     LocalFree(argv);
-
     return ( exitcode ); 
 }
