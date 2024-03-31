@@ -1,93 +1,7 @@
-A bunch of sad hacks + patch below
+A bunch of sad hacks
 
-From 3b2495a7bd1740bcb4f946f92da7dee40ec10d03 Mon Sep 17 00:00:00 2001
-From: Paul Gofman <pgofman@codeweavers.com>
-Date: Tue, 12 Sep 2023 14:47:07 -0600
-Subject: [PATCH 1/2] combase/tests: Add tests for implicit MTA with
- RoGetActivationFactory().
-
-diff --git a/dlls/combase/apartment.c b/dlls/combase/apartment.c
-index d679ef3407a..92f1e32c502 100644
---- a/dlls/combase/apartment.c
-+++ b/dlls/combase/apartment.c
-@@ -1157,6 +1157,11 @@ void leave_apartment(struct tlsdata *data)
-         if (data->ole_inits)
-             WARN( "Uninitializing apartment while Ole is still initialized\n" );
-         apartment_release(data->apt);
-+        if (data->implicit_mta_cookie)
-+        {
-+            apartment_decrement_mta_usage(data->implicit_mta_cookie);
-+            data->implicit_mta_cookie = NULL;
-+        }
-         data->apt = NULL;
-         data->flags &= ~(OLETLS_DISABLE_OLE1DDE | OLETLS_APARTMENTTHREADED | OLETLS_MULTITHREADED);
-     }
-@@ -1288,3 +1293,29 @@ void apartment_global_cleanup(void)
-     apartment_release_dlls();
-     DeleteCriticalSection(&apt_cs);
- }
-+
-+HRESULT ensure_mta(void)
-+{
-+    struct apartment *apt;
-+    struct tlsdata *data;
-+    HRESULT hr;
-+
-+    if (FAILED(hr = com_get_tlsdata(&data)))
-+        return hr;
-+    if ((apt = data->apt) && (data->implicit_mta_cookie || apt->multi_threaded))
-+        return S_OK;
-+
-+    EnterCriticalSection(&apt_cs);
-+    if (apt || mta)
-+        hr = apartment_increment_mta_usage(&data->implicit_mta_cookie);
-+    else
-+        hr = CO_E_NOTINITIALIZED;
-+    LeaveCriticalSection(&apt_cs);
-+
-+    if (FAILED(hr))
-+    {
-+        ERR("Failed, hr %#lx.\n", hr);
-+        return hr;
-+    }
-+    return S_OK;
-+}
-diff --git a/dlls/combase/combase.c b/dlls/combase/combase.c
-index f1b5828e0f8..e072c169953 100644
---- a/dlls/combase/combase.c
-+++ b/dlls/combase/combase.c
-@@ -407,6 +407,9 @@ static void com_cleanup_tlsdata(void)
- 
-     if (tlsdata->apt)
-         apartment_release(tlsdata->apt);
-+    if (tlsdata->implicit_mta_cookie)
-+        apartment_decrement_mta_usage(tlsdata->implicit_mta_cookie);
-+
-     if (tlsdata->errorinfo)
-         IErrorInfo_Release(tlsdata->errorinfo);
-     if (tlsdata->state)
-diff --git a/dlls/combase/combase_private.h b/dlls/combase/combase_private.h
-index 53932e9a357..04d251962ec 100644
---- a/dlls/combase/combase_private.h
-+++ b/dlls/combase/combase_private.h
-@@ -92,6 +92,7 @@ struct tlsdata
-     struct list       spies;         /* Spies installed with CoRegisterInitializeSpy */
-     DWORD             spies_lock;
-     DWORD             cancelcount;
-+    CO_MTA_USAGE_COOKIE implicit_mta_cookie; /* mta referenced by roapi from sta thread */
- };
- 
- extern HRESULT WINAPI InternalTlsAllocData(struct tlsdata **data);
-@@ -161,6 +162,7 @@ void apartment_release(struct apartment *apt);
- struct apartment * apartment_get_current_or_mta(void);
- HRESULT apartment_increment_mta_usage(CO_MTA_USAGE_COOKIE *cookie);
- void apartment_decrement_mta_usage(CO_MTA_USAGE_COOKIE cookie);
-+HRESULT ensure_mta(void);
- struct apartment * apartment_get_mta(void);
- HRESULT apartment_get_inproc_class_object(struct apartment *apt, const struct class_reg_data *regdata,
-         REFCLSID rclsid, REFIID riid, DWORD class_context, void **ppv);
 diff --git a/dlls/combase/marshal.c b/dlls/combase/marshal.c
-index 84f57b8c1c8..d188b83971c 100644
+index f638604f5a3..f49325297f0 100644
 --- a/dlls/combase/marshal.c
 +++ b/dlls/combase/marshal.c
 @@ -1388,7 +1388,7 @@ static HRESULT WINAPI ProxyCliSec_QueryBlanket(IClientSecurity *iface,
@@ -109,25 +23,10 @@ index 84f57b8c1c8..d188b83971c 100644
  
  static HRESULT WINAPI ProxyCliSec_CopyProxy(IClientSecurity *iface,
 diff --git a/dlls/combase/roapi.c b/dlls/combase/roapi.c
-index b80ca2e8325..dd914c39d06 100644
+index 02d9e0b536e..4fef5992dbf 100644
 --- a/dlls/combase/roapi.c
 +++ b/dlls/combase/roapi.c
-@@ -24,6 +24,8 @@
- #include "roerrorapi.h"
- #include "winstring.h"
- 
-+#include "combase_private.h"
-+
- #include "wine/debug.h"
- 
- WINE_DEFAULT_DEBUG_CHANNEL(combase);
-@@ -154,13 +156,59 @@ HRESULT WINAPI RoGetActivationFactory(HSTRING classid, REFIID iid, void **class_
-     if (!iid || !class_factory)
-         return E_INVALIDARG;
- 
-+    if (FAILED(hr = ensure_mta()))
-+        return hr;
-+
+@@ -162,8 +162,51 @@ HRESULT WINAPI DECLSPEC_HOTPATCH RoGetActivationFactory(HSTRING classid, REFIID
      hr = get_library_for_classid(WindowsGetStringRawBuffer(classid, NULL), &library);
      if (FAILED(hr))
      {
@@ -179,12 +78,9 @@ index b80ca2e8325..dd914c39d06 100644
 +    if(!found) ERR("No idea what dll to load for classid %ls; patch me with correct entries  \n", WindowsGetStringRawBuffer(classid, NULL));
 +    if (FAILED(hr)) {ERR("Failed to find library for %ls\n", WindowsGetStringRawBuffer(classid, NULL)); return hr;}
      }
--
-+    
+ 
      if (!(module = LoadLibraryW(library)))
-     {
-         ERR("Failed to load module %s\n", debugstr_w(library));
-@@ -202,10 +250,14 @@ HRESULT WINAPI RoGetParameterizedTypeInstanceIID(UINT32 name_element_count, cons
+@@ -207,10 +250,14 @@ HRESULT WINAPI RoGetParameterizedTypeInstanceIID(UINT32 name_element_count, cons
                                                   const IRoMetaDataLocator *meta_data_locator, GUID *iid,
                                                   ROPARAMIIDHANDLE *hiid)
  {
@@ -203,3 +99,5 @@ index b80ca2e8325..dd914c39d06 100644
  }
  
  /***********************************************************************
+
+
