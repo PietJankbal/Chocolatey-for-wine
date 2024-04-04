@@ -10,8 +10,13 @@ https://bugs.winehq.org/attachment.cgi?id=75727&action=diff
 patch by Mark Jansen:
 
 https://gitlab.winehq.org/wine/wine/-/merge_requests/1263
+
+Hack to replace commandline arguments, see howto in kernelbase.ini in c:\ProgramData\Chocolatey-for-wine
+
+
+
 diff --git a/dlls/kernelbase/loader.c b/dlls/kernelbase/loader.c
-index 59b91596f13..2b4b72e6ba5 100644
+index e0be2a88d2b..dfc23aec433 100644
 --- a/dlls/kernelbase/loader.c
 +++ b/dlls/kernelbase/loader.c
 @@ -37,6 +37,9 @@
@@ -240,6 +245,63 @@ index 4f4bba9a13b..de42395b33b 100644
  }
  
  
+diff --git a/dlls/kernelbase/process.c b/dlls/kernelbase/process.c
+index 775512e7f0d..f803f0eaf90 100644
+--- a/dlls/kernelbase/process.c
++++ b/dlls/kernelbase/process.c
+@@ -524,7 +524,7 @@ BOOL WINAPI DECLSPEC_HOTPATCH CreateProcessInternalW( HANDLE token, const WCHAR
+ 
+     /* Process the AppName and/or CmdLine to get module name and path */
+ 
+-    TRACE( "app %s cmdline %s\n", debugstr_w(app_name), debugstr_w(cmd_line) );
++
+ 
+     if (new_token) FIXME( "No support for returning created process token\n" );
+ 
+@@ -543,6 +543,43 @@ BOOL WINAPI DECLSPEC_HOTPATCH CreateProcessInternalW( HANDLE token, const WCHAR
+         app_name = name;
+     }
+ 
++///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
++
++
++    WCHAR ini_path[MAX_PATH];
++
++    ExpandEnvironmentStringsW( L"%ProgramData%\\Chocolatey-for-wine\\kernelbase.ini", ini_path, MAX_PATH + 1 );
++
++    if(GetFileAttributesW(ini_path) != INVALID_FILE_ATTRIBUTES) {
++        static HINSTANCE hkernel32;
++        static DWORD   (WINAPI *pGetPrivateProfileStringW)(LPCWSTR a, LPCWSTR b, LPCWSTR c, LPWSTR d, DWORD e, LPCWSTR f);
++ 
++        hkernel32 = GetModuleHandleA("kernel32");
++         pGetPrivateProfileStringW = (void *) GetProcAddress(hkernel32, "GetPrivateProfileStringW");
++
++         WCHAR new_cmd_line[MAX_PATH];
++ 
++        if(pGetPrivateProfileStringW((wcsrchr(app_name,L'\\')+1), 0, 0 , new_cmd_line,sizeof(new_cmd_line), ini_path)) {
++ 
++            FIXME( "app %s cmdline to be replaced %s\n", debugstr_w(app_name), debugstr_w(tidy_cmdline) );
++    
++            if(pGetPrivateProfileStringW((wcsrchr(app_name,L'\\')+1), L"append", 0 , new_cmd_line,sizeof(new_cmd_line), ini_path)) 
++                wcscat( wcscat(tidy_cmdline, L" "), new_cmd_line); 
++
++            if(pGetPrivateProfileStringW((wcsrchr(app_name,L'\\')+1), L"replace_from", 0 , new_cmd_line,sizeof(new_cmd_line), ini_path)) {
++
++		        if(!wcsicmp( tidy_cmdline + wcslen(app_name)+3, new_cmd_line ) ){
++
++                    if(pGetPrivateProfileStringW((wcsrchr(app_name,L'\\')+1), L"replace_to", 0 , new_cmd_line,sizeof(new_cmd_line), ini_path))
++                    {   tidy_cmdline[wcslen(app_name)+3]=0;   wcscat(tidy_cmdline, new_cmd_line);}
++	            }
++            }    
++    
++            FIXME( "app %s replaced cmdline  %s\n", debugstr_w(app_name), debugstr_w(cmd_line) );
++        }
++    }
++/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
++
+     /* Warn if unsupported features are used */
+ 
+     if (flags & (IDLE_PRIORITY_CLASS | HIGH_PRIORITY_CLASS | REALTIME_PRIORITY_CLASS |
 diff --git a/dlls/kernelbase/version.c b/dlls/kernelbase/version.c
 index 0636634badb..fee18b26b4b 100644
 --- a/dlls/kernelbase/version.c
