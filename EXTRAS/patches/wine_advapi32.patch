@@ -9,7 +9,7 @@ I've put the changes from the author above and for RegLoadAppKey (patch from Rom
 See https://bugs.winehq.org/show_bug.cgi?id=48023
 
 diff --git a/dlls/advapi32/advapi.c b/dlls/advapi32/advapi.c
-index 6b3ffe2ea25..dbcab6291e1 100644
+index 2284e92b263..12ce2074786 100644
 --- a/dlls/advapi32/advapi.c
 +++ b/dlls/advapi32/advapi.c
 @@ -17,12 +17,20 @@
@@ -33,12 +33,14 @@ index 6b3ffe2ea25..dbcab6291e1 100644
  #include "windef.h"
  #include "winbase.h"
  #include "winnls.h"
-@@ -33,12 +41,45 @@
+@@ -32,13 +40,47 @@
+ #include "wincred.h"
  #include "wct.h"
  #include "perflib.h"
++#include "winperf.h"
++
++
  
-+
-+
  #include "wine/debug.h"
  
 +#include "wine/heap.h"
@@ -79,7 +81,7 @@ index 6b3ffe2ea25..dbcab6291e1 100644
  /******************************************************************************
   * GetUserNameA [ADVAPI32.@]
   */
-@@ -361,3 +402,90 @@ ULONG WINAPI PerfQueryCounterData( HANDLE query, PERF_DATA_HEADER *data, DWORD d
+@@ -361,3 +403,93 @@ ULONG WINAPI PerfQueryCounterData( HANDLE query, PERF_DATA_HEADER *data, DWORD d
  
      return ERROR_SUCCESS;
  }
@@ -124,7 +126,7 @@ index 6b3ffe2ea25..dbcab6291e1 100644
 +    struct counterset_instance *inst;
 +    unsigned int i;
 +
-+    FIXME( "provider %p, instance %p, counterid %lu, address %lu semi-stub.\n",
++    TRACE( "provider %p, instance %p, counterid %lu, address %lu semi-stub.\n",
 +           provider, instance, counterid, value );
 +
 +    if (!prov || !instance) return ERROR_INVALID_PARAMETER;
@@ -136,11 +138,14 @@ index 6b3ffe2ea25..dbcab6291e1 100644
 +        if (template->counter[i].CounterId == counterid) break;
 +
 +    if (i == template->counterset.NumCounters) return ERROR_NOT_FOUND;
-+    
++    if (template->counter[i].Attrib & PERF_ATTRIB_BY_REFERENCE) return ERROR_INVALID_PARAMETER;
++    if (template->counter[i].Type & PERF_SIZE_LARGE) return ERROR_INVALID_PARAMETER;
++
 +    *(ULONG*)((BYTE *)&inst->instance + sizeof(PERF_COUNTERSET_INSTANCE) + template->counter[i].Offset) = value;
 +
 +    return STATUS_SUCCESS;
 +}
++
 +/***********************************************************************
 + *           PerfSetULongLongCounterValue   (KERNELBASE.@)
 + */
@@ -152,7 +157,7 @@ index 6b3ffe2ea25..dbcab6291e1 100644
 +    struct counterset_instance *inst;
 +    unsigned int i;
 +
-+    FIXME( "provider %p, instance %p, counterid %lu, address %lu semi-stub.\n",
++    TRACE( "provider %p, instance %p, counterid %lu, address %I64u semi-stub.\n",
 +           provider, instance, counterid, value );
 +
 +    if (!prov || !instance) return ERROR_INVALID_PARAMETER;
@@ -162,16 +167,16 @@ index 6b3ffe2ea25..dbcab6291e1 100644
 +
 +    for (i = 0; i < template->counterset.NumCounters; ++i)
 +        if (template->counter[i].CounterId == counterid) break;
-+
 +    if (i == template->counterset.NumCounters) return ERROR_NOT_FOUND;
-+    
++    if (template->counter[i].Attrib & PERF_ATTRIB_BY_REFERENCE) return ERROR_INVALID_PARAMETER;
++    if (!(template->counter[i].Type & PERF_SIZE_LARGE)) return ERROR_INVALID_PARAMETER;
++
 +    *(ULONGLONG*)((BYTE *)&inst->instance + sizeof(PERF_COUNTERSET_INSTANCE) + template->counter[i].Offset) = value;
 +
 +    return STATUS_SUCCESS;
 +}
-+
 diff --git a/dlls/advapi32/advapi32.spec b/dlls/advapi32/advapi32.spec
-index b69186d07a7..58153fe54f7 100644
+index dde83cc7045..f175864077a 100644
 --- a/dlls/advapi32/advapi32.spec
 +++ b/dlls/advapi32/advapi32.spec
 @@ -577,8 +577,8 @@
