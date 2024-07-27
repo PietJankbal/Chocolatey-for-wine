@@ -1,0 +1,18 @@
+diff --git a/dlls/cfgmgr32/main.c b/dlls/cfgmgr32/main.c
+index b545d761f68..86d23148ba5 100644
+--- a/dlls/cfgmgr32/main.c
++++ b/dlls/cfgmgr32/main.c
+@@ -65,8 +65,12 @@ CONFIGRET WINAPI CM_Register_Notification( CM_NOTIFY_FILTER *filter, void *conte
+                                            PCM_NOTIFY_CALLBACK callback, HCMNOTIFICATION *notify_context )
+ {
+     FIXME("%p %p %p %p stub!\n", filter, context, callback, notify_context);
++    
++    HANDLE h ;
++    
++    notify_context = &h;
+ 
+-    return CR_CALL_NOT_IMPLEMENTED;
++    return 0;
+ }
+ 
+ /***********************************************************************
