@@ -1,5 +1,16 @@
-A bunch of sad hacks
-
+diff --git a/dlls/combase/combase.c b/dlls/combase/combase.c
+index e072c169953..4ad2f0087f7 100644
+--- a/dlls/combase/combase.c
++++ b/dlls/combase/combase.c
+@@ -1029,7 +1029,7 @@ HRESULT WINAPI CoQueryProxyBlanket(IUnknown *proxy, DWORD *authn_service,
+         IClientSecurity_Release(client_security);
+     }
+ 
+-    if (FAILED(hr)) ERR("-- failed with %#lx.\n", hr);
++    if (FAILED(hr)) {ERR("-- failed with %#lx. HACK: Faking succes!!!!\n", hr); hr = 0;}
+     return hr;
+ }
+ 
 diff --git a/dlls/combase/marshal.c b/dlls/combase/marshal.c
 index f638604f5a3..f49325297f0 100644
 --- a/dlls/combase/marshal.c
@@ -23,7 +34,7 @@ index f638604f5a3..f49325297f0 100644
  
  static HRESULT WINAPI ProxyCliSec_CopyProxy(IClientSecurity *iface,
 diff --git a/dlls/combase/roapi.c b/dlls/combase/roapi.c
-index 02d9e0b536e..4fef5992dbf 100644
+index 02d9e0b536e..4446b777abf 100644
 --- a/dlls/combase/roapi.c
 +++ b/dlls/combase/roapi.c
 @@ -162,8 +162,51 @@ HRESULT WINAPI DECLSPEC_HOTPATCH RoGetActivationFactory(HSTRING classid, REFIID
@@ -80,7 +91,7 @@ index 02d9e0b536e..4fef5992dbf 100644
      }
  
      if (!(module = LoadLibraryW(library)))
-@@ -207,10 +250,14 @@ HRESULT WINAPI RoGetParameterizedTypeInstanceIID(UINT32 name_element_count, cons
+@@ -207,10 +250,15 @@ HRESULT WINAPI RoGetParameterizedTypeInstanceIID(UINT32 name_element_count, cons
                                                   const IRoMetaDataLocator *meta_data_locator, GUID *iid,
                                                   ROPARAMIIDHANDLE *hiid)
  {
@@ -89,15 +100,14 @@ index 02d9e0b536e..4fef5992dbf 100644
 -    if (hiid) *hiid = INVALID_HANDLE_VALUE;
 -    return E_NOTIMPL;
 +	int i;
++	ROPARAMIIDHANDLE h;
 +	
-+	for (i=0;i<name_element_count;i++) {    FIXME("stub: %d %s %p %p %p\n", name_element_count, debugstr_w(name_elements[i]), meta_data_locator, iid, hiid);}
++	for (i=0;i<name_element_count;i++) {    TRACE("stub: %d %s %p %p %p\n", name_element_count, debugstr_w(name_elements[i]), meta_data_locator, iid, hiid);}
 +
 +     GUID testGuid = {0xFFFFFFFF, 0xFFFF, 0xFFFF, {0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF}};
 +    if (iid) *iid = testGuid; //GUID_NULL;
-+    if (hiid) *hiid = (HANDLE)0xfefefafa; //INVALID_HANDLE_VALUE;
++    if (hiid) hiid = &h; //INVALID_HANDLE_VALUE;
 +    return S_OK;//E_NOTIMPL;
  }
  
  /***********************************************************************
-
-
