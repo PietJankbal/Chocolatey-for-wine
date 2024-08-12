@@ -1,4 +1,5 @@
-$cachedir = ("$env:WINEHOMEDIR" + "\.cache\winetrickxs").substring(4)
+if("$env:WINETRICKXHOME") {$cachedir = "$env:WINETRICKXHOME"}
+else                      {$cachedir = ("$env:WINEHOMEDIR" + "\.cache\winetrickxs").substring(4)}
 
 $expand_exe = "$env:systemroot\system32\expnd\expand.exe"
 
@@ -13,9 +14,9 @@ function w_download_to
 {
     Param ($dldir, $w_url, $w_file)
 
-    if (![System.IO.Directory]::Exists("$env:WINEHOMEDIR\\.cache\\winetrickxs\\$dldir".substring(4))){ [System.IO.Directory]::CreateDirectory("$env:WINEHOMEDIR\\.cache\\winetrickxs\\$dldir".substring(4))}
+    if (![System.IO.Directory]::Exists("$cachedir\\$dldir")){ [System.IO.Directory]::CreateDirectory("$cachedir\\$dldir")}
 
-    if (![System.IO.File]::Exists("$env:WINEHOMEDIR\\.cache\\winetrickxs\\$dldir\\$w_file".substring(4))){
+    if (![System.IO.File]::Exists("$cachedir\\$dldir\\$w_file")){
         Write-Host -foregroundcolor yellow "**********************************************************"
         Write-Host -foregroundcolor yellow "*                                                        *"
         Write-Host -foregroundcolor yellow "*        Downloading file(s) and extracting might        *"
@@ -24,7 +25,7 @@ function w_download_to
         Write-Host -foregroundcolor yellow "*                                                        *"
         Write-Host -foregroundcolor yellow "**********************************************************"
 
-        (New-Object System.Net.WebClient).DownloadFile($w_url, "$env:WINEHOMEDIR\\.cache\\winetrickxs\\$dldir\\$w_file".substring(4))}
+        (New-Object System.Net.WebClient).DownloadFile($w_url, "$cachedir\\$dldir\\$w_file")}
 }
 
 function check_msu_sanity <# some sanity checks before extracting from msu, like if dlls needed for expansion and the msu are present etc. #>
@@ -83,6 +84,21 @@ function reg_edit
 
 function verb { return $((Get-PSCallStack)[1].Command).replace('func_', '') }
 
+function install_winedll
+{
+    param ($dll, $hash)
+
+    if( [System.IO.File]::Exists( $([IO.Path]::Combine($cachedir,  $dll, "$dll.7z") )) -and ( (Get-FileHash  "$cachedir\$dll\$dll.7z").Hash -ne $hash) )  {
+        Remove-Item -Force  "$cachedir\$dll\$dll.7z" 
+    }
+    w_download_to "$dll" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$dll.7z" "$dll.7z"
+
+    foreach ($i in $dll.substring(5) ){
+        7z e "$cachedir\\$dll\\$dll.7z" "-o$env:systemroot\system32" "64/$i.dll" -aoa | Select-String 'ok' 
+        7z e "$cachedir\\\\$dll\\$dll.7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
+    foreach($i in $dll.substring(5) ) { dlloverride 'native' $i }
+}
+
 $MethodDefinition = @" 
 [DllImport("ntdll.dll", CharSet = CharSet.Ansi)] public static extern string wine_get_version();
 [DllImport("ntdll.dll", CharSet = CharSet.Ansi)] public static extern string wine_get_build_id();
@@ -101,11 +117,11 @@ function func_msxml3
 
 function func_msxml6
 {
-    $dlls = @('msxml6.dll', 'msxml6r.dll'); check_aik_sanity;
+    $dlls = @('msxml6.dll','msxml6r.dll'); check_aik_sanity;
 
     foreach ($i in $dlls) {
         7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
-        7z e "$cachedir\aik70\F1_WINPE.WIM" "-o$env:systemroot\syswow64" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z')
+        7z e "$cachedir\aik70\F1_WINPE.WIM" "-o$env:systemroot\syswow64" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z') 
     foreach($i in 'msxml6') { dlloverride 'native' $i }
 } <# end msxml6 #>
 
@@ -148,6 +164,16 @@ function func_uxtheme
     foreach($i in 'uxtheme') { dlloverride 'native' $i }
 }  <# end uxtheme #>
 
+function func_dbghelp
+{
+    $dlls = @('dbghelp.dll'); check_aik_sanity;
+
+    foreach ($i in $dlls) {
+        7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
+        7z e "$cachedir\aik70\F1_WINPE.WIM" "-o$env:systemroot\syswow64" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z') 
+    foreach($i in 'dbghelp') { dlloverride 'native' $i }
+}  <# end dbghelp #>
+
 function func_sspicli
 {
     $dlls = @('sspicli.dll'); check_aik_sanity;
@@ -157,6 +183,16 @@ function func_sspicli
         7z e "$cachedir\aik70\F1_WINPE.WIM" "-o$env:systemroot\syswow64" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z') 
     foreach($i in 'sspicli') { dlloverride 'native' $i }
 }  <# end sspicli #>
+
+function func_uiautomationcore
+{
+    $dlls = @('uiautomationcore.dll'); check_aik_sanity;
+
+    foreach ($i in $dlls) {
+        7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
+        7z e "$cachedir\aik70\F1_WINPE.WIM" "-o$env:systemroot\syswow64" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z') 
+    foreach($i in 'uiautomationcore') { dlloverride 'native' $i }
+}  <# end uiautomationcore #>
 
 function func_xmllite
 {
@@ -330,7 +366,6 @@ function func_msado15
     foreach ($i in $adcdlls) {
             if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB "-o$env:CommonProgramFiles\\System\\MSADC" $i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}
             if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB "-o${env:CommonProgramFiles`(x86`)}\\System\\MSADC" $i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}} quit?('7z')
-
 
     $dlls = @( 'amd64_microsoft-windows-m..ponents-mdac-msdart_31bf3856ad364e35_6.1.7600.16385_none_42074b3f2553d5bd/msdart.dll', `
                'x86_microsoft-windows-m..ponents-mdac-msdart_31bf3856ad364e35_6.1.7600.16385_none_e5e8afbb6cf66487/msdart.dll')
@@ -1886,46 +1921,19 @@ function func_wine_wintrust <# wine wintrust with some hack faking success #>
     foreach($i in $(verb).substring(5) ) { dlloverride 'native' $i }
 } <# end wintrust #>
 
-function func_wine_advapi32 <# wine advapi32 with some hacks  #>
-{
-    w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
+function func_wine_advapi32 { install_winedll wine_advapi32 '2b0ce2e50be8372e21d710e089df0063b755fa31f2653c52963406e722dd4323'}
 
-    foreach ($i in $(verb).substring(5) ){
-        7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$env:systemroot\system32" "64/$i.dll" -aoa | Select-String 'ok' 
-        7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
-} <# end advapi32 #>
+function func_wine_shell32 { install_winedll wine_shell32 'b76038abf9aebfa8a570e4b42085c629f63234a6ded23f69d5ed42996f71d157'}
 
-function func_wine_shell32 <# wine shell32 with some hack  #>
-{
-    w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
+function func_wine_combase { install_winedll wine_combase 'c85261296b6a00234aa412910c019946c19de6c1c537708b6c2c1d2f2b2593e2'}
 
-    foreach ($i in $(verb).substring(5) ){
-        7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$env:systemroot\system32" "64/$i.dll" -aoa | Select-String 'ok' 
-        7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
-    foreach($i in $(verb).substring(5) ) { dlloverride 'native' $i }
-} <# end shell32 #>
+function func_wine_msxml3 { install_winedll wine_msxml3 'd2ff624df7ebc77d552adeee594748a6427de3f26c31d5825f4ca84569ba6a15'}
 
-function func_wine_combase <# wine combase with some hacks  #>
-{
-    if( [System.IO.File]::Exists( $([IO.Path]::Combine($cachedir,  $(verb), "$(verb).7z") )) -and ( (Get-FileHash  "$cachedir\$(verb)\$(verb).7z").Hash -ne '2DA34A53C4F1C6932BA0B55293CB6EBEFA6169CE8AD536836C48799A4169EFF3') )  {
-        Remove-Item -Force  "$cachedir\$(verb)\$(verb).7z" 
-    }
-    w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
+function func_wine_cfgmgr32 { install_winedll wine_cfgmgr32 '15a613ca7e0fca571889ec9c9ec2fa082636f2180987cbd19fbef3ebd13c72ad'}
 
-    foreach ($i in $(verb).substring(5) ){
-        7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$env:systemroot\system32" "64/$i.dll" -aoa | Select-String 'ok' 
-        7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
-    foreach($i in $(verb).substring(5) ) { dlloverride 'native' $i }
-} <# end combase #>
+function func_wine_sxs { install_winedll wine_sxs '9ac670ae3105611a5211649aab25973b327dcd8ea932f1a8569e78adca6fedcb'}
 
-function func_wine_shell32 <# wine shell32 with some hacks  #>
-{
-    w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
-
-    foreach ($i in $(verb).substring(5) ){
-        7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$env:systemroot\system32" "64/$i.dll" -aoa | Select-String 'ok' 
-        7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
-} <# end shell32 #>
+function func_wine_wintypes { install_winedll wine_wintypes 'DEE94F7B8C4BD325AEAE4F155339D83088B698823A35D7E63C5C9FFFEEBF3CDD'}
 
 function func_wine_sppc <# wine sppc with some hacks #>
 {
@@ -1935,34 +1943,6 @@ function func_wine_sppc <# wine sppc with some hacks #>
         7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$env:systemroot\system32" "64/$i.dll" -aoa | Select-String 'ok' 
         7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
 } <# end sppc #>
-
-function func_wine_wintypes <# wine wintypes #>
-{
-    
-    if( [System.IO.File]::Exists( $([IO.Path]::Combine($cachedir,  $(verb), "$(verb).7z") )) -and ( (Get-FileHash  "$cachedir\$(verb)\$(verb).7z").Hash -ne 'DEE94F7B8C4BD325AEAE4F155339D83088B698823A35D7E63C5C9FFFEEBF3CDD') )  {
-        Remove-Item -Force  "$cachedir\$(verb)\$(verb).7z" 
-    }
-    w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
-
-    foreach ($i in $(verb).substring(5) ){
-        7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$env:systemroot\system32" "64/$i.dll" -aoa | Select-String 'ok' 
-        7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
-    foreach($i in $(verb).substring(5) ) { dlloverride 'native' $i }
-} <# end wintypes #>
-
-function func_wine_windows.ui <# wine windows.ui #>
-{
-    if( [System.IO.File]::Exists( $([IO.Path]::Combine($cachedir,  $(verb), "$(verb).7z") )) -and ( (Get-FileHash  "$cachedir\$(verb)\$(verb).7z").Hash -ne '896A301B19F1FBED85C23D0A2DDD55B0457E35C22B5725598F895A0C8E4C0FA6') )  {
-        Remove-Item -Force  "$cachedir\$(verb)\$(verb).7z" 
-    }
-    w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
-
-
-    foreach ($i in $(verb).substring(5) ){
-        7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$env:systemroot\system32" "64/$i.dll" -aoa | Select-String 'ok' 
-        7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
-    foreach($i in $(verb).substring(5) ) { dlloverride 'native' $i }
-} <# end windows.ui #>
 
 function func_wine_hnetcfg <# fix for https://bugs.winehq.org/show_bug.cgi?id=45432 #>
 {
@@ -1985,9 +1965,9 @@ function func_wine_msi <# wine msi with some hacks faking success #>
 } <# end msi #>
 
 
-function func_wine_kernelbase <# wine kernelbase with rudimentary MUI support  #>
+function func_wine_kernelbase <# wine kernelbase with rudimentary MUI support + bunch of other hacks #>
 {
-    if( [System.IO.File]::Exists( $([IO.Path]::Combine($cachedir,  $(verb), "$(verb).7z") )) -and ( (Get-FileHash  "$cachedir\$(verb)\$(verb).7z").Hash -ne '4D79D6137E1273D8BAA128787C37B40F9DB9A217FDDEF96BBECEA3B072386E16') )  {
+    if( [System.IO.File]::Exists( $([IO.Path]::Combine($cachedir,  $(verb), "$(verb).7z") )) -and ( (Get-FileHash  "$cachedir\$(verb)\$(verb).7z").Hash -ne '6056679D21DE6D8CAF2080E15673D388F4D8686054EA5BD9B0EC93F1019ABEF1') )  {
         Remove-Item -Force  "$cachedir\$(verb)\$(verb).7z" 
     }
 
@@ -2016,6 +1996,20 @@ function func_wine_kernelbase <# wine kernelbase with rudimentary MUI support  #
     if(!(Test-Path "HKCU:\\Software\\Wine\\AppDefaults\\$file")) {New-Item  -Path "HKCU:\\Software\\Wine\\AppDefaults\\$file"}
     if(!(Test-Path "HKCU:\\Software\\Wine\\AppDefaults\\$file\\DllOverrides")) {New-Item  -Path "HKCU:\\Software\\Wine\\AppDefaults\\$file\\DllOverrides"}
     New-ItemProperty -Path "HKCU:\\Software\\Wine\\AppDefaults\\$file\\DllOverrides" -Name "$($(verb).substring(5))" -Value 'native,builtin' -PropertyType 'String' -force
+
+    #replace commandlines; Note: Conemu apparently doesn't like this :
+@'
+;Append something to a commandline like 'msedge' --> 'msedge -no-sandbox'
+;[msedge.exe]
+;append="-no-sandbox"
+
+;Replace a commandline like 'where.exe comctl32.dll' --> 'where.exe ntdll.dll'
+;[where.exe]
+;replace_from=comctl32.dll
+;replace_to=ntdll.dll
+'@ | Out-File $env:ProgramData\Chocolatey-for-wine\kernelbase.ini -Force
+
+
 } <# end kernelbase #>
 
 function func_font_lucida
@@ -2069,7 +2063,7 @@ function func_font_vista
 {
     $url = "https://catalog.s.download.windowsupdate.com/msdownload/update/software/updt/2010/04/windows6.0-kb980248-x86_c3accb4e416d6ef6d6fcbe27da9fc7da1fc22eb6.msu"
     $cab = "Windows6.0-KB980248-x86.cab"
-    $sourcefile = @('arialbd.ttf','arialbi.ttf','ariali.ttf','ariblk.ttf','calibrib.ttf','calibrii.ttf','calibri.ttf','calibriz.ttf','cambriab.ttf',`
+    $sourcefile = @('arial.ttf','arialbd.ttf','arialbi.ttf','ariali.ttf','ariblk.ttf','calibrib.ttf','calibrii.ttf','calibri.ttf','calibriz.ttf','cambriab.ttf',`
     'cambriai.ttf','cambriaz.ttf','comicbd.ttf','comic.ttf','consolab.ttf','consolai.ttf','consola.ttf','consolaz.ttf','courbd.ttf','courbi.ttf',`
     'couri.ttf','cour.ttf','georgiab.ttf','georgiai.ttf','georgia.ttf','georgiaz.ttf','impact.ttf','l_10646.ttf','symbol.ttf','timesbd.ttf','timesbi.ttf',`
     'timesi.ttf','times.ttf','trebucbd.ttf','trebucbi.ttf','trebucit.ttf','trebuc.ttf','verdanab.ttf','verdanai.ttf','verdana.ttf','verdanaz.ttf','webdings.ttf','wingding.ttf')
@@ -2444,16 +2438,13 @@ function func_app_paths
 
 function func_vs19
 {
-    func_msxml6
+    func_wine_msxml3
     #func_msxml3
     func_vcrun2019
     #func_xmllite
     #func_cmd
     func_wine_advapi32
-    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.16 ) {
-        func_wine_ole32 }
-    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.13 ) {
-      func_wine_combase }
+    #func_wine_combase
     func_wine_shell32
 
     winecfg /v win7
@@ -2490,11 +2481,9 @@ function func_vs19
     if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe'}
     if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides'}
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'advapi32' -Value 'native' -PropertyType 'String' -force
-    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.16 ) {
-        New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'ole32' -Value 'native' -PropertyType 'String' -force }
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'shell32' -Value 'native' -PropertyType 'String' -force
-    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.13 ) {
-        New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'combase' -Value 'native' -PropertyType 'String' -force }
+#    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.13 ) {
+#        New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'combase' -Value 'native' -PropertyType 'String' -force }
 
     <# FIXME: frequently mpc are not written to registry (wine bug?), do it manually #>
     & "${env:ProgramFiles`(x86`)}\Microsoft` Visual` Studio\2019\Community\Common7\IDE\DDConfigCA.exe" | & "${env:ProgramFiles`(x86`)}\Microsoft` Visual` Studio\2019\Community\Common7\IDE\StorePID.exe" 09299
@@ -2502,22 +2491,23 @@ function func_vs19
 
 function func_vs22
 {
-    func_msxml6
-    #func_msxml3
+    func_wine_msxml3
     func_vcrun2019
-    #func_xmllite
-    #func_cmd
+    func_xmllite
+    func_uiautomationcore
+    func_wine_cfgmgr32
+    func_wine_sxs  <# FIXME: now very sad hack, probably disabling functionality (?), needs more work to figure out what goes wrong#>
     func_wine_advapi32
-    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.16 ) {
-        func_wine_ole32 }
-    #if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.13 ) {
-      func_wine_combase #}
+    func_wine_combase
     func_wine_shell32
     func_wine_wintypes
     func_winmetadata
 
     winecfg /v win10
 
+    # Fall back to builtin powershell to fake success for failing command:
+    # "c:\windows\syswow64\\windowspowershell\v1.0\powershell.exe" -NoLogo -NoProfile -Noninteractive -ExecutionPolicy Unrestricted -InputFormat None -Command "& """C:\ProgramData\Microsoft\VisualStudio\Packages\Microsoft.VisualCpp.Redist.14,version=14.40.33810,chip=x64\VCRedistInstall.ps1""" -PayloadDirectory """C:\ProgramData\Microsoft\VisualStudio\Packages\Microsoft.VisualCpp.Redist.14,version=14.40.33810,chip=x64""" -Architecture x64 -Logfile """C:\users\MYNAME\AppData\Local\Temp\dd_setup_20240728084731_003_Microsoft.VisualCpp.Redist.14.log"""; exit $LastExitCode"
+    foreach($i in 'powershell.exe') { dlloverride 'builtin' $i }
     
     (New-Object System.Net.WebClient).DownloadFile('https://aka.ms/vs/17/release/vs_community.exe', "$env:TMP\\vs_Community.exe") 
 
@@ -2545,23 +2535,98 @@ function func_vs22
     # Start-Process  "$env:TMP\\opc\\Contents\\vs_installer.exe" -Verb RunAs -ArgumentList "install --channelId VisualStudio.17.Release --channelUri `"https://aka.ms/vs/17/release/channel`" --productId Microsoft.VisualStudio.Product.Community --add Microsoft.VisualStudio.Workload.VCTools --add `"Microsoft.VisualStudio.Component.VC.Tools.x86.x64`" --add `"Microsoft.VisualStudio.Component.VC.CoreIde`"  --add `"Microsoft.VisualStudio.Component.Windows10SDK.16299`"           --includeRecommended --quiet"
     #& 'C:\Program Files (x86)\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64\cl.exe'  -I"c:\Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/um/"     -I"c:\Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/Shared/"   -I"c:\Program Files (x86)/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.29.30133/include/"  -I"c:\Program Files (x86)/Windows Kits/10/Include/10.0.19041.0/ucrt/" .\code.cpp /link /LIBPATH:"c:/Program Files (x86)/Windows Kits/10/Lib/10.0.19041.0/um/x64/" /LIBPATH:"c:\Program Files (x86)/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.29.30133/lib/x64/" /LIBPATH:"c:/Program Files (x86)/Windows Kits/10/Lib/10.0.19041.0/ucrt/x64/"
 
-if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe'}
-    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides'}
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'advapi32' -Value 'native' -PropertyType 'String' -force
-    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.16 ) {
-        New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'ole32' -Value 'native' -PropertyType 'String' -force }
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'shell32' -Value 'native' -PropertyType 'String' -force
-    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.13 ) {
-        New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'combase' -Value 'native' -PropertyType 'String' -force }
+    #if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe'}
+    #if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides'}
+    #New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'advapi32' -Value 'native' -PropertyType 'String' -force
+    #New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'shell32' -Value 'native' -PropertyType 'String' -force
 
     quit?('setup');quit?('vs_installer'); quit?('VSFinalizer'); quit?('devenv')
 
     <# FIXME: frequently mpc are not written to registry (wine bug?), do it manually #>
     & "${env:ProgramFiles}\Microsoft` Visual` Studio\2022\Community\Common7\IDE\DDConfigCA.exe" | & "${env:ProgramFiles}\Microsoft` Visual` Studio\2022\Community\Common7\IDE\StorePID.exe" 09299
 
-    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'sxs' -Value '' -PropertyType 'String' -force
+    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe'}
+    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\X11 Driver')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\X11 Driver'}
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\X11 Driver' -Name 'Decorated' -Value 'N' -PropertyType 'String' -force
+
+    #New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'sxs' -Value '' -PropertyType 'String' -force
+    #New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe' -Name 'Version' -Value 'win7' -PropertyType 'String' -force
+    winecfg /v win7  <# FIXME win10 does not work#>
+    
+    foreach($i in 'powershell.exe') { dlloverride 'native' $i }
+}
+
+function func_vs22_interactive_installer
+{
+    func_wine_msxml3
+    #func_ps51
+    func_vcrun2019
+    #func_xmllite
+    #func_cmd
+    func_wine_cfgmgr32
+    func_wine_sxs  <# FIXME: now very sad hack, probably disabling functionality (?), needs more work to figure out what goes wrong#>
+    func_wine_advapi32
+    func_wine_combase
+    func_wine_shell32
+    func_wine_wintypes
+    func_winmetadata
+
+    winecfg /v win10
+
+    # Fall back to builtin powershell to fake success for failing command:
+    # "c:\windows\syswow64\\windowspowershell\v1.0\powershell.exe" -NoLogo -NoProfile -Noninteractive -ExecutionPolicy Unrestricted -InputFormat None -Command "& """C:\ProgramData\Microsoft\VisualStudio\Packages\Microsoft.VisualCpp.Redist.14,version=14.40.33810,chip=x64\VCRedistInstall.ps1""" -PayloadDirectory """C:\ProgramData\Microsoft\VisualStudio\Packages\Microsoft.VisualCpp.Redist.14,version=14.40.33810,chip=x64""" -Architecture x64 -Logfile """C:\users\MYNAME\AppData\Local\Temp\dd_setup_20240728084731_003_Microsoft.VisualCpp.Redist.14.log"""; exit $LastExitCode"
+    foreach($i in 'powershell.exe') { dlloverride 'builtin' $i }
+    
+    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe'}
+    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\X11 Driver')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\X11 Driver'}
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\X11 Driver' -Name 'Decorated' -Value 'N' -PropertyType 'String' -force
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe' -Name 'Version' -Value 'win7' -PropertyType 'String' -force
-    winecfg /v win7
+
+    <# FIXME: some of these too crash in win10 mode, too lazy to figure out which one's. And why they crash... Set version to win7 for now#>
+    foreach($i in
+	'Microsoft.ServiceHub.Controller.exe', 'ServiceHub.Host.Node.x86.exe',
+	'ServiceHub.Host.dotnet.x64.exe',
+	'ServiceHub.RoslynCodeAnalysisServiceS.exe',
+	'ServiceHub.ThreadedWaitDialog.exe',
+	'ServiceHub.VSDetouredHost.exe',
+	'ServiceHub.IdentityHost.exe',
+	'ServiceHub.LiveUnitTesting.RemoteSyncManager.exe',
+	'ServiceHub.DataWarehouseHost.exe',
+	'ServiceHub.RoslynCodeAnalysisService.exe',
+	'ServiceHub.IndexingService.exe',
+	'ServiceHub.IdentityHost.exe',
+	'ServiceHub.DataWarehouseHost.exe',
+	'ServiceHub.Host.netfx.x86.exe',
+	'ServiceHub.Host.netfx.x64.exe',
+	'ServiceHub.DataWarehouseHost.exe',
+	'ServiceHub.IntellicodeModelService.exe',
+	'ServiceHub.Host.Extensibility.exe',
+	'ServiceHub.TestWindowStoreHost.exe',
+	'ServiceHub.RoslynCodeAnalysisServiceS.exe',
+	'ServiceHub.LiveUnitTesting.exe',
+	'ServiceHub.ThreadedWaitDialog.exe',
+	'ServiceHub.VSDetouredHost.exe',
+	'ServiceHub.Host.AnyCPU.exe',
+	'ServiceHub.RoslynCodeAnalysisService.exe',
+	'ServiceHub.SettingsHost.exe') {
+    if(!(Test-Path "HKCU:\\Software\\Wine\\AppDefaults\\$i")) {New-Item  -Path "HKCU:\\Software\\Wine\\AppDefaults\\$i"}
+    New-ItemProperty -Path "HKCU:\\Software\\Wine\\AppDefaults\\$i" -Name 'Version' -Value 'win7' -PropertyType 'String' -force
+ }
+
+    (New-Object System.Net.WebClient).DownloadFile('https://aka.ms/vs/17/release/vs_community.exe', "$env:TMP\\vs_Community.exe") 
+
+  #  7z x $env:TMP\\installer "-o$env:TMP\\opc" -y ;quit?('7z')
+
+    & "$env:TMP\\vs_Community.exe" --wait
+    
+    quit?('vs_Community')
+    
+    <# FIXME: frequently mpc are not written to registry (wine bug?), do it manually #>
+    & "${env:ProgramFiles}\Microsoft` Visual` Studio\2022\Community\Common7\IDE\DDConfigCA.exe" | & "${env:ProgramFiles}\Microsoft` Visual` Studio\2022\Community\Common7\IDE\StorePID.exe" 09299
+
+  #  winecfg /v win7  <# FIXME #>
+    
+    foreach($i in 'powershell.exe') { dlloverride 'native' $i }
 }
 
 function func_office365
@@ -3959,6 +4024,8 @@ for ( $j = 0; $j -lt $dotnet35.count; $j+=2 ) {
 for ( $j = 0; $j -lt $dotnet30.count; $j+=2 ) {
     Copy-Item -recurse -Path $dotnet30[$j] -Destination ( Join-Path (New-item -Type Directory -Force $(Split-Path -Path $dotnet30[$j+1]))   $(Split-Path -Leaf $dotnet30[$j+1])   ) -Force  -Verbose }
 
+mkdir "$cachedir\$(verb)" -force -erroraction silentlycontinue
+
 7z a -r -t7z -m0=lzma2 -mx=9 -mfb=273 -md=29 -ms=8g -mmt=off -mmtf=off -mqs=on -bt -bb3 "$cachedir\$(verb)\$(verb).7z" "$env:TEMP\windows"
 
 Remove-Item -Force -Recurse  "$env:TEMP\windows"
@@ -3981,7 +4048,6 @@ REGEDIT4
 
 function write_keys_from_manifest([parameter(position=0)] [string] $manifest, [switch] $to_file){
 
-    Remove-Item -force   "$env:TEMP\reg_keys.ps1" -erroraction silentlycontinue 
     
     $Xml = [xml](Get-Content -Path "$manifest")
 
@@ -4105,13 +4171,19 @@ function install_from_manifest ( [parameter(position=0)] [string] $manifestfile,
                 Copy-Item -Path $file -Destination $finalpath -Force  -verbose # -ErrorAction SilentlyContinue 
         }        
         elseif ( $Xml.assembly.assemblyIdentity.processorArchitecture -eq 'amd64' -and -not $file_names.destinationpath) { # no destinationpath, put it in GAC_64
-            $finalpath = "$env:systemroot\Microsoft.NET\assembly\GAC_64";if($prefix) {$finalpath = join-path $prefix $finalpath};                if (-not (Test-Path -Path $finalpath )) { New-Item -Path $finalpath -ItemType directory -Force }######
-            if($file) {Copy-Item -Path $file -Destination $finalpath -Force  -verbose} # -ErrorAction SilentlyContinue 
+        if($file) {
+        if( ([system.io.fileinfo]$file).Extension -eq '.config' ) { $dummy = $($file -replace '.config' , '.dll') } else {$dummy = $file}
+            $finalpath = "$env:systemroot\Microsoft.NET\assembly\GAC_64\" + "$($Xml.assembly.assemblyIdentity.name)\" + "v4.0_" + "$([System.Reflection.AssemblyName]::GetAssemblyName($dummy).Version.ToString())" + "__" + "$($Xml.assembly.assemblyIdentity.publicKeyToken)\"
+            if($prefix) {$finalpath = join-path $prefix $finalpath};                if (-not (Test-Path -Path $finalpath )) { New-Item -Path $finalpath -ItemType directory -Force }######
+            Copy-Item -Path $file -Destination $finalpath -Force  -verbose} # -ErrorAction SilentlyContinue 
         }
         elseif ( $Xml.assembly.assemblyIdentity.processorArchitecture -eq 'x86' -and -not $file_names.destinationpath) { # no destinationpath, put it in GAC_64
-            $finalpath = "$env:systemroot\Microsoft.NET\assembly\GAC_32";if($prefix) {$finalpath = join-path $prefix $finalpath};                if (-not (Test-Path -Path $finalpath )) { New-Item -Path $finalpath -ItemType directory -Force }
+       if($file) {
+       if( ([system.io.fileinfo]$file).Extension -eq '.config' ) { $dummy = $($file -replace '.config' , '.dll') } else {$dummy = $file}
+            $finalpath = "$env:systemroot\Microsoft.NET\assembly\GAC_32\" + "$($Xml.assembly.assemblyIdentity.name)\" + "v4.0_" + "$([System.Reflection.AssemblyName]::GetAssemblyName($dummy).Version.ToString())" + "__" + "$($Xml.assembly.assemblyIdentity.publicKeyToken)\"
+            if($prefix) {$finalpath = join-path $prefix $finalpath};                if (-not (Test-Path -Path $finalpath )) { New-Item -Path $finalpath -ItemType directory -Force }
 ######
-            if($file) {Copy-Item -Path $file -Destination $finalpath -Force  -verbose } #-ErrorAction SilentlyContinue 
+            Copy-Item -Path $file -Destination $finalpath -Force  -verbose } #-ErrorAction SilentlyContinue 
         }
         else { if($file) { Write-Host -foregroundcolor yellow "***  No way found to install the file, copy it manually from location $file  ***" } else {Write-Host $null}<#FIXME#>}
 } <# end function install_from_manifest #>
@@ -4126,24 +4198,23 @@ function func_dotnet481
 
     Stop-Process -Name mscorsvw -ErrorAction SilentlyContinue <# otherwise some dlls fail to be replaced as they are in use by mscorvw; only mscoreei.dll has to be copied manually afaict as it is in use by pwsh #>
 
+    Remove-Item -force   "$env:TEMP\reg_keys.ps1" -erroraction silentlycontinue 
+
     Write-Host -foregroundColor yellow 'Starting copying files , this takes a while (> 3 minutes), patience...'    
     foreach ($i in $(Get-ChildItem $env:TEMP\\dotnet481\\*.manifest).FullName) { install_from_manifest -manifestfile $i -prefix "$env:TEMP\$(verb)"  }
 
     foreach ($i in $(Get-ChildItem $env:TEMP\\dotnet481\\*.manifest).FullName ) { write_keys_from_manifest $i -to_file }
     Write-Host -foregroundColor yellow 'Done , hopefully nothing''s screwed up ;)' 
-
-
-
+   
     Push-Location ; Set-Location "$env:TEMP\$(verb)"
-    7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on  "$cachedir\$(verb)\$(verb).7z" ".\c:\"
+    7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on  "$cachedir\$(verb)\$(verb).7z" ".\c:\"; quit?(7z)
     Pop-Location
 
-    7z a -spf -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on  "$cachedir\$(verb)\$(verb).7z" "$env:TEMP\reg_keys.ps1"  
+    7z a -spf -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on  "$cachedir\$(verb)\$(verb).7z" "$env:TEMP\reg_keys.ps1"  ; quit?(7z)
  
     Remove-Item -Force -Recurse "$env:TEMP\$(verb)"
     }  
-  
-      $sourcefile = @(
+        $sourcefile = @(
    'C:\windows\Microsoft.NET\assembly\GAC_MSIL\System\v4.0_4.0.0.0__b77a5c561934e089\System.dll',
  'C:\windows\Microsoft.NET\assembly\GAC_MSIL\System.Core\v4.0_4.0.0.0__b77a5c561934e089\System.Core.dll',
  'C:\windows\Microsoft.NET\Framework64\v4.0.30319\clr.dll',
@@ -4280,7 +4351,6 @@ New-ItemProperty -Path "HKCU:\\Software\\Wine\\AppDefaults\\mspaint1.exe\\DllOve
 function func_winrt_hacks
 {
     func_wine_combase
-    func_wine_windows.ui
     func_wine_wintypes
     func_winmetadata
     func_dotnet481
