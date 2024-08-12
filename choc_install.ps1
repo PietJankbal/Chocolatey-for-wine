@@ -83,9 +83,6 @@ REGEDIT4
 
 [HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Fonts]
 "Arial (TrueType)"="arial.ttf"
-"Arial Bold (TrueType)"="arialbd.ttf"
-"Arial Bold Italic (TrueType)"="arialbi.ttf"
-"Arial Italic (TrueType)"="ariali.ttf"
 
 [HKEY_CURRENT_USER\Software\Wine\Debug]
 "RelayExclude"="user32.CharNextA;KERNEL32.GetProcessHeap;KERNEL32.GetCurrentThreadId;KERNEL32.TlsGetValue;KERNEL32.GetCurrentThreadId;KERNEL32.TlsSetValue;ntdll.RtlEncodePointer;ntdll.RtlDecodePointer;ntdll.RtlEnterCriticalSection;ntdll.RtlLeaveCriticalSection;kernel32.94;kernel32.95;kernel32.96;kernel32.97;kernel32.98;KERNEL32.TlsGetValue;KERNEL32.FlsGetValue;ntdll.RtlFreeHeap;ntdll.RtlAllocateHeap;KERNEL32.InterlockedDecrement;KERNEL32.InterlockedCompareExchange;ntdll.RtlTryEnterCriticalSection;KERNEL32.InitializeCriticalSection;ntdll.RtlDeleteCriticalSection;KERNEL32.InterlockedExchange;KERNEL32.InterlockedIncrement;KERNEL32.LocalFree;Kernel32.LocalAlloc;ntdll.RtlReAllocateHeap;KERNEL32.VirtualAlloc;Kernel32.VirtualFree;Kernel32.HeapFree;KERNEL32.QueryPerformanceCounter;KERNEL32.QueryThreadCycleTime;ntdll.RtlFreeHeap;ntdll.memmove;ntdll.memcmp;KERNEL32.GetTickCount;kernelbase.InitializeCriticalSectionEx;ntdll.RtlInitializeCriticalSectionEx;ntdll.RtlInitializeCriticalSection;kernelbase.FlsGetValue"
@@ -222,7 +219,6 @@ $profile_winetricks_caller_ps1 = @'
                "dxvk1103", "dxvk 1.10.3, latest compatible with Kepler (Nvidia GT 470) ??? )",`
                "dxvk20", "dxvk 2.0",`
                "crypt32", "experimental, dangerzone, will likely break things, only use on a per app base (crypt32.dll, msasn1.dll)",`
-               "wine_ole32", "wine ole32 with some fix for Visual Studio",`
                "sapi", "Speech api (sapi.dll), experimental, makes Balabolka work",`
                "ps51", "rudimentary PowerShell 5.1 (downloads yet another huge amount of Mb`s!)",`
                "ps51_ise", "PowerShell 5.1 Integrated Scripting Environment",`
@@ -233,6 +229,8 @@ $profile_winetricks_caller_ps1 = @'
                "ping","semi-fake ping.exe (tcp isntead of ICMP) as the last requires special permissions",`
                "windowscodecs", "windowscodecs.dll",`
                "uxtheme", "uxtheme.dll",`
+               "dbghelp", "dbghelp.dll",` 
+               "uiautomationcore", "uiautomationcore.dll",` 
                "wsh57", "MS Windows Script Host (vbscript.dll scrrun.dll msscript.ocx jscript.dll scrobj.dll wshom.ocx)",`
                "comctl32", "dangerzone, might break things, can only be set on a per app base",
                "oleaut32","native oleaut32, (dangerzone) can only be set on a per app base",
@@ -244,8 +242,9 @@ $profile_winetricks_caller_ps1 = @'
                "renderer=gl", "renderer=gl",`
                "app_paths", "start new shell with app paths added to the path (permanently), invoke from powershell console!",
                "vs19", "Visual Studio 2019",
-               "vs22", "WIP, might just not work/be broken, experimental Visual Studio 2022",
-               "office365","Microsoft Office365HomePremium (registering does not work, many glitches...)",
+               "vs22", "experimental Visual Studio 2022 WIP",
+               "vs22_interactive_installer", "experimental vs22_interactive_installer WIP",
+               "office365","currently broken/Microsoft Office365HomePremium (registering does not work, many glitches...)",
                "webview2", "Microsoft Edge WebView2",
                "git.portable","Access to several unix-commands like tar, file, sed etc. etc.",
                "d3dx", "d3x9*, d3dx10*, d3dx11*, xactengine*, xapofx* x3daudio*, xinput* and d3dcompiler*",
@@ -261,9 +260,11 @@ $profile_winetricks_caller_ps1 = @'
                "affinity_requirements", "install and configure stuff to get affinity v2 started",
                "winmetadata", "various *.winmd files, use in combination with wine_wintypes",
                "wine_wintypes", "wine wintypes.dll patched (based on ElementalWarrior) for Affinity, https://forum.affinity.serif.com/index.php?/topic/182758-affinity-suite-v204-on-linux-wine/page/1/",
-               "wine_windows.ui","wine windows.ui.dll patched for bug https://bugs.winehq.org/show_bug.cgi?id=55640",
                "winrt_hacks","WIP, enable all included wine hacks for (hopefully) bit more winrt ",
                "wine_combase", "wine combase with a few hacks",
+               "wine_shell32", "wine shell32 with a few hacks",
+               "wine_msxml3", "wine msxml3 with a few hacks",
+               "wine_advapi32", "wine advapi32 with a few hacks",
                "dotnet35", "dotnet35",
                "dotnet481", "experimental dotnet481 install (includes System.Runtime.WindowsRuntime.dll)",
                "font_lucida", "Lucida Console font",
@@ -529,13 +530,14 @@ function QPR.setx { <# setx.exe replacement #>
 
 @'
 function QPR.wmic { <# wmic replacement, this part only rebuilds the arguments #>
-    $cmdline = $env:QPRCMDLINE 
+    $cmdline = $env:QPRCMDLINE.SubString($env:QPRCMDLINE.IndexOf(" "), $env:QPRCMDLINE.Length - $env:QPRCMDLINE.IndexOf(" "))
     $hash = @{
         'os' = "-class win32_operatingsystem"
         'bios' = "-class win32_bios"
         'logicaldisk' = "-class win32_logicaldisk"
         'nic' = "-class win32_NetworkAdapter"        
-        'process' = "-class win32_process" } <# etc. etc. #>
+        'process' = "-class win32_process" 
+        'datafile' = "-class CIM_DataFile"} <# etc. etc. #>
 
     foreach ($key in $hash.keys) {
         if( $cmdline |select-string "\b$key\b" ) { $cmdline = $cmdline -replace "\b$key\b", $hash[$key]; break }    }
@@ -556,6 +558,8 @@ function QPR_wmic { <# wmic replacement #>
     Param([parameter(Position=0)][string]$class, [string[]]$property="*",
     [string]$where, [parameter(ValueFromRemainingArguments=$true)]$vargs)
 
+    $where=($where -replace '[\\][""]', "'").Trim('"') 
+
     if($property -eq '*'){ <# 'get-wmiobject $class | select *' does not work because of wine-bug, so need a workaround:  #>
         Get-WmiObject $class ($($(Get-WmiObject $class |Get-Member) |where {$_.membertype -eq 'property'}).name |Join-String -Separator ',') }
     else { #handle e.g. wmic logicaldisk where "deviceid='C:'" get freespace or  wmic logicaldisk get size, freespace, caption
@@ -572,21 +576,20 @@ function QPR.ping
     iex  -Command ('QPR_ping' + $cmdline)
 }
 '@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.ping\QPR.ping.psm1 -Force )
-
 ################################################################################################################################ 
 #                                                                                                                              #
-#  Install dotnet48, ConEmu, Chocolatey, 7z, arial, d3dcompiler_47 and a few extras (wine robocopy + wine taskschd)                   #
+#  Install dotnet48, ConEmu, Chocolatey, 7z, d3dcompiler_47 and a few extras (wine robocopy + wine taskschd)                   #
 #                                                                                                                              #
 ################################################################################################################################   
     Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072;
 #   Invoke-Expression  $(cat $(Join-Path "$env:TEMP" 'install2.ps1') | Select-string 'url_7za =')  <# Get the 7za.exe downloadlink from install2.ps1 file #>
 #   (New-Object System.Net.WebClient).DownloadFile($url_7za, $(Join-Path "$env:TEMP" '7za.exe') )
-    if (!(Test-Path -Path "$env:WINEHOMEDIR\.cache\choc_install_files\7z2201-x64.exe".substring(4) -PathType Leaf)) { 
-        (New-Object System.Net.WebClient).DownloadFile('https://d3.7-zip.org/a/7z2201-x64.exe', $(Join-Path "$env:TEMP" '7z2201-x64.exe') ) }
+    if (!(Test-Path -Path "$env:WINEHOMEDIR\.cache\choc_install_files\7z2407-x64.exe".substring(4) -PathType Leaf)) { 
+        (New-Object System.Net.WebClient).DownloadFile('https://d3.7-zip.org/a/7z2407-x64.exe', $(Join-Path "$env:TEMP" '7z2407-x64.exe') ) }
     else {
-        Copy-Item -Path "$env:WINEHOMEDIR\.cache\choc_install_files\7z2201-x64.exe".substring(4) -Destination "$env:TEMP" -Force }
+        Copy-Item -Path "$env:WINEHOMEDIR\.cache\choc_install_files\7z2407-x64.exe".substring(4) -Destination "$env:TEMP" -Force }
 
-    iex "$(Join-Path "$env:TEMP" '7z2201-x64.exe') /S"; while(!(Test-Path -Path "$env:ProgramW6432\\7-zip\\7z.exe") ) {Sleep 0.25}
+    iex "$(Join-Path "$env:TEMP" '7z2407-x64.exe') /S"; while(!(Test-Path -Path "$env:ProgramW6432\\7-zip\\7z.exe") ) {Sleep 0.25}
     New-Item -Path "$env:ProgramData" -Name "Chocolatey-for-wine" -ItemType "directory" -ErrorAction SilentlyContinue
 
     if (!(Test-Path -Path "$env:WINEHOMEDIR\.cache\choc_install_files\net48\netfx_Full.mzz".substring(4) -PathType Leaf)) { <#fragile test#>
@@ -602,7 +605,7 @@ function QPR.ping
 
     $url = @('http://download.windowsupdate.com/msdownload/update/software/crup/2010/06/windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', `
 #            'https://mirrors.edge.kernel.org/gentoo/distfiles/5e/arial32.exe', `
-             'https://github.com/pushcx/corefonts/raw/master/arial32.exe', `
+#            'https://github.com/pushcx/corefonts/raw/master/arial32.exe', `
              'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47.dll', `
              'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47_32.dll', `
              'https://github.com/Maximus5/ConEmu/releases/download/v23.07.24/ConEmuPack.230724.7z', `
@@ -620,7 +623,8 @@ function QPR.ping
      
     Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $(Join-Path $args[0] 'EXTRAS\wine_robocopy.7z') -o$env:TEMP";
     Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $(Join-Path $args[0] 'EXTRAS\wine_taskschd.7z') -o$env:TEMP";
-    Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $(Join-Path $args[0] 'EXTRAS\wine_user32_for_conemu_hack_for_wine7_16.7z') -o$env:TEMP" `
+    Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $(Join-Path $args[0] 'EXTRAS\wine_user32_for_conemu_hack_for_wine7_16.7z') -o$env:TEMP"
+    Copy-Item -Path "$(Join-Path $args[0] 'EXTRAS\wine_staging_arial.ttf')" -Destination "$env:SystemRoot\\Fonts\\arial.ttf" -Force
 
     Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList  "x $env:TEMP\ConEmuPack.230724.7z -o$env:SystemDrive\ConEmu";
     #& $env:TEMP\\install2.ps1  <# ConEmu install #>
@@ -708,9 +712,9 @@ function QPR.ping
         Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\$i
         Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework64\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\$i}
     <# Many programs need arial and native d3dcompiler_47, so install it #>
-    foreach($i in 'arial.ttf', 'ariali.ttf', 'arialbi.ttf', 'arialbd.ttf') { <# fixme?: also install arial32b.exe (ariblk.ttf "Arial Black)??? #>
-        Start-Process $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList "e $env:TEMP\\arial32.exe -o$env:systemroot\Fonts $i -aoa" } 
-        Start-Process $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList "e $env:TEMP\\sevenzipextractor.1.0.17.nupkg -o$env:systemroot\\system32\\WindowsPowerShell\\v1.0  lib/netstandard2.0/SevenZipExtractor.dll -aoa"
+#    foreach($i in 'arial.ttf', 'ariali.ttf', 'arialbi.ttf', 'arialbd.ttf') { <# fixme?: also install arial32b.exe (ariblk.ttf "Arial Black)??? #>
+#        Start-Process $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList "e $env:TEMP\\arial32.exe -o$env:systemroot\Fonts $i -aoa" } 
+    Start-Process $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList "e $env:TEMP\\sevenzipextractor.1.0.17.nupkg -o$env:systemroot\\system32\\WindowsPowerShell\\v1.0  lib/netstandard2.0/SevenZipExtractor.dll -aoa"
     Copy-Item -Path "$env:TMP\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_47.dll" -Force
     Copy-Item -Path "$env:TMP\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_43.dll" -Force
     Copy-Item -Path "$env:TMP\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_47.dll" -Force
@@ -718,14 +722,14 @@ function QPR.ping
     <# Backup files if wanted #>
     if (Test-Path 'env:SAVEINSTALLFILES') { 
         New-Item -Path "$env:WINEHOMEDIR\.cache\".substring(4) -Name "choc_install_files" -ItemType "directory" -ErrorAction SilentlyContinue
-        foreach($i in 'net48', 'PowerShell-7.4.1-win-x64.msi', 'arial32.exe', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2201-x64.exe', 'sevenzipextractor.1.0.17.nupkg', 'ConEmuPack.230724.7z') {
+        foreach($i in 'net48', 'PowerShell-7.4.3-win-x64.msi', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2407-x64.exe', 'sevenzipextractor.1.0.17.nupkg', 'ConEmuPack.230724.7z') {
             Copy-Item -Path $env:TEMP\\$i -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4) -recurse -force }
     }
     <# install wine robocopy and (custom) wine tasksch.dll #>
     Copy-Item -Path "$env:TMP\\robocopy64.exe" -Destination "$env:SystemRoot\\System32\\robocopy.exe" -Force
     Copy-Item -Path "$env:TMP\\robocopy32.exe" -Destination "$env:SystemRoot\\syswow64\\robocopy.exe" -Force
-    Copy-Item -Path "$env:TMP\\taskschd64.dll" -Destination "$env:SystemRoot\\System32\\taskschd.dll" -Force
-    Copy-Item -Path "$env:TMP\\taskschd32.dll" -Destination "$env:SystemRoot\\syswow64\\taskschd.dll" -Force
+    Copy-Item -Path "$env:TMP\\64\\taskschd.dll" -Destination "$env:SystemRoot\\System32\\taskschd.dll" -Force
+    Copy-Item -Path "$env:TMP\\32\\taskschd.dll" -Destination "$env:SystemRoot\\syswow64\\taskschd.dll" -Force
 
     <# Replace some system programs by functions (in profile.ps1); This also makes wusa a dummy program: we don`t want windows updates and it doesn`t work anyway #>
     ForEach ($file in "schtasks.exe") {
