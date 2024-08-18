@@ -211,6 +211,7 @@ $profile_winetricks_caller_ps1 = @'
                "wmp", "some wmp (windows media player) dlls, makes e-Sword start",`
                "wmf", "some media foundation dlls",`
                "vcrun2019", "vcredist2019 (concrt140.dll, msvcp140.dll, msvcp140_1.dll, msvcp140_2.dll, vcruntime140.dll, vcruntime140_1.dll, ucrtbase.dll)",`
+               "vcrun2022", "vcredist2022 (concrt140.dll, msvcp140.dll, msvcp140_1.dll, msvcp140_2.dll, vcruntime140.dll, vcruntime140_1.dll, ucrtbase.dll)",`
                "mshtml", "experimental, dangerzone, might break things, only use on a per app base;ie8 dlls: mshtml.dll, ieframe.dll, urlmon.dll, jscript.dll, wininet.dll, shlwapi.dll, iertutil.dll",`
                "wine_hnetcfg", "wine hnetcfg.dll with fix for https://bugs.winehq.org/show_bug.cgi?id=45432",`
                "wine_msi", "if an msi installer fails, might wanna try this wine msi, just faking success for a few actions... Might also result in broken installation ;)",`
@@ -259,6 +260,7 @@ $profile_winetricks_caller_ps1 = @'
                "findstr", "findstr.exe",
                "affinity_requirements", "install and configure stuff to get affinity v2 started",
                "winmetadata", "various *.winmd files, use in combination with wine_wintypes",
+               "winmetadata2", "alternative for winmetadata, requires much less downloadtime",
                "wine_wintypes", "wine wintypes.dll patched (based on ElementalWarrior) for Affinity, https://forum.affinity.serif.com/index.php?/topic/182758-affinity-suite-v204-on-linux-wine/page/1/",
                "winrt_hacks","WIP, enable all included wine hacks for (hopefully) bit more winrt ",
                "wine_combase", "wine combase with a few hacks",
