@@ -118,6 +118,7 @@ int mainCRTStartup(void)
     /* now insert a '-c' (if necessary) */
     if ( argv[i] && _wcsnicmp( argv[i-1], L"-c", 2 ) && _wcsnicmp( argv[i-1], L"-enc", 4 ) && _wcsnicmp( argv[i-1], L"-f", 2 ) && _wcsnicmp( argv[i], L"/c", 2 ) )
         wcscat( wcscat( cmdlineW, L" " ), L"-c " );
+    else wcscat(cmdlineW, L" ");
     /* concatenate the rest of the commandline into the new cmdline */
     if(GetCommandLineW()[0] == '"') len+=2; /* double quoted argv[0] */
     if(len > wcslen(GetCommandLineW())) len = wcslen(GetCommandLineW()); /* fixme ugly, don't get past end of string */
@@ -143,5 +144,6 @@ exec:
     CreateProcessW( pwsh_pathW, ps_console ? wcscat( bufW , cmdlineW ) : cmdlineW, 0, 0, 0, 0, 0, 0, &si, &pi );
     WaitForSingleObject( pi.hProcess, INFINITE ); GetExitCodeProcess( pi.hProcess, &exitcode ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );    
     LocalFree(argv);
+    
     return ( exitcode ); 
 }
