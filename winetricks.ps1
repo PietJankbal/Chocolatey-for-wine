@@ -367,6 +367,7 @@ function func_msado15
             if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB "-o$env:CommonProgramFiles\\System\\MSADC" $i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}
             if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB "-o${env:CommonProgramFiles`(x86`)}\\System\\MSADC" $i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}} quit?('7z')
 
+
     $dlls = @( 'amd64_microsoft-windows-m..ponents-mdac-msdart_31bf3856ad364e35_6.1.7600.16385_none_42074b3f2553d5bd/msdart.dll', `
                'x86_microsoft-windows-m..ponents-mdac-msdart_31bf3856ad364e35_6.1.7600.16385_none_e5e8afbb6cf66487/msdart.dll')
 #              'x86_microsoft-windows-m..mponents-jetintlerr_31bf3856ad364e35_6.1.7600.16385_none_0f472a3521bdcfd4/msjint40.dll', `
@@ -1066,6 +1067,33 @@ function func_winmetadata <# winmetadata #>
 
 } <# end winmetadata #>
 
+function func_winmetadata2 <# winmetadata alternative#>
+{   
+    New-Item -Path $env:systemroot\\system32\\winmetadata -Type Directory -force -erroraction silentlycontinue
+    New-Item -Path $env:systemroot\\syswow64\\winmetadata -Type Directory -force -erroraction silentlycontinue
+
+    $url='https://raw.githubusercontent.com/microsoft/windows-rs/master/crates/libs/bindgen/default/Windows.winmd'
+
+    w_download_to $(verb) 'https://raw.githubusercontent.com/microsoft/windows-rs/master/crates/libs/bindgen/default/Windows.winmd' "Windows.winmd"
+
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\Windows.winmd" ; quit?('7z')
+        foreach($i in 'Windows.winmd') { Remove-Item -Force "$cachedir\$(verb)\$i*" }
+    }
+
+    7z e "$cachedir\$(verb)\$(verb).7z" "Windows.winmd" -o"$env:systemroot\\system32\\winmetadata" -aoa
+    7z e "$cachedir\$(verb)\$(verb).7z" "Windows.winmd" -o"$env:systemroot\\syswow64\\winmetadata" -aoa
+
+    func_wine_wintypes2
+
+    Move-Item "$env:Systemroot\system32\wintypes2.dll" "$env:Systemroot\system32\wintypes.dll" -force -erroraction silentlycontinue
+    Move-Item "$env:Systemroot\syswow64\wintypes2.dll" "$env:Systemroot\syswow64\wintypes.dll" -force -erroraction silentlycontinue
+
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -Name 'wintypes' -Value 'native' -PropertyType 'String' -force
+    Remove-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -Name 'wintypes2' -erroraction silentlycontinue -force 
+} <# end winmetadata2 #>
+
+
 function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
 {
     $url = "/Win7AndW2K8R2-KB3191566-x64.msu" <# download is zip file, so no download url of the msu #>
@@ -1289,7 +1317,6 @@ if ((Get-process -Name powershell_ise -erroraction silentlycontinue)) {
     $profile51 | Out-File $env:SystemRoot\\syswow64\\WindowsPowerShell\v1.0\\profile.ps1
 
         
-
 
 
 } <# end ps51 #>
@@ -1655,6 +1682,34 @@ function func_vcrun2019
     foreach($i in 'concrt140', 'msvcp140', 'msvcp140_1', 'msvcp140_2', 'vcruntime140', 'vcruntime140_1', 'ucrtbase') { dlloverride 'native' $i }
 } <# end vcrun2019 #>
 
+function func_vcrun2022
+{
+    func_expand
+    
+    if ( ![System.IO.File]::Exists( [IO.Path]::Combine("$cachedir",  "$(verb)",  "64", "VC_redist.x64.exe" ) ) -or 
+         ![System.IO.File]::Exists( [IO.Path]::Combine("$cachedir",  "$(verb)",  "32", "VC__redist.x86.exe") ) ) {
+
+        w_download_to "$(verb)\\64" "https://aka.ms/vs/17/release/vc_redist.x64.exe" "VC_redist.x64.exe"
+        w_download_to "$(verb)\\32" "https://aka.ms/vs/17/release/vc_redist.x86.exe" "VC__redist.x86.exe" 
+    }
+    
+    iex "$cachedir\$(verb)\64\VC_redist.x64.exe /q"
+    iex "$cachedir\$(verb)\32\VC__redist.x86.exe /q"
+     
+    7z -t# x $cachedir\\$(verb)\\64\\VC_redist.x64.exe "-o$env:TEMP\\$(verb)\\64" 4.cab -y | Select-String 'ok'; quit?('7z')
+    7z e $env:TEMP\\$(verb)\\64\\4.cab "-o$env:TEMP\\$(verb)\\64" a2 -y | Select-String 'ok' ;quit?('7z')
+
+    & $expand_exe "$env:TEMP\$(verb)\64\a2" -f:"Windows8.1-KB2999226-x64.cab" "$env:TEMP\\$(verb)\\64" 
+    & $expand_exe  "$env:TEMP\$(verb)\64\Windows8.1-KB2999226-x64.cab" -f:"ucrtbase.dll" "$env:TEMP\\$(verb)\\64"
+
+    Copy-Item -Path "$env:TEMP\$(verb)\64\amd*\*" -Destination "$env:SystemRoot\\system32" -Force -Verbose
+    Copy-Item -Path "$env:TEMP\$(verb)\64\x86*\*" -Destination "$env:windir\\SysWOW64" -Force -Verbose
+    
+    Remove-Item -Force -Recurse "$env:TEMP\$(verb)"
+        
+    foreach($i in 'concrt140', 'msvcp140', 'msvcp140_1', 'msvcp140_2', 'vcruntime140', 'vcruntime140_1', 'ucrtbase') { dlloverride 'native' $i }
+} <# end vcrun2019 #>
+
 function func_cmd <# native cmd #>
 {
     if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z" ) ) ){
@@ -1934,6 +1989,8 @@ function func_wine_cfgmgr32 { install_winedll wine_cfgmgr32 '15a613ca7e0fca57188
 function func_wine_sxs { install_winedll wine_sxs '9ac670ae3105611a5211649aab25973b327dcd8ea932f1a8569e78adca6fedcb'}
 
 function func_wine_wintypes { install_winedll wine_wintypes 'DEE94F7B8C4BD325AEAE4F155339D83088B698823A35D7E63C5C9FFFEEBF3CDD'}
+
+function func_wine_wintypes2 { install_winedll wine_wintypes2 'ead327788f98b617017a483e9a0500cf2bd627e9c5d23ae7e175cb8035dc0a9e'}
 
 function func_wine_sppc <# wine sppc with some hacks #>
 {
@@ -2492,7 +2549,7 @@ function func_vs19
 function func_vs22
 {
     func_wine_msxml3
-    func_vcrun2019
+#   func_vcrun2019
     func_xmllite
     func_uiautomationcore
     func_wine_cfgmgr32
@@ -2507,7 +2564,7 @@ function func_vs22
 
     # Fall back to builtin powershell to fake success for failing command:
     # "c:\windows\syswow64\\windowspowershell\v1.0\powershell.exe" -NoLogo -NoProfile -Noninteractive -ExecutionPolicy Unrestricted -InputFormat None -Command "& """C:\ProgramData\Microsoft\VisualStudio\Packages\Microsoft.VisualCpp.Redist.14,version=14.40.33810,chip=x64\VCRedistInstall.ps1""" -PayloadDirectory """C:\ProgramData\Microsoft\VisualStudio\Packages\Microsoft.VisualCpp.Redist.14,version=14.40.33810,chip=x64""" -Architecture x64 -Logfile """C:\users\MYNAME\AppData\Local\Temp\dd_setup_20240728084731_003_Microsoft.VisualCpp.Redist.14.log"""; exit $LastExitCode"
-    foreach($i in 'powershell.exe') { dlloverride 'builtin' $i }
+#   foreach($i in 'powershell.exe') { dlloverride 'builtin' $i }
     
     (New-Object System.Net.WebClient).DownloadFile('https://aka.ms/vs/17/release/vs_community.exe', "$env:TMP\\vs_Community.exe") 
 
@@ -2553,14 +2610,14 @@ function func_vs22
     #New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe' -Name 'Version' -Value 'win7' -PropertyType 'String' -force
     winecfg /v win7  <# FIXME win10 does not work#>
     
-    foreach($i in 'powershell.exe') { dlloverride 'native' $i }
+    foreach($i in 'concrt140') { dlloverride 'native,builtin' $i }
 }
 
 function func_vs22_interactive_installer
 {
     func_wine_msxml3
     #func_ps51
-    func_vcrun2019
+#   func_vcrun2019
     #func_xmllite
     #func_cmd
     func_wine_cfgmgr32
@@ -2569,18 +2626,22 @@ function func_vs22_interactive_installer
     func_wine_combase
     func_wine_shell32
     func_wine_wintypes
-    func_winmetadata
+    func_winmetadata2
 
     winecfg /v win10
 
     # Fall back to builtin powershell to fake success for failing command:
     # "c:\windows\syswow64\\windowspowershell\v1.0\powershell.exe" -NoLogo -NoProfile -Noninteractive -ExecutionPolicy Unrestricted -InputFormat None -Command "& """C:\ProgramData\Microsoft\VisualStudio\Packages\Microsoft.VisualCpp.Redist.14,version=14.40.33810,chip=x64\VCRedistInstall.ps1""" -PayloadDirectory """C:\ProgramData\Microsoft\VisualStudio\Packages\Microsoft.VisualCpp.Redist.14,version=14.40.33810,chip=x64""" -Architecture x64 -Logfile """C:\users\MYNAME\AppData\Local\Temp\dd_setup_20240728084731_003_Microsoft.VisualCpp.Redist.14.log"""; exit $LastExitCode"
-    foreach($i in 'powershell.exe') { dlloverride 'builtin' $i }
+    # foreach($i in 'powershell.exe') { dlloverride 'builtin' $i }
     
     if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe'}
     if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\X11 Driver')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\X11 Driver'}
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\X11 Driver' -Name 'Decorated' -Value 'N' -PropertyType 'String' -force
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe' -Name 'Version' -Value 'win7' -PropertyType 'String' -force
+
+    New-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Avalon.Graphics' -Name 'DisableHWAcceleration' -Value 1 -PropertyType 'Dword' -force
+
+    foreach($i in 'concrt140') { dlloverride 'native,builtin' $i }
 
     <# FIXME: some of these too crash in win10 mode, too lazy to figure out which one's. And why they crash... Set version to win7 for now#>
     foreach($i in
@@ -2612,10 +2673,7 @@ function func_vs22_interactive_installer
     if(!(Test-Path "HKCU:\\Software\\Wine\\AppDefaults\\$i")) {New-Item  -Path "HKCU:\\Software\\Wine\\AppDefaults\\$i"}
     New-ItemProperty -Path "HKCU:\\Software\\Wine\\AppDefaults\\$i" -Name 'Version' -Value 'win7' -PropertyType 'String' -force
  }
-
     (New-Object System.Net.WebClient).DownloadFile('https://aka.ms/vs/17/release/vs_community.exe', "$env:TMP\\vs_Community.exe") 
-
-  #  7z x $env:TMP\\installer "-o$env:TMP\\opc" -y ;quit?('7z')
 
     & "$env:TMP\\vs_Community.exe" --wait
     
@@ -2623,10 +2681,6 @@ function func_vs22_interactive_installer
     
     <# FIXME: frequently mpc are not written to registry (wine bug?), do it manually #>
     & "${env:ProgramFiles}\Microsoft` Visual` Studio\2022\Community\Common7\IDE\DDConfigCA.exe" | & "${env:ProgramFiles}\Microsoft` Visual` Studio\2022\Community\Common7\IDE\StorePID.exe" 09299
-
-  #  winecfg /v win7  <# FIXME #>
-    
-    foreach($i in 'powershell.exe') { dlloverride 'native' $i }
 }
 
 function func_office365
