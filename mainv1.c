@@ -41,6 +41,7 @@ int mainCRTStartup(void)
     STARTUPINFOW si = {0};
     PROCESS_INFORMATION pi = {0};
     int i = 1, j = 1, argc;
+    size_t len;
     
     argv = CommandLineToArgvW ( GetCommandLineW(), &argc);
     _wsplitpath( argv[0], drive, dir, filenameW, NULL );
@@ -101,7 +102,12 @@ int mainCRTStartup(void)
     }  /* note: set desired exitcode in the function in profile.ps1 */ 
     /* Main program: wrap the original powershell-commandline into correct syntax, and send it to pwsh.exe */ 
     /* pwsh requires a command option "-c" , powershell doesn`t, so we have to insert it somewhere e.g. 'powershell -nologo 2+1' should go into 'powershell -nologo -c 2+1'*/ 
-    for (i = 1;  argv[i] &&  !wcsncmp(  argv[i], L"-" , 1 ); i++ ) { if ( !is_single_or_last_option ( argv[i] ) ) i++; if(!argv[i]) break;} /* Search for 1st argument after options */
+    len = wcslen(argv[0])+1; /* len = to track where the command starts in GetCommandLineW (beyond last option), +1 = account for next space */
+    for (i = 1;  argv[i] &&  !wcsncmp(  argv[i], L"-" , 1 ); i++ ) {  /* Search for 1st argument after options */
+        if ( !is_single_or_last_option ( argv[i] ) ) { len += wcslen(argv[i]) + 1; i++;}
+        len += wcslen(argv[i]) + 1;
+        if(!argv[i]) break;
+    }
     for (j = 1; j < i ; j++ ) /* concatenate options into new cmdline, meanwhile working around some incompabilities */ 
     { 
         if ( !wcscmp( L"-", argv[j] ) ) {read_from_stdin = TRUE; continue;}   /* hyphen handled later on */
@@ -112,13 +118,15 @@ int mainCRTStartup(void)
     /* now insert a '-c' (if necessary) */
     if ( argv[i] && _wcsnicmp( argv[i-1], L"-c", 2 ) && _wcsnicmp( argv[i-1], L"-enc", 4 ) && _wcsnicmp( argv[i-1], L"-f", 2 ) && _wcsnicmp( argv[i], L"/c", 2 ) )
         wcscat( wcscat( cmdlineW, L" " ), L"-c " );
-    /* concatenate the rest of the arguments into the new cmdline */
-    for( j = i; j < argc; j++ ) wcscat( wcscat( cmdlineW, L" " ), argv[j] );
+    /* concatenate the rest of the commandline into the new cmdline */
+    if(GetCommandLineW()[0] == '"') len+=2; /* double quoted argv[0] */
+    if(len > wcslen(GetCommandLineW())) len = wcslen(GetCommandLineW()); /* fixme ugly, don't get past end of string */
+    wcscat( cmdlineW, (GetCommandLineW() + len ) );
     /* by setting "PS51" env variable, there's a possibility to execute the cmd through rudimentary windows powershell 5.1, requires 'winetricks ps51' first */
     /* Note: when run from bash, escape special char $ with single quotes and backtick e.g. PS51=1 wine powershell '`SPSVersionTable' */
     if ( GetEnvironmentVariableW( L"PS51", bufW, MAX_PATH + 1 ) && !wcscmp( bufW, L"1") ) 
         ExpandEnvironmentStringsW( L"%SystemRoot%\\system32\\WindowsPowershell\\v1.0\\ps51.exe ", pwsh_pathW, MAX_PATH + 1 );
-    /* support pipeline to handle something like " '$(get-date) | powershell - ' */
+    /* support pipeline to handle something like " '$(get-date)' | powershell - " */
     if( read_from_stdin ) { 
         WCHAR defline[4096]; char line[4096];
         HANDLE input = GetStdHandle(STD_INPUT_HANDLE); DWORD type = GetFileType(input);
