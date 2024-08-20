@@ -26,23 +26,34 @@
 #include <winternl.h> 
 #include <stdio.h>
 
-static inline BOOL is_single_or_last_option (WCHAR *opt)
+static WCHAR *strip( WCHAR *start ) /* strip spaces*/
 {
-    return ( ( ( !_wcsnicmp( opt, L"-c", 2 ) && _wcsnicmp( opt, L"-config", 7 ) ) || !_wcsnicmp( opt, L"-n", 2 ) || !_wcsnicmp( opt, L"-f", 2 ) ||\
-                 !wcscmp( opt, L"-" ) || !_wcsnicmp( opt, L"-enc", 4 ) || !_wcsnicmp( opt, L"-m", 2 ) || !_wcsnicmp( opt, L"-s", 2 ) ) ? TRUE : FALSE );
+    WCHAR *str = start, *end = start + wcslen( start ) - 1;
+    while (*str == ' ') str++;
+    while (end >= start && *end == ' ') *end-- = 0;
+    return str;
 }
 
+static inline BOOL is_single_option (WCHAR *opt) /* e.g. -noprofile, -nologo , -mta etc */ 
+{
+    return ( wcschr( L"nNmMsS", opt[0] ) ? TRUE: FALSE );
+}  
+
+static inline BOOL is_last_option (WCHAR *opt) /* no new options may follow -c, -f , -, and -e (but not -ex(ecutionpolicy)!) */
+{
+    return ( wcschr( L"cCfF", opt[0] ) || ( wcschr( L"eE", opt[0] ) && (!opt[1] || !wcschr( L"xX", opt[1] ))) || !strip(opt));
+}  
+ 
 __attribute__((externally_visible))  /* for -fwhole-program */
 int mainCRTStartup(void)
 {
-    BOOL read_from_stdin = FALSE, ps_console = FALSE;
+    BOOL read_from_stdin = FALSE;
     wchar_t cmdlineW[4096]=L"", pwsh_pathW[MAX_PATH] =L"", bufW[MAX_PATH] = L"", drive[MAX_PATH] , dir[_MAX_FNAME], filenameW[_MAX_FNAME], **argv;
     DWORD exitcode;       
     STARTUPINFOW si = {0};
     PROCESS_INFORMATION pi = {0};
-    int i = 1, j = 1, argc;
-    size_t len;
-    
+    int i = 1, argc;
+
     argv = CommandLineToArgvW ( GetCommandLineW(), &argc);
     _wsplitpath( argv[0], drive, dir, filenameW, NULL );
 
@@ -84,64 +95,65 @@ int mainCRTStartup(void)
         wcscat( wcscat( cmdlineW, L" -nop -c QPR." ) , filenameW );
         for( i = 1; i < argc; i++ ) { /* concatenate the rest of the arguments into the new cmdline */
             wcscat( wcscat( wcscat( cmdlineW, L" '\"" )  , argv[i] ), L"\"'" ); }
-/* Curently not used
-        FILE_FS_DEVICE_INFORMATION info; IO_STATUS_BLOCK io;
-        HANDLE input = GetStdHandle(STD_INPUT_HANDLE); // try handle pipe with ugly hack 
-
-        NtQueryVolumeInformationFile( input, &io, &info, sizeof(info), FileFsDeviceInformation ); 
-
-        if(info.DeviceType == 8 ) {
-            WCHAR *line=0, pipeW[32767] = L"\"\n";
-
-            while ( (line = read_line_from_handle( input, FALSE ) ) != NULL) { wcscat( pipeW, line); wcscat( pipeW,L"\n"); }
-            wcscat( pipeW, L"\"");
-            SetEnvironmentVariableW( L"QPRPIPE", pipeW ); / FIXME, very ugly, store pipe in envvar; 
-        } end Currently not used*//* end handle pipe */
         SetEnvironmentVariableW( L"QPRCMDLINE", GetCommandLineW() ); /* option to track the complete commandline via $env:QPRCMDLINE */
         goto exec;
     }  /* note: set desired exitcode in the function in profile.ps1 */ 
     /* Main program: wrap the original powershell-commandline into correct syntax, and send it to pwsh.exe */ 
     /* pwsh requires a command option "-c" , powershell doesn`t, so we have to insert it somewhere e.g. 'powershell -nologo 2+1' should go into 'powershell -nologo -c 2+1'*/ 
-    len = wcslen(argv[0])+1; /* len = to track where the command starts in GetCommandLineW (beyond last option), +1 = account for next space */
-    for (i = 1;  argv[i] &&  !wcsncmp(  argv[i], L"-" , 1 ); i++ ) {  /* Search for 1st argument after options */
-        if ( !is_single_or_last_option ( argv[i] ) ) { len += wcslen(argv[i]) + 1; i++;}
-        len += wcslen(argv[i]) + 1;
-        if(!argv[i]) break;
-    }
-    for (j = 1; j < i ; j++ ) /* concatenate options into new cmdline, meanwhile working around some incompabilities */ 
-    { 
-        if ( !wcscmp( L"-", argv[j] ) ) {read_from_stdin = TRUE; continue;}   /* hyphen handled later on */
-        if ( !_wcsnicmp(  argv[j], L"-ve", 3 ) ) {j++;  continue;}            /* -Version, exclude from new cmdline, incompatible... */
-        if ( !_wcsnicmp( argv[j], L"-nop", 4 ) ) continue;                    /* -NoProfile, also exclude to always enable profile.ps1 to work around possible incompatibilities */   
-        wcscat( wcscat( cmdlineW, L" " ), argv[j] );
-    }
-    /* now insert a '-c' (if necessary) */
-    if ( argv[i] && _wcsnicmp( argv[i-1], L"-c", 2 ) && _wcsnicmp( argv[i-1], L"-enc", 4 ) && _wcsnicmp( argv[i-1], L"-f", 2 ) && _wcsnicmp( argv[i], L"/c", 2 ) )
-        wcscat( wcscat( cmdlineW, L" " ), L"-c " );
-    else wcscat(cmdlineW, L" ");
-    /* concatenate the rest of the commandline into the new cmdline */
-    if(GetCommandLineW()[0] == '"') len+=2; /* double quoted argv[0] */
-    if(len > wcslen(GetCommandLineW())) len = wcslen(GetCommandLineW()); /* fixme ugly, don't get past end of string */
-    wcscat( cmdlineW, (GetCommandLineW() + len ) );
+    if( !argv[1] ) read_from_stdin = TRUE; /* might be redirected like 'cmd.exe /c "powershell < ""c:\a.txt"""' */
+    else {
+      WCHAR *cmd = wcsdup( wcsstr( GetCommandLineW(), argv[1]) ); //futws(L"\n", stderr);futws(cmd, stderr);fputws(L"<--old cmd is:\n", stderr);
+      /* No options (-xxx or /xxx) given e.g. {echo hello} or 1+2 or "& whoami" etc: insert '-c' and send to pwsh. */ 
+      if ( cmd[0] != '-' && cmd[0] != '/' ) {wcscat(wcscat(cmdlineW, L" -c "), cmd); }
+      else
+      {
+        if ( cmd[ wcslen(cmd) - 1] == '-' ) { read_from_stdin = 1; } /* e.g. '$(get-date | powershell -') */
+
+        wchar_t *ptr, *token = wcstok_s(cmd, L"-/" ,&ptr); /* Break up the options */
+
+        while (token) {   // fputws(token, stderr);fputws(L"<--- token \n", stderr);
+                         WCHAR *p;
+			             BOOL skip = (!_wcsnicmp(token,L"ve",2) || !_wcsnicmp(token,L"nop",3)); /* skip '-noprofile' and '-version'*/
+   	            			
+   	            		 if (is_last_option(token)) { /* there is a command option, no need to take action */
+				           if (!skip) wcscat(wcscat(cmdlineW, L" -"),token);
+			             }
+			             else { /* single or double option or garbage -->not handled (!) */
+					       /* last option will now have an extra 'tail' e.g ' nologo echo' so search for extra space */
+			               if( is_single_option(token) ) p = (wcschr( strip(token),L' ')); 
+			               else p = wcschr((strip(wcschr(strip(token),L' '))) ,L' '); /* last double option has two spaces, look for last */
+                           /* if there's an extra space, we've arrived at last option, and insert a -c */
+			               if(!p) { /* not yet arrived at last option, no need to take action */ 
+						     if (!skip) wcscat(wcscat(cmdlineW, L" -"),token);
+						   }
+			               else {  /* arrived at last option: insert a '-c' */
+			                 *p=0; /* break the string in two words by setting '\0' character */
+			                 if(!skip) wcscat( wcscat(cmdlineW, L" -"), token); /* concatenate the option (1st part string) */
+			                 wcscat(wcscat(cmdlineW, L" -c "), p+1); /* concatenate '-c' and the end of the string (= beginning of command ) */
+			               } 
+		                 }
+                         token = wcstok_s(NULL, L"-/",&ptr);
+                     }
+      } 
+    }//fputws(cmdlineW, stderr);fputws(L"<-- new cmd is this\n", stderr);
     /* by setting "PS51" env variable, there's a possibility to execute the cmd through rudimentary windows powershell 5.1, requires 'winetricks ps51' first */
     /* Note: when run from bash, escape special char $ with single quotes and backtick e.g. PS51=1 wine powershell '`SPSVersionTable' */
     if ( GetEnvironmentVariableW( L"PS51", bufW, MAX_PATH + 1 ) && !wcscmp( bufW, L"1") ) 
         ExpandEnvironmentStringsW( L"%SystemRoot%\\system32\\WindowsPowershell\\v1.0\\ps51.exe ", pwsh_pathW, MAX_PATH + 1 );
-    /* support pipeline to handle something like " '$(get-date)' | powershell - " */
+    /* support pipeline to handle something like " wcschr| powershell - " */
     if( read_from_stdin ) { 
         WCHAR defline[4096]; char line[4096];
         HANDLE input = GetStdHandle(STD_INPUT_HANDLE); DWORD type = GetFileType(input);
         /* handle pipe */
-        if ( type != FILE_TYPE_CHAR ) { /* not redirected (FILE_TYPE_PIPE or FILE_TYPE_DISK) */
-            if( !wcscmp(argv[argc-1], L"-" ) && _wcsnicmp(argv[argc-2], L"-c", 2 ) ) wcscat(cmdlineW, L" -c ");
+        if (  type != FILE_TYPE_CHAR ) { /* not redirected (FILE_TYPE_PIPE or FILE_TYPE_DISK); otherwise 'wine powershell' will hang waiting for input... */
+            if( (!wcscmp(argv[argc-1], L"-" ) && _wcsnicmp(argv[argc-2], L"-c", 2 ) ) || !argv[1]) wcscat(cmdlineW, L" -c ");
             wcscat(cmdlineW, L" ");
             while( fgets(line, 4096, stdin) != NULL ) { mbstowcs(defline, line, 4096); wcscat(cmdlineW, defline);}
-        }
+		}   //fputws(cmdlineW, stderr);fputws(L"<-- cmd read from stdin is this\n", stderr);
     } /* end support pipeline */
-    if ( i == argc && !read_from_stdin ) ps_console = TRUE;
 exec: 
-    if ( ps_console ) ExpandEnvironmentStringsW( L" -c %SystemDrive%\\ConEmu\\ConEmu64.exe -NoUpdate -LoadRegistry -run %ProgramW6432%\\Powershell\\7\\pwsh.exe ", bufW, MAX_PATH+1);
-    CreateProcessW( pwsh_pathW, ps_console ? wcscat( bufW , cmdlineW ) : cmdlineW, 0, 0, 0, 0, 0, 0, &si, &pi );
+    if (!cmdlineW[0] ) ExpandEnvironmentStringsW( L" -c %SystemDrive%\\ConEmu\\ConEmu64.exe -NoUpdate -LoadRegistry -run %ProgramW6432%\\Powershell\\7\\pwsh.exe ", bufW, MAX_PATH+1);
+    CreateProcessW( pwsh_pathW, !cmdlineW[0] ? bufW : cmdlineW, 0, 0, 0, 0, 0, 0, &si, &pi );
     WaitForSingleObject( pi.hProcess, INFINITE ); GetExitCodeProcess( pi.hProcess, &exitcode ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );    
     LocalFree(argv);
     
