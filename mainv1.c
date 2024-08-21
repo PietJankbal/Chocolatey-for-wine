@@ -104,19 +104,29 @@ int mainCRTStartup(void)
     else {
       WCHAR *cmd = wcsdup( wcsstr( GetCommandLineW(), argv[1]) ); //futws(L"\n", stderr);futws(cmd, stderr);fputws(L"<--old cmd is:\n", stderr);
       /* No options (-xxx or /xxx) given e.g. {echo hello} or 1+2 or "& whoami" etc: insert '-c' and send to pwsh. */ 
-      if ( cmd[0] != '-' && cmd[0] != '/' ) {wcscat(wcscat(cmdlineW, L" -c "), cmd); }
+      if ( cmd[0] != '-' && cmd[0] != '/' ) wcscat(wcscat(cmdlineW, L" -c "), cmd);
       else
       {
         if ( cmd[ wcslen(cmd) - 1] == '-' ) { read_from_stdin = 1; } /* e.g. '$(get-date | powershell -') */
 
-        wchar_t *ptr, *token = wcstok_s(cmd, L"-/" ,&ptr); /* Break up the options */
+        wchar_t *ptr, *token, delim = L'-';
+        
+        token = wcstok_s(cmd, &delim ,&ptr); /* Break up the options */
+        
+        if(wcschr(token,L'/')) {
+            fputws(L"\033[1;91m",stderr);fputws(L"Deprecated token '/' found!!! Expect problems!! Trying anyway", stderr);fputws(L"\033[0m\n",stderr);
+            delim = L'/';
+            token = wcstok_s(cmd, &delim ,&ptr);
+        }  
 
-        while (token) {   // fputws(token, stderr);fputws(L"<--- token \n", stderr);
+        while (token) {
                          WCHAR *p;
 			             BOOL skip = (!_wcsnicmp(token,L"ve",2) || !_wcsnicmp(token,L"nop",3)); /* skip '-noprofile' and '-version'*/
    	            			
    	            		 if (is_last_option(token)) { /* there is a command option, no need to take action */
 				           if (!skip) wcscat(wcscat(cmdlineW, L" -"),token);
+				           if(*ptr) wcscat(wcscat(cmdlineW, &delim),ptr);
+				           break;
 			             }
 			             else { /* single or double option or garbage -->not handled (!) */
 					       /* last option will now have an extra 'tail' e.g ' nologo echo' so search for extra space */
@@ -129,13 +139,15 @@ int mainCRTStartup(void)
 			               else {  /* arrived at last option: insert a '-c' */
 			                 *p=0; /* break the string in two words by setting '\0' character */
 			                 if(!skip) wcscat( wcscat(cmdlineW, L" -"), token); /* concatenate the option (1st part string) */
-			                 wcscat(wcscat(cmdlineW, L" -c "), p+1); /* concatenate '-c' and the end of the string (= beginning of command ) */
+			                 wcscat(wcscat(cmdlineW, L" -c "), p+1);/* concatenate '-c' and the end of the string (= beginning of command ) */
+                             if(*ptr) wcscat(wcscat(cmdlineW, &delim),ptr);
+                             break;       
 			               } 
 		                 }
-                         token = wcstok_s(NULL, L"-/",&ptr);
+                         token = wcstok_s(NULL, &delim ,&ptr);
                      }
       } 
-    }//fputws(cmdlineW, stderr);fputws(L"<-- new cmd is this\n", stderr);
+    }
     /* by setting "PS51" env variable, there's a possibility to execute the cmd through rudimentary windows powershell 5.1, requires 'winetricks ps51' first */
     /* Note: when run from bash, escape special char $ with single quotes and backtick e.g. PS51=1 wine powershell '`SPSVersionTable' */
     if ( GetEnvironmentVariableW( L"PS51", bufW, MAX_PATH + 1 ) && !wcscmp( bufW, L"1") ) 
@@ -149,9 +161,9 @@ int mainCRTStartup(void)
             if( (!wcscmp(argv[argc-1], L"-" ) && _wcsnicmp(argv[argc-2], L"-c", 2 ) ) || !argv[1]) wcscat(cmdlineW, L" -c ");
             wcscat(cmdlineW, L" ");
             while( fgets(line, 4096, stdin) != NULL ) { mbstowcs(defline, line, 4096); wcscat(cmdlineW, defline);}
-		}   //fputws(cmdlineW, stderr);fputws(L"<-- cmd read from stdin is this\n", stderr);
+ 		}   //FILE *fptr; fptr = fopen("c:\\log.txt", "a");fputws(L"Note: command was read from stdin\n", stderr);fclose(fptr);
     } /* end support pipeline */
-exec: 
+exec:// FILE *fptr; fptr = fopen("c:\\log.txt", "a");fputws(L"new commandline is now: ",fptr); fputws(cmdlineW,fptr);fputws(L"\n",fptr); fclose(fptr);     
     if (!cmdlineW[0] ) ExpandEnvironmentStringsW( L" -c %SystemDrive%\\ConEmu\\ConEmu64.exe -NoUpdate -LoadRegistry -run %ProgramW6432%\\Powershell\\7\\pwsh.exe ", bufW, MAX_PATH+1);
     CreateProcessW( pwsh_pathW, !cmdlineW[0] ? bufW : cmdlineW, 0, 0, 0, 0, 0, 0, &si, &pi );
     WaitForSingleObject( pi.hProcess, INFINITE ); GetExitCodeProcess( pi.hProcess, &exitcode ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );    
