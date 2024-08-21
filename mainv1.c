@@ -125,7 +125,7 @@ int mainCRTStartup(void)
    	            			
    	            		 if (is_last_option(token)) { /* there is a command option, no need to take action */
 				           if (!skip) wcscat(wcscat(cmdlineW, L" -"),token);
-				           if(*ptr) wcscat(wcscat(cmdlineW, &delim),ptr);
+				           if(*ptr) wcscat(wcscat(cmdlineW, &delim),ptr); /* add remainder of command string and exit */
 				           break;
 			             }
 			             else { /* single or double option or garbage -->not handled (!) */
@@ -140,7 +140,7 @@ int mainCRTStartup(void)
 			                 *p=0; /* break the string in two words by setting '\0' character */
 			                 if(!skip) wcscat( wcscat(cmdlineW, L" -"), token); /* concatenate the option (1st part string) */
 			                 wcscat(wcscat(cmdlineW, L" -c "), p+1);/* concatenate '-c' and the end of the string (= beginning of command ) */
-                             if(*ptr) wcscat(wcscat(cmdlineW, &delim),ptr);
+                             if(*ptr) wcscat(wcscat(cmdlineW, &delim),ptr); /* and the rest of the command string */
                              break;       
 			               } 
 		                 }
