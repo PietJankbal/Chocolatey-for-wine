@@ -26,8 +26,7 @@ int __cdecl wmain( int argc, WCHAR *argv[] )
 
     char commandA[][1024]= {
 		"powershell \"& {echo hallo}\"",
-		"cmd /c powershell -NoLogo -NoProfile -Noninteractive -ExecutionPolicy    Unrestricted -InputFormat   None -Command \"& \"\"\"C:\\a,b.ps1\"\"\" ; exit\"   ",
-		"cmd /c echo \"$(get-date)\" |powershell -   ",
+        "cmd /c powershell -NoLogo -NoProfile -Noninteractive -ExecutionPolicy    Unrestricted -InputFormat   None -Command \"& \"\"\"C:\\a,b.ps1\"\"\" ; out-null ' -f /f  ff  / f -'; exit $LastExitCode\"   ",		"cmd /c echo \"$(get-date)\" |powershell -   ",
         "\"c:\\windows\\system32\\WindowsPowershell\\v1.0\\powershell.exe\" -nol \"& \"\"\"c:\\a,b.ps1\"\"\" \"" ,
         "powershell      -nol    -executionpolicy   unrestricted   \"& \"\"\"c:\\a,b.ps1\"\"\" \"",
         "powershell -nol -enc ZQBjAGgAbwAgACIARABvAHIAbwB0AGgAeQAiAA==",
