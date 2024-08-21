@@ -22,26 +22,19 @@
  -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x200000,0x200000 -nostdlib  -Wall -Wextra -ffreestanding mainv1.c -lurlmon -lkernel32 -lucrtbase -luser32 -nostdlib -lshell32 -lntdll -s -o powershell32.exe
  * Btw: The included binaries are compressed with upx to make them even smaller (choco install upx):
  */
+ 
 #include <windows.h>
 #include <winternl.h> 
 #include <stdio.h>
 
-static WCHAR *strip( WCHAR *start ) /* strip spaces*/
-{
-    WCHAR *str = start, *end = start + wcslen( start ) - 1;
-    while (*str == ' ') str++;
-    while (end >= start && *end == ' ') *end-- = 0;
-    return str;
-}
-
 static inline BOOL is_single_option (WCHAR *opt) /* e.g. -noprofile, -nologo , -mta etc */ 
 {
-    return ( wcschr( L"nNmMsS", opt[0] ) ? TRUE: FALSE );
+    return ( wcschr( L"nNmMsS", opt[1] ) ? TRUE: FALSE );
 }  
 
-static inline BOOL is_last_option (WCHAR *opt) /* no new options may follow -c, -f , -, and -e (but not -ex(ecutionpolicy)!) */
+static inline BOOL is_last_option (WCHAR *opt) /* no new options may follow -c, -f , and -e (but not -ex(ecutionpolicy)!) */
 {
-    return ( wcschr( L"cCfF", opt[0] ) || ( wcschr( L"eE", opt[0] ) && (!opt[1] || !wcschr( L"xX", opt[1] ))) || !strip(opt));
+    return ( wcschr( L"cCfF", opt[1] ) || ( wcschr( L"eE", opt[1] ) && (!opt[2] || !wcschr( L"xX", opt[2] ))));
 }  
  
 __attribute__((externally_visible))  /* for -fwhole-program */
@@ -102,57 +95,42 @@ int mainCRTStartup(void)
     /* pwsh requires a command option "-c" , powershell doesn`t, so we have to insert it somewhere e.g. 'powershell -nologo 2+1' should go into 'powershell -nologo -c 2+1'*/ 
     if( !argv[1] ) read_from_stdin = TRUE; /* might be redirected like 'cmd.exe /c "powershell < ""c:\a.txt"""' */
     else {
-      WCHAR *cmd = wcsdup( wcsstr( GetCommandLineW(), argv[1]) ); //futws(L"\n", stderr);futws(cmd, stderr);fputws(L"<--old cmd is:\n", stderr);
-      /* No options (-xxx or /xxx) given e.g. {echo hello} or 1+2 or "& whoami" etc: insert '-c' and send to pwsh. */ 
-      if ( cmd[0] != '-' && cmd[0] != '/' ) wcscat(wcscat(cmdlineW, L" -c "), cmd);
-      else
-      {
-        if ( cmd[ wcslen(cmd) - 1] == '-' ) { read_from_stdin = 1; } /* e.g. '$(get-date | powershell -') */
-
-        wchar_t *ptr, *token, delim = L'-';
+        WCHAR *cmd = wcsdup( wcsstr( GetCommandLineW(), argv[1]) ), *ptr, delim = L' ';
+        WCHAR *token = wcstok_s(cmd, &delim ,&ptr); /* Break up the options */
         
-        token = wcstok_s(cmd, &delim ,&ptr); /* Break up the options */
-        
-        if(wcschr(token,L'/')) {
-            fputws(L"\033[1;91m",stderr);fputws(L"Deprecated token '/' found!!! Expect problems!! Trying anyway", stderr);fputws(L"\033[0m\n",stderr);
-            delim = L'/';
-            token = wcstok_s(cmd, &delim ,&ptr);
-        }  
-
         while (token) {
-                         WCHAR *p;
-			             BOOL skip = (!_wcsnicmp(token,L"ve",2) || !_wcsnicmp(token,L"nop",3)); /* skip '-noprofile' and '-version'*/
-   	            			
-   	            		 if (is_last_option(token)) { /* there is a command option, no need to take action */
-				           if (!skip) wcscat(wcscat(cmdlineW, L" -"),token);
-				           if(*ptr) wcscat(wcscat(cmdlineW, &delim),ptr); /* add remainder of command string and exit */
-				           break;
-			             }
-			             else { /* single or double option or garbage -->not handled (!) */
-					       /* last option will now have an extra 'tail' e.g ' nologo echo' so search for extra space */
-			               if( is_single_option(token) ) p = (wcschr( strip(token),L' ')); 
-			               else p = wcschr((strip(wcschr(strip(token),L' '))) ,L' '); /* last double option has two spaces, look for last */
-                           /* if there's an extra space, we've arrived at last option, and insert a -c */
-			               if(!p) { /* not yet arrived at last option, no need to take action */ 
-						     if (!skip) wcscat(wcscat(cmdlineW, L" -"),token);
-						   }
-			               else {  /* arrived at last option: insert a '-c' */
-			                 *p=0; /* break the string in two words by setting '\0' character */
-			                 if(!skip) wcscat( wcscat(cmdlineW, L" -"), token); /* concatenate the option (1st part string) */
-			                 wcscat(wcscat(cmdlineW, L" -c "), p+1);/* concatenate '-c' and the end of the string (= beginning of command ) */
-                             if(*ptr) wcscat(wcscat(cmdlineW, &delim),ptr); /* and the rest of the command string */
-                             break;       
-			               } 
-		                 }
-                         token = wcstok_s(NULL, &delim ,&ptr);
-                     }
+   	            		 if(!wcscmp(token,L"-")) {read_from_stdin = 1; break;} 
+                         if(token[0] == L'/') token[0] = L'-';
+   	   			        
+   	                     if(token[0] != '-') { /* no further options in cmdline*/
+							 wcscat(wcscat(cmdlineW,L" -c "),token);
+   	                         if(*ptr) wcscat(wcscat(cmdlineW, L" "),ptr);
+   	                         break;
+   	                      }
+   	            		  else if (is_last_option(token)) { /* no new options may follow -c, -f , and -e (but not -ex(ecutionpolicy)!) */
+				              wcscat(wcscat(cmdlineW, L" "),token);
+				              if(*ptr) wcscat(wcscat(cmdlineW, L" "),ptr);
+				              break;
+			              }
+			              else if( is_single_option(token) ) { /* e.g. -noprofile, -nologo , -mta etc */ 
+                              if(_wcsnicmp(token,L"-nol",4)) wcscat(wcscat(cmdlineW, L" "),token);
+					      }
+				          else { /* assuming double option (e.g. -executionpolicy bypass) AND a valid command!!!, no check for garbage commands!!!!!! */
+						      if(!_wcsnicmp(token,L"-ve",3)) token = wcstok_s(NULL, &delim ,&ptr);
+						      else {
+							      wcscat(wcscat(cmdlineW, L" "),token);
+							      token = wcstok_s(NULL, &delim ,&ptr);
+							      wcscat(wcscat(cmdlineW, L" "),token);
+							  }
+					      }
+                          token = wcstok_s(NULL, &delim ,&ptr);
+                     }				           
       } 
-    }
     /* by setting "PS51" env variable, there's a possibility to execute the cmd through rudimentary windows powershell 5.1, requires 'winetricks ps51' first */
     /* Note: when run from bash, escape special char $ with single quotes and backtick e.g. PS51=1 wine powershell '`SPSVersionTable' */
     if ( GetEnvironmentVariableW( L"PS51", bufW, MAX_PATH + 1 ) && !wcscmp( bufW, L"1") ) 
         ExpandEnvironmentStringsW( L"%SystemRoot%\\system32\\WindowsPowershell\\v1.0\\ps51.exe ", pwsh_pathW, MAX_PATH + 1 );
-    /* support pipeline to handle something like " wcschr| powershell - " */
+    /* support pipeline to handle something like " '$(get-date)'| powershell - " or redirected from file */
     if( read_from_stdin ) { 
         WCHAR defline[4096]; char line[4096];
         HANDLE input = GetStdHandle(STD_INPUT_HANDLE); DWORD type = GetFileType(input);
@@ -163,7 +141,7 @@ int mainCRTStartup(void)
             while( fgets(line, 4096, stdin) != NULL ) { mbstowcs(defline, line, 4096); wcscat(cmdlineW, defline);}
  		}   //FILE *fptr; fptr = fopen("c:\\log.txt", "a");fputws(L"Note: command was read from stdin\n", stderr);fclose(fptr);
     } /* end support pipeline */
-exec:// FILE *fptr; fptr = fopen("c:\\log.txt", "a");fputws(L"new commandline is now: ",fptr); fputws(cmdlineW,fptr);fputws(L"\n",fptr); fclose(fptr);     
+exec: // FILE *fptr; fptr = fopen("c:\\log.txt", "a");fputws(L"used commandline is now: ",fptr); fputws(cmdlineW,fptr);fputws(L"\n",fptr); fclose(fptr);   
     if (!cmdlineW[0] ) ExpandEnvironmentStringsW( L" -c %SystemDrive%\\ConEmu\\ConEmu64.exe -NoUpdate -LoadRegistry -run %ProgramW6432%\\Powershell\\7\\pwsh.exe ", bufW, MAX_PATH+1);
     CreateProcessW( pwsh_pathW, !cmdlineW[0] ? bufW : cmdlineW, 0, 0, 0, 0, 0, 0, &si, &pi );
     WaitForSingleObject( pi.hProcess, INFINITE ); GetExitCodeProcess( pi.hProcess, &exitcode ); CloseHandle( pi.hProcess ); CloseHandle( pi.hThread );    
