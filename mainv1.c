@@ -99,30 +99,26 @@ int mainCRTStartup(void) {
     if (!argv[1])
         read_from_stdin = TRUE; /* might be redirected like 'cmd.exe /c "powershell < ""c:\a.txt"""' */
     else {
-        WCHAR *cmd = wcsdup(wcsstr(GetCommandLineW(), argv[1])), *ptr, delim = L' ';
-        WCHAR* token = wcstok_s(cmd, &delim, &ptr); /* Break up the options */
+        WCHAR *cmd = wcsdup(wcsstr(GetCommandLineW(), argv[1])), *ptr, delim = L' '; /* fetch cmdline without the application name (powershell)*/
+        WCHAR* token = wcstok_s(cmd, &delim, &ptr); /* Start breaking up cmdline to look for options */
 
         while (token) {
             if (!wcscmp(token, L"-")) {
                 read_from_stdin = 1;
                 break;
             }
-            if (token[0] == L'/') token[0] = L'-';
-
-            if (token[0] != '-') { /* no further options in cmdline*/
-                wcscat(wcscat(cmdlineW, L" -c "), token);
-                if (*ptr) wcscat(wcscat(cmdlineW, L" "), ptr);
-                break;
-            } else if (is_last_option(token)) { /* no new options may follow -c, -f , and -e (but not -ex(ecutionpolicy)!) */
-                wcscat(wcscat(cmdlineW, L" "), token);
-                if (*ptr) wcscat(wcscat(cmdlineW, L" "), ptr);
+            if (token[0] == L'/') token[0] = L'-'; /* deprecated '/' still works in powershell 5.1, replace to simplify code */
+            
+            if (token[0] != '-' || is_last_option(token)) { /* no further options in cmdline, or final {-c, -f , -enc} : no new options may follow  these */
+                wcscat(wcscat(cmdlineW, (token[0] != '-') ? L" -c " : L" "), token); /* insert '-c' if necessary */
+                if (*ptr) wcscat(wcscat(cmdlineW, L" "), ptr); /* add remainder of cmdline and done */
                 break;
             } else if (is_single_option(token)) { /* e.g. -noprofile, -nologo , -mta etc */
-                if (_wcsnicmp(token, L"-nop", 4)) wcscat(wcscat(cmdlineW, L" "), token);
-            } else { /* assuming double option (e.g. -executionpolicy bypass) AND a valid command!!!, no check for garbage commands!!!!!! */
-                if (!_wcsnicmp(token, L"-ve", 3))
-                    token = wcstok_s(NULL, &delim, &ptr);
-                else {
+                if (_wcsnicmp(token, L"-nop", 4)) wcscat(wcscat(cmdlineW, L" "), token); /* skip -noprofile to enable hacks in profile.ps1 */
+            } else { /* assuming option + argument (e.g. '-executionpolicy bypass') AND a valid command!!!, no check for garbage commands!!!!!! */
+                if (!_wcsnicmp(token, L"-ve", 3)) 
+                    token = wcstok_s(NULL, &delim, &ptr); /* skip incompatible version option, like '-version 3.0' */
+                else { /* concatenate option + arg for option with argument */
                     wcscat(wcscat(cmdlineW, L" "), token);
                     token = wcstok_s(NULL, &delim, &ptr);
                     if (token) wcscat(wcscat(cmdlineW, L" "), token);
