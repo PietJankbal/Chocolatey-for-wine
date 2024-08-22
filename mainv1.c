@@ -118,7 +118,7 @@ int mainCRTStartup(void) {
                 if (*ptr) wcscat(wcscat(cmdlineW, L" "), ptr);
                 break;
             } else if (is_single_option(token)) { /* e.g. -noprofile, -nologo , -mta etc */
-                if (_wcsnicmp(token, L"-nol", 4)) wcscat(wcscat(cmdlineW, L" "), token);
+                if (_wcsnicmp(token, L"-nop", 4)) wcscat(wcscat(cmdlineW, L" "), token);
             } else { /* assuming double option (e.g. -executionpolicy bypass) AND a valid command!!!, no check for garbage commands!!!!!! */
                 if (!_wcsnicmp(token, L"-ve", 3))
                     token = wcstok_s(NULL, &delim, &ptr);
