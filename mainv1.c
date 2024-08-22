@@ -116,9 +116,13 @@ int mainCRTStartup(void) {
             } else if (is_single_option(token)) { /* e.g. -noprofile, -nologo , -mta etc */
                 if (_wcsnicmp(token, L"-nop", 4)) wcscat(wcscat(cmdlineW, L" "), token); /* skip -noprofile to enable hacks in profile.ps1 */
             } else { /* assuming option + argument (e.g. '-executionpolicy bypass') AND a valid command!!!, no check for garbage commands!!!!!! */
-                    if (_wcsnicmp(token, L"-ve", 3)) wcscat(wcscat(cmdlineW, L" "), token);  /* concatenate option (but skip incompatible version option, like '-version 3.0') */
+                if (!_wcsnicmp(token, L"-ve", 3)) 
+                    token = wcstok_s(NULL, &delim, &ptr); /* skip incompatible version option, like '-version 3.0' */
+                else { /* concatenate option + arg for option with argument */
+                    wcscat(wcscat(cmdlineW, L" "), token);
                     token = wcstok_s(NULL, &delim, &ptr);
-                    if (token && _wcsnicmp(token, L"-ve", 3)) wcscat(wcscat(cmdlineW, L" "), token); /* concatenate arg */
+                    if (token) wcscat(wcscat(cmdlineW, L" "), token);
+                }
             }
             token = wcstok_s(NULL, &delim, &ptr);
         }
