@@ -125,7 +125,7 @@ int mainCRTStartup(void) {
                 else {
                     wcscat(wcscat(cmdlineW, L" "), token);
                     token = wcstok_s(NULL, &delim, &ptr);
-                    wcscat(wcscat(cmdlineW, L" "), token);
+                    if (token) wcscat(wcscat(cmdlineW, L" "), token);
                 }
             }
             token = wcstok_s(NULL, &delim, &ptr);
