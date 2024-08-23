@@ -34,7 +34,7 @@ int __cdecl wmain( int argc, WCHAR *argv[] )
          "PowerShell -version 4.0 -NoLogo -InputFormat text -OutputFormat Text echo hello",
          "cmd.exe /c powershell < \"\"\"c:\\a,b.ps1\"\"\"",
          "powershell Start-Process powershell -RedirectStandardInput \"\"\"c:\\a,b.ps1\"\"\"  -NoNewWindow -Wait",
-	"\"\"\"{0} MB\"\" -f ((Get-ChildItem C:\\windows\\ -Recurse | Measure-Object -Property Length -Sum -ErrorAction Stop).Sum / 1MB)\"",
+	"powershell \"\"\"{0} MB\"\" -f ((Get-ChildItem C:\\windows\\ -Recurse | Measure-Object -Property Length -Sum -ErrorAction Stop).Sum / 1MB)\"",
 
     };
                                                              
