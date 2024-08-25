@@ -21,12 +21,9 @@
  * i686-w64-mingw32-gcc -O1 -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -falign-functions=1 -falign-jumps=1 -falign-loops=1 -fwhole-program\
  -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x200000,0x200000 -nostdlib  -Wall -Wextra -ffreestanding mainv1.c -lurlmon -lkernel32 -lucrtbase -luser32 -nostdlib -lshell32 -lntdll -s -o powershell32.exe
  */
- 
 #include <stdio.h>
 #include <windows.h>
 #include <winternl.h>
-
-#include "shlwapi.h"
 
 /* for e.g. -noprofile, -nologo , -mta etc */
 static inline BOOL is_single_option(WCHAR* opt) { return (wcschr(L"nNmMsS", opt[1]) ? TRUE : FALSE); }
@@ -36,14 +33,13 @@ static inline BOOL is_last_option(WCHAR* opt) { return (wcschr(L"cCfF", opt[1]) 
 __attribute__((externally_visible)) /* for -fwhole-program */
 int mainCRTStartup(void) {
     BOOL read_from_stdin = FALSE;
-    wchar_t cmdlineW[4096] = L"", pwsh_pathW[MAX_PATH] = L"", bufW[MAX_PATH] = L"", drive[MAX_PATH], dir[_MAX_FNAME], filenameW[_MAX_FNAME], **argv;
+    wchar_t cmdlineW[4096] = L"", pwsh_pathW[MAX_PATH] = L"", bufW[MAX_PATH] = L"", drive[MAX_PATH], dir[_MAX_FNAME], filenameW[_MAX_FNAME], pathW[MAX_PATH];
     DWORD exitcode;
     STARTUPINFOW si = {0};
     PROCESS_INFORMATION pi = {0};
-    int i = 1, argc;
 
-    argv = CommandLineToArgvW(GetCommandLineW(), &argc);
-    _wsplitpath(argv[0], drive, dir, filenameW, NULL);
+    GetModuleFileNameW(NULL, pathW, MAX_PATH);
+    _wsplitpath(pathW, drive, dir, filenameW, NULL);
 
     ExpandEnvironmentStringsW(L"%ProgramW6432%\\Powershell\\7\\pwsh.exe", pwsh_pathW, MAX_PATH + 1);
     /* Download and Install */
@@ -51,7 +47,7 @@ int mainCRTStartup(void) {
         WCHAR tmpW[MAX_PATH], versionW[] = L".....", msiW[MAX_PATH] = L"", downloadW[MAX_PATH] = L"";
 
         ExpandEnvironmentStringsW(L"%SystemRoot%\\system32\\WindowsPowershell\\v1.0\\powershell.exe", bufW, MAX_PATH + 1);
-        if (!CopyFileW(argv[0], bufW, FALSE)) {
+        if (!CopyFileW(pathW, bufW, FALSE)) {
             MessageBoxA(0, "copy file failed\n", 0, 0);
             return 1;
         }
@@ -83,29 +79,27 @@ int mainCRTStartup(void) {
         CloseHandle(pi.hThread);
         GetTempPathW(MAX_PATH, tmpW);
         bufW[0] = 0;
-        _wsplitpath(argv[0], drive, dir, filenameW, NULL);
+        _wsplitpath(pathW, drive, dir, filenameW, NULL);
         wcscat(wcscat(wcscat(wcscat(wcscat(wcscat(wcscat(wcscat(cmdlineW, L" -file "), drive), L"\\"), dir), L"choc_install.ps1 "), drive), L"\\"), dir);
         goto exec; /* End download and install */
     }
     /* I can also act as a dummy program if my exe-name is not powershell, allows to replace a system exe (like wusa.exe, or any exe really) by a function in profile.ps1 */
     else if (_wcsnicmp(filenameW, L"powershell", 10)) {
         /* add some prefix to the exe and execute it through pwsh , so we can query for program replacement in profile.ps1 */
-        wcscat(wcscat(cmdlineW, L" -nop -c QPR."), filenameW);
-        for (i = 1; i < argc; i++) {
-            /* concatenate the rest of the arguments into the new cmdline */
-            wcscat(wcscat(wcscat(cmdlineW, L" '\""), argv[i]), L"\"'");
-        }
+        WCHAR* cmd = wcschr(wcsstr(GetCommandLineW(), filenameW), L' ');
+        wcscat(wcscat(wcscat(cmdlineW, L" -nop -c QPR."), filenameW), cmd ? cmd : L" ");
         SetEnvironmentVariableW(L"QPRCMDLINE", GetCommandLineW()); /* option to track the complete commandline via $env:QPRCMDLINE */
         goto exec;
     } /* note: set desired exitcode in the function in profile.ps1 */
 
     /* Main program: wrap the original powershell-commandline into correct syntax, and send it to pwsh.exe */
     /* pwsh requires a command option "-c" , powershell doesn`t, so we have to insert it somewhere e.g. 'powershell -nologo 2+1' should go into 'powershell -nologo -c 2+1'*/
-    WCHAR* cmd = wcschr(StrStrIW(GetCommandLineW(), L"powershell"), L' ');      /* fetch cmdline without the application name (powershell)*/
+    WCHAR* cmd = wcschr(wcsstr(GetCommandLineW(), filenameW), L' ');            /* fetch cmdline without the application name (powershell)*/
     WCHAR *ptr, delim = L' ', *token = (cmd ? wcstok_s(cmd, &delim, &ptr) : 0); /* Start breaking up cmdline to look for options */
 
     while (token) {
         if (!wcscmp(token, L"-")) {
+            wcscat(cmdlineW, L" -c ");
             read_from_stdin = 1;
             break;
         }
@@ -135,7 +129,6 @@ int mainCRTStartup(void) {
         WCHAR defline[4096];
         char line[4096];
         /* handle pipe */
-        if ((!wcscmp(argv[argc - 1], L"-") && _wcsnicmp(argv[argc - 2], L"-c", 2)) || !argv[1]) wcscat(cmdlineW, L" -c ");
         wcscat(cmdlineW, L" ");
         while (fgets(line, 4096, stdin) != NULL) {
             mbstowcs(defline, line, 4096);
@@ -145,7 +138,6 @@ int mainCRTStartup(void) {
 exec:      // FILE *fptr; fptr = fopen("c:\\log.txt", "a");fputws(L"used commandline is now: ",fptr); fputws(cmdlineW,fptr); fclose(fptr);
     CreateProcessW(pwsh_pathW, cmdlineW, 0, 0, 0, 0, 0, 0, &si, &pi);
     WaitForSingleObject(pi.hProcess, INFINITE); GetExitCodeProcess(pi.hProcess, &exitcode); CloseHandle(pi.hProcess); CloseHandle(pi.hThread);
-    LocalFree(argv);
 
     return (exitcode);
 }
