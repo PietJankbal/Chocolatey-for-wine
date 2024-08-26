@@ -1,15 +1,13 @@
 From 01e297aba3b56bb56f24308fe0817f72d1b8c0df Mon Sep 17 00:00:00 2001
 From: llde <lorenzofersteam@live.it>
 Date: Tue, 23 May 2023 00:07:04 +0200
-Subject: [PATCH] add implementation of PerfSetULongCounterValue and
- PerfSetULongLongCounterValue (for VS)
+Subject: [PATCH] add implementation of PerfSetULongCounterValue and PerfSetULongLongCounterValue (for VS)
 
-
-I've put the changes from the author above and for RegLoadAppKey (patch from Roman Pisl) into advapi32 as this dll will not change much (in contrary to kernelbase)
+I've put the changes from the author above and for RegLoadAppKey into advapi32 as this dll will not change much (in contrary to kernelbase)
 See https://bugs.winehq.org/show_bug.cgi?id=48023
 
 diff --git a/dlls/advapi32/advapi.c b/dlls/advapi32/advapi.c
-index 2284e92b263..12ce2074786 100644
+index 2284e92b263..6b4a9457a49 100644
 --- a/dlls/advapi32/advapi.c
 +++ b/dlls/advapi32/advapi.c
 @@ -17,12 +17,20 @@
@@ -86,35 +84,6 @@ index 2284e92b263..12ce2074786 100644
      return ERROR_SUCCESS;
  }
 +
-+
-+/******************************************************************************
-+ * RegLoadAppKeyA (kernelbase.@)
-+ *
-+ */
-+LSTATUS WINAPI RegLoadAppKeyA(const char *file, HKEY *result, REGSAM sam, DWORD options, DWORD reserved)
-+{
-+    FIXME("%s %p %lu %lu %lu: stub\n", wine_dbgstr_a(file), result, sam, options, reserved);
-+
-+    if (!file || reserved)
-+        return ERROR_INVALID_PARAMETER;
-+
-+    return RegOpenKeyExA(HKEY_CURRENT_USER, "", KEY_ALL_ACCESS, 0, result);
-+}
-+
-+/******************************************************************************
-+ * RegLoadAppKeyW (kernelbase.@)
-+ *
-+ */
-+LSTATUS WINAPI RegLoadAppKeyW(const WCHAR *file, HKEY *result, REGSAM sam, DWORD options, DWORD reserved)
-+{
-+    FIXME("%s %p %lu %lu %lu: stub\n", wine_dbgstr_w(file), result, sam, options, reserved);
-+
-+    if (!file || reserved)
-+        return ERROR_INVALID_PARAMETER;
-+
-+    return RegOpenKeyExW(HKEY_CURRENT_USER, L"", KEY_ALL_ACCESS, 0, result);
-+}
-+
 +/***********************************************************************
 + *           PerfSetULongCounterValue   (KERNELBASE.@)
 + */
@@ -175,6 +144,35 @@ index 2284e92b263..12ce2074786 100644
 +
 +    return STATUS_SUCCESS;
 +}
++
++
++/******************************************************************************
++ * RegLoadAppKeyA (kernelbase.@)
++ *
++ */
++LSTATUS WINAPI RegLoadAppKeyA(const char *file, HKEY *result, REGSAM sam, DWORD options, DWORD reserved)
++{
++    FIXME("%s %p %lu %lu %lu: stub\n", wine_dbgstr_a(file), result, sam, options, reserved);
++
++    if (!file || reserved)
++        return ERROR_INVALID_PARAMETER;
++
++    return RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\Wine\\WineAppKey", KEY_ALL_ACCESS, 0, result);
++}
++
++/******************************************************************************
++ * RegLoadAppKeyW (kernelbase.@)
++ *
++ */
++LSTATUS WINAPI RegLoadAppKeyW(const WCHAR *file, HKEY *result, REGSAM sam, DWORD options, DWORD reserved)
++{
++    FIXME("%s %p %lu %lu %lu: stub\n", wine_dbgstr_w(file), result, sam, options, reserved);
++
++    if (!file || reserved)
++        return ERROR_INVALID_PARAMETER;
++
++    return RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\Wine\\WineAppKey", KEY_ALL_ACCESS, 0, result);
++}
 diff --git a/dlls/advapi32/advapi32.spec b/dlls/advapi32/advapi32.spec
 index dde83cc7045..f175864077a 100644
 --- a/dlls/advapi32/advapi32.spec
@@ -201,3 +199,34 @@ index dde83cc7045..f175864077a 100644
  @ stdcall -import RegLoadKeyA(long str str)
  @ stdcall -import RegLoadKeyW(long wstr wstr)
  @ stdcall -import RegLoadMUIStringA(long str str long ptr long str)
+diff --git a/dlls/advapi32/eventlog.c b/dlls/advapi32/eventlog.c
+index 58db53f5536..afa150b0c74 100644
+--- a/dlls/advapi32/eventlog.c
++++ b/dlls/advapi32/eventlog.c
+@@ -429,7 +429,7 @@ HANDLE WINAPI OpenBackupEventLogW( LPCWSTR lpUNCServerName, LPCWSTR lpFileName )
+         return NULL;
+     }
+ 
+-    return (HANDLE)0xcafe4242;
++    return CreateEventW(NULL, TRUE, FALSE, NULL);
+ }
+ 
+ /******************************************************************************
+@@ -482,7 +482,7 @@ HANDLE WINAPI OpenEventLogW( LPCWSTR uncname, LPCWSTR source )
+         return NULL;
+     }
+ 
+-    return (HANDLE)0xcafe4242;
++    return CreateEventW(NULL, TRUE, FALSE, NULL);
+ }
+ 
+ /******************************************************************************
+@@ -567,7 +567,7 @@ HANDLE WINAPI RegisterEventSourceA( LPCSTR lpUNCServerName, LPCSTR lpSourceName
+ HANDLE WINAPI RegisterEventSourceW( LPCWSTR lpUNCServerName, LPCWSTR lpSourceName )
+ {
+     FIXME("(%s,%s): stub\n", debugstr_w(lpUNCServerName), debugstr_w(lpSourceName));
+-    return (HANDLE)0xcafe4242;
++    return CreateEventW(NULL, TRUE, FALSE, NULL);
+ }
+ 
+ /******************************************************************************
