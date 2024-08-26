@@ -8,6 +8,9 @@ Optional:
 - Check if things went well: "choco install chromium" and  "start chrome.exe (--no-sandbox not needed anymore as of wine-8,4)" 
   
   Or if you like to install via GUI: "choco install ChocolateyGUI" and "start chocolateygui.exe"
+
+### **IMPORTANT NOTE:** Do 'wine conemu64' to start the powerhell console in ConEmu.
+(If you do 'wine powershell' you end up in a console that is unreadable due to a wine bug)
   
 Optional:
 
