@@ -35,7 +35,7 @@ intptr_t mainCRTStartup(PPEB peb) {
     wchar_t *file, *cmd, *ptr = 0, *token, delim = L' ', *cl = (wchar_t*)calloc(4096, sizeof(wchar_t)); /* cl will be the new cmdline */
 
     file = wcsrchr(peb->ProcessParameters->ImagePathName.Buffer, L'\\') + 1; /* fetch the exe name  */
-    cmd = _wcsdup(peb->ProcessParameters->CommandLine.Buffer);               /* fetch cmdline without the application name (powershell)*/
+    cmd = _wcsdup(peb->ProcessParameters->CommandLine.Buffer);               /* fetch cmdline */
     /* Stolen from wine's CommandLineToArgvW: skip over argv[0] to get the 'real' commandline */
     if (*cmd == '"') {
         cmd++;
