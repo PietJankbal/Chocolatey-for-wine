@@ -1,5 +1,5 @@
-/* Installs PowerShell Core, wraps powershell`s commandline into correct syntax for pwsh.exe,
- * and some code that allows calls to an exe (like wusa.exe) to be replaced by a function in profile.ps1
+/* Installs PowerShell Core, wraps powershell`s commandline into correct syntax for pwsh.file,
+ * and some code that allows calls to an file (like wusa.file) to be replaced by a function in profile.ps1
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -15,129 +15,73 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Compile: // For fun I changed code from standard main(argc,*argv[]) to something like https://nullprogram.com/blog/2016/01/31/)
- * x86_64-w64-mingw32-gcc -O1 -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -falign-functions=1 -falign-jumps=1 -falign-loops=1 -fwhole-program\
- -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x200000,0x200000 -nostdlib  -Wall -Wextra -ffreestanding  mainv1.c -lurlmon -lkernel32 -lucrtbase -luser32 -nostdlib -lshell32 -lntdll -s -o ChoCinstaller_0.5e.715.exe
- * i686-w64-mingw32-gcc -O1 -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -falign-functions=1 -falign-jumps=1 -falign-loops=1 -fwhole-program\
- -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x200000,0x200000 -nostdlib  -Wall -Wextra -ffreestanding mainv1.c -lurlmon -lkernel32 -lucrtbase -luser32 -nostdlib -lshell32 -lntdll -s -o powershell32.exe
+ * Build: // For fun I changed code from standard main(argc,*argv[]) to something like https://nullprogram.com/blog/2016/01/31/ and https://scorpiosoftware.net/2023/03/16/minimal-executables/)
+ * x86_64-w64-mingw32-gcc -O1 -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x200000,0x200000\
+  -Wall -Wextra -ffreestanding -fno-unroll-loops  -finline-limit=0 -Wl,-gc-sections   mainv1.c -nostdlib -lucrtbase -s -o powershell64.exe && strip -R .reloc powershell64.exe
+ * i686-w64-mingw32-gcc -O1 -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x200000,0x200000\
+   -Wall -Wextra -ffreestanding -fno-unroll-loops  -finline-limit=0 -Wl,-gc-sections   mainv1.c -nostdlib -lucrtbase -s -o powershell32.exe && strip -R .reloc powershell32.exe 
  */
 #include <stdio.h>
 #include <windows.h>
 #include <winternl.h>
 
 /* for e.g. -noprofile, -nologo , -mta etc */
-static inline BOOL is_single_option(WCHAR* opt) { return (wcschr(L"nNmMsS", opt[1]) ? TRUE : FALSE); }
+static BOOL is_single_option(WCHAR* opt) { return (wcschr(L"nNmMsS", opt[1]) ? TRUE : FALSE); }
 /* no new options may follow -c, -f , and -e (but not -ex(ecutionpolicy)!) */
-static inline BOOL is_last_option(WCHAR* opt) { return (wcschr(L"cCfF", opt[1]) || (wcschr(L"eE", opt[1]) && (!opt[2] || !wcschr(L"xX", opt[2])))); }
+static BOOL is_last_option(WCHAR* opt) { return (wcschr(L"cCfFeE", opt[1]) && _wcsnicmp(&opt[1], L"ex", 2) && _wcsnicmp(&opt[1], L"config", 6)); }
 
-__attribute__((externally_visible)) /* for -fwhole-program */
-int mainCRTStartup(void) {
+intptr_t mainCRTStartup(PPEB peb) {
     BOOL read_from_stdin = FALSE;
-    wchar_t cmdlineW[4096] = L"", pwsh_pathW[MAX_PATH] = L"", bufW[MAX_PATH] = L"", drive[MAX_PATH], dir[_MAX_FNAME], filenameW[_MAX_FNAME], pathW[MAX_PATH];
-    DWORD exitcode;
-    STARTUPINFOW si = {0};
-    PROCESS_INFORMATION pi = {0};
+    wchar_t *file, *cmd, *ptr = 0, *token, delim = L' ', *cl = (wchar_t*)calloc(4096, sizeof(wchar_t)); /* cl will be the new cmdline */
 
-    GetModuleFileNameW(NULL, pathW, MAX_PATH);
-    _wsplitpath(pathW, drive, dir, filenameW, NULL);
-
-    ExpandEnvironmentStringsW(L"%ProgramW6432%\\Powershell\\7\\pwsh.exe", pwsh_pathW, MAX_PATH + 1);
-    /* Download and Install */
-    if (!wcsncmp(filenameW, L"ChoCinstaller_", 14)) {
-        WCHAR tmpW[MAX_PATH], versionW[] = L".....", msiW[MAX_PATH] = L"", downloadW[MAX_PATH] = L"";
-
-        ExpandEnvironmentStringsW(L"%SystemRoot%\\system32\\WindowsPowershell\\v1.0\\powershell.exe", bufW, MAX_PATH + 1);
-        if (!CopyFileW(pathW, bufW, FALSE)) {
-            MessageBoxA(0, "copy file failed\n", 0, 0);
-            return 1;
-        }
-        versionW[0] = filenameW[19]; versionW[2] = filenameW[20]; versionW[4] = filenameW[21];
-
-        ExpandEnvironmentStringsW(L"%SystemRoot%\\syswow64\\WindowsPowershell\\v1.0\\powershell.exe", bufW, MAX_PATH + 1);
-        if (!CopyFileW(wcscat(wcscat(wcscat(drive, L"\\"), dir), L"powershell32.exe"), bufW, FALSE)) {
-            MessageBoxA(0, "copy file failed\n", 0, 0);
-            return 1;
-        }
-
-        wcscat(wcscat(msiW, L"PowerShell-"), versionW);
-        wcscat(msiW, L"-win-x64.msi");
-        ExpandEnvironmentStringsW(L"%WINEHOMEDIR%\\.cache\\choc_install_files\\", bufW, MAX_PATH + 1);
-
-        GetTempPathW(MAX_PATH, tmpW);
-        if (!CopyFileW(wcscat(bufW, msiW), wcscat(tmpW, msiW), FALSE)) {
-            if (URLDownloadToFileW(NULL, wcscat(wcscat(wcscat(wcscat(downloadW, L"https://github.com/PowerShell/PowerShell/releases/download/v"), versionW), L"/"), msiW), tmpW, 0, NULL) != S_OK) {
-                MessageBoxA(0, "download failed :( \n", 0, 0);
-                return 1;
-            }
-        }
-
-        GetTempPathW(MAX_PATH, tmpW);
-        bufW[0] = 0;
-        CreateProcessW(0, wcscat(wcscat(bufW, L"msiexec.exe /i "), wcscat(wcscat(tmpW, msiW), L" ENABLE_PSREMOTING=1 REGISTER_MANIFEST=1 /q")), 0, 0, 0, HIGH_PRIORITY_CLASS, 0, 0, &si, &pi);
-        WaitForSingleObject(pi.hProcess, INFINITE);
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-        GetTempPathW(MAX_PATH, tmpW);
-        bufW[0] = 0;
-        _wsplitpath(pathW, drive, dir, filenameW, NULL);
-        wcscat(wcscat(wcscat(wcscat(wcscat(wcscat(wcscat(wcscat(cmdlineW, L" -file "), drive), L"\\"), dir), L"choc_install.ps1 "), drive), L"\\"), dir);
-        goto exec; /* End download and install */
+    file = wcsrchr(peb->ProcessParameters->ImagePathName.Buffer, L'\\') + 1; /* fetch the exe name  */
+    cmd = _wcsdup(peb->ProcessParameters->CommandLine.Buffer);               /* fetch cmdline without the application name (powershell)*/
+    /* Stolen from wine's CommandLineToArgvW: skip over argv[0] to get the 'real' commandline */
+    if (*cmd == '"') {
+        cmd++;
+        while (*cmd)
+            if (*cmd++ == '"') break;
+    } else {
+        while (*cmd && *cmd != ' ' && *cmd != '\t') cmd++;
     }
-    /* I can also act as a dummy program if my exe-name is not powershell, allows to replace a system exe (like wusa.exe, or any exe really) by a function in profile.ps1 */
-    else if (_wcsnicmp(filenameW, L"powershell", 10)) {
-        /* add some prefix to the exe and execute it through pwsh , so we can query for program replacement in profile.ps1 */
-        WCHAR* cmd = wcschr(wcsstr(GetCommandLineW(), filenameW), L' ');
-        wcscat(wcscat(wcscat(cmdlineW, L" -nop -c QPR."), filenameW), cmd ? cmd : L" ");
-        SetEnvironmentVariableW(L"QPRCMDLINE", GetCommandLineW()); /* option to track the complete commandline via $env:QPRCMDLINE */
-        goto exec;
-    } /* note: set desired exitcode in the function in profile.ps1 */
+    /* I can also act as a dummy program if my file-name is not powershell, allows to replace a system file (like wusa.file, or any file really) by a function in profile.ps1 */
+    if (_wcsnicmp(file, L"powershell", 10)) {
+        /* add some prefix to the file and execute it through pwsh , so we can query for program replacement in profile.ps1 */
+        wcscat(wcscat(wcscat(cl, L" -nop -c QPR."), file), cmd ? cmd : L" ");
+        _wputenv_s(L"QPRCMDLINE", peb->ProcessParameters->CommandLine.Buffer);
+    } else { /* note: set desired exitcode in the function in profile.ps1 */
+        /* Main program: pwsh requires a command option "-c" , powershell doesn`t;  insert it e.g. 'powershell -nologo 2+1' should go into 'powershell -nologo -c 2+1'*/
+        token = (cmd ? wcstok_s(cmd, &delim, &ptr) : 0); /* Start breaking up cmdline to look for options */
 
-    /* Main program: wrap the original powershell-commandline into correct syntax, and send it to pwsh.exe */
-    /* pwsh requires a command option "-c" , powershell doesn`t, so we have to insert it somewhere e.g. 'powershell -nologo 2+1' should go into 'powershell -nologo -c 2+1'*/
-    WCHAR* cmd = wcschr(wcsstr(GetCommandLineW(), filenameW), L' ');            /* fetch cmdline without the application name (powershell)*/
-    WCHAR *ptr, delim = L' ', *token = (cmd ? wcstok_s(cmd, &delim, &ptr) : 0); /* Start breaking up cmdline to look for options */
-
-    while (token) {
-        if (!wcscmp(token, L"-")) {
-            wcscat(cmdlineW, L" -c ");
-            read_from_stdin = 1;
-            break;
-        }
-        if (token[0] == L'/') token[0] = L'-'; /* deprecated '/' still works in powershell 5.1, replace to simplify code */
-
-        if (token[0] != '-' || is_last_option(token)) {                          /* no further options in cmdline, or final {-c, -f , -enc} : no new options may follow  these */
-            wcscat(wcscat(cmdlineW, (token[0] != '-') ? L" -c " : L" "), token); /* insert '-c' if necessary */
-            if (*ptr) wcscat(wcscat(cmdlineW, L" "), ptr);                       /* add remainder of cmdline and done */
-            break;
-        } else if (is_single_option(token)) {                                        /* e.g. -noprofile, -nologo , -mta etc */
-            if (_wcsnicmp(token, L"-nop", 4)) wcscat(wcscat(cmdlineW, L" "), token); /* skip -noprofile to enable hacks in profile.ps1 */
-        } else {                                                                     /* assuming option + argument (e.g. '-executionpolicy bypass') AND a valid command!!!, no check for garbage commands!!!!!! */
-            if (!_wcsnicmp(token, L"-ve", 3))
-                token = wcstok_s(NULL, &delim, &ptr); /* skip incompatible version option, like '-version 3.0' */
-            else {                                    /* concatenate option + arg for option with argument */
-                wcscat(wcscat(cmdlineW, L" "), token);
-                token = wcstok_s(NULL, &delim, &ptr);
-                if (token) wcscat(wcscat(cmdlineW, L" "), token);
+        while (token) {
+            if (!wcscmp(token, L"-")) {
+                wcscat(cl, L" -c ");
+                read_from_stdin = 1;
+                break;
             }
-        }
-        token = wcstok_s(NULL, &delim, &ptr);
-    }
-    /* by setting "PS51" env variable, there's a possibility to execute the cmd through rudimentary windows powershell 5.1, requires 'winetricks ps51' first */
-    if (GetEnvironmentVariableW(L"PS51", bufW, MAX_PATH + 1) && !wcscmp(bufW, L"1")) ExpandEnvironmentStringsW(L"%SystemRoot%\\system32\\WindowsPowershell\\v1.0\\ps51.exe ", pwsh_pathW, MAX_PATH + 1);
-    /* support pipeline to handle something like " '$(get-date)'| powershell - " or redirected from file */
-    if (read_from_stdin) {
-        WCHAR defline[4096];
-        char line[4096];
-        /* handle pipe */
-        wcscat(cmdlineW, L" ");
-        while (fgets(line, 4096, stdin) != NULL) {
-            mbstowcs(defline, line, 4096);
-            wcscat(cmdlineW, defline);
-        }  // FILE *fptr; fptr = fopen("c:\\log.txt", "a");fputws(L"Note: command was read from stdin\n", stderr); fputws(cmdlineW,fptr); fclose(fptr);
-    }      /* end support pipeline */
-exec:      // FILE *fptr; fptr = fopen("c:\\log.txt", "a");fputws(L"used commandline is now: ",fptr); fputws(cmdlineW,fptr); fclose(fptr);
-    CreateProcessW(pwsh_pathW, cmdlineW, 0, 0, 0, 0, 0, 0, &si, &pi);
-    WaitForSingleObject(pi.hProcess, INFINITE); GetExitCodeProcess(pi.hProcess, &exitcode); CloseHandle(pi.hProcess); CloseHandle(pi.hThread);
+            if (token[0] == L'/') token[0] = L'-'; /* deprecated '/' still works in powershell 5.1, replace to simplify code */
 
-    return (exitcode);
+            if (token[0] != '-' || is_last_option(token)) {                    /* no further options in cmdline, or final {-c, -f , -enc} : no new options may follow  these */
+                wcscat(wcscat(cl, (token[0] != '-') ? L" -c " : L" "), token); /* insert '-c' if necessary */
+                if (*ptr) wcscat(wcscat(cl, L" "), ptr);                       /* add remainder of cmdline and done */
+                break;
+            } else if (is_single_option(token)) {                                  /* e.g. -noprofile, -nologo , -mta etc */
+                if (_wcsnicmp(token, L"-nop", 4)) wcscat(wcscat(cl, L" "), token); /* skip -noprofile to enable hacks in profile.ps1 */
+            } else {                                                               /* assuming option + argument (e.g. '-executionpolicy bypass') AND a valid command!!!, no check for garbage commands!!!!!! */
+                if (!_wcsnicmp(token, L"-ve", 3))
+                    token = wcstok_s(NULL, &delim, &ptr); /* skip incompatible version option, like '-version 3.0' */
+                else {                                    /* concatenate option + arg for option with argument */
+                    wcscat(wcscat(cl, L" "), token);
+                    token = wcstok_s(NULL, &delim, &ptr);
+                    if (token) wcscat(wcscat(cl, L" "), token);
+                }
+            }
+            token = wcstok_s(NULL, &delim, &ptr);
+        }
+    }
+    if (read_from_stdin) { /* support pipeline to handle something like " '$(get-date)'| powershell - " */
+        while (fgetws(cl + wcslen(cl), 4096, stdin) != NULL) continue;
+    }
+    // FILE *fptr; fptr = fopen("c:\\log.txt", "a");fputws(L"used commandline is now: ",fptr); fputws(cmdlineW,fptr); fclose(fptr);
+    return _wspawnlp(_P_WAIT, getenv("PS51") ? L"ps51" : L"pwsh", cl, 0); /* by setting "PS51" env var, execute the cmd through windows powershell 5.1, requires 'winetricks ps51' first */
 }
