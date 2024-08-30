@@ -1,4 +1,4 @@
-/* Installs PowerShell Core, wraps powershell`s commandline into correct syntax for pwsh.file,
+/* Wraps powershell`s commandline into correct syntax for pwsh.file,
  * and some code that allows calls to an file (like wusa.file) to be replaced by a function in profile.ps1
  *
  * This library is free software; you can redistribute it and/or
