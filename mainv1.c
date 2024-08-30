@@ -52,7 +52,7 @@ intptr_t mainCRTStartup(PPEB peb) {
     } else { /* note: set desired exitcode in the function in profile.ps1 */
         /* Main program: pwsh requires a command option "-c" , powershell doesn`t;  insert it e.g. 'powershell -nologo 2+1' should go into 'powershell -nologo -c 2+1'*/
         token = (cmd ? wcstok_s(cmd, &delim, &ptr) : 0); /* Start breaking up cmdline to look for options */
-
+        /* CommandLineToArgvW seems to remove quotes somehow, so break up cmdline manually... */
         while (token) {
             if (!wcscmp(token, L"-")) {
                 wcscat(cl, L" -c ");
