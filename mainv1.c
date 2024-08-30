@@ -48,7 +48,7 @@ intptr_t mainCRTStartup(PPEB peb) {
     if (_wcsnicmp(file, L"powershell", 10)) {
         /* add some prefix to the file and execute it through pwsh , so we can query for program replacement in profile.ps1 */
         wcscat(wcscat(wcscat(cl, L" -nop -c QPR."), file), cmd ? cmd : L" ");
-        _wputenv_s(L"QPRCMDLINE", peb->ProcessParameters->CommandLine.Buffer);
+        _wputenv_s(L"QPRCMDLINE", peb->ProcessParameters->CommandLine.Buffer); /* track commandline in some env var to use it in the functions */
     } else { /* note: set desired exitcode in the function in profile.ps1 */
         /* Main program: pwsh requires a command option "-c" , powershell doesn`t;  insert it e.g. 'powershell -nologo 2+1' should go into 'powershell -nologo -c 2+1'*/
         token = (cmd ? wcstok_s(cmd, &delim, &ptr) : 0); /* Start breaking up cmdline to look for options */
