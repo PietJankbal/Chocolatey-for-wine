@@ -39,7 +39,6 @@ int mainCRTStartup(void) {
     ExpandEnvironmentStringsW(L"%ProgramW6432%\\Powershell\\7\\pwsh.exe", pwsh_pathW, MAX_PATH + 1);
 
     /* Download and Install */
-
         WCHAR tmpW[MAX_PATH]=L"", versionW[] = L".....", msiW[MAX_PATH]=L"", downloadW[MAX_PATH]=L""; 
         
         GetWindowsDirectoryW(bufW, MAX_PATH + 1);
