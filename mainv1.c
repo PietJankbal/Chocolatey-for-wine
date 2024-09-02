@@ -38,7 +38,7 @@ int mainCRTStartup(PPEB peb) {
     PROCESS_INFORMATION pi = {0};
 
     ExpandEnvironmentStringsW(L"%ProgramW6432%\\Powershell\\7\\pwsh.exe", pwsh, MAX_PATH + 1);
-    ExpandEnvironmentStringsW(L"%winsysdir%%\\WindowsPowershell\\v1.0\\ps51.exe", ps51, MAX_PATH + 1);
+    ExpandEnvironmentStringsW(L"%winsysdir%\\WindowsPowershell\\v1.0\\ps51.exe", ps51, MAX_PATH + 1);
     _wsplitpath(peb->ProcessParameters->ImagePathName.Buffer, NULL, NULL, filenameW, NULL);
     WCHAR* cmd = (peb->ProcessParameters->CommandLine.Buffer[0] == '"') ? wcschr(peb->ProcessParameters->CommandLine.Buffer + 1, L'"') + 1 : wcschr(peb->ProcessParameters->CommandLine.Buffer + 1, L' ');
 
