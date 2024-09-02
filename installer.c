@@ -1,4 +1,5 @@
-/* Installs PowerShell Core and invokes install script
+/* Installs PowerShell Core, wraps powershell`s commandline into correct syntax for pwsh.exe,
+ * and some code that allows calls to an exe (like wusa.exe) to be replaced by a function in profile.ps1
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -16,9 +17,8 @@
  *
  * Compile: // For fun I changed code from standard main(argc,*argv[]) to something like https://nullprogram.com/blog/2016/01/31/)
  * x86_64-w64-mingw32-gcc -O1 -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x200000,0x200000\
-  -nostdlib  -Wall -Wextra  installer.c -lurlmon -lkernel32 -lucrtbase -luser32 -nostdlib -lshell32 -lntdll -s -o ChoCinstaller_0.5e.715.exe && strip -R .reloc ChoCinstaller_0.5e.715.exe
+  -nostdlib  -Wall -Wextra  -finline-limit=64 -Wl,-gc-sections  installer.c -lurlmon -lkernel32 -lucrtbase -luser32 -nostdlib -lshell32 -lntdll -s -o ChoCinstaller_0.5g.743.exe && strip -R .reloc ChoCinstaller_0.5g.743.exe
  */
-
 #include <stdio.h>
 #include <windows.h>
 #include <winternl.h>
@@ -26,8 +26,7 @@
 __attribute__((externally_visible)) /* for -fwhole-program */
 int mainCRTStartup(void) {
     wchar_t cmdlineW[MAX_PATH]=L"";
-    wchar_t pwsh_pathW[MAX_PATH];
-    wchar_t bufW[MAX_PATH] = L"", *filenameW, pathW[MAX_PATH]=L"";
+    wchar_t bufW[MAX_PATH] = L"", *filenameW, pathW[MAX_PATH]=L"", pwsh_pathW[MAX_PATH];
     DWORD exitcode;
     STARTUPINFOW si = {0};
     PROCESS_INFORMATION pi = {0};
@@ -39,6 +38,7 @@ int mainCRTStartup(void) {
     ExpandEnvironmentStringsW(L"%ProgramW6432%\\Powershell\\7\\pwsh.exe", pwsh_pathW, MAX_PATH + 1);
 
     /* Download and Install */
+
         WCHAR tmpW[MAX_PATH]=L"", versionW[] = L".....", msiW[MAX_PATH]=L"", downloadW[MAX_PATH]=L""; 
         
         GetWindowsDirectoryW(bufW, MAX_PATH + 1);
@@ -46,13 +46,7 @@ int mainCRTStartup(void) {
             MessageBoxA(0, "copy failed\n", 0, 0);
             return 1;
         }
-        pathW[wcslen(pathW) - 6] = L'3'; pathW[wcslen(pathW) - 5] = L'2';
-        GetWindowsDirectoryW(bufW, MAX_PATH + 1);
-        if (!CopyFileW(pathW, wcscat(bufW, L"\\syswow64\\WindowsPowershell\\v1.0\\powershell.exe"), FALSE)) {
-            MessageBoxW(0, pathW, 0, 0);
-            return 1;
-        }
-
+        
         versionW[0] = filenameW[19]; versionW[2] = filenameW[20]; versionW[4] = filenameW[21];
         wcscat(wcscat(msiW, L"PowerShell-"), versionW);
         wcscat(msiW, L"-win-x64.msi");
