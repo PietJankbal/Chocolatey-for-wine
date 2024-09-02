@@ -1,5 +1,5 @@
-/* Wraps powershell`s commandline into correct syntax for pwsh.file,
- * and some code that allows calls to an file (like wusa.file) to be replaced by a function in profile.ps1
+/* Wraps powershell`s commandline into correct syntax for pwsh.exe,
+ * and some code that allows calls to an exe (like wusa.exe) to be replaced by a function in profile.ps1
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,9 +17,9 @@
  *
  * Build: // For fun I changed code from standard main(argc,*argv[]) to something like https://nullprogram.com/blog/2016/01/31/ and https://scorpiosoftware.net/2023/03/16/minimal-executables/)
  * x86_64-w64-mingw32-gcc -O1 -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x200000,0x200000\
-  -Wall -Wextra -ffreestanding -fno-unroll-loops  -finline-limit=0 -Wl,-gc-sections   mainv1.c -nostdlib -lucrtbase -s -o powershell64.exe && strip -R .reloc powershell64.exe
+  -Wall -Wextra -ffreestanding -fno-unroll-loops   mainv1.c -nostdlib -lucrtbase -lkernel32 -s -o powershell64.exe && strip -R .reloc powershell64.exe
  * i686-w64-mingw32-gcc -O1 -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x200000,0x200000\
-   -Wall -Wextra -ffreestanding -fno-unroll-loops  -finline-limit=0 -Wl,-gc-sections   mainv1.c -nostdlib -lucrtbase -s -o powershell32.exe && strip -R .reloc powershell32.exe 
+   -Wall -Wextra -ffreestanding -fno-unroll-loops  mainv1.c -nostdlib -lucrtbase -lkernel32 -s -o powershell32.exe && strip -R .reloc powershell32.exe
  */
 #include <stdio.h>
 #include <windows.h>
@@ -30,29 +30,26 @@ static BOOL is_single_option(WCHAR* opt) { return (wcschr(L"nNmMsS", opt[1]) ? T
 /* no new options may follow -c, -f , and -e (but not -ex(ecutionpolicy)!) */
 static BOOL is_last_option(WCHAR* opt) { return (wcschr(L"cCfFeE", opt[1]) && _wcsnicmp(&opt[1], L"ex", 2) && _wcsnicmp(&opt[1], L"config", 6)); }
 
-intptr_t mainCRTStartup(PPEB peb) {
+int mainCRTStartup(PPEB peb) {
     BOOL read_from_stdin = FALSE;
-    wchar_t *file, *cmd, *ptr = 0, *token, delim = L' ', *cl = (wchar_t*)calloc(4096, sizeof(wchar_t)); /* cl will be the new cmdline */
+    wchar_t pwsh[MAX_PATH] = L"", ps51[MAX_PATH] = L"", filenameW[_MAX_FNAME], cl[4096] = L""; /* cl will be the new cmdline */
+    DWORD exitcode;
+    STARTUPINFOW si = {0};
+    PROCESS_INFORMATION pi = {0};
 
-    file = wcsrchr(peb->ProcessParameters->ImagePathName.Buffer, L'\\') + 1; /* fetch the exe name  */
-    cmd = _wcsdup(peb->ProcessParameters->CommandLine.Buffer);               /* fetch cmdline */
-    /* Stolen from wine's CommandLineToArgvW: skip over argv[0] to get the 'real' commandline */
-    if (*cmd == '"') {
-        cmd++;
-        while (*cmd)
-            if (*cmd++ == '"') break;
+    ExpandEnvironmentStringsW(L"%ProgramW6432%\\Powershell\\7\\pwsh.exe", pwsh, MAX_PATH + 1);
+    ExpandEnvironmentStringsW(L"%winsysdir%%\\WindowsPowershell\\v1.0\\ps51.exe", ps51, MAX_PATH + 1);
+    _wsplitpath(peb->ProcessParameters->ImagePathName.Buffer, NULL, NULL, filenameW, NULL);
+    WCHAR* cmd = (peb->ProcessParameters->CommandLine.Buffer[0] == '"') ? wcschr(peb->ProcessParameters->CommandLine.Buffer + 1, L'"') + 1 : wcschr(peb->ProcessParameters->CommandLine.Buffer + 1, L' ');
+
+    /* I can also act as a dummy program if my exe-name is not powershell, allows to replace a system exe (like wusa.exe, or any exe really) by a function in profile.ps1 */
+    if (_wcsnicmp(filenameW, L"Powershell", 10)) {                                          /* note: set desired exitcode in the function in profile.ps1 */
+        wcscat(wcscat(wcscat(cl, L" -nop -c QPR."), filenameW), cmd ? cmd : L" ");          /* add some prefix to the exe and execute it through pwsh , so we can query for program replacement in profile.ps1 */
+        SetEnvironmentVariableW(L"QPRCMDLINE", peb->ProcessParameters->CommandLine.Buffer); /* track complete cmdline via $env:QPRCMDLINE ($MyInvocation.Line seems to remove quotes (!)) */
     } else {
-        while (*cmd && *cmd != ' ' && *cmd != '\t') cmd++;
-    }
-    /* I can also act as a dummy program if my file-name is not powershell, allows to replace a system file (like wusa.file, or any file really) by a function in profile.ps1 */
-    if (_wcsnicmp(file, L"powershell", 10)) {
-        /* add some prefix to the file and execute it through pwsh , so we can query for program replacement in profile.ps1 */
-        wcscat(wcscat(wcscat(cl, L" -nop -c QPR."), file), cmd ? cmd : L" ");
-        _wputenv_s(L"QPRCMDLINE", peb->ProcessParameters->CommandLine.Buffer); /* track commandline in some env var to use it in the functions */
-    } else { /* note: set desired exitcode in the function in profile.ps1 */
         /* Main program: pwsh requires a command option "-c" , powershell doesn`t;  insert it e.g. 'powershell -nologo 2+1' should go into 'powershell -nologo -c 2+1'*/
-        token = (cmd ? wcstok_s(cmd, &delim, &ptr) : 0); /* Start breaking up cmdline to look for options */
-        /* CommandLineToArgvW seems to remove quotes somehow, so break up cmdline manually... */
+        WCHAR *ptr = 0, delim = L' ', *token = (cmd ? wcstok_s(cmd, &delim, &ptr) : 0); /* Start breaking up cmdline to look for options */
+
         while (token) {
             if (!wcscmp(token, L"-")) {
                 wcscat(cl, L" -c ");
@@ -82,6 +79,9 @@ intptr_t mainCRTStartup(PPEB peb) {
     if (read_from_stdin) { /* support pipeline to handle something like " '$(get-date)'| powershell - " */
         while (fgetws(cl + wcslen(cl), 4096, stdin) != NULL) continue;
     }
-    // FILE *fptr; fptr = fopen("c:\\log.txt", "a");fputws(L"used commandline is now: ",fptr); fputws(cmdlineW,fptr); fclose(fptr);
-    return _wspawnlp(_P_WAIT, getenv("PS51") ? L"ps51" : L"pwsh", cl, 0); /* by setting "PS51" env var, execute the cmd through windows powershell 5.1, requires 'winetricks ps51' first */
+    // /*track the cmd:*/ FILE *fptr; fptr = fopen("c:\\log.txt", "a");fputws(L"used commandline is now: ",fptr); fputws(cl,fptr); fclose(fptr);
+    CreateProcessW(_wgetenv(L"PS51") ? ps51 : pwsh, cl, 0, 0, 0, 0, 0, 0, &si, &pi);
+    WaitForSingleObject(pi.hProcess, INFINITE); GetExitCodeProcess(pi.hProcess, &exitcode); CloseHandle(pi.hProcess); CloseHandle(pi.hThread);
+
+    return (exitcode);
 }
