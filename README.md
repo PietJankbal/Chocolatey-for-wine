@@ -68,7 +68,7 @@ About winetricks(.ps1):
   So 'winetricks riched20 gdiplus' won't work anymore, use 'winetricks riched20,gdiplus' instead
 - Some programs fail to install/run when you try them via Chocolatey due to wine-bugs. I added a few workarounds in winetricks for them, see below:
 - A special verb to install requirements to get Affinity Photo/Designer started.
-- Special verb (winetricks vs19)to install a working Visual Studio Community 2019 (see screenshot, >10 mins to install and requires approx. 10GB!, after install start devenv.exe from directory c:\Program\ Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE/)
+- Special verbs (winetricks vs19, vs22 and vs22_interactive_installer) to install working Visual Studio Community 2019 and 2022 (see screenshot, >10 mins to install and requires approx. 10GB!, after install start devenv.exe from directory c:\Program\ Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE/)
   ![screenshot](https://github.com/PietJankbal/Chocolatey-for-wine/assets/26839562/d576a619-c752-4eb1-81c2-6f6b66b50ff6)
 - Special verb to get access to various unix commands like grep,sed, file, less, curl etc. etc. (winetricks git.portable, Disclaimer: some commands do not yet work due to wine bugs
 - Also included a few powershell scripts adapted from codesnippets found on the internet:
