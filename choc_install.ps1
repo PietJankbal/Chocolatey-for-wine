@@ -87,7 +87,6 @@ REGEDIT4
 [HKEY_CURRENT_USER\Software\Wine\Debug]
 "RelayExclude"="user32.CharNextA;KERNEL32.GetProcessHeap;KERNEL32.GetCurrentThreadId;KERNEL32.TlsGetValue;KERNEL32.GetCurrentThreadId;KERNEL32.TlsSetValue;ntdll.RtlEncodePointer;ntdll.RtlDecodePointer;ntdll.RtlEnterCriticalSection;ntdll.RtlLeaveCriticalSection;kernel32.94;kernel32.95;kernel32.96;kernel32.97;kernel32.98;KERNEL32.TlsGetValue;KERNEL32.FlsGetValue;ntdll.RtlFreeHeap;ntdll.RtlAllocateHeap;KERNEL32.InterlockedDecrement;KERNEL32.InterlockedCompareExchange;ntdll.RtlTryEnterCriticalSection;KERNEL32.InitializeCriticalSection;ntdll.RtlDeleteCriticalSection;KERNEL32.InterlockedExchange;KERNEL32.InterlockedIncrement;KERNEL32.LocalFree;Kernel32.LocalAlloc;ntdll.RtlReAllocateHeap;KERNEL32.VirtualAlloc;Kernel32.VirtualFree;Kernel32.HeapFree;KERNEL32.QueryPerformanceCounter;KERNEL32.QueryThreadCycleTime;ntdll.RtlFreeHeap;ntdll.memmove;ntdll.memcmp;KERNEL32.GetTickCount;kernelbase.InitializeCriticalSectionEx;ntdll.RtlInitializeCriticalSectionEx;ntdll.RtlInitializeCriticalSection;kernelbase.FlsGetValue"
 "RelayFromExclude"="winex11.drv;user32;gdi32;advapi32;kernel32"
-
 '@
 
 <# FIXME these keys are different from regular winetricks dotnet48 install????
@@ -444,8 +443,8 @@ function Resolve-DnsName([string]$name) { <# https://askme4tech.com/how-resolve-
 #}
 #}
 
-function use_google_as_browser { <# replace winebrowser with google chrome to open webpages #>
-    if (!([System.IO.File]::Exists("$env:ProgramFiles\Google\Chrome\Application\Chrome.exe"))){ choco install googlechrome}
+#function use_google_as_browser { <# replace winebrowser with google chrome to open webpages #>
+# if (!([System.IO.File]::Exists("$env:ProgramFiles\Google\Chrome\Application\Chrome.exe"))){ choco install googlechrome}
 
 $regkey = @"
 REGEDIT4
@@ -457,12 +456,9 @@ REGEDIT4
     $regkey | Out-File -FilePath $env:TEMP\\regkey.reg
     reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:64;
     reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:32;
-}
 
 #Easy access to the C# compiler
 Set-Alias csc c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
-
-function handy_apps { choco install explorersuite reactos-paint}
 
 Set-Alias Get-ComputerInfo systeminfo.exe
 '@
@@ -665,10 +661,12 @@ function QPR.ping
     cd c:\; c:\\ProgramData\\chocolatey\\choco.exe feature disable --name=powershellHost; winecfg /v win10
     c:\\ProgramData\\chocolatey\\choco.exe feature enable -n allowGlobalConfirmation <# to confirm automatically (no -y needed) #>
     choco pin add -n chocolatey
+    $pathvar=[System.Environment]::GetEnvironmentVariable('PATH')
+    [System.Environment]::SetEnvironmentVariable("PATH", $pathvar + ';C:\ConEmu','Machine')
     # Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
     # choco install tccle -y; & "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tcc.exe" "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tccbatch.btm"; <># cmd.exe replacement #
     $env:FirstRun=1
-    Start-Process "powershell" -NoNewWindow
+    Start-Process "c:\conemu\conemu64" -ArgumentList " -NoUpdate -LoadRegistry -run %ProgramW6432%\\Powershell\\7\\pwsh.exe" #-NoNewWindow
 ################################################################################################################### 
 #  All code below is only for sending a single keystroke (ENTER) to ConEmu's annoying                             #
 #  fast configuration window to dismiss it...............                                                         #
@@ -709,6 +707,7 @@ function QPR.ping
     <# put winetricks.ps1 and codesnippets in ProgramData\\Chocolatey-for-wine #>
     Copy-Item -Path "$(Join-Path $args[0] 'winetricks.ps1')" "$env:ProgramData\\Chocolatey-for-wine"
     Copy-Item -Path "$(Join-Path $args[0] 'EXTRAS' 'powershell_collected_codesnippets_examples.ps1')" "$env:ProgramData\\Chocolatey-for-wine"
+    Copy-Item -Path "$(Join-Path $args[0] 'powershell32.exe')" -Destination "$env:SystemRoot\syswow64\WindowsPowershell\v1.0\powershell.exe" -force
     <# This makes Astro Photography Tool happy #>
     foreach($i in 'regasm.exe') { 
         Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\$i
@@ -747,6 +746,7 @@ function QPR.ping
     <# a game launcher tried to open this key, i think it should be present (?) #>
     reg.exe COPY "HKLM\SYSTEM\CurrentControlSet" "HKLM\SYSTEM\ControlSet001" /s /f
     <# dxvk (if installed) doesn't work well with WPF, add workaround from dxvk site  #>
+
 $dxvkconf = @"
 [pwsh.exe]
 d3d9.shaderModel = 1
