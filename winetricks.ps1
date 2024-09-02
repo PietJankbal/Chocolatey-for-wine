@@ -1976,7 +1976,7 @@ function func_wine_wintrust <# wine wintrust with some hack faking success #>
     foreach($i in $(verb).substring(5) ) { dlloverride 'native' $i }
 } <# end wintrust #>
 
-function func_wine_advapi32 { install_winedll wine_advapi32 '2b0ce2e50be8372e21d710e089df0063b755fa31f2653c52963406e722dd4323'}
+function func_wine_advapi32 { install_winedll wine_advapi32 '27b8ffd4abec1aa26936d769f0c6bcc74f5bfb2c6526acdd37223f2f199ccdfd'}
 
 function func_wine_shell32 { install_winedll wine_shell32 'b76038abf9aebfa8a570e4b42085c629f63234a6ded23f69d5ed42996f71d157'}
 
@@ -1984,7 +1984,7 @@ function func_wine_combase { install_winedll wine_combase 'c85261296b6a00234aa41
 
 function func_wine_msxml3 { install_winedll wine_msxml3 'd2ff624df7ebc77d552adeee594748a6427de3f26c31d5825f4ca84569ba6a15'}
 
-function func_wine_cfgmgr32 { install_winedll wine_cfgmgr32 '15a613ca7e0fca571889ec9c9ec2fa082636f2180987cbd19fbef3ebd13c72ad'}
+function func_wine_cfgmgr32 { install_winedll wine_cfgmgr32 '74bcee062772023de0da4ed05f0c9ccdedd86165ab8f8553b08c94b9c406dc01'}
 
 function func_wine_sxs { install_winedll wine_sxs '9ac670ae3105611a5211649aab25973b327dcd8ea932f1a8569e78adca6fedcb'}
 
@@ -2570,6 +2570,21 @@ function func_vs22
 
   #  7z x $env:TMP\\installer "-o$env:TMP\\opc" -y ;quit?('7z')
 
+    choco install busybox
+    
+    start-threadjob -ScriptBlock {
+      $sh = "$env:ProgramFiles\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\usr\bin\sh.exe";
+      while(!(Test-Path -Path "$sh" -PathType Leaf) ) {Sleep 2.0} ;
+      Copy-Item "$sh" "$($sh+'.back')" -force
+      Copy-Item "$env:Systemroot\system32\setx.exe" "$sh" -force
+    }
+@'
+    function QPR.sh { <# sh.exe replacement #>
+    busybox sh $args
+}
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.sh\QPR.sh.psm1 -Force )
+
+
     set-executionpolicy bypass
 
     $startInfo = New-Object System.Diagnostics.ProcessStartInfo
@@ -2621,7 +2636,7 @@ function func_vs22_interactive_installer
     #func_xmllite
     #func_cmd
     func_wine_cfgmgr32
-    func_wine_sxs  <# FIXME: now very sad hack, probably disabling functionality (?), needs more work to figure out what goes wrong#>
+    func_wine_sxs  <# FIXME: now very sad hack, probably disabling functionality (?), needs more work to figure out what goes wrong #>
     func_wine_advapi32
     func_wine_combase
     func_wine_shell32
@@ -2675,12 +2690,29 @@ function func_vs22_interactive_installer
  }
     (New-Object System.Net.WebClient).DownloadFile('https://aka.ms/vs/17/release/vs_community.exe', "$env:TMP\\vs_Community.exe") 
 
+    <# hack to workaround hanging sh.exe (when cloning repository) #>
+    choco install busybox
+    
+    start-threadjob -ScriptBlock {
+      $sh = "$env:ProgramFiles\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\usr\bin\sh.exe";
+      while(!(Test-Path -Path "$sh" -PathType Leaf) ) {Sleep 2.0} ;
+      Copy-Item "$sh" "$($sh+'.back')" -force
+      Copy-Item "$env:Systemroot\system32\setx.exe" "$sh" -force
+    }
+@'
+    function QPR.sh { <# sh.exe replacement #>
+    busybox sh $args
+}
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.sh\QPR.sh.psm1 -Force )
+
+     <# end hack sh.exe  #>
+
     & "$env:TMP\\vs_Community.exe" --wait
     
     quit?('vs_Community')
     
-    <# FIXME: frequently mpc are not written to registry (wine bug?), do it manually #>
-    & "${env:ProgramFiles}\Microsoft` Visual` Studio\2022\Community\Common7\IDE\DDConfigCA.exe" | & "${env:ProgramFiles}\Microsoft` Visual` Studio\2022\Community\Common7\IDE\StorePID.exe" 09299
+#    <# FIXME: frequently mpc are not written to registry (wine bug?), do it manually #>
+#    & "${env:ProgramFiles}\Microsoft` Visual` Studio\2022\Community\Common7\IDE\DDConfigCA.exe" | & "${env:ProgramFiles}\Microsoft` Visual` Studio\2022\Community\Common7\IDE\StorePID.exe" 09299
 }
 
 function func_office365
