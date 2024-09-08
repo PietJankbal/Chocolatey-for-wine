@@ -2510,6 +2510,25 @@ function func_vs19
 
   #  7z x $env:TMP\\installer "-o$env:TMP\\opc" -y ;quit?('7z')
 
+    <# hack to workaround hanging sh.exe (when cloning repository) #>
+    choco install busybox
+    
+    start-threadjob -ScriptBlock {
+      $sh = "$env:ProgramFiles\Microsoft Visual Studio\2019\Community\Common7\IDE\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\usr\bin\sh.exe";
+      while(!(Test-Path -Path "$sh" -PathType Leaf) ) {Sleep 2.0} ;
+      Copy-Item "$sh" "$($sh+'.back')" -force
+      Copy-Item "$env:Systemroot\system32\setx.exe" "$sh" -force
+    }
+@'
+    function QPR.sh { <# sh.exe replacement #>
+    $argv = CommandLineToArgvW $('sh.exe' + ' ' +$env:QPRCMDLINE) 
+    busybox sh $argv
+}
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.sh\QPR.sh.psm1 -Force )
+
+     <# end hack sh.exe  #>
+
+
     set-executionpolicy bypass
 
     $startInfo = New-Object System.Diagnostics.ProcessStartInfo
@@ -2580,12 +2599,14 @@ function func_vs22
     }
 @'
     function QPR.sh { <# sh.exe replacement #>
-    busybox sh $args
+    $argv = CommandLineToArgvW $('sh.exe' + ' ' +$env:QPRCMDLINE) 
+    busybox sh $argv
 }
 '@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.sh\QPR.sh.psm1 -Force )
 
-
     set-executionpolicy bypass
+
+    New-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Avalon.Graphics' -Name 'DisableHWAcceleration' -Value 1 -PropertyType 'Dword' -force
 
     $startInfo = New-Object System.Diagnostics.ProcessStartInfo
     $startInfo.FileName = "$env:Temp\vs_community.exe"
@@ -2701,7 +2722,8 @@ function func_vs22_interactive_installer
     }
 @'
     function QPR.sh { <# sh.exe replacement #>
-    busybox sh $args
+    $argv = CommandLineToArgvW $('sh.exe' + ' ' +$env:QPRCMDLINE) 
+    busybox sh $argv
 }
 '@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.sh\QPR.sh.psm1 -Force )
 
@@ -4407,6 +4429,20 @@ foreach($i in 'wldp') { dlloverride 'disabled' $i }
 winecfg /v win7
 choco install webview2-runtime
 foreach($i in 'wldp') { dlloverride 'builtin' $i }
+}
+
+function func_use_chromium_as_browser { <# replace winebrowser with chrome to open webpages #>
+if (!([System.IO.File]::Exists("$env:ProgramFiles\Chromium\Application\Chrome.exe"))){ choco install chromium}
+
+@"
+REGEDIT4
+[HKEY_CLASSES_ROOT\https\shell\open\command]
+@="\"%ProgramFiles%\\Chromium\\Application\\chrome.exe\"  \"%1\""
+[HKEY_CLASSES_ROOT\http\shell\open\command]
+@="\"%ProgramFiles%\\Chromium\\Application\\chrome.exe\"  \"%1\""
+"@ | Out-File -FilePath $env:TEMP\\regkey.reg
+    reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:64;
+    reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:32;
 }
 
 function func_mspaint
