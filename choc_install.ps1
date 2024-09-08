@@ -247,6 +247,7 @@ $profile_winetricks_caller_ps1 = @'
                "office365","currently broken/Microsoft Office365HomePremium (registering does not work, many glitches...)",
                "webview2", "Microsoft Edge WebView2",
                "git.portable","Access to several unix-commands like tar, file, sed etc. etc.",
+               "use_chromium_as_browser", "replace winebrowser with chrome to open webpages",
                "d3dx", "d3x9*, d3dx10*, d3dx11*, xactengine*, xapofx* x3daudio*, xinput* and d3dcompiler*",
                "sspicli", "dangerzone, only for testing, might break things, only use on a per app base (sspicli.dll)",
                "dshow", "directshow dlls: amstream.dll,qasf.dll,qcap.dll,qdvd.dll,qedit.dll,quartz.dll",
@@ -443,19 +444,6 @@ function Resolve-DnsName([string]$name) { <# https://askme4tech.com/how-resolve-
 #}
 #}
 
-#function use_google_as_browser { <# replace winebrowser with google chrome to open webpages #>
-# if (!([System.IO.File]::Exists("$env:ProgramFiles\Google\Chrome\Application\Chrome.exe"))){ choco install googlechrome}
-
-$regkey = @"
-REGEDIT4
-[HKEY_CLASSES_ROOT\https\shell\open\command]
-@="\"%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe\" \"--no-sandbox\" \"%1\""
-[HKEY_CLASSES_ROOT\http\shell\open\command]
-@="\"%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe\" \"--no-sandbox\" \"%1\""
-"@
-    $regkey | Out-File -FilePath $env:TEMP\\regkey.reg
-    reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:64;
-    reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:32;
 
 #Easy access to the C# compiler
 Set-Alias csc c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
@@ -464,31 +452,30 @@ Set-Alias Get-ComputerInfo systeminfo.exe
 '@
 
 @'
-#If passing back (manipulated) arguments back to the same program, make sure to backup a copy (here QPR.schtasks.exe, copied during installation)
 
 function QPR.schtasks { <# schtasks.exe replacement #>
-    $cmdline = $env:QPRCMDLINE
+    $cmdline = $env:QPRCMDLINE #.SubString($env:QPRCMDLINE.IndexOf(" "), $env:QPRCMDLINE.Length - $env:QPRCMDLINE.IndexOf(" "))
 
     $cmdline = $cmdline -replace '/create', '-create' -replace '/tn', '-tn' -replace "/tr", "-tr" <#-replace "'", "'`"'"#>  <# escape quotes (??) #> `
                         -replace "/sc", "-sc" -replace "/run", "-run" -replace "/delete", "-delete"
     $cmdline
     iex  -Command ('QPR_schtasks ' + $cmdline)
 } 
-'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.schtasks\QPR.schtasks.psm1 -Force )
 
-@'
 function QPR_schtasks { <# schtasks replacement #>
    # [CmdletBinding()]
     Param([switch]$create, [string]$tn, [string]$tr, [string]$sc, [switch]$run, [switch]$delete,
     [parameter(ValueFromRemainingArguments=$true)]$vargs)
 
-   if($create) {$tr -replace "'" 
-    start-process ($tr -replace "'" -replace "/silent") } <# hack for spotify #>
+   if($create) {$tr -replace "'" -replace "/silent"
+   iex -command $($tr -replace "'" -replace "/silent") } <# hack for spotify #>
    else {
        $cmdline = $cmdline -replace "^[^ ]+" <# remove everything up yo 1st space #> -replace "-","/"
-       Start-Process -NoNewWindow QPR.schtasks.exe -argumentlist "$cmdline" }
+       $cmdline
+       Start-Process -NoNewWindow schtasks.back.exe -argumentlist "$cmdline" }
 }
-'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR_schtasks\QPR_schtasks.psm1 -Force )
+
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.schtasks\QPR.schtasks.psm1 -Force )
 
 @'
  <# hack for installing adobereader #>
@@ -518,7 +505,9 @@ function QPR.getmac { <# getmac.exe replacement #>
 function QPR.setx { <# setx.exe replacement #>
     <# FIXME, only setting env. variable handled atm. #>
     <# https://stackoverflow.com/questions/50368246/splitting-a-string-on-spaces-but-ignore-section-between-double-quotes #>
-    $argv = ($env:QPRCMDLINE| select-string '("[^"]*"|\S)+' -AllMatches | % matches | % value) -replace '"'
+    #$argv = ($env:QPRCMDLINE| select-string '("[^"]*"|\S)+' -AllMatches | % matches | % value) -replace '"'
+
+    $argv = CommandLineToArgvW $('setx.exe' +' ' + $env:QPRCMDLINE)
 
     New-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Session Manager\\Environment' -force -Name $argv[1] -Value $argv[2] -PropertyType 'String' 
     New-ItemProperty -Path 'HKCU:\\Environment' -force -Name $argv[1] -Value $argv[2] -PropertyType 'String' 
@@ -527,8 +516,119 @@ function QPR.setx { <# setx.exe replacement #>
 '@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.setx\QPR.setx.psm1 -Force )
 
 @'
+<#
+.Synopsis
+	Parse command-line arguments using Win32 API CommandLineToArgvW function.
+
+.Link
+	http://edgylogic.com/blog/powershell-and-external-commands-done-right/
+
+.Description
+	This is the Cmdlet version of the code from the article http://edgylogic.com/blog/powershell-and-external-commands-done-right.
+	It can parse command-line arguments using Win32 API function CommandLineToArgvW . 
+
+.Parameter CommandLine
+	This parameter is optional.
+
+	A string representing the command-line to parse. If not specified, the command-line of the current PowerShell host is used.
+
+.Example
+	Split-CommandLine
+
+		Description
+		-----------
+		Get the command-line of the current PowerShell host, parse it and return arguments.
+
+.Example
+	Split-CommandLine -CommandLine '"c:\windows\notepad.exe" test.txt'
+
+		Description
+		-----------
+		Parse user-specified command-line and return arguments.
+
+.Example
+    '"c:\windows\notepad.exe" test.txt',  '%SystemRoot%\system32\svchost.exe -k LocalServiceNetworkRestricted' | Split-CommandLine
+
+		Description
+		-----------
+		Parse user-specified command-line from pipeline input and return arguments.
+
+.Example
+    Get-WmiObject Win32_Process -Filter "Name='notepad.exe'" | Split-CommandLine
+
+		Description
+		-----------
+		Parse user-specified command-line from property name of the pipeline object and return arguments.
+#>
+function CommandLineToArgvW
+{
+    [CmdletBinding()]
+    Param
+    (
+        [Parameter(Mandatory=$false, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true, Position=0)]
+        [ValidateNotNullOrEmpty()]
+        [string]$CommandLine
+    )
+
+    Begin
+    {
+        $Kernel32Definition =  @"
+            [DllImport("kernel32")]
+            public static extern IntPtr GetCommandLineW();
+            [DllImport("kernel32")]
+            public static extern IntPtr LocalFree(IntPtr hMem);
+"@
+        $Kernel32 = Add-Type -MemberDefinition $Kernel32Definition -Name 'Kernel32' -Namespace 'Win32' -PassThru
+
+        $Shell32Definition = @"
+            [DllImport("shell32.dll", SetLastError = true)]
+            public static extern IntPtr CommandLineToArgvW(
+                [MarshalAs(UnmanagedType.LPWStr)] string lpCmdLine,
+                out int pNumArgs);
+"@
+        $Shell32 = Add-Type -MemberDefinition $Shell32Definition -Name 'Shell32' -Namespace 'Win32' -PassThru
+
+        if(!$CommandLine)
+        {
+            $CommandLine = [System.Runtime.InteropServices.Marshal]::PtrToStringUni($Kernel32::GetCommandLineW())
+        }
+    }
+
+    Process
+    {
+        $ParsedArgCount = 0
+        $ParsedArgsPtr = $Shell32::CommandLineToArgvW($CommandLine, [ref]$ParsedArgCount)
+
+        Try
+        {
+            $ParsedArgs = @();
+
+            0..$ParsedArgCount | ForEach-Object {
+                $ParsedArgs += [System.Runtime.InteropServices.Marshal]::PtrToStringUni(
+                    [System.Runtime.InteropServices.Marshal]::ReadIntPtr($ParsedArgsPtr, $_ * [IntPtr]::Size)
+                )
+            }
+        }
+        Finally
+        {
+            $Kernel32::LocalFree($ParsedArgsPtr) | Out-Null
+        }
+
+        $ret = @()
+
+        # -lt to skip the last item, which is a NULL ptr
+        for ($i = 0; $i -lt $ParsedArgCount; $i += 1) {
+            $ret += $ParsedArgs[$i]
+        }
+
+        return $ret
+    }
+}
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\CommandLineToArgvW\CommandLineToArgvW.psm1 -Force )
+
+@'
 function QPR.wmic { <# wmic replacement, this part only rebuilds the arguments #>
-    $cmdline = $env:QPRCMDLINE.SubString($env:QPRCMDLINE.IndexOf(" "), $env:QPRCMDLINE.Length - $env:QPRCMDLINE.IndexOf(" "))
+    $cmdline = $env:QPRCMDLINE #.SubString($env:QPRCMDLINE.IndexOf(" "), $env:QPRCMDLINE.Length - $env:QPRCMDLINE.IndexOf(" "))
     $hash = @{
         'os' = "-class win32_operatingsystem"
         'bios' = "-class win32_bios"
@@ -548,15 +648,16 @@ function QPR.wmic { <# wmic replacement, this part only rebuilds the arguments #
 
     iex  -Command ('QPR_wmic ' + $cmdline)
 }
-'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.wmic\QPR.wmic.psm1 -Force )
 
-@'
 function QPR_wmic { <# wmic replacement #>
     [CmdletBinding()]
     Param([parameter(Position=0)][string]$class, [string[]]$property="*",
     [string]$where, [parameter(ValueFromRemainingArguments=$true)]$vargs)
 
-    $where=($where -replace '[\\][""]', "'").Trim('"') 
+    <# Hack: if command like  'wmic logicaldisk where 'deviceid="c:"' get freespace' is ran from PS-console, somehow (double) quotes get lost so escape them #>
+    if ( $(Get-Process wmic).Parent.name -eq 'pwsh') <# check whether cmd is ran from PS-console #>
+        { $where=($where -replace '[\\][""]', "'").Trim('"')}
+    else{ $where=$where -replace '[\\][""]', "'" } 
 
     if($property -eq '*'){ <# 'get-wmiobject $class | select *' does not work because of wine-bug, so need a workaround:  #>
         Get-WmiObject $class ($($(Get-WmiObject $class |Get-Member) |where {$_.membertype -eq 'property'}).name |Join-String -Separator ',') }
@@ -565,12 +666,12 @@ function QPR_wmic { <# wmic replacement #>
     <#                                                                              -Stream: break up in lines  skip seperatorline(---) remove blank lines #>
     (Get-WMIObject -query $query |ft ($property |sort-object) -autosize |Out-string -Stream | Select-Object    -skipindex (2)|          ?{$_.trim() -ne ""}) } 
 }
-'@ |  Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR_wmic\QPR_wmic.psm1 -Force )
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.wmic\QPR.wmic.psm1 -Force )
 
 @'
 function QPR.ping
 {
-    $cmdline = $env:QPRCMDLINE.SubString($env:QPRCMDLINE.IndexOf(" "), $env:QPRCMDLINE.Length - $env:QPRCMDLINE.IndexOf(" "))
+    $cmdline = $env:QPRCMDLINE #.SubString($env:QPRCMDLINE.IndexOf(" "), $env:QPRCMDLINE.Length - $env:QPRCMDLINE.IndexOf(" "))
     iex  -Command ('QPR_ping' + $cmdline)
 }
 '@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.ping\QPR.ping.psm1 -Force )
@@ -733,12 +834,11 @@ function QPR.ping
     Copy-Item -Path "$env:TMP\\32\\taskschd.dll" -Destination "$env:SystemRoot\\syswow64\\taskschd.dll" -Force
 
     <# Replace some system programs by functions (in profile.ps1); This also makes wusa a dummy program: we don`t want windows updates and it doesn`t work anyway #>
-    ForEach ($file in "schtasks.exe") {
-        Copy-Item -Path "$env:windir\\SysWOW64\\$file" -Destination "$env:windir\\SysWOW64\\QPR.$file" -Force
-        Copy-Item -Path "$env:winsysdir\\$file" -Destination "$env:winsysdir\\QPR.$file" -Force}
-    ForEach ($file in "wusa.exe","schtasks.exe","getmac.exe","setx.exe","wbem\\wmic.exe", "ie4uinit.exe", "openfiles.exe") {
-        Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\$file" -Force
-        Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\$file" -Force}
+    ForEach ($file in "wusa","schtasks","getmac","setx","wbem\\wmic", "ie4uinit", "openfiles") {
+        Move-Item -Path "$env:windir\\SysWOW64\\$($file + '.exe')" -Destination "$env:windir\\SysWOW64\\$($file + '.back.exe')" -Force -ErrorAction SilentlyContinue
+        Move-Item -Path "$env:winsysdir\\$($file + '.exe')" -Destination "$env:winsysdir\\$($file + '.back.exe')" -Force -ErrorAction SilentlyContinue
+        Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\$($file + '.exe')" -Force
+        Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\$($file + '.exe')" -Force}
     <# It seems some programs need this dir?? #>
     New-Item -Path "$env:LOCALAPPDATA" -Name "Temp" -ItemType "directory" -ErrorAction SilentlyContinue
     <# Native Access needs this dir #>
