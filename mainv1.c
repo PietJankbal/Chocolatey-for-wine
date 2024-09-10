@@ -41,7 +41,7 @@ int mainCRTStartup(PPEB peb) {
     ExpandEnvironmentStringsW(L"%ProgramW6432%\\Powershell\\7\\pwsh.exe", pwsh, MAX_PATH + 1);
     ExpandEnvironmentStringsW(L"%winsysdir%\\WindowsPowershell\\v1.0\\ps51.exe", ps51, MAX_PATH + 1);
     _wsplitpath(peb->ProcessParameters->ImagePathName.Buffer, NULL, NULL, file, NULL);
-    WCHAR* cmd = (clbuf[0] == '"') ? wcschr(clbuf + 1, L'"') + 1 : wcschr(clbuf, L' '); /* Step over to arg[1] to get the cmdline to be executed */
+    WCHAR* cmd = (clbuf[0] == '"') ? wcschr(clbuf + 1, L'"') + 1 : wcschr(clbuf, L' '); /* Skip arg[0] to get the cmdline to be executed */
     /* I can also act as a dummy program if my exe-name is not powershell, allows to replace a system exe (like wusa.exe, or any exe really) by a function in profile.ps1 */
     if (_wcsnicmp(file, L"Powershell", 10)) {         /* note: set desired exitcode in the function in profile.ps1 */
         wcscat(wcscat(cl, L"-nop -c QPR."), file);    /* add some prefix to the exe and execute it through pwsh , so we can query for program replacement in profile.ps1 */
@@ -52,13 +52,13 @@ int mainCRTStartup(PPEB peb) {
         /* Break up cmdline manually (as CommandLineToArgVW seems to remove some (double) qoutes) */
         while (token) {
             if (token[0] == L'/') token[0] = L'-';                            /* deprecated '/' still works in powershell 5.1, replace to simplify code */
-            if (token[0] == L'-' && !token[1]) {                              /* '-' handled '-' later on */
-			    read_stdin = TRUE; 
-			    break;
+            if (token[0] == L'-' && !token[1]) {                              /* '-' handled later on */
+	    read_stdin = TRUE; 
+	    break;
 		    }  
-            if (token[0] != '-' || is_last_option(token)) { /* no further options in cmdline, or final {-c, -f ,-enc or -} : no new options may follow  these */
-                if ((token[0] != '-' && _waccess(token, 0))) join(cl, L"-c"); /* insert '-c' if necessary (no option, no file, or '-' )*/
-                join(cl, token);                                              /* add arg (except for '-') */
+            if (token[0] != '-' || is_last_option(token)) { /* no further options in cmdline, or final {-c, -f ,-enc} : no new options may follow  these */
+                if ((token[0] != '-' && _waccess(token, 0))) join(cl, L"-c"); /* insert '-c' if necessary (no option, no file)*/
+                join(cl, token);                                              /* add arg */
                 join(cl, ptr);                                                /* add remainder of cmdline and done */
                 break;
             }
@@ -77,7 +77,7 @@ int mainCRTStartup(PPEB peb) {
         }
     }
     if (read_stdin) { /* support pipeline to handle something like " '$(get-date)'| powershell - " */
-		join(cl, L"-c ");
+	join(cl, L"-c ");
         while (fgetws(cl + wcslen(cl), 4096, stdin) != NULL) continue;
     } // /*track the cmd:*/ FILE *fptr; fptr = fopen("c:\\log.txt", "a");fputws(L"used commandline is now: ",fptr); fputws(cl,fptr); fclose(fptr);
     CreateProcessW(_wgetenv(L"PS51") ? ps51 : pwsh, cl, 0, 0, 0, 0, 0, 0, &si, &pi);
