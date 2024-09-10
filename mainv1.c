@@ -53,7 +53,7 @@ int mainCRTStartup(PPEB peb) {
         while (token) {
             if (token[0] == L'/') token[0] = L'-';                            /* deprecated '/' still works in powershell 5.1, replace to simplify code */
             if (token[0] == L'-' && !token[1]) {                              /* '-' handled '-' later on */
-			    read_stdin = TRUE;
+			    read_stdin = TRUE; 
 			    break;
 		    }  
             if (token[0] != '-' || is_last_option(token)) { /* no further options in cmdline, or final {-c, -f ,-enc or -} : no new options may follow  these */
@@ -77,7 +77,7 @@ int mainCRTStartup(PPEB peb) {
         }
     }
     if (read_stdin) { /* support pipeline to handle something like " '$(get-date)'| powershell - " */
-		join(cl, L"-c");
+		join(cl, L"-c ");
         while (fgetws(cl + wcslen(cl), 4096, stdin) != NULL) continue;
     } // /*track the cmd:*/ FILE *fptr; fptr = fopen("c:\\log.txt", "a");fputws(L"used commandline is now: ",fptr); fputws(cl,fptr); fclose(fptr);
     CreateProcessW(_wgetenv(L"PS51") ? ps51 : pwsh, cl, 0, 0, 0, 0, 0, 0, &si, &pi);
