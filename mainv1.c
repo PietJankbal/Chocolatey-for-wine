@@ -21,7 +21,7 @@
  *i686-w64-mingw32-gcc -Os -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x200000,0x200000 \
   -Wall -Wextra -ffreestanding -fno-unroll-loops -finline-limit=0 -Wl,-gc-sections   mainv1.c -nostdlib -lucrtbase -lkernel32 -s -o powershell32.exe && strip -R .reloc powershell32.exe
  */
-#include <stdio.h>
+#include <wchar.h>
 #include <windows.h>
 #include <winternl.h>
 
