@@ -240,7 +240,7 @@ index 4f4bba9a13b..de42395b33b 100644
  {
 -    return VirtualProtectEx( GetCurrentProcess(), addr, size, new_prot, old_prot );
 +    BOOL ret = VirtualProtectEx( GetCurrentProcess(), addr, size, new_prot, old_prot );
-+    if (*old_prot == PAGE_WRITECOPY) *old_prot = PAGE_READWRITE;
++    if (old_prot && *old_prot == PAGE_WRITECOPY) *old_prot = PAGE_READWRITE;
 +    return ret;
  }
  
