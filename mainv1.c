@@ -32,7 +32,7 @@ static BOOL is_single_option(WCHAR* opt) { return !!wcschr(L"nNmMsS", opt[1]); }
 /* no new options may follow -c, -f , and -e (but not -ex(ecutionpolicy)!) */
 static BOOL is_last_option(WCHAR* opt) { return (wcschr(L"cCfFeE", opt[1]) && _wcsnicmp(&opt[1], L"ex", 2) && _wcsnicmp(&opt[1], L"config", 6)); }
 /* join strings with a space in between */
-static void join(WCHAR* string1, WCHAR* string2) { if(string2) wcscat(wcscat(string1, L" "), string2); }
+static __attribute__ ((noinline)) void join(WCHAR* string1, WCHAR* string2) { if(string2) wcscat(wcscat(string1, L" "), string2); }
 
 int mainCRTStartup(PPEB peb) {
     BOOL read_from_stdin = FALSE;
@@ -57,10 +57,10 @@ int mainCRTStartup(PPEB peb) {
             if (token[0] == L'/') token[0] = L'-';                       /* deprecated '/' still works in powershell 5.1, replace to simplify code */
 
             if (token[0] != '-' || is_last_option(token) || !token[1]) { /* no further options in cmdline, or final {-c, -f ,-enc or -} : no new options may follow  these */
-                if (token[0] != '-' || !token[1]) join(cl, L"-c");       /* insert '-c' if necessary */
-                if (token[1]) join(cl, token);                           /* add arg (except for '-') */
-                join(cl, ptr);                                           /* add remainder of cmdline and done */
-                read_from_stdin = !token[1];                             /* handle '-' later on */
+                if ((token[0] != '-'  && _waccess(token, 0)) || !token[1]) join(cl, L"-c"); /* insert '-c' if necessary (no option, no file, or - )*/
+                if (token[1]) join(cl, token);                                              /* add arg (except for '-') */
+                join(cl, ptr);                                                              /* add remainder of cmdline and done */
+                read_from_stdin = !token[1];                                                /* handle '-' later on */
                 break;
             } else if (is_single_option(token)) {                  /* e.g. -noprofile, -nologo , -mta etc */
                 if (_wcsnicmp(token, L"-nop", 4)) join(cl, token); /* skip -noprofile to alays enable hacks in profile.ps1 */
