@@ -16,9 +16,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Build: // For fun I changed code from standard main(argc,*argv[]) to something like https://nullprogram.com/blog/2016/01/31/ and https://scorpiosoftware.net/2023/03/16/minimal-executables/)
- * x86_64-w64-mingw32-gcc -Os -fomit-frame-pointer -fno-asynchronous-unwind-tables -municode -Wall -Wextra -Wl,-gc-sections mainv1.c -nostdlib -lucrtbase -lkernel32 -s -o powershell64.exe &&\
-   i686-w64-mingw32-gcc -Os -fomit-frame-pointer -fno-asynchronous-unwind-tables -mno-stack-arg-probe -municode -Wall -Wextra -Wl,-gc-sections mainv1.c -nostdlib -lucrtbase -lkernel32 -s -o powershell32.exe &&\
-   strip -R .reloc powershell64.exe && strip -R .reloc powershell32.exe
+ * x86_64-w64-mingw32-gcc -Os -fomit-frame-pointer -fno-asynchronous-unwind-tables -municode -Wall -Wextra -Wl,-gc-sections mainv1.c -nostdlib -lucrtbase -lkernel32 -s -o powershell64.exe && strip -R .reloc powershell64.exe 
+   i686-w64-mingw32-gcc -Os -fomit-frame-pointer -fno-asynchronous-unwind-tables -mno-stack-arg-probe -municode -Wall -Wextra -Wl,-gc-sections mainv1.c -nostdlib -lucrtbase -lkernel32 -s -o powershell32.exe && strip -R .reloc powershell32.exe
  */
 #include <wchar.h>
 #include <windows.h>
@@ -34,7 +33,7 @@ static BOOL is_last_option(WCHAR* opt) { return (wcschr(L"cCfFeE", opt[1]) && _w
 static __attribute__ ((noinline)) void join(WCHAR* string1, WCHAR* string2) { if(string2) wcscat(wcscat(string1, L" "), string2); }
 
 int mainCRTStartup(PPEB peb) {
-    BOOL read_from_stdin = FALSE;
+    BOOL read_stdin = FALSE;
     wchar_t pwsh[MAX_PATH], ps51[MAX_PATH], file[_MAX_FNAME], *cl = calloc(4096, sizeof(wchar_t)); /* cl = new outgoing cmdline */
     DWORD exitcode;
     STARTUPINFOW si = {0};
@@ -54,12 +53,14 @@ int mainCRTStartup(PPEB peb) {
         /* Break up cmdline manually (as CommandLineToArgVW seems to remove some (double) qoutes) */
         while (token) {
             if (token[0] == L'/') token[0] = L'-';                       /* deprecated '/' still works in powershell 5.1, replace to simplify code */
-
-            if (token[0] != '-' || is_last_option(token) || !token[1]) { /* no further options in cmdline, or final {-c, -f ,-enc or -} : no new options may follow  these */
-                if ((token[0] != '-'  && _waccess(token, 0)) || !token[1]) join(cl, L"-c"); /* insert '-c' if necessary (no option, no file, or - )*/
-                if (token[1]) join(cl, token);                                              /* add arg (except for '-') */
+            if(token[0] == L'-' && !token[1]) {
+				read_stdin = TRUE;
+				break;
+		    }                  /* '-' handled '-' later on */
+            if (token[0] != '-' || is_last_option(token)) { /* no further options in cmdline, or final {-c, -f ,-enc or -} : no new options may follow  these */
+                if ((token[0] != '-' && _waccess(token, 0))) join(cl, L"-c"); /* insert '-c' if necessary (no option, no file, or '-' )*/
+                join(cl, token);                                           /* add arg (except for '-') */
                 join(cl, ptr);                                                              /* add remainder of cmdline and done */
-                read_from_stdin = !token[1];                                                /* handle '-' later on */
                 break;
             } else if (is_single_option(token)) {                  /* e.g. -noprofile, -nologo , -mta etc */
                 if (_wcsnicmp(token, L"-nop", 4)) join(cl, token); /* skip -noprofile to alays enable hacks in profile.ps1 */
@@ -75,10 +76,10 @@ int mainCRTStartup(PPEB peb) {
             token = wcstok_s(NULL, &delim, &ptr);
         }
     }
-    if (read_from_stdin) { /* support pipeline to handle something like " '$(get-date)'| powershell - " */
+    if (read_stdin) { /* support pipeline to handle something like " '$(get-date)'| powershell - " */
+		join(cl, L"-c");
         while (fgetws(cl + wcslen(cl), 4096, stdin) != NULL) continue;
-    }
-    // /*track the cmd:*/ FILE *fptr; fptr = fopen("c:\\log.txt", "a");fputws(L"used commandline is now: ",fptr); fputws(cl,fptr); fclose(fptr);
+    } // /*track the cmd:*/ FILE *fptr; fptr = fopen("c:\\log.txt", "a");fputws(L"used commandline is now: ",fptr); fputws(cl,fptr); fclose(fptr);
     CreateProcessW(_wgetenv(L"PS51") ? ps51 : pwsh, cl, 0, 0, 0, 0, 0, 0, &si, &pi);
     WaitForSingleObject(pi.hProcess, INFINITE);GetExitCodeProcess(pi.hProcess, &exitcode);CloseHandle(pi.hProcess);CloseHandle(pi.hThread);
 
