@@ -44,7 +44,7 @@ int mainCRTStartup(PPEB peb) {
     ExpandEnvironmentStringsW(L"%ProgramW6432%\\Powershell\\7\\pwsh.exe", pwsh, MAX_PATH + 1);
     ExpandEnvironmentStringsW(L"%winsysdir%\\WindowsPowershell\\v1.0\\ps51.exe", ps51, MAX_PATH + 1);
     _wsplitpath(peb->ProcessParameters->ImagePathName.Buffer, NULL, NULL, file, NULL);
-    WCHAR* cmd = (clbuf[0] == '"') ? wcschr(clbuf + 1, L'"') + 1 : wcschr(clbuf + 1, L' ');
+    WCHAR* cmd = (clbuf[0] == '"') ? wcschr(clbuf + 1, L'"') + 1 : wcschr(clbuf, L' '); /* Step over to arg[1] to get the cmdline to be executed */
     /* I can also act as a dummy program if my exe-name is not powershell, allows to replace a system exe (like wusa.exe, or any exe really) by a function in profile.ps1 */
     if (_wcsnicmp(file, L"Powershell", 10)) {         /* note: set desired exitcode in the function in profile.ps1 */
         wcscat(wcscat(cl, L"-nop -c QPR."), file);    /* add some prefix to the exe and execute it through pwsh , so we can query for program replacement in profile.ps1 */
@@ -54,20 +54,20 @@ int mainCRTStartup(PPEB peb) {
         WCHAR *ptr = 0, delim = L' ', *token = (cmd ? wcstok_s(cmd, &delim, &ptr) : 0); /* Start breaking up cmdline to look for options */
         /* Break up cmdline manually (as CommandLineToArgVW seems to remove some (double) qoutes) */
         while (token) {
-            if (token[0] == L'/') token[0] = L'-'; /* deprecated '/' still works in powershell 5.1, replace to simplify code */
+            if (token[0] == L'/') token[0] = L'-';                       /* deprecated '/' still works in powershell 5.1, replace to simplify code */
 
-            if (token[0] != '-' || is_last_option(token) || !token[1]) { /* no further options in cmdline, or final {-c, -f , -enc} : no new options may follow  these */
-                if (token[0] != '-' || !token[1]) wcscat(cl, L" -c");    /* insert '-c' if necessary */
-                if (token[1]) join(cl, token);                           /* add arg if necessary */
-                read_from_stdin = !token[1];
+            if (token[0] != '-' || is_last_option(token) || !token[1]) { /* no further options in cmdline, or final {-c, -f ,-enc or -} : no new options may follow  these */
+                if (token[0] != '-' || !token[1]) join(cl, L"-c");       /* insert '-c' if necessary */
+                if (token[1]) join(cl, token);                           /* add arg (except for '-') */
                 join(cl, ptr);                                           /* add remainder of cmdline and done */
+                read_from_stdin = !token[1];                             /* handle '-' later on */
                 break;
             } else if (is_single_option(token)) {                  /* e.g. -noprofile, -nologo , -mta etc */
-                if (_wcsnicmp(token, L"-nop", 4)) join(cl, token); /* skip -noprofile to enable hacks in profile.ps1 */
+                if (_wcsnicmp(token, L"-nop", 4)) join(cl, token); /* skip -noprofile to alays enable hacks in profile.ps1 */
             } else {                                               /* assuming option + argument (e.g. '-executionpolicy bypass') AND a valid command!!!, no check for garbage commands!!!!!! */
-                if (!_wcsnicmp(token, L"-ve", 3))
-                    token = wcstok_s(NULL, &delim, &ptr); /* skip incompatible version option, like '-version 3.0' */
-                else {                                    /* concatenate option + arg for option with argument */
+                if (!_wcsnicmp(token, L"-ve", 3))                  /* skip incompatible version option, like '-version 3.0' */
+                    token = wcstok_s(NULL, &delim, &ptr);
+                else {                                             /* concatenate option + arg for option with argument */
                     join(cl, token);
                     token = wcstok_s(NULL, &delim, &ptr);
                     join(cl, token);
