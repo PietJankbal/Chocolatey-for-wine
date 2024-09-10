@@ -1,5 +1,4 @@
-/* Wraps powershell`s commandline into correct syntax for pwsh.exe,
- * and some code that allows calls to an exe (like wusa.exe) to be replaced by a function in profile.ps1
+/* Wraps cmdline into correct syntax for pwsh.exe + code allowing calls to an exe (like wusa.exe) to be replaced by a function in profile.ps1
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -52,22 +51,23 @@ int mainCRTStartup(PPEB peb) {
         WCHAR *ptr = 0, delim = L' ', *token = (cmd ? wcstok_s(cmd, &delim, &ptr) : 0); /* Start breaking up cmdline to look for options */
         /* Break up cmdline manually (as CommandLineToArgVW seems to remove some (double) qoutes) */
         while (token) {
-            if (token[0] == L'/') token[0] = L'-';                       /* deprecated '/' still works in powershell 5.1, replace to simplify code */
-            if(token[0] == L'-' && !token[1]) {
-				read_stdin = TRUE;
-				break;
-		    }                  /* '-' handled '-' later on */
+            if (token[0] == L'/') token[0] = L'-';                            /* deprecated '/' still works in powershell 5.1, replace to simplify code */
+            if (token[0] == L'-' && !token[1]) {                              /* '-' handled '-' later on */
+			    read_stdin = TRUE;
+			    break;
+		    }  
             if (token[0] != '-' || is_last_option(token)) { /* no further options in cmdline, or final {-c, -f ,-enc or -} : no new options may follow  these */
                 if ((token[0] != '-' && _waccess(token, 0))) join(cl, L"-c"); /* insert '-c' if necessary (no option, no file, or '-' )*/
-                join(cl, token);                                           /* add arg (except for '-') */
-                join(cl, ptr);                                                              /* add remainder of cmdline and done */
+                join(cl, token);                                              /* add arg (except for '-') */
+                join(cl, ptr);                                                /* add remainder of cmdline and done */
                 break;
-            } else if (is_single_option(token)) {                  /* e.g. -noprofile, -nologo , -mta etc */
-                if (_wcsnicmp(token, L"-nop", 4)) join(cl, token); /* skip -noprofile to alays enable hacks in profile.ps1 */
-            } else {                                               /* assuming option + argument (e.g. '-executionpolicy bypass') AND a valid command!!!, no check for garbage commands!!!!!! */
-                if (!_wcsnicmp(token, L"-ve", 3))                  /* skip incompatible version option, like '-version 3.0' */
+            }
+             if (is_single_option(token)) {                                   /* e.g. -noprofile, -nologo , -mta etc */
+                if (_wcsnicmp(token, L"-nop", 4)) join(cl, token);            /* skip -noprofile to alays enable hacks in profile.ps1 */
+            } else {                                                          /* assuming option + argument (e.g. '-executionpolicy bypass') AND a valid command!!!, no check for garbage commands!!!!!! */
+                if (!_wcsnicmp(token, L"-ve", 3))                             /* skip incompatible version option, like '-version 3.0' */
                     token = wcstok_s(NULL, &delim, &ptr);
-                else {                                             /* concatenate option + arg for option with argument */
+                else {                                                        /* concatenate option + arg for option with argument */
                     join(cl, token);
                     token = wcstok_s(NULL, &delim, &ptr);
                     join(cl, token);
