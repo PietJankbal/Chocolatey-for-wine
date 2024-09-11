@@ -43,7 +43,7 @@ int mainCRTStartup(PPEB peb) {
     _wsplitpath(peb->ProcessParameters->ImagePathName.Buffer, NULL, NULL, file, NULL);
 
     /* Skip arg[0] to get the cmdline to be executed */
-    WCHAR* cmd = (clbuf[0] == '"') ? wcschr(clbuf + 1, L'"') + 1 : wcschr(clbuf, L' ');
+    WCHAR* cmd = (clbuf[0] == L'"') ? wcschr(clbuf + 1, L'"') + 1 : wcschr(clbuf, L' ');
 
     /* I can also act as a dummy program if my exe-name is not powershell, allows to replace a system exe (like wusa.exe, or any exe really) by a function in profile.ps1 */
     if (_wcsnicmp(file, L"Powershell", 10)) {        /* note: set desired exitcode in the function in profile.ps1 */
