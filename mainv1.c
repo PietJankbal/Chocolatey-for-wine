@@ -57,8 +57,8 @@ int mainCRTStartup(PPEB peb) {
             if (token[0] == L'/') token[0] = L'-';                            /* deprecated '/' still works in powershell 5.1, replace to simplify code */
  
             if (token[0] != '-' || is_last_option(token)) { /* no further options in cmdline, or final {-c, -f ,-enc, -} : no new options may follow  these */
-                if ((token[0] != '-' && _waccess(token, 0)))
-                    join(cl, L"-c");                                          /* insert '-c' if necessary (no option, no file)*/
+                if ((token[0] != '-' && _waccess(token, 0)) || (token[0] == L'-' && !token[1]) )
+                    join(cl, L"-c");                                          /* insert '-c' if necessary (no option, no file, or '-')*/
                 join(cl, token);                                              /* add arg */
                 join(cl, ptr);                                                /* add remainder of cmdline and done */
                 break;
