@@ -15,8 +15,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Build: // For fun I changed code from standard main(argc,*argv[]) to something like https://nullprogram.com/blog/2016/01/31/ and https://scorpiosoftware.net/2023/03/16/minimal-executables/)
- * x86_64-w64-mingw32-gcc -Os -fomit-frame-pointer -fno-asynchronous-unwind-tables -municode -Wall -Wextra -Wl,-gc-sections mainv1.c -nostdlib -lucrtbase -lkernel32 -s -o powershell64.exe && strip -R .reloc powershell64.exe
-   i686-w64-mingw32-gcc -Os -fomit-frame-pointer -fno-asynchronous-unwind-tables -mno-stack-arg-probe -municode -Wall -Wextra -Wl,-gc-sections mainv1.c -nostdlib -lucrtbase -lkernel32 -s -o powershell32.exe && strip -R .reloc  powershell32.exe
+ * x86_64-w64-mingw32-gcc -Os -fomit-frame-pointer -fno-asynchronous-unwind-tables -municode -Wall -Wextra -Wl,-gc-sections -Xlinker --stack=0x100000,0x100000 mainv1.c -nostdlib -lucrtbase -lkernel32 -s -o powershell64.exe && strip -R .reloc powershell64.exe
+   i686-w64-mingw32-gcc -Os -fomit-frame-pointer -fno-asynchronous-unwind-tables -mno-stack-arg-probe -municode -Wall -Wextra -Wl,-gc-sections -Xlinker --stack=0x100000,0x100000 mainv1.c -nostdlib -lucrtbase -lkernel32 -s -o powershell32.exe && strip -R .reloc  powershell32.exe
  */
 
 #include <wchar.h>
