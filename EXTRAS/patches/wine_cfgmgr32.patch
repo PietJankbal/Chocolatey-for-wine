@@ -1,13 +1,35 @@
+diff --git a/dlls/cfgmgr32/cfgmgr32.spec b/dlls/cfgmgr32/cfgmgr32.spec
+index 29de7bbdc55..5357cb889e0 100644
+--- a/dlls/cfgmgr32/cfgmgr32.spec
++++ b/dlls/cfgmgr32/cfgmgr32.spec
+@@ -187,3 +187,4 @@
+ @ stub CM_Unregister_Device_InterfaceW
+ @ stub CM_Unregister_Device_Interface_ExA
+ @ stub CM_Unregister_Device_Interface_ExW
++@ stdcall CM_Unregister_Notification(ptr)
 diff --git a/dlls/cfgmgr32/main.c b/dlls/cfgmgr32/main.c
-index b545d761f68..fdc3e0d98c3 100644
+index b545d761f68..a21297d1a64 100644
 --- a/dlls/cfgmgr32/main.c
 +++ b/dlls/cfgmgr32/main.c
-@@ -66,7 +66,9 @@ CONFIGRET WINAPI CM_Register_Notification( CM_NOTIFY_FILTER *filter, void *conte
+@@ -66,7 +66,22 @@ CONFIGRET WINAPI CM_Register_Notification( CM_NOTIFY_FILTER *filter, void *conte
  {
      FIXME("%p %p %p %p stub!\n", filter, context, callback, notify_context);
  
 -    return CR_CALL_NOT_IMPLEMENTED;
 +    *notify_context = CreateEventW(NULL, TRUE, FALSE, NULL);
++ 
++    return 0;
++}
++
++
++/***********************************************************************
++ *           CM_Unregister_Notification (cfgmgr32.@)
++ */
++CONFIGRET WINAPI CM_Unregister_Notification( HCMNOTIFICATION notify_context )
++{
++    FIXME("stub!\n");
++
++    CloseHandle(notify_context);
 + 
 +    return 0;
  }
