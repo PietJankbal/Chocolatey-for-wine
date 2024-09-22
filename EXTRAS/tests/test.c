@@ -24,18 +24,28 @@ int __cdecl wmain( int argc, WCHAR *argv[] )
     // Close the file
     fclose(fptr); 
 
+        if (!CopyFileW(L"c:\\windows\\system32\\write.exe", L"c:\\Program Files\\Internet Explorer\\test_app.exe", FALSE)) { MessageBoxW(0,L"copy failed",0,0);}
+        if (!CopyFileW(L"c:\\a,b.ps1", L"c:\\Program Files\\Internet Explorer\\file with spaces .txt", FALSE)) { MessageBoxW(0,L"copy failed",0,0);}
+
     char commandA[][1024]= {
-		"powershell \"& {echo hallo}\"",
-        "cmd /c powershell -NoLogo -NoProfile -Noninteractive -ExecutionPolicy    Unrestricted -InputFormat   None -Command \"& \"\"\"C:\\a,b.ps1\"\"\" ; out-null ' -f /f  ff  / f -'; exit $LastExitCode\"   ",		"cmd /c echo \"$(get-date)\" |powershell -   ",
-        "\"c:\\windows\\system32\\WindowsPowershell\\v1.0\\powershell.exe\" -nol \"& \"\"\"c:\\a,b.ps1\"\"\" \"" ,
-        "powershell      -nol    -executionpolicy   unrestricted   \"& \"\"\"c:\\a,b.ps1\"\"\" \"",
-        "powershell -nol -enc ZQBjAGgAbwAgACIARABvAHIAbwB0AGgAeQAiAA==",
+	"powershell \"& {echo hallo}\"",
+        "cmd /c powershell -NoLogo -NoProfile -Noninteractive -ExecutionPolicy    Unrestricted -InputFormat   None -Command \"& \"\"\"C:\\a,b.ps1\"\"\" ;  ' -f /f  ff  / f -' |out-null; exit $LastExitCode\"   ",
+     //   " powershell -NoLogo -NoProfile -Noninteractive -ExecutionPolicy    Unrestricted -InputFormat   None -Command \"& \"\"\"C:\\a,b.ps1\"\"\" ;\"   ",
+        "cmd /c echo \"$(get-date)\" |powershell -nologo -executionpolicy bypass -   ",
+        "cmd /c  echo '\"$(get-date)\"' |powershell -nologo -executionpolicy bypass -   ",
+        "\"c:\\windows\\syswow64\\WindowsPowershell\\v1.0\\powershell.exe\" -nol \"& \"\"\"c:\\a,b.ps1\"\"\" \"" ,
+        "PowerShell      -nol    -executionpolicy   unrestricted   \"& \"\"\"c:\\a,b.ps1\"\"\" \"",
+        "powerShell -nol -enc ZQBjAGgAbwAgACIARABvAHIAbwB0AGgAeQAiAA==",
         "powershell /e ZQBjAGgAbwAgACIARABvAHIAbwB0AGgAeQAiAA==",
          "PowerShell -version 4.0 -NoLogo -InputFormat text -OutputFormat Text echo hello",
          "cmd.exe /c powershell < \"\"\"c:\\a,b.ps1\"\"\"",
          "powershell Start-Process powershell -RedirectStandardInput \"\"\"c:\\a,b.ps1\"\"\"  -NoNewWindow -Wait",
-		       "powershell      '\"\"{0} MB\"\"' -f ((Get-ChildItem $env:ProgramData -Recurse | Measure-Object -Property Length -Sum -ErrorAction Stop).Sum / 1MB)",
-
+      	 "powershell      '\"\"{0} MB\"\"' -f ((Get-ChildItem $env:TMP -Recurse | Measure-Object -Property Length -Sum -ErrorAction Stop).Sum / 1MB)",
+         //"powershell Start-Process -Verb RunAs -FilePath \"c:\\Program Files\\Internet Explorer\\test_app.exe\"  -ArgumentList  \"c:\\Program Files\\Internet Explorer\\file with spaces.txt\"; Sleep 5; Stop-Process -Name 'test_app'",
+         "powershell Start-Process -Verb RunAs -FilePath \"\"\"c:\\Program Files\\Internet Explorer\\test_app.exe\"\"\"  -ArgumentList '\"\"\"c:\\Program Files\\Internet Explorer\\file with spaces .txt\"\"\"' ; Sleep 1.5; Stop-Process -Name 'wordpad'",
+         "wmic logicaldisk where \"deviceid='C:'\" get freespace",
+         "wmic logicaldisk where 'deviceid=\"C:\"' get freespace",
+         "wmic logicaldisk get size, freespace, caption",
     };
                                                              
 
