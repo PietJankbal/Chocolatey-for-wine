@@ -1,8 +1,8 @@
 diff --git a/dlls/wbemprox/builtin.c b/dlls/wbemprox/builtin.c
-index 038ce99539f..26f35498370 100644
+index 80434e5f19f..90937308047 100644
 --- a/dlls/wbemprox/builtin.c
 +++ b/dlls/wbemprox/builtin.c
-@@ -50,6 +50,22 @@
+@@ -48,6 +48,22 @@
  
  WINE_DEFAULT_DEBUG_CHANNEL(wbemprox);
  
@@ -25,7 +25,7 @@ index 038ce99539f..26f35498370 100644
  /* column definitions must be kept in sync with record structures below */
  static const struct column col_associator[] =
  {
-@@ -331,6 +347,10 @@ static const struct column col_process[] =
+@@ -333,6 +349,10 @@ static const struct column col_process[] =
      { L"Create",          CIM_FLAG_ARRAY|COL_FLAG_METHOD },
      { L"GetOwner",        CIM_FLAG_ARRAY|COL_FLAG_METHOD },
  };
@@ -36,7 +36,7 @@ index 038ce99539f..26f35498370 100644
  static const struct column col_processor[] =
  {
      { L"AddressWidth",              CIM_UINT16 },
-@@ -484,7 +504,118 @@ static const struct column col_videocontroller[] =
+@@ -521,7 +541,118 @@ static const struct column col_videocontroller[] =
      { L"VideoModeDescription",        CIM_STRING|COL_FLAG_DYNAMIC },
      { L"VideoProcessor",              CIM_STRING|COL_FLAG_DYNAMIC },
  };
@@ -156,7 +156,7 @@ index 038ce99539f..26f35498370 100644
  static const struct column col_volume[] =
  {
      { L"DeviceId",      CIM_STRING|COL_FLAG_DYNAMIC|COL_FLAG_KEY },
-@@ -830,6 +961,10 @@ struct record_rawsmbiostables
+@@ -871,6 +1002,10 @@ struct record_rawsmbiostables
  {
      const struct array *smbiosdata;
  };
@@ -167,7 +167,7 @@ index 038ce99539f..26f35498370 100644
  struct record_service
  {
      int          accept_pause;
-@@ -936,13 +1071,123 @@ struct record_videocontroller
+@@ -1012,13 +1147,123 @@ struct record_videocontroller
      const WCHAR *videomodedescription;
      const WCHAR *videoprocessor;
  };
@@ -293,7 +293,7 @@ index 038ce99539f..26f35498370 100644
  struct record_winsat
  {
      FLOAT        cpuscore;
-@@ -1042,6 +1287,11 @@ static const struct record_qualifier data_qualifier[] =
+@@ -1118,6 +1363,11 @@ static const struct record_qualifier data_qualifier[] =
      { L"__WIN32_PROCESS_GETOWNER_OUT", L"Domain", CIM_SINT32, FLAVOR_ID, L"ID", 1 }
  };
  
@@ -305,16 +305,7 @@ index 038ce99539f..26f35498370 100644
  static const struct record_quickfixengineering data_quickfixengineering[] =
  {
      { L"http://winehq.org", L"Update", L"KB1234567", L"", L"22/2/2022" },
-@@ -2914,7 +3164,7 @@ static enum fill_status fill_networkadapter( struct table *table, const struct e
-         rec->interface_index      = aa->IfIndex;
-         rec->mac_address          = get_mac_address( aa->PhysicalAddress, aa->PhysicalAddressLength );
-         rec->manufacturer         = L"The Wine Project";
--        rec->netconnection_id     = NULL; /* FIXME Windows seems to fill this when it's connected and in use */
-+        rec->netconnection_id     = NULL; /* TRACE Windows seems to fill this when it's connected and in use */
-         rec->name                 = wcsdup( aa->FriendlyName );
-         rec->netenabled           = connection_status ? -1 : 0;
-         rec->netconnection_status = connection_status;
-@@ -3287,7 +3537,7 @@ static enum fill_status fill_printer( struct table *table, const struct expr *co
+@@ -3357,7 +3607,7 @@ static enum fill_status fill_printer( struct table *table, const struct expr *co
  static WCHAR *get_cmdline( DWORD process_id )
  {
      if (process_id == GetCurrentProcessId()) return wcsdup( GetCommandLineW() );
@@ -323,16 +314,7 @@ index 038ce99539f..26f35498370 100644
  }
  
  static enum fill_status fill_process( struct table *table, const struct expr *cond )
-@@ -3350,7 +3600,7 @@ void do_cpuid( unsigned int ax, int *p )
- #if defined(__i386__) || defined(__x86_64__)
-     __cpuid( p, ax );
- #else
--    FIXME("\n");
-+    TRACE("\n");
- #endif
- }
- 
-@@ -4176,7 +4426,7 @@ static WCHAR *get_videocontroller_pnpdeviceid( DXGI_ADAPTER_DESC *desc )
+@@ -4156,7 +4406,7 @@ static WCHAR *get_videocontroller_pnpdeviceid( DXGI_ADAPTER_DESC *desc )
  
  static const WCHAR *get_videocontroller_installeddriver( UINT vendorid )
  {
@@ -341,7 +323,7 @@ index 038ce99539f..26f35498370 100644
  
      if (vendorid == HW_VENDOR_AMD) return L"aticfx32.dll";
      else if (vendorid == HW_VENDOR_NVIDIA) return L"nvd3dum.dll";
-@@ -4206,7 +4456,6 @@ static BOOL get_dxgi_adapter_desc( DXGI_ADAPTER_DESC *desc )
+@@ -4186,7 +4436,6 @@ static BOOL get_dxgi_adapter_desc( DXGI_ADAPTER_DESC *desc )
      IDXGIFactory_Release( factory );
      return SUCCEEDED( hr );
  }
@@ -349,7 +331,7 @@ index 038ce99539f..26f35498370 100644
  static enum fill_status fill_videocontroller( struct table *table, const struct expr *cond )
  {
      struct record_videocontroller *rec;
-@@ -4257,7 +4506,189 @@ static enum fill_status fill_videocontroller( struct table *table, const struct
+@@ -4235,7 +4484,189 @@ static enum fill_status fill_videocontroller( struct table *table, const struct
      table->num_rows = row;
      return status;
  }
@@ -539,7 +521,7 @@ index 038ce99539f..26f35498370 100644
  static WCHAR *get_volume_driveletter( const WCHAR *volume )
  {
      DWORD len = 0;
-@@ -4392,9 +4823,15 @@ static struct table cimv2_builtin_classes[] =
+@@ -4370,9 +4801,15 @@ static struct table cimv2_builtin_classes[] =
      { L"Win32_QuickFixEngineering", C(col_quickfixengineering), D(data_quickfixengineering) },
      { L"Win32_SID", C(col_sid), 0, 0, NULL, fill_sid },
      { L"Win32_Service", C(col_service), 0, 0, NULL, fill_service },
@@ -555,7 +537,7 @@ index 038ce99539f..26f35498370 100644
      { L"Win32_Volume", C(col_volume), 0, 0, NULL, fill_volume },
      { L"Win32_WinSAT", C(col_winsat), D(data_winsat) },
  };
-@@ -4424,6 +4861,103 @@ void init_table_list( void )
+@@ -4403,6 +4840,103 @@ void init_table_list( void )
      static struct list tables[WBEMPROX_NAMESPACE_LAST];
      UINT ns, i;
  
@@ -660,7 +642,7 @@ index 038ce99539f..26f35498370 100644
      {
          list_init( &tables[ns] );
 diff --git a/dlls/wbemprox/class.c b/dlls/wbemprox/class.c
-index 1570a5e534a..cd5909607f5 100644
+index 8e585c2f360..399d97cb6e8 100644
 --- a/dlls/wbemprox/class.c
 +++ b/dlls/wbemprox/class.c
 @@ -87,7 +87,7 @@ static HRESULT WINAPI enum_class_object_QueryInterface(
@@ -708,13 +690,14 @@ index 1570a5e534a..cd5909607f5 100644
          return E_NOINTERFACE;
      }
      IWbemClassObject_AddRef( iface );
-@@ -396,17 +396,19 @@ static HRESULT WINAPI class_object_Get(
+@@ -396,17 +396,20 @@ static HRESULT WINAPI class_object_Get(
      struct class_object *co = impl_from_IWbemClassObject( iface );
      struct enum_class_object *ec = impl_from_IEnumWbemClassObject( co->iter );
  
 -    TRACE( "%p, %s, %#lx, %p, %p, %p\n", iface, debugstr_w(wszName), lFlags, pVal, pType, plFlavor );
 +    if ( wcsicmp(wszName,L"__NAMESPACE") && wcsicmp(wszName,L"__CLASS")&& wcsicmp(wszName,L"__Derivation")&& wcsicmp(wszName,L"__GENUS")&& wcsicmp(wszName,L"__RELPATH")  && wcsicmp(wszName,L"__PROPERTY_COUNT")  && wcsicmp(wszName,L"__SERVER")  && wcsicmp(wszName,L"__PATH")) {
-+        FIXME( "%p, %s, %#lx, %p, %p, %p\n", iface, debugstr_w(wszName), lFlags, pVal, pType, plFlavor );}
++        ;//FIXME( "%p, %s, %#lx, %p, %p, %p\n", iface, debugstr_w(wszName), lFlags, pVal, pType, plFlavor );
++        }
  
      if (co->record)
 -    {
@@ -731,7 +714,7 @@ index 1570a5e534a..cd5909607f5 100644
  }
  
  static HRESULT record_set_value( struct record *record, UINT index, VARIANT *var )
-@@ -437,7 +439,7 @@ static HRESULT record_set_value( struct record *record, UINT index, VARIANT *var
+@@ -437,7 +440,7 @@ static HRESULT record_set_value( struct record *record, UINT index, VARIANT *var
          record->fields[index].u.ival = val;
          return S_OK;
      default:
@@ -740,7 +723,7 @@ index 1570a5e534a..cd5909607f5 100644
          break;
      }
      return WBEM_E_INVALID_PARAMETER;
-@@ -473,7 +475,7 @@ static HRESULT WINAPI class_object_Delete(
+@@ -473,7 +476,7 @@ static HRESULT WINAPI class_object_Delete(
      IWbemClassObject *iface,
      LPCWSTR wszName )
  {
@@ -749,7 +732,7 @@ index 1570a5e534a..cd5909607f5 100644
      return E_NOTIMPL;
  }
  
-@@ -501,12 +503,12 @@ static HRESULT WINAPI class_object_GetNames(
+@@ -501,12 +504,12 @@ static HRESULT WINAPI class_object_GetNames(
          lFlags != WBEM_FLAG_NONSYSTEM_ONLY &&
          lFlags != WBEM_FLAG_SYSTEM_ONLY))
      {
@@ -764,7 +747,7 @@ index 1570a5e534a..cd5909607f5 100644
  
      return get_properties( ec->query->view, co->index, lFlags, pNames );
  }
-@@ -519,7 +521,7 @@ static HRESULT WINAPI class_object_BeginEnumeration(
+@@ -519,7 +522,7 @@ static HRESULT WINAPI class_object_BeginEnumeration(
  
      TRACE( "%p, %#lx\n", iface, lEnumFlags );
  
@@ -773,7 +756,7 @@ index 1570a5e534a..cd5909607f5 100644
  
      co->index_property = 0;
      return S_OK;
-@@ -541,7 +543,7 @@ static HRESULT WINAPI class_object_Next(
+@@ -541,7 +544,7 @@ static HRESULT WINAPI class_object_Next(
      HRESULT hr;
      UINT i;
  
@@ -782,7 +765,7 @@ index 1570a5e534a..cd5909607f5 100644
  
      for (i = obj->index_property; i < table->num_cols; i++)
      {
-@@ -600,7 +602,7 @@ static HRESULT WINAPI class_object_Clone(
+@@ -600,7 +603,7 @@ static HRESULT WINAPI class_object_Clone(
      IWbemClassObject *iface,
      IWbemClassObject **ppCopy )
  {
@@ -791,7 +774,7 @@ index 1570a5e534a..cd5909607f5 100644
      return E_NOTIMPL;
  }
  
-@@ -663,7 +665,7 @@ static HRESULT WINAPI class_object_GetObjectText(
+@@ -663,7 +666,7 @@ static HRESULT WINAPI class_object_GetObjectText(
  
      TRACE( "%p, %#lx, %p\n", iface, lFlags, pstrObjectText );
  
@@ -800,7 +783,7 @@ index 1570a5e534a..cd5909607f5 100644
  
      if (!(text = get_object_text( view, co->index ))) return E_OUTOFMEMORY;
      *pstrObjectText = text;
-@@ -675,7 +677,7 @@ static HRESULT WINAPI class_object_SpawnDerivedClass(
+@@ -675,7 +678,7 @@ static HRESULT WINAPI class_object_SpawnDerivedClass(
      LONG lFlags,
      IWbemClassObject **ppNewClass )
  {
@@ -809,7 +792,7 @@ index 1570a5e534a..cd5909607f5 100644
      return E_NOTIMPL;
  }
  
-@@ -709,7 +711,7 @@ static HRESULT WINAPI class_object_CompareTo(
+@@ -709,7 +712,7 @@ static HRESULT WINAPI class_object_CompareTo(
      LONG lFlags,
      IWbemClassObject *pCompareTo )
  {
@@ -818,7 +801,7 @@ index 1570a5e534a..cd5909607f5 100644
      return E_NOTIMPL;
  }
  
-@@ -718,7 +720,7 @@ static HRESULT WINAPI class_object_GetPropertyOrigin(
+@@ -718,7 +721,7 @@ static HRESULT WINAPI class_object_GetPropertyOrigin(
      LPCWSTR wszName,
      BSTR *pstrClassName )
  {
@@ -827,7 +810,7 @@ index 1570a5e534a..cd5909607f5 100644
      return E_NOTIMPL;
  }
  
-@@ -726,7 +728,7 @@ static HRESULT WINAPI class_object_InheritsFrom(
+@@ -726,7 +729,7 @@ static HRESULT WINAPI class_object_InheritsFrom(
      IWbemClassObject *iface,
      LPCWSTR strAncestor )
  {
@@ -836,7 +819,7 @@ index 1570a5e534a..cd5909607f5 100644
      return E_NOTIMPL;
  }
  
-@@ -755,7 +757,7 @@ static void set_default_value( CIMTYPE type, UINT val, BYTE *ptr )
+@@ -755,7 +758,7 @@ static void set_default_value( CIMTYPE type, UINT val, BYTE *ptr )
          *(UINT32 *)ptr = val;
          break;
      default:
@@ -845,7 +828,7 @@ index 1570a5e534a..cd5909607f5 100644
          break;
      }
  }
-@@ -905,7 +907,7 @@ static HRESULT WINAPI class_object_GetMethod(
+@@ -905,7 +908,7 @@ static HRESULT WINAPI class_object_GetMethod(
      }
      if (i == table->num_cols)
      {
@@ -854,7 +837,7 @@ index 1570a5e534a..cd5909607f5 100644
          return WBEM_E_NOT_FOUND;
      }
  
-@@ -931,7 +933,7 @@ static HRESULT WINAPI class_object_PutMethod(
+@@ -931,7 +934,7 @@ static HRESULT WINAPI class_object_PutMethod(
      IWbemClassObject *pInSignature,
      IWbemClassObject *pOutSignature )
  {
@@ -863,7 +846,7 @@ index 1570a5e534a..cd5909607f5 100644
      return E_NOTIMPL;
  }
  
-@@ -939,7 +941,7 @@ static HRESULT WINAPI class_object_DeleteMethod(
+@@ -939,7 +942,7 @@ static HRESULT WINAPI class_object_DeleteMethod(
      IWbemClassObject *iface,
      LPCWSTR wszName )
  {
@@ -872,7 +855,7 @@ index 1570a5e534a..cd5909607f5 100644
      return E_NOTIMPL;
  }
  
-@@ -951,7 +953,7 @@ static HRESULT WINAPI class_object_BeginMethodEnumeration(
+@@ -951,7 +954,7 @@ static HRESULT WINAPI class_object_BeginMethodEnumeration(
  
      TRACE( "%p, %#lx\n", iface, lEnumFlags );
  
@@ -881,7 +864,7 @@ index 1570a5e534a..cd5909607f5 100644
  
      co->index_method = 0;
      return S_OK;
-@@ -1021,7 +1023,7 @@ static HRESULT WINAPI class_object_GetMethodOrigin(
+@@ -1021,7 +1024,7 @@ static HRESULT WINAPI class_object_GetMethodOrigin(
      LPCWSTR wszMethodName,
      BSTR *pstrClassName)
  {
@@ -1010,10 +993,10 @@ index 167a8142223..e46672ddd57 100644
  }
  
 diff --git a/dlls/wbemprox/query.c b/dlls/wbemprox/query.c
-index 1087e271837..b9bd0ea2c28 100644
+index a6599334f58..c729f333c53 100644
 --- a/dlls/wbemprox/query.c
 +++ b/dlls/wbemprox/query.c
-@@ -641,7 +641,7 @@ static HRESULT exec_assoc_view( struct view *view )
+@@ -649,7 +649,7 @@ static HRESULT exec_assoc_view( struct view *view )
      struct path *path;
      HRESULT hr;
  
@@ -1022,7 +1005,7 @@ index 1087e271837..b9bd0ea2c28 100644
      if ((hr = parse_path( view->path, &path )) != S_OK) return hr;
  
      if ((hr = create_assoc_enum( view->ns, path->class, path->class_len, &iter )) != S_OK) goto done;
-@@ -951,7 +951,7 @@ static HRESULT get_system_propval( const struct view *view, UINT table_index, UI
+@@ -959,7 +959,7 @@ static HRESULT get_system_propval( const struct view *view, UINT table_index, UI
          if (ret)
          {
              V_VT( ret ) = VT_I4;
@@ -1031,7 +1014,7 @@ index 1087e271837..b9bd0ea2c28 100644
          }
          if (type) *type = CIM_SINT32;
          return S_OK;
-@@ -1015,7 +1015,7 @@ static HRESULT get_system_propval( const struct view *view, UINT table_index, UI
+@@ -1023,7 +1023,7 @@ static HRESULT get_system_propval( const struct view *view, UINT table_index, UI
          if (ret)
          {
              SAFEARRAY *sa;
@@ -1040,7 +1023,7 @@ index 1087e271837..b9bd0ea2c28 100644
              if (!(sa = SafeArrayCreateVector( VT_BSTR, 0, 0 ))) return E_OUTOFMEMORY;
              V_VT( ret ) = VT_BSTR | VT_ARRAY;
              V_ARRAY( ret ) = sa;
-@@ -1023,7 +1023,7 @@ static HRESULT get_system_propval( const struct view *view, UINT table_index, UI
+@@ -1031,7 +1031,7 @@ static HRESULT get_system_propval( const struct view *view, UINT table_index, UI
          if (type) *type = CIM_STRING | CIM_FLAG_ARRAY;
          return S_OK;
      }
@@ -1049,7 +1032,7 @@ index 1087e271837..b9bd0ea2c28 100644
      return WBEM_E_NOT_FOUND;
  }
  
-@@ -1172,6 +1172,7 @@ struct table *get_view_table( const struct view *view, UINT index )
+@@ -1180,6 +1180,7 @@ struct table *get_view_table( const struct view *view, UINT index )
      }
  }
  
@@ -1057,7 +1040,7 @@ index 1087e271837..b9bd0ea2c28 100644
  HRESULT get_propval( const struct view *view, UINT index, const WCHAR *name, VARIANT *ret, CIMTYPE *type,
                       LONG *flavor )
  {
-@@ -1251,6 +1252,147 @@ HRESULT get_propval( const struct view *view, UINT index, const WCHAR *name, VAR
+@@ -1259,6 +1260,147 @@ HRESULT get_propval( const struct view *view, UINT index, const WCHAR *name, VAR
      return S_OK;
  }
  
@@ -1205,7 +1188,7 @@ index 1087e271837..b9bd0ea2c28 100644
  static CIMTYPE to_cimtype( VARTYPE type )
  {
      switch (type)
-@@ -1348,6 +1490,16 @@ HRESULT to_longlong( VARIANT *var, LONGLONG *val, CIMTYPE *type )
+@@ -1356,6 +1498,16 @@ HRESULT to_longlong( VARIANT *var, LONGLONG *val, CIMTYPE *type )
          *val = V_I2( var );
          *type = CIM_SINT16;
          break;
@@ -1222,7 +1205,7 @@ index 1087e271837..b9bd0ea2c28 100644
      case VT_UI2:
          *val = V_UI2( var );
          *type = CIM_UINT16;
-@@ -1370,6 +1522,8 @@ HRESULT to_longlong( VARIANT *var, LONGLONG *val, CIMTYPE *type )
+@@ -1378,6 +1530,8 @@ HRESULT to_longlong( VARIANT *var, LONGLONG *val, CIMTYPE *type )
      return S_OK;
  }
  
@@ -1231,7 +1214,7 @@ index 1087e271837..b9bd0ea2c28 100644
  HRESULT put_propval( const struct view *view, UINT index, const WCHAR *name, VARIANT *var, CIMTYPE type )
  {
      HRESULT hr;
-@@ -1383,7 +1537,7 @@ HRESULT put_propval( const struct view *view, UINT index, const WCHAR *name, VAR
+@@ -1391,7 +1545,7 @@ HRESULT put_propval( const struct view *view, UINT index, const WCHAR *name, VAR
      hr = get_column_index( table, name, &column );
      if (hr != S_OK)
      {
@@ -1254,7 +1237,7 @@ index df8c55c48fc..07236aa6ba5 100644
      hr = create_signature( WBEMPROX_NAMESPACE_CIMV2, L"__SystemSecurity", L"SetSD", PARAM_OUT, &sig );
  
 diff --git a/dlls/wbemprox/services.c b/dlls/wbemprox/services.c
-index 436097c1e8d..86bf2df1b97 100644
+index 3b55a534de9..06f65ab0d1e 100644
 --- a/dlls/wbemprox/services.c
 +++ b/dlls/wbemprox/services.c
 @@ -56,7 +56,7 @@ static HRESULT WINAPI client_security_QueryInterface(
@@ -1328,7 +1311,7 @@ index 436097c1e8d..86bf2df1b97 100644
      return WBEM_E_FAILED;
  }
  
-@@ -502,15 +502,40 @@ static HRESULT WINAPI wbem_services_GetObject(
+@@ -534,15 +534,40 @@ static HRESULT WINAPI wbem_services_GetObject(
  {
      struct wbem_services *services = impl_from_IWbemServices( iface );
  
@@ -1372,7 +1355,7 @@ index 436097c1e8d..86bf2df1b97 100644
  }
  
  static HRESULT WINAPI wbem_services_GetObjectAsync(
-@@ -520,7 +545,7 @@ static HRESULT WINAPI wbem_services_GetObjectAsync(
+@@ -552,7 +577,7 @@ static HRESULT WINAPI wbem_services_GetObjectAsync(
      IWbemContext *pCtx,
      IWbemObjectSink *pResponseHandler )
  {
@@ -1381,7 +1364,7 @@ index 436097c1e8d..86bf2df1b97 100644
      return WBEM_E_FAILED;
  }
  
-@@ -531,7 +556,7 @@ static HRESULT WINAPI wbem_services_PutClass(
+@@ -563,7 +588,7 @@ static HRESULT WINAPI wbem_services_PutClass(
      IWbemContext *pCtx,
      IWbemCallResult **ppCallResult )
  {
@@ -1390,7 +1373,7 @@ index 436097c1e8d..86bf2df1b97 100644
      return WBEM_E_FAILED;
  }
  
-@@ -542,7 +567,7 @@ static HRESULT WINAPI wbem_services_PutClassAsync(
+@@ -574,7 +599,7 @@ static HRESULT WINAPI wbem_services_PutClassAsync(
      IWbemContext *pCtx,
      IWbemObjectSink *pResponseHandler )
  {
@@ -1399,7 +1382,7 @@ index 436097c1e8d..86bf2df1b97 100644
      return WBEM_E_FAILED;
  }
  
-@@ -553,7 +578,7 @@ static HRESULT WINAPI wbem_services_DeleteClass(
+@@ -585,7 +610,7 @@ static HRESULT WINAPI wbem_services_DeleteClass(
      IWbemContext *pCtx,
      IWbemCallResult **ppCallResult )
  {
@@ -1408,7 +1391,7 @@ index 436097c1e8d..86bf2df1b97 100644
      return WBEM_E_FAILED;
  }
  
-@@ -564,7 +589,7 @@ static HRESULT WINAPI wbem_services_DeleteClassAsync(
+@@ -596,7 +621,7 @@ static HRESULT WINAPI wbem_services_DeleteClassAsync(
      IWbemContext *pCtx,
      IWbemObjectSink *pResponseHandler )
  {
@@ -1417,7 +1400,7 @@ index 436097c1e8d..86bf2df1b97 100644
      return WBEM_E_FAILED;
  }
  
-@@ -575,7 +600,7 @@ static HRESULT WINAPI wbem_services_CreateClassEnum(
+@@ -607,7 +632,7 @@ static HRESULT WINAPI wbem_services_CreateClassEnum(
      IWbemContext *pCtx,
      IEnumWbemClassObject **ppEnum )
  {
@@ -1426,7 +1409,7 @@ index 436097c1e8d..86bf2df1b97 100644
      return WBEM_E_FAILED;
  }
  
-@@ -586,7 +611,7 @@ static HRESULT WINAPI wbem_services_CreateClassEnumAsync(
+@@ -618,7 +643,7 @@ static HRESULT WINAPI wbem_services_CreateClassEnumAsync(
      IWbemContext *pCtx,
      IWbemObjectSink *pResponseHandler )
  {
@@ -1435,7 +1418,7 @@ index 436097c1e8d..86bf2df1b97 100644
      return WBEM_E_FAILED;
  }
  
-@@ -597,7 +622,7 @@ static HRESULT WINAPI wbem_services_PutInstance(
+@@ -629,7 +654,7 @@ static HRESULT WINAPI wbem_services_PutInstance(
      IWbemContext *pCtx,
      IWbemCallResult **ppCallResult )
  {
@@ -1444,7 +1427,7 @@ index 436097c1e8d..86bf2df1b97 100644
      return WBEM_E_FAILED;
  }
  
-@@ -608,7 +633,7 @@ static HRESULT WINAPI wbem_services_PutInstanceAsync(
+@@ -640,7 +665,7 @@ static HRESULT WINAPI wbem_services_PutInstanceAsync(
      IWbemContext *pCtx,
      IWbemObjectSink *pResponseHandler )
  {
@@ -1453,7 +1436,7 @@ index 436097c1e8d..86bf2df1b97 100644
      return WBEM_E_FAILED;
  }
  
-@@ -619,7 +644,7 @@ static HRESULT WINAPI wbem_services_DeleteInstance(
+@@ -651,7 +676,7 @@ static HRESULT WINAPI wbem_services_DeleteInstance(
      IWbemContext *pCtx,
      IWbemCallResult **ppCallResult )
  {
@@ -1462,7 +1445,7 @@ index 436097c1e8d..86bf2df1b97 100644
      return WBEM_E_FAILED;
  }
  
-@@ -630,7 +655,7 @@ static HRESULT WINAPI wbem_services_DeleteInstanceAsync(
+@@ -662,7 +687,7 @@ static HRESULT WINAPI wbem_services_DeleteInstanceAsync(
      IWbemContext *pCtx,
      IWbemObjectSink *pResponseHandler )
  {
@@ -1471,7 +1454,7 @@ index 436097c1e8d..86bf2df1b97 100644
      return WBEM_E_FAILED;
  }
  
-@@ -647,7 +672,7 @@ static HRESULT WINAPI wbem_services_CreateInstanceEnum(
+@@ -679,7 +704,7 @@ static HRESULT WINAPI wbem_services_CreateInstanceEnum(
  
      TRACE( "%p, %s, %#lx, %p, %p\n", iface, debugstr_w(strClass), lFlags, pCtx, ppEnum );
  
@@ -1480,7 +1463,7 @@ index 436097c1e8d..86bf2df1b97 100644
  
      hr = parse_path( strClass, &path );
      if (hr != S_OK) return hr;
-@@ -664,7 +689,7 @@ static HRESULT WINAPI wbem_services_CreateInstanceEnumAsync(
+@@ -696,7 +721,7 @@ static HRESULT WINAPI wbem_services_CreateInstanceEnumAsync(
      IWbemContext *pCtx,
      IWbemObjectSink *pResponseHandler )
  {
@@ -1489,7 +1472,7 @@ index 436097c1e8d..86bf2df1b97 100644
      return WBEM_E_FAILED;
  }
  
-@@ -678,12 +703,53 @@ static HRESULT WINAPI wbem_services_ExecQuery(
+@@ -710,12 +735,53 @@ static HRESULT WINAPI wbem_services_ExecQuery(
  {
      struct wbem_services *services = impl_from_IWbemServices( iface );
  
@@ -1546,7 +1529,7 @@ index 436097c1e8d..86bf2df1b97 100644
  }
  
  static void async_exec_query( struct async_header *hdr )
-@@ -736,7 +802,7 @@ static HRESULT WINAPI wbem_services_ExecQueryAsync(
+@@ -768,7 +834,7 @@ static HRESULT WINAPI wbem_services_ExecQueryAsync(
  
      if (services->async)
      {
@@ -1555,7 +1538,7 @@ index 436097c1e8d..86bf2df1b97 100644
          hr = WBEM_E_FAILED;
          goto done;
      }
-@@ -776,7 +842,7 @@ static HRESULT WINAPI wbem_services_ExecNotificationQuery(
+@@ -808,7 +874,7 @@ static HRESULT WINAPI wbem_services_ExecNotificationQuery(
      IWbemContext *pCtx,
      IEnumWbemClassObject **ppEnum )
  {
@@ -1564,7 +1547,7 @@ index 436097c1e8d..86bf2df1b97 100644
      return WBEM_E_FAILED;
  }
  
-@@ -806,7 +872,7 @@ static HRESULT WINAPI wbem_services_ExecNotificationQueryAsync(
+@@ -838,7 +904,7 @@ static HRESULT WINAPI wbem_services_ExecNotificationQueryAsync(
  
      if (services->async)
      {
@@ -1573,7 +1556,7 @@ index 436097c1e8d..86bf2df1b97 100644
          hr = WBEM_E_FAILED;
          goto done;
      }
-@@ -860,7 +926,7 @@ static HRESULT WINAPI wbem_services_ExecMethod(
+@@ -892,7 +958,7 @@ static HRESULT WINAPI wbem_services_ExecMethod(
      TRACE( "%p, %s, %s, %#lx, %p, %p, %p, %p\n", iface, debugstr_w(strObjectPath),
             debugstr_w(strMethodName), lFlags, context, pInParams, ppOutParams, ppCallResult );
  
@@ -1582,7 +1565,7 @@ index 436097c1e8d..86bf2df1b97 100644
  
      if ((hr = parse_path( strObjectPath, &path )) != S_OK) return hr;
      if (!(str = query_from_path( path )))
-@@ -909,7 +975,7 @@ static HRESULT WINAPI wbem_services_ExecMethodAsync(
+@@ -941,7 +1007,7 @@ static HRESULT WINAPI wbem_services_ExecMethodAsync(
      IWbemClassObject *pInParams,
      IWbemObjectSink *pResponseHandler )
  {
@@ -1591,7 +1574,7 @@ index 436097c1e8d..86bf2df1b97 100644
      return WBEM_E_FAILED;
  }
  
-@@ -1017,7 +1083,7 @@ static HRESULT WINAPI wbem_context_QueryInterface(
+@@ -1049,7 +1115,7 @@ static HRESULT WINAPI wbem_context_QueryInterface(
      }
      else
      {
@@ -1600,7 +1583,7 @@ index 436097c1e8d..86bf2df1b97 100644
          return E_NOINTERFACE;
      }
  
-@@ -1084,7 +1150,7 @@ static HRESULT WINAPI wbem_context_GetNames(
+@@ -1116,7 +1182,7 @@ static HRESULT WINAPI wbem_context_GetNames(
      LONG flags,
      SAFEARRAY **names )
  {
@@ -1609,7 +1592,7 @@ index 436097c1e8d..86bf2df1b97 100644
  
      return E_NOTIMPL;
  }
-@@ -1093,7 +1159,7 @@ static HRESULT WINAPI wbem_context_BeginEnumeration(
+@@ -1125,7 +1191,7 @@ static HRESULT WINAPI wbem_context_BeginEnumeration(
      IWbemContext *iface,
      LONG flags )
  {
@@ -1618,7 +1601,7 @@ index 436097c1e8d..86bf2df1b97 100644
  
      return E_NOTIMPL;
  }
-@@ -1104,7 +1170,7 @@ static HRESULT WINAPI wbem_context_Next(
+@@ -1136,7 +1202,7 @@ static HRESULT WINAPI wbem_context_Next(
      BSTR *name,
      VARIANT *value )
  {
@@ -1627,7 +1610,7 @@ index 436097c1e8d..86bf2df1b97 100644
  
      return E_NOTIMPL;
  }
-@@ -1112,7 +1178,7 @@ static HRESULT WINAPI wbem_context_Next(
+@@ -1144,7 +1210,7 @@ static HRESULT WINAPI wbem_context_Next(
  static HRESULT WINAPI wbem_context_EndEnumeration(
      IWbemContext *iface )
  {
@@ -1636,7 +1619,7 @@ index 436097c1e8d..86bf2df1b97 100644
  
      return E_NOTIMPL;
  }
-@@ -1196,7 +1262,7 @@ static HRESULT WINAPI wbem_context_DeleteValue(
+@@ -1228,7 +1294,7 @@ static HRESULT WINAPI wbem_context_DeleteValue(
      LPCWSTR name,
      LONG flags )
  {
@@ -1645,7 +1628,7 @@ index 436097c1e8d..86bf2df1b97 100644
  
      return E_NOTIMPL;
  }
-@@ -1204,7 +1270,7 @@ static HRESULT WINAPI wbem_context_DeleteValue(
+@@ -1236,7 +1302,7 @@ static HRESULT WINAPI wbem_context_DeleteValue(
  static HRESULT WINAPI wbem_context_DeleteAll(
      IWbemContext *iface )
  {
@@ -1699,10 +1682,10 @@ index 44c7c4a98a3..8c51e104301 100644
      return S_OK;
  }
 diff --git a/dlls/wbemprox/table.c b/dlls/wbemprox/table.c
-index ab386efa06b..c1a88f03bc3 100644
+index 37aa546ad2b..c86c9af7903 100644
 --- a/dlls/wbemprox/table.c
 +++ b/dlls/wbemprox/table.c
-@@ -161,7 +161,7 @@ BSTR get_value_bstr( const struct table *table, UINT row, UINT column )
+@@ -171,7 +171,7 @@ BSTR get_value_bstr( const struct table *table, UINT row, UINT column )
  
      if (table->columns[column].type & CIM_FLAG_ARRAY)
      {
@@ -1711,7 +1694,7 @@ index ab386efa06b..c1a88f03bc3 100644
          return NULL;
      }
      if (get_value( table, row, column, &val ) != S_OK) return NULL;
-@@ -200,7 +200,7 @@ BSTR get_value_bstr( const struct table *table, UINT row, UINT column )
+@@ -210,7 +210,7 @@ BSTR get_value_bstr( const struct table *table, UINT row, UINT column )
          return SysAllocString( number );
  
      default:
@@ -1720,7 +1703,7 @@ index ab386efa06b..c1a88f03bc3 100644
          break;
      }
      return NULL;
-@@ -250,7 +250,7 @@ HRESULT set_value( const struct table *table, UINT row, UINT column, LONGLONG va
+@@ -260,7 +260,7 @@ HRESULT set_value( const struct table *table, UINT row, UINT column, LONGLONG va
          *(UINT64 *)ptr = val;
          break;
      default:
