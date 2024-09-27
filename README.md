@@ -1,5 +1,5 @@
 # Chocolatey-for-wine
-Chocolatey packagemanager automatic installer in wine, handy to install quickly programs in wine (and subsequently find bugs in wine ;) )
+Chocolatey packagemanager automatic installer in wine, handy to install quickly programs in wine (and subsequently find bugs in wine ;) ) For some bugs workarounds are added like for Visual Studio Community 2022 and nodejs, see further on.
 
 Install :
 - Download and unzip the release zip-file and do 'wine ChoCinstaller_0.5a.735.exe' (takes about a minute to complete)
