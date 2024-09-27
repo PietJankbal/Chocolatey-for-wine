@@ -200,97 +200,98 @@ $profile_winetricks_caller_ps1 = @'
 
 <# To support auto-tabcompletion only a comma seperated is supported from now on when calling winetricks with multiple arguments, e.g. 'winetricks gdiplus,riched20' #>
 
-[array]$Qenu = "gdiplus","GDI+ (gdiplus.dll)",`
-               "msxml3","msxml3.dll",`
-               "msxml6","msxml6.dll",`
-               "mfc42","mfc42.dll, mfc43u.dll",`
-               "riched20","riched20.dll, msls31.dll",`
-               "msado15","MDAC and Jet40: some minimal mdac dlls (msado15.dll, oledb32.dll, dao360.dll)",`
-               "expand", "native expand.exe, it's renamed to expnd_.exe to not interfere with wine's expand",`
-               "wmp", "some wmp (windows media player) dlls, makes e-Sword start",`
-               "wmf", "some media foundation dlls",`
-               "vcrun2019", "vcredist2019 (concrt140.dll, msvcp140.dll, msvcp140_1.dll, msvcp140_2.dll, vcruntime140.dll, vcruntime140_1.dll, ucrtbase.dll)",`
-               "vcrun2022", "vcredist2022 (concrt140.dll, msvcp140.dll, msvcp140_1.dll, msvcp140_2.dll, vcruntime140.dll, vcruntime140_1.dll, ucrtbase.dll)",`
-               "mshtml", "experimental, dangerzone, might break things, only use on a per app base;ie8 dlls: mshtml.dll, ieframe.dll, urlmon.dll, jscript.dll, wininet.dll, shlwapi.dll, iertutil.dll",`
-               "wine_hnetcfg", "wine hnetcfg.dll with fix for https://bugs.winehq.org/show_bug.cgi?id=45432",`
-               "wine_msi", "if an msi installer fails, might wanna try this wine msi, just faking success for a few actions... Might also result in broken installation ;)",`
-               "cmd","cmd.exe",` 
-               "wine_wintrust", "wine wintrust faking success for WinVerifyTrust",`
-               "dxvk1103", "dxvk 1.10.3, latest compatible with Kepler (Nvidia GT 470) ??? )",`
-               "dxvk20", "dxvk 2.0",`
-               "crypt32", "experimental, dangerzone, will likely break things, only use on a per app base (crypt32.dll, msasn1.dll)",`
-               "sapi", "Speech api (sapi.dll), experimental, makes Balabolka work",`
-               "ps51", "rudimentary PowerShell 5.1 (downloads yet another huge amount of Mb`s!)",`
-               "ps51_ise", "PowerShell 5.1 Integrated Scripting Environment",`
-               "bitstransfer", "Add Bitstransfer cmdlets to Powershell 5.1",`            
-               "msvbvm60", "msvbvm60.dll",`
-               "msdelta", "msdelta.dll",`
-               "xmllite", "xmllite.dll",`
-               "ping","semi-fake ping.exe (tcp isntead of ICMP) as the last requires special permissions",`
-               "windowscodecs", "windowscodecs.dll",`
-               "uxtheme", "uxtheme.dll",`
-               "dbghelp", "dbghelp.dll",` 
-               "uiautomationcore", "uiautomationcore.dll",` 
-               "wsh57", "MS Windows Script Host (vbscript.dll scrrun.dll msscript.ocx jscript.dll scrobj.dll wshom.ocx)",`
-               "comctl32", "dangerzone, might break things, can only be set on a per app base",
-               "oleaut32","native oleaut32, (dangerzone) can only be set on a per app base",
-               "d2d1", "dangerzone, only for testing, might break things, only use on a per app base (d2d1.dll)",`
-               "dinput8", "dinput8.dll",`
-               "windows.ui.xaml", "windows.ui.xaml, experimental...",`
-               "nocrashdialog", "Disable graphical crash dialog",`
-               "renderer=vulkan", "renderer=vulkan",`
-               "renderer=gl", "renderer=gl",`
-               "app_paths", "start new shell with app paths added to the path (permanently), invoke from powershell console!",
-               "vs19", "Visual Studio 2019",
-               "vs22", "experimental Visual Studio 2022 WIP",
-               "vs22_interactive_installer", "experimental vs22_interactive_installer WIP",
-               "office365","currently broken/Microsoft Office365HomePremium (registering does not work, many glitches...)",
-               "webview2", "Microsoft Edge WebView2",
-               "git.portable","Access to several unix-commands like tar, file, sed etc. etc.",
-               "use_chromium_as_browser", "replace winebrowser with chrome to open webpages",
-               "d3dx", "d3x9*, d3dx10*, d3dx11*, xactengine*, xapofx* x3daudio*, xinput* and d3dcompiler*",
-               "sspicli", "dangerzone, only for testing, might break things, only use on a per app base (sspicli.dll)",
-               "dshow", "directshow dlls: amstream.dll,qasf.dll,qcap.dll,qdvd.dll,qedit.dll,quartz.dll",
-               "directmusic", "directmusic ddls: dmusic.dll, dmband.dll, dmime.dll, dmloader.dll, dmscript.dll, dmstyle.dll, dmsynth.dll, dsound.dll, dswave.dll",
-               "uiribbon", "uiribbon.dll",
-               "uianimation", "uianimation.dll",
-               "wmiutils","wmiutils.dll",
-               "wine_wbemprox","hacky wmispoofer, spoof wmi values/add new classes, see c:\ProgramData\Chocolatey-for-wine\wmispoofer.ini for details",
-               "wine_kernelbase","rudimentary mui resource support (makes windows 7 games work)",
-               "findstr", "findstr.exe",
-               "affinity_requirements", "install and configure stuff to get affinity v2 started",
-               "winmetadata", "various *.winmd files, use in combination with wine_wintypes",
-               "winmetadata2", "alternative for winmetadata, requires much less downloadtime",
-               "wine_wintypes", "wine wintypes.dll patched (based on ElementalWarrior) for Affinity, https://forum.affinity.serif.com/index.php?/topic/182758-affinity-suite-v204-on-linux-wine/page/1/",
-               "winrt_hacks","WIP, enable all included wine hacks for (hopefully) bit more winrt ",
-               "wine_combase", "wine combase with a few hacks",
-               "wine_shell32", "wine shell32 with a few hacks",
-               "wine_msxml3", "wine msxml3 with a few hacks",
-               "wine_advapi32", "wine advapi32 with a few hacks",
-               "dotnet35", "dotnet35",
-               "dotnet481", "experimental dotnet481 install (includes System.Runtime.WindowsRuntime.dll)",
-               "font_lucida", "Lucida Console font",
-               "font_segoeui", "Segoeui fonts",
-               "font_tahoma","Tahoma font",
-               "font_vista","Arial,Calibri,Cambria,Comic Sans,Consolas,Courier,Georgia,Impact,Lucida Sans Unicode,Symbol,Times New Roman,Trebuchet ,Verdana ,Webdings,Wingdings font",
-               "install_dll_from_msu","extract and install a dll/file from an msu file (installation in right place might or might not work ;) )",
-               "chocolatey_upgrade","upgrade chocolatey to the latest (>v2.2), requires Powershell 5.1 so on first usage might take >15 minutes!",
-               "sharpdx", "directX with powershell (spinning cube), test if your d3d11 works, further rather useless verb for now ;)",
-               "glxgears", "test if your opengl in wine is working",
-               "vulkansamples", "51 vulkan samples to test if your vulkan works, do shift-ctrl^c if you wanna leave earlier ;)",
-               "wpf_xaml", "codesnippets from around the internet: how to use wpf+xaml in powershell",
-               "wpf_msgbox", "codesnippets from around the internet: some fancy messageboxes (via wpf) in powershell",
-               "wpf_routedevents", "codesnippets from around the internet: how to use wpf+xaml+routedevents in powershell",
-               "cef", "codesnippets from around the internet: how to use cef / test cef",
-               "vanara","vanara https://github.com/dahall/Vanara",
-               "embed-exe-in-psscript", "codesnippets from around the internet: samplescript howto embed and run an exe into a powershell-scripts (vkcube.exe); might trigger a viruswarning (!) but is really harmless",
-               "Get-PEHeader", "codesnippets from around the internet: add Get-PEHeader to cmdlets, handy to explore dlls imports/exports",
-               "access_winrt_from_powershell", "codesnippets from around the internet: howto use Windows Runtime classes in powershell; requires powershell 5.1, so 1st time usage may take very long time!!!",
-               "ps2exe", "codesnippets from around the internet: convert a ps1-script into an executable; requires powershell 5.1, so 1st time usage may take very long time!!!"
+[array]$Qenu = "apps","git.portable","Access to several unix-commands like tar, file, sed etc. etc.",
+#              "apps","itunes","itunes, with fixed black GUI",
+               "apps","nodejs","install node.js (a workaround for failing installer)",
+               "apps","office365","(only works in wine tkg)/Microsoft Office365HomePremium (registering does not work, many glitches...)",
+               "apps","use_chromium_as_browser", "replace winebrowser with chrome to open webpages",
+               "apps","vs19", "Visual Studio 2019",
+               "apps","vs22", "Visual Studio 2022",
+               "apps","vs22_interactive_installer", "vs22_interactive_installer",
+               "apps","vulkansamples", "51 vulkan samples to test if your vulkan works, do shift-ctrl^c if you wanna leave earlier ;)",
+               "apps","webview2", "Microsoft Edge WebView2",
+               "dlls","bitstransfer", "Add Bitstransfer cmdlets to Powershell 5.1",`            
+               "dlls","cmd","cmd.exe",` 
+               "dlls","comctl32", "dangerzone, might break things, can only be set on a per app base",
+               "dlls","crypt32", "experimental, dangerzone, will likely break things, only use on a per app base (crypt32.dll, msasn1.dll)",`
+               "dlls","d2d1", "dangerzone, only for testing, might break things, only use on a per app base (d2d1.dll)",`
+               "dlls","d3dx", "d3x9*, d3dx10*, d3dx11*, xactengine*, xapofx* x3daudio*, xinput* and d3dcompiler*",
+               "dlls","dbghelp", "dbghelp.dll",` 
+               "dlls","dinput8", "dinput8.dll",`
+               "dlls","directmusic", "directmusic ddls: dmusic.dll, dmband.dll, dmime.dll, dmloader.dll, dmscript.dll, dmstyle.dll, dmsynth.dll, dsound.dll, dswave.dll",
+               "dlls","dotnet35", "dotnet35",
+               "dlls","dotnet481", "experimental dotnet481 install (includes System.Runtime.WindowsRuntime.dll)",
+               "dlls","dshow", "directshow dlls: amstream.dll,qasf.dll,qcap.dll,qdvd.dll,qedit.dll,quartz.dll",
+               "dlls","dxvk1103", "dxvk 1.10.3, latest compatible with Kepler (Nvidia GT 470) ??? )",`
+               "dlls","dxvk20", "dxvk 2.0",`
+               "dlls","expand", "native expand.exe, it's renamed to expnd_.exe to not interfere with wine's expand",`
+               "dlls","findstr", "findstr.exe",
+               "dlls","gdiplus","GDI+ (gdiplus.dll)",`
+               "dlls","mfc42","mfc42.dll, mfc43u.dll",`
+               "dlls","msado15","MDAC and Jet40: some minimal mdac dlls (msado15.dll, oledb32.dll, dao360.dll)",`
+               "dlls","msdelta", "msdelta.dll",`
+               "dlls","mshtml", "experimental, dangerzone, might break things, only use on a per app base;ie8 dlls: mshtml.dll, ieframe.dll, urlmon.dll, jscript.dll, wininet.dll, shlwapi.dll, iertutil.dll",`
+               "dlls","msvbvm60", "msvbvm60.dll",`
+               "dlls","msxml3","msxml3.dll",`
+               "dlls","msxml6","msxml6.dll",`
+               "dlls","oleaut32","native oleaut32, (dangerzone) can only be set on a per app base",
+               "dlls","ps51_ise", "PowerShell 5.1 Integrated Scripting Environment",`
+               "dlls","ps51", "rudimentary PowerShell 5.1 (downloads yet another huge amount of Mb`s!)",`
+               "dlls","riched20","riched20.dll, msls31.dll",`
+               "dlls","sapi", "Speech api (sapi.dll), experimental, makes Balabolka work",`
+               "dlls","sspicli", "dangerzone, only for testing, might break things, only use on a per app base (sspicli.dll)",
+               "dlls","uianimation", "uianimation.dll",
+               "dlls","uiautomationcore", "uiautomationcore.dll",` 
+               "dlls","uiribbon", "uiribbon.dll",
+               "dlls","uxtheme", "uxtheme.dll",`
+               "dlls","vcrun2019", "vcredist2019 (concrt140.dll, msvcp140.dll, msvcp140_1.dll, msvcp140_2.dll, vcruntime140.dll, vcruntime140_1.dll, ucrtbase.dll)",`
+               "dlls","vcrun2022", "vcredist2022 (concrt140.dll, msvcp140.dll, msvcp140_1.dll, msvcp140_2.dll, vcruntime140.dll, vcruntime140_1.dll, ucrtbase.dll)",`
+               "dlls","windowscodecs", "windowscodecs.dll",`
+               "dlls","windows.ui.xaml", "windows.ui.xaml, experimental...",`
+               "dlls","winmetadata", "alternative for winmetadata, requires much less downloadtime",
+               "dlls","wmf", "some media foundation dlls",`
+               "dlls","wmiutils","wmiutils.dll",
+               "dlls","wmp", "some wmp (windows media player) dlls, makes e-Sword start",`
+               "dlls","wsh57", "MS Windows Script Host (vbscript.dll scrrun.dll msscript.ocx jscript.dll scrobj.dll wshom.ocx)",`
+               "dlls","xmllite", "xmllite.dll",`
+               "font","segoeui", "Segoeui fonts",
+               "font","lucida", "Lucida Console font",
+               "font","tahoma","Tahoma font",
+               "font","vista_fonts","Arial,Calibri,Cambria,Comic Sans,Consolas,Courier,Georgia,Impact,Lucida Sans Unicode,Symbol,Times New Roman,Trebuchet ,Verdana ,Webdings,Wingdings font",
+               "misc","access_winrt_from_powershell", "codesnippets from around the internet: howto use Windows Runtime classes in powershell; requires powershell 5.1, so 1st time usage may take very long time!!!",
+               "misc","cef", "codesnippets from around the internet: how to use cef / test cef",
+               "misc","chocolatey_upgrade","upgrade chocolatey to the latest (>v2.2), requires Powershell 5.1 so on first usage might take >15 minutes!",
+               "misc","embed-exe-in-psscript", "codesnippets from around the internet: samplescript howto embed and run an exe into a powershell-scripts (vkcube.exe); might trigger a viruswarning (!) but is really harmless",
+#              "misc","GE-Proton","Install bunch of dlls from GE-Proton",
+               "msic","Get-PEHeader", "codesnippets from around the internet: add Get-PEHeader to cmdlets, handy to explore dlls imports/exports",
+               "misc","glxgears", "test if your opengl in wine is working",
+               "misc","install_dll_from_msu","extract and install a dll/file from an msu file (installation in right place might or might not work ;) )",
+               "misc","ps2exe", "codesnippets from around the internet: convert a ps1-script into an executable; requires powershell 5.1, so 1st time usage may take very long time!!!",
+               "misc","sharpdx", "directX with powershell (spinning cube), test if your d3d11 works, further rather useless verb for now ;)",
+               "misc","vanara","vanara https://github.com/dahall/Vanara",
+               "misc","winrt_hacks","WIP, enable all included wine hacks for (hopefully) bit more winrt ",
+               "misc","wpf_msgbox", "codesnippets from around the internet: some fancy messageboxes (via wpf) in powershell",
+               "misc","wpf_routedevents", "codesnippets from around the internet: how to use wpf+xaml+routedevents in powershell",
+               "misc","wpf_xaml", "codesnippets from around the internet: how to use wpf+xaml in powershell",
+               "sets","app_paths", "start new shell with app paths added to the path (permanently), invoke from powershell console!",
+               "sets","nocrashdialog", "Disable graphical crash dialog",`
+               "sets","renderer=gl", "renderer=gl",`
+               "sets","renderer=vulkan", "renderer=vulkan",`
+               "wine","ping","semi-fake ping.exe (tcp isntead of ICMP) as the last requires special permissions",`
+               "wine","wine_advapi32", "wine advapi32 with a few hacks",
+               "wine","wine_combase", "wine combase with a few hacks",
+               "wine","wine_d2d1", "wine d2d1 with a few hacks",
+               "wine","wine_hnetcfg", "wine hnetcfg.dll with fix for https://bugs.winehq.org/show_bug.cgi?id=45432",`
+               "wine","wine_kernel32","rudimentary mui resource support (makes windows 7 games work)",
+               "wine","wine_msi", "if an msi installer fails, might wanna try this wine msi, just faking success for a few actions... Might also result in broken installation ;)",`
+               "wine","wine_msxml3", "wine msxml3 with a few hacks",
+               "wine","wine_wbemprox","hacky wmispoofer, spoof wmi values/add new classes, see c:\ProgramData\Chocolatey-for-wine\wmispoofer.ini for details",
+               "wine","wine_shell32", "wine shell32 with a few hacks",
+               "wine","wine_wintrust", "wine wintrust faking success for WinVerifyTrust",`
+               "wine","wine_wintypes", "wine wintypes.dll for for example Affinity"
                
-#https://stackoverflow.com/questions/67356762/couldnt-use-predefined-array-inside-validateset-powershell
-
-for ( $j = 0; $j -lt $Qenu.count; $j+=2 ) { [string[]]$verblist += $Qenu[$j] }
+#https://stackoverflow.com/questions/67356762/couldnt-use-predefined-array-inside-validateset-powershell$verblist =0
+for ( $j = 0; $j -lt $Qenu.count; $j+=3) { [string[]]$verblist += $Qenu[$j+1] }
 
 function winetricks {
   [CmdletBinding()]
@@ -324,6 +325,7 @@ function winetricks {
      pwsh -nop -f <# . #> $([System.IO.Path]::Combine("$env:ProgramData","Chocolatey-for-wine", "winetricks.ps1")) "no_args" $Qenu 
   }
 }
+
 '@
 ################################################################################################################################ 
 #                                                                                                                              #
@@ -628,45 +630,40 @@ function CommandLineToArgvW
 
 @'
 function QPR.wmic { <# wmic replacement, this part only rebuilds the arguments #>
-    $cmdline = $env:QPRCMDLINE #.SubString($env:QPRCMDLINE.IndexOf(" "), $env:QPRCMDLINE.Length - $env:QPRCMDLINE.IndexOf(" "))
+    if ( $(Get-Process wmic).Parent.name -eq 'pwsh') { <# check whether cmd is ran from PS-console #>
+        $cmd = $(cat (Get-PSReadlineOption).HistorySavePath -tail 1).Trim(' ')
+        $cmdline = $cmd.Substring($cmd.IndexOf(' ')+1).Trim(' ') + ' ' }
+    else {
+        $cmdline = $env:QPRCMDLINE.Trim(' ') + ' '}
+     
     $hash = @{
+        "path" = "-class "
         'os' = "-class win32_operatingsystem"
-        'bios' = "-class win32_bios"
-        'logicaldisk' = "-class win32_logicaldisk"
-        'nic' = "-class win32_NetworkAdapter"        
-        'process' = "-class win32_process" 
-        'datafile' = "-class CIM_DataFile"} <# etc. etc. #>
+         'memorychip' = "-class Win32_PhysicalMemory"
+        'cpu' = "-class win32_processor"
+        'nic' = "-class win32_NetworkAdapter"     
+        'csproduct' = "-class Win32_ComputerSystemProduct"} <# etc. etc. #>
+
+    $class= $cmdline.SubString(0, $cmdline.IndexOf(" "))
+    $remainder= $cmdline.SubString( $cmdline.IndexOf(" ")) -replace '\bget\b', '-property'  -replace '\bwhere\b', ' -where '' WHERE '' -filter '
 
     foreach ($key in $hash.keys) {
-        if( $cmdline |select-string "\b$key\b" ) { $cmdline = $cmdline -replace "\b$key\b", $hash[$key]; break }    }
-   
-    $cmdline = $cmdline -replace 'get', '-property' -replace 'where', '-where' -replace "/path", "-class"
+        if( $class -eq $key ) { $class = $hash[$key]; $found = 1;  break }  }
+    if(-not $found) {$class = $('win32_' + $class)}
 
-    <# Hack: if command like  'wmic logicaldisk where 'deviceid="c:"' get freespace' is ran from PS-console, somehow (double) quotes get lost so escape them #>
-    if ( $(Get-Process wmic).Parent.name -eq 'pwsh') <# check whether cmd is ran from PS-console #>
-        { $cmdline = $cmdline -replace "`'", "```'"   -replace "`"", "```""}
-
-    iex  -Command ('QPR_wmic ' + $cmdline)
+    iex  -Command ('QPR_wmic ' + $class + $remainder)
 }
 
 function QPR_wmic { <# wmic replacement #>
     [CmdletBinding()]
-    Param([parameter(Position=0)][string]$class, [string[]]$property="*",
-    [string]$where, [parameter(ValueFromRemainingArguments=$true)]$vargs)
-
-    <# Hack: if command like  'wmic logicaldisk where 'deviceid="c:"' get freespace' is ran from PS-console, somehow (double) quotes get lost so escape them #>
-    if ( $(Get-Process wmic).Parent.name -eq 'pwsh') <# check whether cmd is ran from PS-console #>
-        { $where=($where -replace '[\\][""]', "'").Trim('"')}
-    else{ $where=$where -replace '[\\][""]', "'" } 
+    Param([parameter(Position=0)][string]$class, [string[]]$property="*",[string]$where, [string]$filter, [parameter(ValueFromRemainingArguments=$true)]$vargs)
 
     if($property -eq '*'){ <# 'get-wmiobject $class | select *' does not work because of wine-bug, so need a workaround:  #>
-        Get-WmiObject $class ($($(Get-WmiObject $class |Get-Member) |where {$_.membertype -eq 'property'}).name |Join-String -Separator ',') }
+        Get-WmiObject $class ($($(Get-WmiObject $class |Get-Member) |where {$_.membertype -eq 'property'}).name -join ',') }
     else { #handle e.g. wmic logicaldisk where "deviceid='C:'" get freespace or  wmic logicaldisk get size, freespace, caption
-    $query = 'Select' + ' ' + $($property -join ',' ) + ' ' + 'From' + ' ' + $class + (($where) ? (' where ' + $where ) : ('')) #+ $vargs
-    <#                                                                              -Stream: break up in lines  skip seperatorline(---) remove blank lines #>
-    (Get-WMIObject -query $query |ft ($property |sort-object) -autosize |Out-string -Stream | Select-Object    -skipindex (2)|          ?{$_.trim() -ne ""}) } 
-}
-'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.wmic\QPR.wmic.psm1 -Force )
+                                                           
+        ([wmisearcher]$("SELECT " +  ($property -join ",") + " FROM " + $class + $where + $filter)).get() |ft ($property |sort) -autosize |Out-string -Stream | Select -skipindex (2)| ?{$_.trim() -ne ""}}
+} '@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.wmic\QPR.wmic.psm1 -Force )
 
 @'
 function QPR.ping
@@ -703,8 +700,6 @@ function QPR.ping
     start-threadjob -throttle 2 -ScriptBlock {  while(!(Test-Path -Path "$env:TEMP\net48\1025") ) {Sleep 0.25} ;[System.Threading.Thread]::CurrentThread.Priority = 'Highest'; &{ c:\\windows\\system32\\msiexec.exe  /i $env:TEMP\\net48\\netfx_Full_x64.msi EXTUI=1 /sfxlang:1033 /q /norestart} }
 
     $url = @('http://download.windowsupdate.com/msdownload/update/software/crup/2010/06/windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', `
-#            'https://mirrors.edge.kernel.org/gentoo/distfiles/5e/arial32.exe', `
-#            'https://github.com/pushcx/corefonts/raw/master/arial32.exe', `
              'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47.dll', `
              'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47_32.dll', `
              'https://github.com/Maximus5/ConEmu/releases/download/v23.07.24/ConEmuPack.230724.7z', `
@@ -756,7 +751,7 @@ function QPR.ping
     reg.exe  IMPORT  $env:TMP\\misc.reg /reg:64
     reg.exe  IMPORT  $env:TMP\\misc.reg /reg:32 
     <# fix up the 'highlight selection'-hack for ConEmu #>
-    Copy-Item -Path "$env:TMP\\user32.dll" -Destination "$env:SystemDrive\\ConEmu\\user32.dll" -Force
+    Copy-Item -Path "$env:TMP\\user32.dll" -Destination "$env:Systemdrive\\ConEmu\\user32.dll" -Force
     Copy-Item $env:SystemRoot\\system32\\user32.dll $env:SystemRoot\\system32\\user32dummy.dll -force
     <# do not use chocolatey's builtin powershell host #>
     cd c:\; c:\\ProgramData\\chocolatey\\choco.exe feature disable --name=powershellHost; winecfg /v win10
@@ -767,7 +762,7 @@ function QPR.ping
     # Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
     # choco install tccle -y; & "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tcc.exe" "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tccbatch.btm"; <># cmd.exe replacement #
     $env:FirstRun=1
-    Start-Process "c:\conemu\conemu64" -ArgumentList " -NoUpdate -LoadRegistry -run %ProgramW6432%\\Powershell\\7\\pwsh.exe" #-NoNewWindow
+    Start-Process "c:\conemu\conemu64" -ArgumentList " -NoUpdate -LoadRegistry -run %ProgramFiles%\\Powershell\\7\\pwsh.exe" #-NoNewWindow
 ################################################################################################################### 
 #  All code below is only for sending a single keystroke (ENTER) to ConEmu's annoying                             #
 #  fast configuration window to dismiss it...............                                                         #
@@ -808,6 +803,7 @@ function QPR.ping
     <# put winetricks.ps1 and codesnippets in ProgramData\\Chocolatey-for-wine #>
     Copy-Item -Path "$(Join-Path $args[0] 'winetricks.ps1')" "$env:ProgramData\\Chocolatey-for-wine"
     Copy-Item -Path "$(Join-Path $args[0] 'EXTRAS' 'powershell_collected_codesnippets_examples.ps1')" "$env:ProgramData\\Chocolatey-for-wine"
+    Copy-Item -Path "$(Join-Path $args[0] 'powershell64.exe')" -Destination "$env:SystemRoot\system32\WindowsPowershell\v1.0\powershell.exe" -force
     Copy-Item -Path "$(Join-Path $args[0] 'powershell32.exe')" -Destination "$env:SystemRoot\syswow64\WindowsPowershell\v1.0\powershell.exe" -force
     <# This makes Astro Photography Tool happy #>
     foreach($i in 'regasm.exe') { 
@@ -824,7 +820,7 @@ function QPR.ping
     <# Backup files if wanted #>
     if (Test-Path 'env:SAVEINSTALLFILES') { 
         New-Item -Path "$env:WINEHOMEDIR\.cache\".substring(4) -Name "choc_install_files" -ItemType "directory" -ErrorAction SilentlyContinue
-        foreach($i in 'net48', 'PowerShell-7.4.3-win-x64.msi', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2407-x64.exe', 'sevenzipextractor.1.0.17.nupkg', 'ConEmuPack.230724.7z') {
+        foreach($i in 'net48', 'PowerShell-7.4.5-win-x64.msi', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2407-x64.exe', 'sevenzipextractor.1.0.17.nupkg', 'ConEmuPack.230724.7z') {
             Copy-Item -Path $env:TEMP\\$i -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4) -recurse -force }
     }
     <# install wine robocopy and (custom) wine tasksch.dll #>
@@ -839,8 +835,6 @@ function QPR.ping
         Move-Item -Path "$env:winsysdir\\$($file + '.exe')" -Destination "$env:winsysdir\\$($file + '.back.exe')" -Force -ErrorAction SilentlyContinue
         Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\$($file + '.exe')" -Force
         Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\$($file + '.exe')" -Force}
-    <# It seems some programs need this dir?? #>
-    New-Item -Path "$env:LOCALAPPDATA" -Name "Temp" -ItemType "directory" -ErrorAction SilentlyContinue
     <# Native Access needs this dir #>
     New-Item -Path "$env:Public" -Name "Downloads" -ItemType "directory" -ErrorAction SilentlyContinue
     <# a game launcher tried to open this key, i think it should be present (?) #>
