@@ -1040,7 +1040,7 @@ function func_sapi <# Speech api #>
     $voice.Speak("This is mostly a bunch of crap. Please improve me", 2)
 } <# end sapi #>
 
-function func_winmetadata <# winmetadata #>
+function deprecated_func_winmetadata <# winmetadata #>
 {   
     $url = "https://catalog.s.download.windowsupdate.com/c/msdownload/update/software/updt/2018/08/windows10.0-kb4343893-x64_bdae9c9c28d4102a673a24d37c371ed73d053338.msu"
     $cab = "Windows10.0-KB4343893-x64.cab"
@@ -1067,7 +1067,7 @@ function func_winmetadata <# winmetadata #>
 
 } <# end winmetadata #>
 
-function func_winmetadata2 <# winmetadata alternative#>
+function func_winmetadata <# winmetadata alternative#>
 {   
     New-Item -Path $env:systemroot\\system32\\winmetadata -Type Directory -force -erroraction silentlycontinue
     New-Item -Path $env:systemroot\\syswow64\\winmetadata -Type Directory -force -erroraction silentlycontinue
@@ -1084,14 +1084,14 @@ function func_winmetadata2 <# winmetadata alternative#>
     7z e "$cachedir\$(verb)\$(verb).7z" "Windows.winmd" -o"$env:systemroot\\system32\\winmetadata" -aoa
     7z e "$cachedir\$(verb)\$(verb).7z" "Windows.winmd" -o"$env:systemroot\\syswow64\\winmetadata" -aoa
 
-    func_wine_wintypes2
+    func_wine_wintypes
 
-    Move-Item "$env:Systemroot\system32\wintypes2.dll" "$env:Systemroot\system32\wintypes.dll" -force -erroraction silentlycontinue
-    Move-Item "$env:Systemroot\syswow64\wintypes2.dll" "$env:Systemroot\syswow64\wintypes.dll" -force -erroraction silentlycontinue
+#    Move-Item "$env:Systemroot\system32\wintypes2.dll" "$env:Systemroot\system32\wintypes.dll" -force -erroraction silentlycontinue
+#    Move-Item "$env:Systemroot\syswow64\wintypes2.dll" "$env:Systemroot\syswow64\wintypes.dll" -force -erroraction silentlycontinue
 
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -Name 'wintypes' -Value 'native' -PropertyType 'String' -force
-    Remove-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -Name 'wintypes2' -erroraction silentlycontinue -force 
-} <# end winmetadata2 #>
+#    Remove-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -Name 'wintypes2' -erroraction silentlycontinue -force 
+} <# end winmetadata #>
 
 
 function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
@@ -1388,7 +1388,7 @@ function func_ps51_ise <# Powershell 5.1 Integrated Scripting Environment #>
 #"@
 #    reg_edit $regkey_ise
 
-    func_font_lucida
+    func_lucida
 
     powershell_ise.exe     
 } <# end ps51_ise #>
@@ -1982,15 +1982,21 @@ function func_wine_shell32 { install_winedll wine_shell32 'b76038abf9aebfa8a570e
 
 function func_wine_combase { install_winedll wine_combase 'c85261296b6a00234aa412910c019946c19de6c1c537708b6c2c1d2f2b2593e2'}
 
-function func_wine_msxml3 { install_winedll wine_msxml3 'd2ff624df7ebc77d552adeee594748a6427de3f26c31d5825f4ca84569ba6a15'}
+function func_wine_d2d1 { install_winedll wine_d2d1 'd93559790176ca68b8c5a35f99f9bd1d64231991b167110d64033ebae1ee65b0'}
+
+function func_wine_msxml3 { install_winedll wine_msxml3 '4a96a865a47d090eab3c1485fa923ca639b5d38fcff03c1b7b62785aa5921151'}
 
 function func_wine_cfgmgr32 { install_winedll wine_cfgmgr32 '74bcee062772023de0da4ed05f0c9ccdedd86165ab8f8553b08c94b9c406dc01'}
 
 function func_wine_sxs { install_winedll wine_sxs '9ac670ae3105611a5211649aab25973b327dcd8ea932f1a8569e78adca6fedcb'}
 
-function func_wine_wintypes { install_winedll wine_wintypes 'DEE94F7B8C4BD325AEAE4F155339D83088B698823A35D7E63C5C9FFFEEBF3CDD'}
+function func_wine_wintypes { install_winedll wine_wintypes 'e9dc32b89a48d69edbd1274ef11536efb1e93e7170212e2460113ee35d5e3d91'}
 
-function func_wine_wintypes2 { install_winedll wine_wintypes2 'ead327788f98b617017a483e9a0500cf2bd627e9c5d23ae7e175cb8035dc0a9e'}
+function func_wine_msi { install_winedll wine_msi 'e98eff493760e8426767d9f9ed2f52aa50b79b06be3d2cc803005cb55fe94a31'}
+
+function func_wine_kernel32 { install_winedll wine_kernel32 '9cdccf50d0a5ad01fc4981126c93c0d79928bc84de30872692ca97535c7e81c0'}
+
+#function func_wine_wintypes2 { install_winedll wine_wintypes2 'ead327788f98b617017a483e9a0500cf2bd627e9c5d23ae7e175cb8035dc0a9e'}
 
 function func_wine_sppc <# wine sppc with some hacks #>
 {
@@ -2010,17 +2016,6 @@ function func_wine_hnetcfg <# fix for https://bugs.winehq.org/show_bug.cgi?id=45
         7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
     foreach($i in $(verb).substring(5) ) { dlloverride 'native' $i }
 } <# end hnetcfg #>
-
-function func_wine_msi <# wine msi with some hacks faking success #>
-{
-    w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
-
-    foreach ($i in $(verb).substring(5) ){
-        7z e "$cachedir\\$(verb)\\$(verb).7z" "-o$env:systemroot\system32" "64/$i.dll" -aoa | Select-String 'ok' 
-        7z e "$cachedir\\\\$(verb)\\$(verb).7z" "-o$env:systemroot\syswow64" "32/$i.dll" -aoa | Select-String 'ok'  }
-    foreach($i in $(verb).substring(5) ) { dlloverride 'native' $i }
-} <# end msi #>
-
 
 function func_wine_kernelbase <# wine kernelbase with rudimentary MUI support + bunch of other hacks #>
 {
@@ -2064,12 +2059,12 @@ function func_wine_kernelbase <# wine kernelbase with rudimentary MUI support + 
 ;[where.exe]
 ;replace_from=comctl32.dll
 ;replace_to=ntdll.dll
-'@ | Out-File $env:ProgramData\Chocolatey-for-wine\kernelbase.ini -Force
+'@ | Out-File $env:ProgramData\Chocolatey-for-wine\kernel32.ini -Force
 
 
 } <# end kernelbase #>
 
-function func_font_lucida
+function func_lucida
 {
     $fonts = @('lucon.ttf'); check_aik_sanity;
     
@@ -2083,7 +2078,7 @@ REGEDIT4
     reg_edit $regkey
 }
 
-function func_font_segoeui
+function func_segoeui
 {
     $fonts = @('segoeui.ttf', 'segoeuib.ttf', 'segoeuii.ttf', 'segoeuil.ttf', 'segoeuiz.ttf'); check_aik_sanity;
     
@@ -2101,7 +2096,7 @@ REGEDIT4
     reg_edit $regkey
 }
 
-function func_font_tahoma
+function func_tahoma
 {
     $fonts = @('tahomabd.ttf', 'tahoma.ttf'); check_aik_sanity;
     
@@ -2116,7 +2111,7 @@ REGEDIT4
     reg_edit $regkey
 }
 
-function func_font_vista
+function func_vista_fonts
 {
     $url = "https://catalog.s.download.windowsupdate.com/msdownload/update/software/updt/2010/04/windows6.0-kb980248-x86_c3accb4e416d6ef6d6fcbe27da9fc7da1fc22eb6.msu"
     $cab = "Windows6.0-KB980248-x86.cab"
@@ -2497,13 +2492,15 @@ function func_vs19
 {
     func_wine_msxml3
     #func_msxml3
-    func_vcrun2019
+    #func_vcrun2019
     #func_xmllite
     #func_cmd
     func_wine_advapi32
     #func_wine_combase
     func_wine_shell32
-
+    #func_wine_wintypes
+    func_winmetadata
+    
     winecfg /v win7
 
     (New-Object System.Net.WebClient).DownloadFile('https://aka.ms/vs/16/release/vs_community.exe', "$env:TMP\\vs_Community.exe") <#  https://download.visualstudio.microsoft.com/download/pr/1d66edfe-3c83-476b-bf05-e8901c62ba7f/ef3e389f222335676581eddbe7ddec01147969c1d42e19b9dade815c3c0f04b1/vs_Community.exe #>
@@ -2558,6 +2555,9 @@ function func_vs19
     if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides'}
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'advapi32' -Value 'native' -PropertyType 'String' -force
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'shell32' -Value 'native' -PropertyType 'String' -force
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'concrt140' -Value 'native' -PropertyType 'String' -force
+
+
 #    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.13 ) {
 #        New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'combase' -Value 'native' -PropertyType 'String' -force }
 
@@ -2661,8 +2661,8 @@ function func_vs22_interactive_installer
     func_wine_advapi32
     func_wine_combase
     func_wine_shell32
-    func_wine_wintypes
-    func_winmetadata2
+    #func_wine_wintypes
+    func_winmetadata
 
     winecfg /v win10
 
@@ -2739,6 +2739,12 @@ function func_vs22_interactive_installer
 
 function func_office365
 {
+if(!($ntdll::wine_get_build_id() |Select-string 'Tkg Staging')) {
+        Add-Type -AssemblyName System.Windows.Forms
+        $result = [System.Windows.Forms.MessageBox]::Show("This verb only works in Wine Tkg Staging releases like you can find here:`n https://github.com/Kron4ek/Wine-Builds/releases/`ndownload/9.18/wine-9.18-staging-tkg-amd64.tar.xz.`n
+After untar in for example /tmp you can run like`n /tmp/wine-9.18-staging-tkg-amd64/bin/wine conemu64, and try this verb again" , "Info" , 0)
+        return
+}
 winecfg /v win10
 func_msxml6
 func_riched20
@@ -2800,6 +2806,19 @@ function func_git.portable
                 
  	Write-Host -foregroundcolor yellow 'Do "refreshenv" to add several unix commands to current session!'
     }
+}
+
+function func_itunes
+{
+   func_wine_d2d1
+   func_wine_msi
+   choco install itunes #--version 12.12.4.1 --ignore-checksums
+}
+
+function func_nodejs
+{
+   func_wine_msi
+   choco install nodejs
 }
 
 function func_cef
@@ -4427,7 +4446,7 @@ function func_webview2
 {
 foreach($i in 'wldp') { dlloverride 'disabled' $i }
 winecfg /v win7
-choco install webview2-runtime
+choco install webview2-runtime --version 109.0.1518.69 --ignore-checksums
 foreach($i in 'wldp') { dlloverride 'builtin' $i }
 }
 
@@ -4443,6 +4462,27 @@ REGEDIT4
 "@ | Out-File -FilePath $env:TEMP\\regkey.reg
     reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:64;
     reg.exe  IMPORT  $env:TEMP\\regkey.reg /reg:32;
+}
+
+function func_GE-proton{
+
+w_download_to "$cachedir\\$(verb)" "https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton9-13/GE-Proton9-13.tar.gz" "GE-Proton9-13.tar.gz"
+7z x "$cachedir\\$(verb)\\GE-Proton9-13.tar.gz" -so |7z x -aoa -si -ttar -o"$env:TMP" "GE-Proton9-13/files/lib/wine" "GE-Proton9-13/files/lib64/wine"  "GE-Proton9-13/files/lib/vkd3d" "GE-Proton9-13/files/lib64/vkd3d"  
+
+#foreach($i in 'd3d12','' )
+
+Copy-item "$env:TMP\\GE-Proton9-13/files/lib64/vkd3d/*" "$env:systemroot/system32/" -force
+Copy-item "$env:TMP\\GE-Proton9-13/files/lib/vkd3d/*" "$env:systemroot/syswow64/" -force
+
+
+Copy-item "$env:TMP\\GE-Proton9-13/files/lib64/wine/vkd3d-proton/*" "$env:systemroot/system32/" -force
+Copy-item "$env:TMP\\GE-Proton9-13/files/lib/wine/vkd3d-proton/*" "$env:systemroot/syswow64/" -force
+
+Copy-item "$env:TMP\\GE-Proton9-13/files/lib64/wine/dxvk/*" "$env:systemroot/system32/" -force
+Copy-item "$env:TMP\\GE-Proton9-13/files/lib/wine/dxvk/*" "$env:systemroot/syswow64/" -force
+
+Copy-item "$env:TMP\\GE-Proton9-13/files/lib64/wine/nvapi/*" "$env:systemroot/system32/" -force
+Copy-item "$env:TMP\\GE-Proton9-13/files/lib/wine/nvapi/*" "$env:systemroot/syswow64/" -force
 }
 
 function func_mspaint
@@ -4489,7 +4529,7 @@ function func_chocolatey_upgrade
 <# Main function #> 
 if ( $args[0] -eq "no_args") {
     $custom_array = @()
-    for ( $j = 1; $j -lt $args.count; $j+=2 ) { $custom_array += [PSCustomObject]@{ name = $args[$j]; Description = $args[$j+1] } } 
-    $args =  $($custom_array  | select name,description | Out-GridView  -PassThru  -Title 'Make a  selection').name
+    for ( $j = 1; $j -lt $args.count; $j+=3 ) { $custom_array += [PSCustomObject]@{ category = $args[$j] ;name = $args[$j+1]; Description = $args[$j+2] } } 
+    $args =  $($custom_array  | select category,name,description | Out-GridView  -PassThru  -Title 'Make a  selection').name
 }
 foreach ($i in $args) { & $('func_' + $i); }
