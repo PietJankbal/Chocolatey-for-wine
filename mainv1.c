@@ -11,7 +11,7 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  * 
- * To make dummy program handle redirected input, insert after line 49:   FILE_FS_DEVICE_INFORMATION info;IO_STATUS_BLOCK io;HANDLE input=GetStdHandle(STD_INPUT_HANDLE);\
+ * To make dummy program handle redirected input, insert after line 51:   FILE_FS_DEVICE_INFORMATION info;IO_STATUS_BLOCK io;HANDLE input=GetStdHandle(STD_INPUT_HANDLE);\
  * NtQueryVolumeInformationFile(input,&io,&info,sizeof(info),FileFsDeviceInformation );if(info.DeviceType==17||info.DeviceType==8){wcscat(cl, L" ");while(fgetws(cl+wcslen(cl),4096,stdin)!=NULL)continue;SetEnvironmentVariableW(L"QPRCMDLINE",cl+17);}
  * Build: For fun I changed code from standard main(argc,*argv[]) to something like https://nullprogram.com/blog/2016/01/31/ and https://scorpiosoftware.net/2023/03/16/minimal-executables/)
  * x86_64-w64-mingw32-gcc -Os -fomit-frame-pointer -fno-asynchronous-unwind-tables -municode -Wall -Wextra -mno-stack-arg-probe -finline-limit=0 -Wl,-gc-sections -Xlinker --stack=0x100000,0x100000 mainv1.c -nostdlib -lucrtbase -lkernel32 -lntdll -s -o powershell64.exe && strip -R .reloc powershell64.exe
