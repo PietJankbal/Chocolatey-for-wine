@@ -1,23 +1,23 @@
 /* Wraps cmdline into correct syntax for pwsh.exe + code allowing calls to an exe (like wusa.exe) to be replaced by a function in profile.ps1
  *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
+ * This library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either 
  * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
+ * 
+ * This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU  Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Build: // For fun I changed code from standard main(argc,*argv[]) to something like https://nullprogram.com/blog/2016/01/31/ and https://scorpiosoftware.net/2023/03/16/minimal-executables/)
- * x86_64-w64-mingw32-gcc -Os -fomit-frame-pointer -fno-asynchronous-unwind-tables -municode -Wall -Wextra -mno-stack-arg-probe -finline-limit=0 -Wl,-gc-sections -Xlinker --stack=0x100000,0x100000 mainv1.c -nostdlib -lucrtbase -lkernel32 -s -o powershell64.exe && strip -R .reloc powershell64.exe 
-   i686-w64-mingw32-gcc -Os -fomit-frame-pointer -fno-asynchronous-unwind-tables -mno-stack-arg-probe -municode -Wall -Wextra -mno-stack-arg-probe -finline-limit=0 -Wl,-gc-sections -Xlinker --stack=0x100000,0x100000 mainv1.c -nostdlib -lucrtbase -lkernel32 -s -o powershell32.exe && strip -R .reloc  powershell32.exe
+ * 
+ * To make dummy program handle redirected input, insert after line 49:   FILE_FS_DEVICE_INFORMATION info;IO_STATUS_BLOCK io;HANDLE input=GetStdHandle(STD_INPUT_HANDLE);\
+ * NtQueryVolumeInformationFile(input,&io,&info,sizeof(info),FileFsDeviceInformation );if(info.DeviceType==17||info.DeviceType==8){wcscat(cl, L" ");while(fgetws(cl+wcslen(cl),4096,stdin)!=NULL)continue;SetEnvironmentVariableW(L"QPRCMDLINE",cl+17);}
+ * Build: For fun I changed code from standard main(argc,*argv[]) to something like https://nullprogram.com/blog/2016/01/31/ and https://scorpiosoftware.net/2023/03/16/minimal-executables/)
+ * x86_64-w64-mingw32-gcc -Os -fomit-frame-pointer -fno-asynchronous-unwind-tables -municode -Wall -Wextra -mno-stack-arg-probe -finline-limit=0 -Wl,-gc-sections -Xlinker --stack=0x100000,0x100000 mainv1.c -nostdlib -lucrtbase -lkernel32 -lntdll -s -o powershell64.exe && strip -R .reloc powershell64.exe
+   i686-w64-mingw32-gcc -Os -fomit-frame-pointer -fno-asynchronous-unwind-tables -mno-stack-arg-probe -municode -Wall -Wextra -mno-stack-arg-probe -finline-limit=0 -Wl,-gc-sections -Xlinker --stack=0x100000,0x100000 mainv1.c -nostdlib -lucrtbase -lkernel32 -lntdll -s -o powershell32.exe && strip -R .reloc  powershell32.exe
  */
+ 
 #include <wchar.h>
 #include <windows.h>
 #include <winternl.h>
