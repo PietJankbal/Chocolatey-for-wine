@@ -57,7 +57,7 @@ int mainCRTStartup(PPEB peb) {
     } else {
         token = (cmd ? wcstok_s(cmd, L" ", &ptr) : 0); /* Start breaking up cmdline to look for options */
 
-        /* Main program: pwsh requires a command option "-c" , powershell doesn`t;  insert it e.g. 'powershell -nologo 2+1' should go into 'powershell -nologo -c 2+1'*/
+        /* Main program: pwsh requires a command option "-c" , powershell doesn`t;  insert it e.g. 'powershell -nologo 2+1' should go into 'pwsh -nologo -c 2+1'*/
         while (token) {                                /* Break up cmdline manually (as CommandLineToArgVW seems to remove some (double) qoutes) */
             if (token[0] == L'/') token[0] = L'-';     /* deprecated '/' still works in powershell 5.1, replace to simplify code */
 
