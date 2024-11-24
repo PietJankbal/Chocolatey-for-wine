@@ -9,8 +9,6 @@ Install :
 Optional:
 - Check if things went well: "choco install chromium" and  "start chrome.exe (--no-sandbox not needed anymore as of wine-8,4)" 
   
-  Or if you like to install via GUI: "choco install ChocolateyGUI" and "start chocolateygui.exe"
-  
 Optional:
 
 - Run the installer like 'SAVEINSTALLFILES=1 wine ChoCinstaller_0.5c.745.exe' , then the install files (like Powershell*.msi and dotnet48) are saved in 
