@@ -3,7 +3,7 @@
 #  Miscellaneous registry keys, a few from mscoree manifest so we can skip dotnet40 install                       #
 #                                                                                                                 #
 ###################################################################################################################
-$misc_reg = @'
+@'
 REGEDIT4
 
 [HKEY_CURRENT_USER\Software\Wine\DllOverrides]
@@ -30,7 +30,7 @@ REGEDIT4
 
 [HKEY_CURRENT_USER\Software\Wine\AppDefaults\conemu64.exe\DllOverrides]
 "dwmapi"=""
-"user32"="native"
+"user32"="native, builtin"
 
 [HKEY_CURRENT_USER\Software\Wine\AppDefaults\pwsh.exe]
 
@@ -87,7 +87,7 @@ REGEDIT4
 [HKEY_CURRENT_USER\Software\Wine\Debug]
 "RelayExclude"="user32.CharNextA;KERNEL32.GetProcessHeap;KERNEL32.GetCurrentThreadId;KERNEL32.TlsGetValue;KERNEL32.GetCurrentThreadId;KERNEL32.TlsSetValue;ntdll.RtlEncodePointer;ntdll.RtlDecodePointer;ntdll.RtlEnterCriticalSection;ntdll.RtlLeaveCriticalSection;kernel32.94;kernel32.95;kernel32.96;kernel32.97;kernel32.98;KERNEL32.TlsGetValue;KERNEL32.FlsGetValue;ntdll.RtlFreeHeap;ntdll.RtlAllocateHeap;KERNEL32.InterlockedDecrement;KERNEL32.InterlockedCompareExchange;ntdll.RtlTryEnterCriticalSection;KERNEL32.InitializeCriticalSection;ntdll.RtlDeleteCriticalSection;KERNEL32.InterlockedExchange;KERNEL32.InterlockedIncrement;KERNEL32.LocalFree;Kernel32.LocalAlloc;ntdll.RtlReAllocateHeap;KERNEL32.VirtualAlloc;Kernel32.VirtualFree;Kernel32.HeapFree;KERNEL32.QueryPerformanceCounter;KERNEL32.QueryThreadCycleTime;ntdll.RtlFreeHeap;ntdll.memmove;ntdll.memcmp;KERNEL32.GetTickCount;kernelbase.InitializeCriticalSectionEx;ntdll.RtlInitializeCriticalSectionEx;ntdll.RtlInitializeCriticalSection;kernelbase.FlsGetValue"
 "RelayFromExclude"="winex11.drv;user32;gdi32;advapi32;kernel32"
-'@
+'@ | Out-File $env:TEMP\\misc.reg
 
 <# FIXME these keys are different from regular winetricks dotnet48 install????
 [HKEY_CLASSES_ROOT\CLSID\{E5CB7A31-7512-11D2-89CE-0080C792E5D8}]
@@ -101,29 +101,27 @@ REGEDIT4
 #  profile.ps1: Put workarounds/hacks here. It goes into c:\\Program Files\\Powershell\\7\\profile.ps1            #
 #                                                                                                                 #
 ###################################################################################################################
-$profile_ps1 = @'
+@'
 #Put workarounds/hacks here.../Adjust to your own needs. It goes into c:\\Program Files\\Powershell\\7\\profile.ps1
 
 $host.ui.RawUI.WindowTitle = 'This is Powershell Core (pwsh.exe), not (!) powershell.exe'
 
-$profile = '$env:ProgramFiles\PowerShell\7\profile.ps1'
+$profile = "$env:ProgramFiles\PowerShell\7\profile.ps1"
 
 . "$env:ProgramData\\Chocolatey-for-wine\\profile_essentials.ps1"
-. "$env:ProgramData\\Chocolatey-for-wine\\profile_winetricks_caller.ps1"
 . "$env:ProgramData\\Chocolatey-for-wine\\profile_miscellaneous.ps1"
-'@
+
+'@ | Out-File ( New-Item -Path $(Join-Path $(Split-Path -Path (Get-Process -Id $pid).Path) "profile.ps1") -Force)<# Write profile.ps1 to Powershell directory #>
 ################################################################################################################################ 
 #                                                                                                                              #
-#  profile_essentials_ps1.ps1                   #
+#  profile_essentials_ps1: essential functions/settings for Chocolatey-for-wine to work properly                               #
 #                                                                                                                              #
 ################################################################################################################################   
-$profile_essentials_ps1 = @'
+@'
 <# This contains essential functions/settings for Chocolatey-for-wine to work properly, do not remove or change #>
-
-cd c:\  <# Somehow this seems to be needed to let CreateSymbolicLinkW Stagings work, no idea why...#>
+cd c:\; 
 
 $env:DXVK_CONFIG_FILE=("$env:WINECONFIGDIR" + "\" + "drive_c" + "\" + ($env:ProgramData |split-path -leaf) + "\" + "dxvk.conf").substring(6) -replace "\\","/"
-$env:POWERSHELL_UPDATECHECK=0
 
 # Enable Chocolatey profile
 $ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
@@ -131,166 +129,86 @@ if (Test-Path($ChocolateyProfile)) {
     Import-Module "$ChocolateyProfile"
 }
 
-<# check wine-version, hack is only compatible with recent wine versions #>
-$MethodDefinition = @" 
-[DllImport("ntdll.dll", CharSet = CharSet.Ansi)] public static extern string wine_get_version();
-[DllImport("ntdll.dll", CharSet = CharSet.Ansi)] public static extern string wine_get_build_id();
+<# if powershell is started without args let's start conemu, but not if redirected or from pipe ( like 'powershell < a.ps1'  or '"echo hello" | powershell') #>
+$MethodDefinition = @"
+    public enum  FSINFOCLASS
+        {
+            FileFsDeviceInformation = 4,
+        }
+
+    //https://stackoverflow.com/questions/69192954/how-to-add-and-use-a-c-sharp-struct-in-powershell
+    [StructLayout(LayoutKind.Sequential, Pack = 0)]
+     public struct FILE_FS_DEVICE_INFORMATION {
+         public uint DeviceType;
+         public ulong Characteristics;
+         // construct ahead 
+         public FILE_FS_DEVICE_INFORMATION(uint dev, ulong chr) {
+             this.DeviceType = dev;
+             this.Characteristics = chr; 
+        }
+    }       
+
+     [StructLayout(LayoutKind.Sequential, Pack = 0)]
+     public struct IO_STATUS_BLOCK {
+         public uint status;
+         public IntPtr information;
+         // construct ahead
+         public IO_STATUS_BLOCK(uint stat, IntPtr inf) {
+             this.status = stat;
+             this.information = inf;
+         }
+     }
+
+    [DllImport("ntdll.dll",  SetLastError=true)] public static extern long NtQueryVolumeInformationFile(IntPtr FileHandle,  ref IO_STATUS_BLOCK IoStatusBlock,ref FILE_FS_DEVICE_INFORMATION FsInformation, UInt32 Length, FSINFOCLASS FsInformationClass);
+    [DllImport("ntdll.dll", CharSet = CharSet.Ansi)] public static extern string wine_get_version();
+    [DllImport("ntdll.dll", CharSet = CharSet.Ansi)] public static extern string wine_get_build_id();
 "@
-$ntdll = Add-Type -MemberDefinition $MethodDefinition -Name 'ntdll' -PassThru
 
-if($env:FirstRun -eq '2') {
-    Write-Host Installed Software: ; Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Format-Table ; [Environment]::SetEnvironmentVariable("FirstRun",$null)
+$ntdll = Add-Type -MemberDefinition $MethodDefinition -Namespace '' -name 'ntdll' -PassThru
+
+$MethodDefinition2 = @" 
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] public static extern string GetCommandLineW();
+    [DllImport("kernel32.dll", SetLastError = true)] public static extern IntPtr GetStdHandle(int nStdHandle);
+"@
+
+$kernel32 = Add-Type -MemberDefinition $MethodDefinition2 -Namespace '' -Name 'kernel32' -PassThru    
+
+$h=[kernel32]::GetStdHandle(-10) <# (DWORD)-10 is STD_INPUT_HANDLE #>
+
+$io = [ntdll+IO_STATUS_BLOCK]::new(0,0)
+$info =[ntdll+FILE_FS_DEVICE_INFORMATION]::new(0,0)
+
+$null=[ntdll]::NtQueryVolumeInformationFile($h,[ref]$io,[ref]$info,[System.Runtime.InteropServices.Marshal]::SizeOf($info),[ntdll+FSINFOCLASS]::FileFsDeviceInformation.value__ )
+
+$parent = [System.Diagnostics.Process]::GetCurrentProcess().Parent
+
+if(($parent.processname -eq 'powershell') -and  ( $kernel32::GetCommandLineW() -eq """$env:ProgramFiles\Powershell\7\pwsh.exe""") -and  ($info.DeviceType -eq 80) ) {
+    Start-Process conemu64 |Out-Null
+    #Stop-process -id $parent.Id
+    Stop-process -id  ([System.Diagnostics.Process]::GetCurrentProcess()).Id
+}  <# end start ConEmu #>
+
+if($([System.Diagnostics.Process]::GetCurrentProcess().Parent.processname) -eq 'ConEmuC64' ) {Write-Host "";Write-Host -Foregroundcolor yellow Running Power Shell Core $PSVersionTable.PSVersion.ToString() on ([ntdll]::wine_get_build_id()); Write-Host "";[system.console]::ForegroundColor='white'}
+if((Test-Path -Path "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache\\FirstRun")) {
+    Write-Host Installed Software: ; Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Format-Table ;
+    Remove-Item "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache\\FirstRun" -force
 }
-if($env:FirstRun -eq '1') { $env:FirstRun=2 }
-
-if($([System.Diagnostics.Process]::GetCurrentProcess().Parent.processname) -eq 'ConEmuC64' ) {Write-Host -Foregroundcolor yellow Running Power Shell Core $PSVersionTable.PSVersion.ToString() on $ntdll::wine_get_build_id(); Write-Host ""}
 
 <# if wineprefix is updated by running another wine version we have to update the hack for ConEmu bug https://bugs.winehq.org/show_bug.cgi?id=48761 #>
 if( !( (Get-FileHash C:\windows\system32\user32.dll).Hash -eq (Get-FileHash C:\windows\system32\user32dummy.dll).Hash) ) {
     Copy-Item $env:SystemRoot\\system32\\user32.dll $env:SystemRoot\\system32\\user32dummy.dll -force -erroraction silentlycontinue
 }
 
-if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) )  -lt 7.16 ){ <# hack incompatible for older wine versions#>
-    $null = New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ConEmu64.exe\\DllOverrides' -force -Name 'user32' -Value 'builtin' -PropertyType 'String'}
-else {
-     $null = New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ConEmu64.exe\\DllOverrides' -force -Name 'user32' -Value 'native,builtin' -PropertyType 'String'}
-<# end update ConEmu hack #>
+#Easy access to the C# compiler
+Set-Alias csc c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
 
 Set-Alias gwmi Get-WmiObject
 Set-Alias Get-CIMInstance Get-CIMInstance_replacement
-'@
 
-@'
-Function Get-WmiObject([parameter(mandatory=$true, position = 0, parametersetname = 'class')] [string]$class, `
-                       [parameter( position = 1, parametersetname = 'class')][string[]]$property="*", `
-                       [string]$computername = "localhost", [string]$namespace = "root\cimv2", `
-                       [string]$filter, [parameter(parametersetname = 'query')] [string]$query)
-{   <# Do not remove or change, it will break Chocolatey #>
-    if(!$query) {    
-        $query = "SELECT " +  $($property | Join-String -Separator ",") + " FROM " + $class + (($filter) ? (' where ' + $filter ) : ('')) }
-
-    $searcher = [wmisearcher]$query
-
-    $searcher.scope.path = "\\" + $computername + "\" + $namespace
-
-    return [System.Management.ManagementObjectCollection]$searcher.get()
-}
-'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\Get-WmiObject\Get-WmiObject.psm1 -Force )
-
-@'
-Function Get-CIMInstance_replacement ( [parameter(mandatory)] [string]$classname, [string[]]$property="*", [string]$filter)
-{
-     Get-WMIObject $classname -property $property -filter $filter
-}
-'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\Get-CIMInstance_replacement\Get-CIMInstance_replacement.psm1 -Force )
-
-@'
-function QPR.wusa { <# wusa.exe replacement, Query program replacement for wusa.exe; Do not remove or change, it will break Chocolatey #>
-     Write-Host "This is wusa dummy doing nothing..."
-     exit 0;
-}
-'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.wusa\QPR.wusa.psm1 -Force )
-################################################################################################################################ 
-#                                                                                                                              #
-#  profile_winetricks_caller.ps1                   #
-#                                                                                                                              #
-################################################################################################################################   
-$profile_winetricks_caller_ps1 = @'
-<# Because this function might be updated/changed more frequently, it has been put in a seperate file #>
-
-<# To support auto-tabcompletion only a comma seperated is supported from now on when calling winetricks with multiple arguments, e.g. 'winetricks gdiplus,riched20' #>
-
-[array]$Qenu = "apps","git.portable","Access to several unix-commands like tar, file, sed etc. etc.",
-#              "apps","itunes","itunes, with fixed black GUI",
-               "apps","nodejs","install node.js (a workaround for failing installer)",
-               "apps","office365","(only works in wine tkg)/Microsoft Office365HomePremium (registering does not work, many glitches...)",
-               "apps","use_chromium_as_browser", "replace winebrowser with chrome to open webpages",
-               "apps","vs19", "Visual Studio 2019",
-               "apps","vs22", "Visual Studio 2022",
-               "apps","vs22_interactive_installer", "vs22_interactive_installer",
-               "apps","vulkansamples", "51 vulkan samples to test if your vulkan works, do shift-ctrl^c if you wanna leave earlier ;)",
-               "apps","webview2", "Microsoft Edge WebView2",
-               "dlls","bitstransfer", "Add Bitstransfer cmdlets to Powershell 5.1",`            
-               "dlls","cmd","cmd.exe",` 
-               "dlls","comctl32", "dangerzone, might break things, can only be set on a per app base",
-               "dlls","crypt32", "experimental, dangerzone, will likely break things, only use on a per app base (crypt32.dll, msasn1.dll)",`
-               "dlls","d2d1", "dangerzone, only for testing, might break things, only use on a per app base (d2d1.dll)",`
-               "dlls","d3dx", "d3x9*, d3dx10*, d3dx11*, xactengine*, xapofx* x3daudio*, xinput* and d3dcompiler*",
-               "dlls","dbghelp", "dbghelp.dll",` 
-               "dlls","dinput8", "dinput8.dll",`
-               "dlls","directmusic", "directmusic ddls: dmusic.dll, dmband.dll, dmime.dll, dmloader.dll, dmscript.dll, dmstyle.dll, dmsynth.dll, dsound.dll, dswave.dll",
-               "dlls","dotnet35", "dotnet35",
-               "dlls","dotnet481", "experimental dotnet481 install (includes System.Runtime.WindowsRuntime.dll)",
-               "dlls","dshow", "directshow dlls: amstream.dll,qasf.dll,qcap.dll,qdvd.dll,qedit.dll,quartz.dll",
-               "dlls","dxvk1103", "dxvk 1.10.3, latest compatible with Kepler (Nvidia GT 470) ??? )",`
-               "dlls","dxvk20", "dxvk 2.0",`
-               "dlls","expand", "native expand.exe, it's renamed to expnd_.exe to not interfere with wine's expand",`
-               "dlls","findstr", "findstr.exe",
-               "dlls","gdiplus","GDI+ (gdiplus.dll)",`
-               "dlls","mfc42","mfc42.dll, mfc43u.dll",`
-               "dlls","msado15","MDAC and Jet40: some minimal mdac dlls (msado15.dll, oledb32.dll, dao360.dll)",`
-               "dlls","msdelta", "msdelta.dll",`
-               "dlls","mshtml", "experimental, dangerzone, might break things, only use on a per app base;ie8 dlls: mshtml.dll, ieframe.dll, urlmon.dll, jscript.dll, wininet.dll, shlwapi.dll, iertutil.dll",`
-               "dlls","msvbvm60", "msvbvm60.dll",`
-               "dlls","msxml3","msxml3.dll",`
-               "dlls","msxml6","msxml6.dll",`
-               "dlls","oleaut32","native oleaut32, (dangerzone) can only be set on a per app base",
-               "dlls","ps51_ise", "PowerShell 5.1 Integrated Scripting Environment",`
-               "dlls","ps51", "rudimentary PowerShell 5.1 (downloads yet another huge amount of Mb`s!)",`
-               "dlls","riched20","riched20.dll, msls31.dll",`
-               "dlls","sapi", "Speech api (sapi.dll), experimental, makes Balabolka work",`
-               "dlls","sspicli", "dangerzone, only for testing, might break things, only use on a per app base (sspicli.dll)",
-               "dlls","uianimation", "uianimation.dll",
-               "dlls","uiautomationcore", "uiautomationcore.dll",` 
-               "dlls","uiribbon", "uiribbon.dll",
-               "dlls","uxtheme", "uxtheme.dll",`
-               "dlls","vcrun2019", "vcredist2019 (concrt140.dll, msvcp140.dll, msvcp140_1.dll, msvcp140_2.dll, vcruntime140.dll, vcruntime140_1.dll, ucrtbase.dll)",`
-               "dlls","vcrun2022", "vcredist2022 (concrt140.dll, msvcp140.dll, msvcp140_1.dll, msvcp140_2.dll, vcruntime140.dll, vcruntime140_1.dll, ucrtbase.dll)",`
-               "dlls","windowscodecs", "windowscodecs.dll",`
-               "dlls","windows.ui.xaml", "windows.ui.xaml, experimental...",`
-               "dlls","winmetadata", "alternative for winmetadata, requires much less downloadtime",
-               "dlls","wmf", "some media foundation dlls",`
-               "dlls","wmiutils","wmiutils.dll",
-               "dlls","wmp", "some wmp (windows media player) dlls, makes e-Sword start",`
-               "dlls","wsh57", "MS Windows Script Host (vbscript.dll scrrun.dll msscript.ocx jscript.dll scrobj.dll wshom.ocx)",`
-               "dlls","xmllite", "xmllite.dll",`
-               "font","segoeui", "Segoeui fonts",
-               "font","lucida", "Lucida Console font",
-               "font","tahoma","Tahoma font",
-               "font","vista_fonts","Arial,Calibri,Cambria,Comic Sans,Consolas,Courier,Georgia,Impact,Lucida Sans Unicode,Symbol,Times New Roman,Trebuchet ,Verdana ,Webdings,Wingdings font",
-               "misc","access_winrt_from_powershell", "codesnippets from around the internet: howto use Windows Runtime classes in powershell; requires powershell 5.1, so 1st time usage may take very long time!!!",
-               "misc","cef", "codesnippets from around the internet: how to use cef / test cef",
-               "misc","chocolatey_upgrade","upgrade chocolatey to the latest (>v2.2), requires Powershell 5.1 so on first usage might take >15 minutes!",
-               "misc","embed-exe-in-psscript", "codesnippets from around the internet: samplescript howto embed and run an exe into a powershell-scripts (vkcube.exe); might trigger a viruswarning (!) but is really harmless",
-#              "misc","GE-Proton","Install bunch of dlls from GE-Proton",
-               "msic","Get-PEHeader", "codesnippets from around the internet: add Get-PEHeader to cmdlets, handy to explore dlls imports/exports",
-               "misc","glxgears", "test if your opengl in wine is working",
-               "misc","install_dll_from_msu","extract and install a dll/file from an msu file (installation in right place might or might not work ;) )",
-               "misc","ps2exe", "codesnippets from around the internet: convert a ps1-script into an executable; requires powershell 5.1, so 1st time usage may take very long time!!!",
-               "misc","sharpdx", "directX with powershell (spinning cube), test if your d3d11 works, further rather useless verb for now ;)",
-               "misc","vanara","vanara https://github.com/dahall/Vanara",
-               "misc","winrt_hacks","WIP, enable all included wine hacks for (hopefully) bit more winrt ",
-               "misc","wpf_msgbox", "codesnippets from around the internet: some fancy messageboxes (via wpf) in powershell",
-               "misc","wpf_routedevents", "codesnippets from around the internet: how to use wpf+xaml+routedevents in powershell",
-               "misc","wpf_xaml", "codesnippets from around the internet: how to use wpf+xaml in powershell",
-               "sets","app_paths", "start new shell with app paths added to the path (permanently), invoke from powershell console!",
-               "sets","nocrashdialog", "Disable graphical crash dialog",`
-               "sets","renderer=gl", "renderer=gl",`
-               "sets","renderer=vulkan", "renderer=vulkan",`
-               "wine","ping","semi-fake ping.exe (tcp isntead of ICMP) as the last requires special permissions",`
-               "wine","wine_advapi32", "wine advapi32 with a few hacks",
-               "wine","wine_combase", "wine combase with a few hacks",
-               "wine","wine_d2d1", "wine d2d1 with a few hacks",
-               "wine","wine_hnetcfg", "wine hnetcfg.dll with fix for https://bugs.winehq.org/show_bug.cgi?id=45432",`
-               "wine","wine_kernel32","rudimentary mui resource support (makes windows 7 games work)",
-               "wine","wine_msi", "if an msi installer fails, might wanna try this wine msi, just faking success for a few actions... Might also result in broken installation ;)",`
-               "wine","wine_msxml3", "wine msxml3 with a few hacks",
-               "wine","wine_wbemprox","hacky wmispoofer, spoof wmi values/add new classes, see c:\ProgramData\Chocolatey-for-wine\wmispoofer.ini for details",
-               "wine","wine_shell32", "wine shell32 with a few hacks",
-               "wine","wine_wintrust", "wine wintrust faking success for WinVerifyTrust",`
-               "wine","wine_wintypes", "wine wintypes.dll for for example Affinity"
+<# winetricks: to support auto-tabcompletion only a comma seperated is supported when calling winetricks with multiple arguments, e.g. 'winetricks gdiplus,riched20' #>
+[array]$Qenu = iex "$((Get-Content $env:ProgramData\\Chocolatey-for-wine\\winetricks.ps1 -Delimiter 'marker line!!!')[1])"
                
-#https://stackoverflow.com/questions/67356762/couldnt-use-predefined-array-inside-validateset-powershell$verblist =0
+<# https://stackoverflow.com/questions/67356762/couldnt-use-predefined-array-inside-validateset-powershell #>
 for ( $j = 0; $j -lt $Qenu.count; $j+=3) { [string[]]$verblist += $Qenu[$j+1] }
 
 function winetricks {
@@ -325,14 +243,13 @@ function winetricks {
      pwsh -nop -f <# . #> $([System.IO.Path]::Combine("$env:ProgramData","Chocolatey-for-wine", "winetricks.ps1")) "no_args" $Qenu 
   }
 }
-
-'@
+'@ | Out-File ( New-Item -Path $env:ProgramData\\Chocolatey-for-wine\\profile_essentials.ps1 -Force)
 ################################################################################################################################ 
 #                                                                                                                              #
-#  profile_miscellaneous.ps1                   #
+#  profile_miscellaneous.ps1: Stuff you might want to throw away / change                                                      #
 #                                                                                                                              #
 ################################################################################################################################   
-$profile_miscellaneous_ps1 = @'
+@'
 <# Stuff you might want to throw away / change ... #>
 
 #Remove ~/Documents/Powershell/Modules from modulepath; it becomes a mess because it`s not removed when one deletes the wineprefix... 
@@ -416,7 +333,6 @@ function Resolve-DnsName([string]$name) { <# https://askme4tech.com/how-resolve-
 
 #Set-Alias "QPR.findstr" "QPR.findstr.exe"; Set-Alias "findstr.exe" "QPR.findstr.exe"; Set-Alias "findstr" "QPR.findstr.exe"
 #function QPR.findstr.exe { <# findstr.exe replacement #>
-#
 #begin { $count = 0 
 #        $new = $env:QPRPIPE 
 #
@@ -446,15 +362,41 @@ function Resolve-DnsName([string]$name) { <# https://askme4tech.com/how-resolve-
 #}
 #}
 
-
-#Easy access to the C# compiler
-Set-Alias csc c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
-
 Set-Alias Get-ComputerInfo systeminfo.exe
-'@
+'@ | Out-File $env:ProgramData\\Chocolatey-for-wine\\profile_miscellaneous.ps1
 
 @'
+Function Get-WmiObject([parameter(mandatory=$true, position = 0, parametersetname = 'class')] [string]$class, `
+                       [parameter( position = 1, parametersetname = 'class')][string[]]$property="*", `
+                       [string]$computername = "localhost", [string]$namespace = "root\cimv2", `
+                       [string]$filter, [parameter(parametersetname = 'query')] [string]$query)
+{   <# Do not remove or change, it will break Chocolatey #>
+    if(!$query) {    
+        $query = "SELECT " +  $($property | Join-String -Separator ",") + " FROM " + $class + (($filter) ? (' where ' + $filter ) : ('')) }
 
+    $searcher = [wmisearcher]$query
+
+    $searcher.scope.path = "\\" + $computername + "\" + $namespace
+
+    return [System.Management.ManagementObjectCollection]$searcher.get()
+}
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\Get-WmiObject\Get-WmiObject.psm1 -Force )
+
+@'
+Function Get-CIMInstance_replacement ( [parameter(mandatory)] [string]$classname, [string[]]$property="*", [string]$filter)
+{
+     Get-WMIObject $classname -property $property -filter $filter
+}
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\Get-CIMInstance_replacement\Get-CIMInstance_replacement.psm1 -Force )
+
+@'
+function QPR.wusa { <# wusa.exe replacement, Query program replacement for wusa.exe; Do not remove or change, it will break Chocolatey #>
+     Write-Host "This is wusa dummy doing nothing..."
+     exit 0;
+}
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.wusa\QPR.wusa.psm1 -Force )
+
+@'
 function QPR.schtasks { <# schtasks.exe replacement #>
     $cmdline = $env:QPRCMDLINE #.SubString($env:QPRCMDLINE.IndexOf(" "), $env:QPRCMDLINE.Length - $env:QPRCMDLINE.IndexOf(" "))
 
@@ -528,39 +470,6 @@ function QPR.setx { <# setx.exe replacement #>
 .Description
 	This is the Cmdlet version of the code from the article http://edgylogic.com/blog/powershell-and-external-commands-done-right.
 	It can parse command-line arguments using Win32 API function CommandLineToArgvW . 
-
-.Parameter CommandLine
-	This parameter is optional.
-
-	A string representing the command-line to parse. If not specified, the command-line of the current PowerShell host is used.
-
-.Example
-	Split-CommandLine
-
-		Description
-		-----------
-		Get the command-line of the current PowerShell host, parse it and return arguments.
-
-.Example
-	Split-CommandLine -CommandLine '"c:\windows\notepad.exe" test.txt'
-
-		Description
-		-----------
-		Parse user-specified command-line and return arguments.
-
-.Example
-    '"c:\windows\notepad.exe" test.txt',  '%SystemRoot%\system32\svchost.exe -k LocalServiceNetworkRestricted' | Split-CommandLine
-
-		Description
-		-----------
-		Parse user-specified command-line from pipeline input and return arguments.
-
-.Example
-    Get-WmiObject Win32_Process -Filter "Name='notepad.exe'" | Split-CommandLine
-
-		Description
-		-----------
-		Parse user-specified command-line from property name of the pipeline object and return arguments.
 #>
 function CommandLineToArgvW
 {
@@ -663,15 +572,8 @@ function QPR_wmic { <# wmic replacement #>
     else { #handle e.g. wmic logicaldisk where "deviceid='C:'" get freespace or  wmic logicaldisk get size, freespace, caption
                                                            
         ([wmisearcher]$("SELECT " +  ($property -join ",") + " FROM " + $class + $where + $filter)).get() |ft ($property |sort) -autosize |Out-string -Stream | Select -skipindex (2)| ?{$_.trim() -ne ""}}
-} '@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.wmic\QPR.wmic.psm1 -Force )
-
-@'
-function QPR.ping
-{
-    $cmdline = $env:QPRCMDLINE #.SubString($env:QPRCMDLINE.IndexOf(" "), $env:QPRCMDLINE.Length - $env:QPRCMDLINE.IndexOf(" "))
-    iex  -Command ('QPR_ping' + $cmdline)
 }
-'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.ping\QPR.ping.psm1 -Force )
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.wmic\QPR.wmic.psm1 -Force )
 ################################################################################################################################ 
 #                                                                                                                              #
 #  Install dotnet48, ConEmu, Chocolatey, 7z, d3dcompiler_47 and a few extras (wine robocopy + wine taskschd)                   #
@@ -687,17 +589,14 @@ function QPR.ping
 
     iex "$(Join-Path "$env:TEMP" '7z2407-x64.exe') /S"; while(!(Test-Path -Path "$env:ProgramW6432\\7-zip\\7z.exe") ) {Sleep 0.25}
     New-Item -Path "$env:ProgramData" -Name "Chocolatey-for-wine" -ItemType "directory" -ErrorAction SilentlyContinue
-
-    if (!(Test-Path -Path "$env:WINEHOMEDIR\.cache\choc_install_files\net48\netfx_Full.mzz".substring(4) -PathType Leaf)) { <#fragile test#>
-
-    <# fragile test... If install files already present skip downloads. Run choc_installer once with 'SAVEINSTALLFILES=1' to cache downloads #>
-    if (!(Test-Path -Path "$env:WINEHOMEDIR\.cache\choc_install_files\ndp48-x86-x64-allos-enu.exe".substring(4) -PathType Leaf)) { <# First download/extract/install dotnet48 as job, this takes most time #>
-        (New-Object System.Net.WebClient).DownloadFile('https://download.visualstudio.microsoft.com/download/pr/7afca223-55d2-470a-8edc-6a1739ae3252/abd170b4b0ec15ad0222a809b761a036/ndp48-x86-x64-allos-enu.exe', $(Join-Path "$env:TEMP" 'ndp48-x86-x64-allos-enu.exe') ) }
-    else {
-        Copy-Item -Path "$env:WINEHOMEDIR\.cache\choc_install_files\ndp48-x86-x64-allos-enu.exe".substring(4) -Destination "$env:TEMP" -Force }
-    start-threadjob -throttle 2 -ScriptBlock {[System.Threading.Thread]::CurrentThread.Priority = 'Highest'; Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -ArgumentList  "x -x!*.cab -x!netfx_c* -x!netfx_e* -x!NetFx4* -ms190M $env:TEMP\\ndp48-x86-x64-allos-enu.exe -o$env:TEMP\\net48"} }
-    else { Copy-Item -Path "$env:WINEHOMEDIR\.cache\choc_install_files\net48".substring(4) -Destination "$env:TEMP" -recurse -Force }
-    start-threadjob -throttle 2 -ScriptBlock {  while(!(Test-Path -Path "$env:TEMP\net48\1025") ) {Sleep 0.25} ;[System.Threading.Thread]::CurrentThread.Priority = 'Highest'; &{ c:\\windows\\system32\\msiexec.exe  /i $env:TEMP\\net48\\netfx_Full_x64.msi EXTUI=1 /sfxlang:1033 /q /norestart} }
+    New-Item -Path "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache" -Name "FirstRun" -ItemType "directory" -force -ErrorAction SilentlyContinue
+    
+    if (!(Test-Path -Path "$env:WINEHOMEDIR\.cache\choc_install_files\v4.8.03761\netfx_Full.mzz".substring(4) -PathType Leaf)) { <#fragile test#>
+        <# First download/extract/install dotnet48 as job, this takes most time #>
+        (New-Object System.Net.WebClient).DownloadFile('https://download.visualstudio.microsoft.com/download/pr/7afca223-55d2-470a-8edc-6a1739ae3252/abd170b4b0ec15ad0222a809b761a036/ndp48-x86-x64-allos-enu.exe', $(Join-Path "$env:TEMP" 'ndp48-x86-x64-allos-enu.exe') )
+        start-threadjob -throttle 2 -ScriptBlock {[System.Threading.Thread]::CurrentThread.Priority = 'Highest'; Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -ArgumentList  "x -x!*.cab -x!netfx_c* -x!netfx_e* -x!NetFx4* -ms190M $env:TEMP\\ndp48-x86-x64-allos-enu.exe -o$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache\\v4.8.03761"} }
+    else { Copy-Item -Path "$env:WINEHOMEDIR\.cache\choc_install_files\v4.8.03761".substring(4) -Destination "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache" -recurse -Force }
+    start-threadjob -throttle 2 -ScriptBlock {  while(!(Test-Path -Path "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache\\v4.8.03761\\1025") ) {Sleep 0.25} ;[System.Threading.Thread]::CurrentThread.Priority = 'Highest'; &{ c:\\windows\\system32\\msiexec.exe /i $env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache\\v4.8.03761\\netfx_Full_x64.msi EXTUI=1  /sfxlang:1033 /q /norestart} }
 
     $url = @('http://download.windowsupdate.com/msdownload/update/software/crup/2010/06/windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', `
              'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47.dll', `
@@ -710,8 +609,6 @@ function QPR.ping
               (New-Object System.Net.WebClient).DownloadFile($i, $(Join-Path "$env:TEMP" $i.split('/')[-1]) ) }
          else {
              Copy-Item -Path "$env:WINEHOMEDIR\.cache\choc_install_files\$i.split('/')[-1]".substring(4) -Destination "$env:TEMP" -Force } }
-    <# Download ConEmu #> 
-    #(New-Object System.Net.WebClient).DownloadFile('', $(Join-Path "$env:TEMP" 'ConEmuPack.230724.7z') )
     <# we probably only need this from regular dotnet40 install (???) #>
     Start-Process wusa.exe -NoNewWindow -Wait -ArgumentList  "$env:TEMP\\windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu"
      
@@ -734,40 +631,35 @@ function QPR.ping
     New-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{DE293FDE-C181-46C0-8DCC-1F75EA35833D}" -Name "InstallDate" -Value "$(Get-Date -Format FileDate)" -PropertyType 'String' -force
     New-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{DE293FDE-C181-46C0-8DCC-1F75EA35833D}" -Name "Publisher" -Value "ConEmu-Maximus5" -PropertyType 'String' -force
  
-    $misc_reg | Out-File $env:TEMP\\misc.reg
-    $profile_ps1 | Out-File $env:TEMP\\profile.ps1
-    $profile_ps1 | Out-File $(Join-Path $(Split-Path -Path (Get-Process -Id $pid).Path) "profile.ps1") <# Write profile.ps1 to Powershell directory #>
-    $profile_winetricks_caller_ps1 | Out-File $env:ProgramData\\Chocolatey-for-wine\\profile_winetricks_caller.ps1
-    $profile_essentials_ps1 | Out-File $env:ProgramData\\Chocolatey-for-wine\\profile_essentials.ps1
-    $profile_miscellaneous_ps1 | Out-File $env:ProgramData\\Chocolatey-for-wine\\profile_miscellaneous.ps1
-
     <# Install Chocolatey #>
     $env:chocolateyVersion = '1.4.0'
 
     Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
     <# Import reg keys: keys from mscoree manifest files, tweaks to advertise compability with lower .Net versions, and set some native dlls #>
     Get-job |wait-job; 
-    Get-Process '7z' -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() } 
+    Get-Process '7z' -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
     reg.exe  IMPORT  $env:TMP\\misc.reg /reg:64
     reg.exe  IMPORT  $env:TMP\\misc.reg /reg:32 
     <# fix up the 'highlight selection'-hack for ConEmu #>
     Copy-Item -Path "$env:TMP\\user32.dll" -Destination "$env:Systemdrive\\ConEmu\\user32.dll" -Force
     Copy-Item $env:SystemRoot\\system32\\user32.dll $env:SystemRoot\\system32\\user32dummy.dll -force
+    Get-Process 'msiexec' -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
+    Remove-Item "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{92FB6C44-E685-45AD-9B20-CADF4CABA132} - 1033" -recurse -force
     <# do not use chocolatey's builtin powershell host #>
     cd c:\; c:\\ProgramData\\chocolatey\\choco.exe feature disable --name=powershellHost; winecfg /v win10
     c:\\ProgramData\\chocolatey\\choco.exe feature enable -n allowGlobalConfirmation <# to confirm automatically (no -y needed) #>
     choco pin add -n chocolatey
     $pathvar=[System.Environment]::GetEnvironmentVariable('PATH')
     [System.Environment]::SetEnvironmentVariable("PATH", $pathvar + ';C:\ConEmu','Machine')
+    [System.Environment]::SetEnvironmentVariable("POWERSHELL_UPDATECHECK", 'Off','Machine')
     # Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
     # choco install tccle -y; & "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tcc.exe" "$env:ProgramFiles\\JPSoft\\TCCLE14x64\\tccbatch.btm"; <># cmd.exe replacement #
-    $env:FirstRun=1
-    Start-Process "c:\conemu\conemu64" -ArgumentList " -NoUpdate -LoadRegistry -run %ProgramFiles%\\Powershell\\7\\pwsh.exe" #-NoNewWindow
+
+    Start-Process "c:\conemu\conemu64" -ArgumentList " -NoUpdate -LoadRegistry -run %ProgramFiles%\\Powershell\\7\\pwsh.exe"
 ################################################################################################################### 
 #  All code below is only for sending a single keystroke (ENTER) to ConEmu's annoying                             #
 #  fast configuration window to dismiss it...............                                                         #
 #  Based on https://github.com/nylyst/PowerShell/blob/master/Send-KeyPress.ps1 -> so credits to that author       #
-#  Could be replaced with [System.Windows.Forms.SendKeys]::SendWait("{ENTER}") if that one day works in wine...   #
 ###################################################################################################################
     <# add a C# class to access the WIN32 API SetForegroundWindow #>
     Add-Type @"
@@ -781,17 +673,17 @@ function QPR.ping
     }
 "@
     <# get the application and window handle and set it to foreground #>
-    $MethodDefinition = @"
+        $MethodDefinition = @"
     [DllImport("ntdll.dll", CharSet = CharSet.Ansi)] public static extern string wine_get_version();
 "@
-    $ntdll = Add-Type -MemberDefinition $MethodDefinition -Name 'ntdll' -PassThru
+    $ntdll = Add-Type -MemberDefinition $MethodDefinition -Namespace '' -Name 'ntdll' -PassThru
     
     while(!$p) {$p = Get-Process | Where-Object { $_.MainWindowTitle -Match "Conemu" }; Start-Sleep -Milliseconds 200}
     $h = $p[0].MainWindowHandle
     [void] [StartActivateProgramClass]::SetForegroundWindow($h)
     [void][System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms')
-    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) )  -gt 8.19 ){
-        [System.Windows.Forms.SendKeys]::SendWait("{ENTER}") 
+    if( [System.Convert]::ToDecimal( ([ntdll]::wine_get_version() -replace '-rc','' ) )  -gt 8.19 ){
+        [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
     } <# Dismiss ConEmu's fast configuration window by hitting enter #>
 ################################################################################################################### 
 #                                                                                                                 #
@@ -820,8 +712,9 @@ function QPR.ping
     <# Backup files if wanted #>
     if (Test-Path 'env:SAVEINSTALLFILES') { 
         New-Item -Path "$env:WINEHOMEDIR\.cache\".substring(4) -Name "choc_install_files" -ItemType "directory" -ErrorAction SilentlyContinue
-        foreach($i in 'net48', 'PowerShell-7.4.5-win-x64.msi', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2407-x64.exe', 'sevenzipextractor.1.0.17.nupkg', 'ConEmuPack.230724.7z') {
+        foreach($i in 'PowerShell-7.4.5-win-x64.msi', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2407-x64.exe', 'sevenzipextractor.1.0.17.nupkg', 'ConEmuPack.230724.7z') {
             Copy-Item -Path $env:TEMP\\$i -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4) -recurse -force }
+        Copy-Item -Path "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache\\v4.8.03761" -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4) -recurse -force
     }
     <# install wine robocopy and (custom) wine tasksch.dll #>
     Copy-Item -Path "$env:TMP\\robocopy64.exe" -Destination "$env:SystemRoot\\System32\\robocopy.exe" -Force
@@ -829,7 +722,7 @@ function QPR.ping
     Copy-Item -Path "$env:TMP\\64\\taskschd.dll" -Destination "$env:SystemRoot\\System32\\taskschd.dll" -Force
     Copy-Item -Path "$env:TMP\\32\\taskschd.dll" -Destination "$env:SystemRoot\\syswow64\\taskschd.dll" -Force
 
-    <# Replace some system programs by functions (in profile.ps1); This also makes wusa a dummy program: we don`t want windows updates and it doesn`t work anyway #>
+    <# Replace some system programs by functions; This also makes wusa a dummy program: we don`t want windows updates and it doesn`t work anyway #>
     ForEach ($file in "wusa","schtasks","getmac","setx","wbem\\wmic", "ie4uinit", "openfiles") {
         Move-Item -Path "$env:windir\\SysWOW64\\$($file + '.exe')" -Destination "$env:windir\\SysWOW64\\$($file + '.back.exe')" -Force -ErrorAction SilentlyContinue
         Move-Item -Path "$env:winsysdir\\$($file + '.exe')" -Destination "$env:winsysdir\\$($file + '.back.exe')" -Force -ErrorAction SilentlyContinue
@@ -839,15 +732,16 @@ function QPR.ping
     New-Item -Path "$env:Public" -Name "Downloads" -ItemType "directory" -ErrorAction SilentlyContinue
     <# a game launcher tried to open this key, i think it should be present (?) #>
     reg.exe COPY "HKLM\SYSTEM\CurrentControlSet" "HKLM\SYSTEM\ControlSet001" /s /f
-    <# dxvk (if installed) doesn't work well with WPF, add workaround from dxvk site  #>
+    <# clean up #>
+    Remove-Item "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache\\\\v4.8.03761" -force -recurse
 
+    <# dxvk (if installed) doesn't work well with WPF, add workaround from dxvk site  #>
 $dxvkconf = @"
 [pwsh.exe]
 d3d9.shaderModel = 1
 
 [ps51.exe]
 d3d9.shaderModel = 1
-"@
-    $dxvkconf | Out-File -FilePath $env:ProgramData\\dxvk.conf
+"@ | Out-File -FilePath $env:ProgramData\\dxvk.conf
 #    Start-Process $env:systemroot\Microsoft.NET\Framework64\v4.0.30319\ngen.exe -NoNewWindow -Wait -ArgumentList  "eqi"
 #    Start-Process $env:systemroot\Microsoft.NET\Framework\v4.0.30319\ngen.exe -NoNewWindow -Wait -ArgumentList "eqi"
