@@ -1,6 +1,6 @@
 # Chocolatey-for-wine
-Chocolatey packagemanager automatic installer in wine, handy to install quickly programs in wine (and subsequently find bugs in wine ;) ) 
-For some bugs workarounds are added like for Visual Studio Community 2022 and nodejs, see further on.
+Chocolatey packagemanager automatic installer in wine, handy to install quickly programs in wine (and subsequently find bugs in wine ;) )  
+For some bugs workarounds are added like for Visual Studio Community 2022 and nodejs, see further on.  
 To install Visual Studio Community 2022: do 'winetricks vs22_interactive_installer' to install something via the Visual Studio 2022 installer; 'winetricks vs22_interactive_installer' now got me in ten minutes into the main program (selected Desktop development with C++).
 
 Install :
