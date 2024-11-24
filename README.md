@@ -1,5 +1,6 @@
 # Chocolatey-for-wine
 Chocolatey packagemanager automatic installer in wine, handy to install quickly programs in wine (and subsequently find bugs in wine ;) ) For some bugs workarounds are added like for Visual Studio Community 2022 and nodejs, see further on.
+To install Visual Studio Community 2022: do 'winetricks vs22_interactive_installer' to install something via the Visual Studio 2022 installer; 'winetricks vs22_interactive_installer' now got me in ten minutes into the main program (selected Desktop development with C++).
 
 Install :
 - Download and unzip the release zip-file and do 'wine ChoCinstaller_0.5a.735.exe' (takes about a minute to complete)
@@ -8,13 +9,10 @@ Optional:
 - Check if things went well: "choco install chromium" and  "start chrome.exe (--no-sandbox not needed anymore as of wine-8,4)" 
   
   Or if you like to install via GUI: "choco install ChocolateyGUI" and "start chocolateygui.exe"
-
-### **IMPORTANT NOTE:** Do 'wine conemu64' to start the powerhell console in ConEmu.
-(If you do 'wine powershell' you end up in a console that is unreadable due to a wine bug)
   
 Optional:
 
-- Run the installer like 'SAVEINSTALLFILES=1 wine ChoCinstaller_0.5a.735.exe' , then the install files (like Powershell*.msi and dotnet48) are saved in 
+- Run the installer like 'SAVEINSTALLFILES=1 wine ChoCinstaller_0.5c.745.exe' , then the install files (like Powershell*.msi and dotnet48) are saved in 
   '$HOME/.cache/choc_install_files' and they don't need to be downloaded again if you create a new prefix)
 
 Optional:
