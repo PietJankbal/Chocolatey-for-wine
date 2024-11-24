@@ -1,9 +1,104 @@
 if("$env:WINETRICKXHOME") {$cachedir = "$env:WINETRICKXHOME"}
 else                      {$cachedir = ("$env:WINEHOMEDIR" + "\.cache\winetrickxs").substring(4)}
 
-$expand_exe = "$env:systemroot\system32\expnd\expand.exe"
+<#   winetricks verb list: insert new verbs in list below #>
 
-if (!(Test-Path -Path "$env:ProgramW6432\7-Zip\7z.exe" -PathType Leaf)) { choco install 7zip -y }
+<#  marker line: do not change this marker line!!!
+    "apps","git.portable","Access to several unix-commands like tar, file, sed etc. etc.",
+#   "apps","itunes","itunes, with fixed black GUI",
+#   "apps","mspaint","mspaint, inserting text does not work :(",
+    "apps","nodejs","install node.js (a workaround for failing installer)",
+    "apps","office365","(only works in wine tkg)/Microsoft Office365HomePremium (registering does not work, many glitches...)",
+    "apps","use_chromium_as_browser", "replace winebrowser with chrome to open webpages",
+    "apps","vs19", "Visual Studio 2019",
+    "apps","vs22", "Visual Studio 2022",
+    "apps","vs22_interactive_installer", "vs22_interactive_installer",
+    "apps","vulkansamples", "51 vulkan samples to test if your vulkan works, do shift-ctrl^c if you wanna leave earlier ;)",
+    "apps","webview2", "Microsoft Edge WebView2",
+    "dlls","bitstransfer", "Add Bitstransfer cmdlets to Powershell 5.1",     
+    "dlls","cmd","cmd.exe",
+    "dlls","comctl32", "dangerzone, might break things, can only be set on a per app base",
+    "dlls","crypt32", "experimental, dangerzone, will likely break things, only use on a per app base (crypt32.dll, msasn1.dll)",
+    "dlls","d2d1", "dangerzone, only for testing, might break things, only use on a per app base (d2d1.dll)",
+    "dlls","d3dx", "d3x9*, d3dx10*, d3dx11*, xactengine*, xapofx* x3daudio*, xinput* and d3dcompiler*",
+    "dlls","dbghelp", "dbghelp.dll",
+    "dlls","dinput8", "dinput8.dll",
+    "dlls","directmusic", "directmusic ddls: dmusic.dll, dmband.dll, dmime.dll, dmloader.dll, dmscript.dll, dmstyle.dll, dmsynth.dll, dsound.dll, dswave.dll",
+    "dlls","dotnet35", "dotnet35",
+    "dlls","dotnet481", "experimental dotnet481 install (includes System.Runtime.WindowsRuntime.dll)",
+    "dlls","dshow", "directshow dlls: amstream.dll,qasf.dll,qcap.dll,qdvd.dll,qedit.dll,quartz.dll",
+    "dlls","dxvk1103", "dxvk 1.10.3, latest compatible with Kepler (Nvidia GT 470) ??? )",
+    "dlls","dxvk20", "dxvk 2.0",
+    "dlls","expand", "native expand.exe, it's renamed to expnd_.exe to not interfere with wine's expand",
+    "dlls","findstr", "findstr.exe",
+    "dlls","gdiplus","GDI+ (gdiplus.dll)",
+    "dlls","ie8","ie8 dlls",
+    "dlls","mfc42","mfc42.dll, mfc43u.dll",
+    "dlls","msado15","MDAC and Jet40: some minimal mdac dlls (msado15.dll, oledb32.dll, dao360.dll)",
+    "dlls","msdelta", "msdelta.dll",
+    "dlls","mshtml", "experimental, dangerzone, might break things, only use on a per app base;ie8 dlls: mshtml.dll, ieframe.dll, urlmon.dll, jscript.dll, wininet.dll, shlwapi.dll, iertutil.dll",
+    "dlls","mspatcha", "mspatcha.dll",
+    "dlls","msvbvm60", "msvbvm60.dll",
+    "dlls","msxml3","msxml3.dll",
+    "dlls","msxml6","msxml6.dll",
+    "dlls","oleaut32","native oleaut32, (dangerzone) can only be set on a per app base",
+    "dlls","ps51_ise", "PowerShell 5.1 Integrated Scripting Environment",
+    "dlls","ps51", "rudimentary PowerShell 5.1 (downloads yet another huge amount of Mb`s!)",
+    "dlls","riched20","riched20.dll, msls31.dll",
+    "dlls","sapi", "Speech api (sapi.dll), experimental, makes Balabolka work",
+    "dlls","sspicli", "dangerzone, only for testing, might break things, only use on a per app base (sspicli.dll)",
+    "dlls","uianimation", "uianimation.dll",
+    "dlls","uiautomationcore", "uiautomationcore.dll",
+    "dlls","uiribbon", "uiribbon.dll",
+    "dlls","uxtheme", "uxtheme.dll",
+    "dlls","vcrun2019", "vcredist2019 (concrt140.dll, msvcp140.dll, msvcp140_1.dll, msvcp140_2.dll, vcruntime140.dll, vcruntime140_1.dll, ucrtbase.dll)",
+    "dlls","vcrun2022", "vcredist2022 (concrt140.dll, msvcp140.dll, msvcp140_1.dll, msvcp140_2.dll, vcruntime140.dll, vcruntime140_1.dll, ucrtbase.dll)",
+    "dlls","windowscodecs", "windowscodecs.dll",
+    "dlls","windows.ui.xaml", "windows.ui.xaml, experimental...",
+    "dlls","winmetadata", "alternative for winmetadata, requires much less downloadtime",
+    "dlls","wmf", "some media foundation dlls",
+    "dlls","wmiutils","wmiutils.dll",
+    "dlls","wmp", "some wmp (windows media player) dlls, makes e-Sword start",
+    "dlls","wsh57", "MS Windows Script Host (vbscript.dll scrrun.dll msscript.ocx jscript.dll scrobj.dll wshom.ocx)",
+    "dlls","xmllite", "xmllite.dll",
+    "font","segoeui", "Segoeui fonts",
+    "font","lucida", "Lucida Console font",
+    "font","tahoma","Tahoma font",
+    "font","vista_fonts","Arial,Calibri,Cambria,Comic Sans,Consolas,Courier,Georgia,Impact,Lucida Sans Unicode,Symbol,Times New Roman,Trebuchet ,Verdana ,Webdings,Wingdings font",
+    "misc","access_winrt_from_powershell", "codesnippets from around the internet: howto use Windows Runtime classes in powershell; requires powershell 5.1, so 1st time usage may take very long time!!!",
+    "misc","cef", "codesnippets from around the internet: how to use cef / test cef",
+    "misc","chocolatey_upgrade","upgrade chocolatey to the latest (>v2.2), requires Powershell 5.1 so on first usage might take >15 minutes!",
+    "misc","embed-exe-in-psscript", "codesnippets from around the internet: samplescript howto embed and run an exe into a powershell-scripts (vkcube.exe); might trigger a viruswarning (!) but is really harmless",
+#   "misc","GE-Proton","Install bunch of dlls from GE-Proton",
+    "msic","Get-PEHeader", "codesnippets from around the internet: add Get-PEHeader to cmdlets, handy to explore dlls imports/exports",
+    "misc","glxgears", "test if your opengl in wine is working",
+    "misc","install_dll_from_msu","extract and install a dll/file from an msu file (installation in right place might or might not work ;) )",
+    "misc","ps2exe", "codesnippets from around the internet: convert a ps1-script into an executable; requires powershell 5.1, so 1st time usage may take very long time!!!",
+    "misc","sharpdx", "directX with powershell (spinning cube), test if your d3d11 works, further rather useless verb for now ;)",
+    "misc","vanara","vanara https://github.com/dahall/Vanara",
+    "misc","winrt_hacks","WIP, enable all included wine hacks for (hopefully) bit more winrt ",
+    "misc","wpf_msgbox", "codesnippets from around the internet: some fancy messageboxes (via wpf) in powershell",
+    "misc","wpf_routedevents", "codesnippets from around the internet: how to use wpf+xaml+routedevents in powershell",
+    "misc","wpf_xaml", "codesnippets from around the internet: how to use wpf+xaml in powershell",
+    "sets","app_paths", "start new shell with app paths added to the path (permanently), invoke from powershell console!",
+    "sets","nocrashdialog", "Disable graphical crash dialog",
+    "sets","renderer=gl", "renderer=gl",
+    "sets","renderer=vulkan", "renderer=vulkan",
+    "wine","ping","semi-fake ping.exe (tcp isntead of ICMP) as the last requires special permissions",
+    "wine","wine_advapi32", "wine advapi32 with a few hacks",
+    "wine","wine_combase", "wine combase with a few hacks",
+    "wine","wine_d2d1", "wine d2d1 with a few hacks",
+    "wine","wine_hnetcfg", "wine hnetcfg.dll with fix for https://bugs.winehq.org/show_bug.cgi?id=45432",
+    "wine","wine_kernel32","rudimentary mui resource support (makes windows 7 games work)",
+    "wine","wine_msi", "if an msi installer fails, might wanna try this wine msi, just faking success for a few actions... Might also result in broken installation ;)",
+    "wine","wine_msxml3", "wine msxml3 with a few hacks",
+    "wine","wine_wbemprox","hacky wmispoofer, spoof wmi values/add new classes, see c:\ProgramData\Chocolatey-for-wine\wmispoofer.ini for details",
+    "wine","wine_shell32", "wine shell32 with a few hacks",
+    "wine","wine_wintrust", "wine wintrust faking success for WinVerifyTrust",
+    "wine","wine_wintypes", "wine wintypes.dll for for example Affinity"
+    marker line!!!: do not change this marker line #>
+
+$expand_exe = "$env:systemroot\system32\expnd\expand.exe"
 
 function quit?([string] $process)  <# wait for a process to quit #>
 {
@@ -194,6 +289,16 @@ function func_uiautomationcore
     foreach($i in 'uiautomationcore') { dlloverride 'native' $i }
 }  <# end uiautomationcore #>
 
+function func_mspatcha
+{
+    $dlls = @('mspatcha.dll'); check_aik_sanity;
+
+    foreach ($i in $dlls) {
+        7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
+        7z e "$cachedir\aik70\F1_WINPE.WIM" "-o$env:systemroot\syswow64" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z') 
+    foreach($i in 'mspatcha') { dlloverride 'native' $i }
+}  <# end mspatcha #>
+
 function func_xmllite
 {
     check_aik_sanity; $dldir = "aik70"
@@ -324,7 +429,6 @@ function func_msado15
 #    7z e $env:TEMP\\$dldir\\jetsetup.cab "-o$env:systemroot\\syswow64" msrd2x40.dll -aoa; quit?('7z')
 #    7z e $env:TEMP\\$dldir\\jetsetup.cab "-o$env:systemroot\\syswow64" msrd3x40.dll -aoa; quit?('7z')
 #    7z e $env:TEMP\\$dldir\\jetsetup.cab "-o$env:systemroot\\syswow64" msjet40.dll -aoa; quit?('7z')
-
 #    7z e $env:TEMP\\$dldir\\jetsetup.cab "-o$env:TEMP\\$dldir" dao360.dll -aoa;
     mkdir "${env:CommonProgramFiles`(x86`)}\\Microsoft Shared\\DAO" -erroraction silentlycontinue ;Move-Item "$env:systemroot\\syswow64\\dao360.dll" "${env:CommonProgramFiles`(x86`)}\\Microsoft Shared\\DAO\\dao360.dll" -force
 
@@ -521,7 +625,7 @@ function func_mshtml
         7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/System32/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])
         7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\syswow64" Windows/System32/$i -y | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])} quit?('7z')
 
-    foreach($i in 'mshtml', 'ieframe', 'urlmon', 'jscript', 'wininet', 'shlwapi') { dlloverride 'native' $i }
+    foreach($i in 'mshtml', 'ieframe', 'urlmon', 'jscript', 'iertutil', 'shlwapi') { dlloverride 'native' $i }
     foreach($i in 'msimtf') { dlloverride 'builtin' $i }
 
 <# Note: the 'back-tick+n's below is line-break when we write below stuff to file, saves space  #>
@@ -1093,6 +1197,126 @@ function func_winmetadata <# winmetadata alternative#>
 #    Remove-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -Name 'wintypes2' -erroraction silentlycontinue -force 
 } <# end winmetadata #>
 
+function func_ie8 <# ie8 #>
+{
+    w_download_to $(verb) "http://download.microsoft.com/download/7/5/4/754D6601-662D-4E39-9788-6F90D8E5C097/IE8-WindowsServer2003-x64-ENU.exe" "IE8-WindowsServer2003-x64-ENU.exe"
+
+  #  if(!(Test-Path "HKCU:\\Software\\Wine\\AppDefaults\\IE8-WindowsServer2003-x64-ENU.exe")) {New-Item  -Path "HKCU:\\Software\\Wine\\AppDefaults\\IE8-WindowsServer2003-x64-ENU.exe"}
+  #  New-ItemProperty -Path "HKCU:\\Software\\Wine\\AppDefaults\\IE8-WindowsServer2003-x64-ENU.exe" -Name 'Version' -Value 'win2003' -PropertyType 'String' -force
+  #  if(!(Test-Path "HKCU:\\Software\\Wine\\AppDefaults\\iesetup.exe")) {New-Item  -Path "HKCU:\\Software\\Wine\\AppDefaults\\iesetup.exe"}
+  #  New-ItemProperty -Path "HKCU:\\Software\\Wine\\AppDefaults\\iesetup.exe" -Name 'Version' -Value 'win2003' -PropertyType 'String' -force
+  #  if(!(Test-Path "HKCU:\\Software\\Wine\\AppDefaults\\iexplore.exe")) {New-Item  -Path "HKCU:\\Software\\Wine\\AppDefaults\\iexplore.exe"}
+  # New-ItemProperty -Path "HKCU:\\Software\\Wine\\AppDefaults\\iexplore.exe" -Name 'Version' -Value 'win2003' -PropertyType 'String' -force
+
+    winecfg /v win2003
+    
+    iexplore -unregserver 
+    
+    #for version check
+    foreach($i in 'iexplore.exe') { dlloverride 'native' $i }
+        foreach($i in 'updspapi') { dlloverride 'builtin' $i }
+        
+    # iexplore -unregserver needded???
+    # w_override_dlls builtin updspapi needded???
+
+
+ 
+#        foreach($i in "$env:SystemRoot\syswow64\iexplore.exe", "$env:SystemRoot\system32\iexplore.exe", "$env:ProgramFiles\Internet Explorer\iexplore.exe", "${env:ProgramFiles`(x86`)}\\Internet Explorer\\iexplore.exe")
+        foreach($i in  "$env:ProgramFiles\Internet Explorer\iexplore.exe")
+{
+        #https://stackoverflow.com/questions/73790902/replace-string-in-a-binary-clipboard-dump-from-onenote
+        # Read the file *as a byte array*.
+        $data = Get-Content -AsByteStream -ReadCount 0  "$i"
+        # Convert the array to a "hex string" in the form "nn-nn-nn-...",  where nn represents a two-digit hex representation of each byte,
+        # e.g. '41-42' for 0x41, 0x42, which, if interpreted as a single-byte encoding (ASCII), is 'AB'.
+        $dataAsHexString = [BitConverter]::ToString($data)
+        
+        # The installer seems to check FileVersionRaw which seems te be just before version strings in the binary; replace major version 9 with 7 -->
+        $searchAsHexString =   '09-00-25-40-B0-1F-00-00-09-00-25-40-B0-1F'
+        $replaceAsHexString =  '07-00-25-40-B0-1F-00-00-07-00-25-40-B0-1F'
+
+        # Perform the replacement.
+        $dataAsHexString = $dataAsHexString.Replace($searchAsHexString, $replaceAsHexString)
+        # Convert he modified "hex string" back to a byte[] array.
+        $modifiedData = [byte[]] ($dataAsHexString -split '-' -replace '^', '0x')
+        # Save the byte array back to the file.
+        Set-Content -AsByteStream "$i" -Value $modifiedData -verbose
+ }
+ 
+    # foreach($i in 'iexplore.exe') { dlloverride 'builtin' $i }
+        iex "$cachedir\$(verb)\IE8-WindowsServer2003-x64-ENU.exe /no-default /norestart  /passive /log:`"c:\\`"" # /forcerestart   /update-no #/quiet "
+
+        quit?('IE8-WindowsServer2003-x64-ENU'); quit?('iesetup');
+
+
+   Copy-Item "${env:ProgramFiles`(x86`)}\\Internet Explorer\\ieproxy.dll" "$env:SystemRoot\\syswow64\\ieproxy.dll" -force 
+   Copy-Item "$env:ProgramFiles\\Internet Explorer\\ieproxy.dll" "$env:systemroot\\system32\\ieproxy.dll" -force
+
+
+<#
+                  cat > "$W_TMP"/set-tabprocgrowth.reg <<_EOF_
+REGEDIT4
+
+[HKEY_CURRENT_USER\\Software\\Microsoft\\Internet Explorer\\Main]
+"TabProcGrowth"=dword:00000000
+
+_EOF_
+        w_try_regedit "$W_TMP_WIN"\\set-tabprocgrowth.reg
+    fi
+
+#>
+             
+    winecfg /v win10
+    
+  <#      for i in browseui.dll corpol.dll dxtmsft.dll dxtrans.dll ieaksie.dll ieapfltr.dll \
+             iedkcs32.dll iepeers.dll ieproxy.dll jscript.dll licmgr10.dll \
+             msdbg2.dll mshtmled.dll mstime.dll shdocvw.dll tdc.ocx urlmon.dll vbscript.dll #>
+    
+    
+    foreach($i in 'mshtml', 'ieframe',  'iertutil', 'jscript', 'urlmon', 'ieproxy', 'dxtrans') { dlloverride 'native' $i }
+
+    foreach($i in 'msimtf') { dlloverride 'builtin' $i }
+    
+       # conemu64 && wineboot.exe -k
+
+
+<#
+01b8:err:environ:init_peb starting L"C:\\windows\\syswow64\\regsvr32.exe" in experimental wow64 mode
+regsvr32: Successfully registered DLL 'C:\Program Files (x86)\Internet Explorer\ieproxy.dll'
+01c4:err:environ:init_peb starting L"C:\\windows\\syswow64\\regsvr32.exe" in experimental wow64 mode
+regsvr32: 'DllInstall' not implemented in DLL 'C:\windows\SysWOW64\ieframe.dll'
+01d4:err:environ:init_peb starting L"C:\\windows\\syswow64\\regsvr32.exe" in experimental wow64 mode
+regsvr32: Successfully registered DLL 'C:\windows\SysWOW64\actxprxy.dll'
+regsvr32: Successfully registered DLL 'C:\Program Files\Internet Explorer\ieproxy.dll'
+regsvr32: 'DllInstall' not implemented in DLL 'C:\windows\system32\ieframe.dll'
+regsvr32: Successfully registered DLL 'C:\windows\system32\actxprxy.dll'
+#>
+
+    foreach($i in   'ieframe.dll', 'browseui.dll', 'corpol.dll', 'dxtmsft.dll', 'dxtrans.dll', 'jscript.dll', 'urlmon.dll', 'mshtmled.dll', 'shdocvw.dll', 'vbscript.dll') {
+        & "$env:systemroot\\syswow64\\regsvr32" /s "$env:systemroot\\syswow64\\$i"
+        & "$env:systemroot\\system32\\regsvr32" /s "$env:systemroot\\system32\\$i" }
+
+    foreach($i in  'ieproxy.dll') {
+        & "$env:systemroot\\syswow64\\regsvr32" /s "${env:ProgramFiles`(x86`)}\\Internet Explorer\\$i"
+        & "$env:systemroot\\system32\\regsvr32" /s "$env:ProgramFiles\\Internet Explorer\\$i" }
+
+<#
+00e8:err:environ:init_peb starting L"C:\\windows\\syswow64\\reg.exe" in experimental wow64 mode
+00e8:fixme:reg:wmain stub: L"C:\\windows\\SysWOW64\\reg.exe" L"ADD" L"HKLM\\Software\\Clients\\StartMenuInternet\\IEXPLORE.EXE\\DefaultIcon" L"/ve" L"/d" L"C:\\Program Files\\Internet Explorer\\iexplore.exe,-7" L"/f"
+012c:fixme:reg:wmain stub: L"C:\\windows\\system32\\reg.exe" L"DELETE" L"HKLM\\SOFTWARE\\Microsoft\\Active Setup\\Installed Components" L"/v" L"NoIE4StubProcessing" L"/f"
+0158:err:environ:init_peb starting L"C:\\windows\\syswow64\\reg.exe" in experimental wow64 mode
+0158:fixme:reg:wmain stub: L"C:\\windows\\SysWOW64\\reg.exe" L"DELETE" L"HKLM\\SOFTWARE\\Microsoft\\Active Setup\\Installed Components" L"/v" L"NoIE4StubProcessing" L"/f"
+0178:err:environ:init_peb starting L"C:\\windows\\syswow64\\reg.exe" in experimental wow64 mode
+0178:fixme:reg:wmain stub: L"C:\\windows\\SysWOW64\\reg.exe" L"DELETE" L"HKLM\\SOFTWARE\\Microsoft\\Internet Explorer\\Setup" L"/v" L"IEPendingReboot" L"/f"
+0188:err:environ:init_peb starting L"C:\\windows\\syswow64\\reg.exe" in experimental wow64 mode
+0188:fixme:reg:wmain stub: L"C:\\windows\\SysWOW64\\reg.exe" L"DELETE" L"HKLM\\SOFTWARE\\Microsoft\\Internet Explorer\\Setup" L"/v" L"InstallStarted" L"/f"
+01f0:fixme:reg:wmain stub: L"C:\\windows\\system32\\reg.exe" L"ADD" L"HKLM\\Software\\Clients\\StartMenuInternet\\IEXPLORE.EXE\\DefaultIcon" L"/ve" L"/d" L"C:\\Program Files\\Internet Explorer\\iexplore.exe,-7" L"/f"
+0224:fixme:reg:wmain stub: L"C:\\windows\\system32\\reg.exe" L"DELETE" L"HKLM\\SOFTWARE\\Microsoft\\Active Setup\\Installed Components" L"/v" L"NoIE4StubProcessing" L"/f"
+0234:fixme:reg:wmain stub: L"C:\\windows\\system32\\reg.exe" L"DELETE" L"HKLM\\SOFTWARE\\Microsoft\\Internet Explorer\\Setup" L"/v" L"IEPendingReboot" L"/f"
+0244:fixme:reg:wmain stub: L"C:\\windows\\system32\\reg.exe" L"DELETE" L"HKLM\\SOFTWARE\\Microsoft\\Internet Explorer\\Setup" L"/v" L"InstallStarted" L"/f"
+
+#>
+}
 
 function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
 {
@@ -1250,8 +1474,54 @@ function Get-CIMInstance ( [parameter(position=0)] [string]`$classname, [string[
      Get-WMIObject `$classname -property `$property
 }
 
+del alias:gwmi -Force
 Set-Alias -Name gcim -Value Get-CIMInstance
 
+<# To support auto-tabcompletion only a comma seperated is supported from now on when calling winetricks with multiple arguments, e.g. 'winetricks gdiplus,riched20' #>
+
+   `$found=0;`$v=@()
+   `$lines= [IO.File]::ReadLines("`$env:ProgramData\\Chocolatey-for-wine\\winetricks.ps1")
+   foreach(`$line in `$lines) {if(`$line -match 'marker line!!!') {`$found+=1} else{ if((`$found -eq 1) -and !(`$line.StartsWith('#'))) {`$v+= `$line }; if(`$found -eq 2) {break;}}} 
+   
+   #https://stackoverflow.com/questions/50368246/splitting-a-string-on-spaces-but-ignore-section-between-double-quotes
+   `$Qenu=([regex]::Split( `$v, ',(?=(?:[^"]|"[^"]*")*`$)' )).TrimStart(' ').TrimEnd(' ') 
+               
+#https://stackoverflow.com/questions/67356762/couldnt-use-predefined-array-inside-validateset-powershell`$verblist =0
+for ( `$j = 0; `$j -lt `$Qenu.count; `$j+=3) { [string[]]`$verblist += `$Qenu[`$j+1].Trim('"') }
+
+function winetricks {
+  [CmdletBinding()]
+  param(
+    #[Parameter(Mandatory)]
+    # Tab-complete based on array `$verblist
+    [ArgumentCompleter({
+      param(`$cmd, `$param, `$wordToComplete) `$verblist -like "`$wordToComplete*"
+    })]
+    # Validate based on array `$verblist.
+    # NOTE: If validation fails, the (default) error message is unhelpful.
+    #       You can work around that in *Windows PowerShell* with `throw`, and in
+    #       PowerShell (Core) 7+, you can add an `ErrorMessage` property:
+    #         [ValidateScript({ `$_ -in `$verblist }, ErrorMessage = 'Unknown value: {0}')]
+    [ValidateScript({
+      if (`$_ -in `$verblist) { return `$true }
+      throw "'`$_' is not in the set of the supported values: `$(`$verblist -join ', ')"
+    })]
+    `$Arg
+  )
+
+  if (!([System.IO.File]::Exists("`$env:ProgramData\\Chocolatey-for-wine\\winetricks.ps1"))){
+      Add-Type -AssemblyName PresentationCore,PresentationFramework;
+      [System.Windows.MessageBox]::Show("winetricks script is missing`nplease reinstall it in c:\\ProgramData\\Chocolatey-for-wine",'Congrats','ok','exclamation')
+  }
+
+  if(`$arg) {
+     pwsh -nop -f  <# . #>  `$([System.IO.Path]::Combine("`$env:ProgramData","Chocolatey-for-wine", "winetricks.ps1")) `$arg
+  }
+  else {
+     pwsh -nop -f <# . #> `$([System.IO.Path]::Combine("`$env:ProgramData","Chocolatey-for-wine", "winetricks.ps1")) "no_args" `$Qenu 
+  }
+}
+  
 Set-ExecutionPolicy ByPass
 
 if (!(Get-process -Name powershell_ise -erroraction silentlycontinue)) {
@@ -1266,7 +1536,6 @@ if (!(Get-process -Name powershell_ise -erroraction silentlycontinue)) {
     }
 }
 
-. "`$env:ProgramData\Chocolatey-for-wine\profile_winetricks_caller.ps1"
 
 #https://blog.ironmansoftware.com/using-powershell-7-in-the-windows-powershell-ise/
 
@@ -1291,7 +1560,6 @@ if ((Get-process -Name powershell_ise -erroraction silentlycontinue)) {
         `$Runspace = New-OutOfProcRunspace -ProcessId `$PowerShell.Id 
         `$Host.PushRunspace(`$Runspace) 
         
-
 
         
 }, "ALT+F5") | Out-Null 
@@ -2207,6 +2475,12 @@ function func_dxvk20
 function func_ping <# fake ping for when wine's ping fails due to permission issues  #>
 {
 @'
+function QPR.ping
+{
+    $cmdline = $env:QPRCMDLINE #.SubString($env:QPRCMDLINE.IndexOf(" "), $env:QPRCMDLINE.Length - $env:QPRCMDLINE.IndexOf(" "))
+    iex  -Command ('QPR_ping' + $cmdline)
+}
+
 #https://stackoverflow.com/questions/53522016/how-to-measure-tcp-and-icmp-connection-time-on-remote-machine-like-ping
 function QPR_ping { <# ping.exe replacement #>
     <#
@@ -2437,7 +2711,7 @@ function QPR_ping { <# ping.exe replacement #>
      exit 0
     }
 }
-'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR_ping\QPR_ping.psm1 -Force )
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.ping\QPR.ping.psm1 -Force )
 
 	Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\ping.exe" -Force
     Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\ping.exe" -Force
@@ -2507,15 +2781,17 @@ function func_vs19
 
   #  7z x $env:TMP\\installer "-o$env:TMP\\opc" -y ;quit?('7z')
 
-    <# hack to workaround hanging sh.exe (when cloning repository) #>
-    choco install busybox
+    <# hack to workaround hanging sh.exe (when cloning repository) , fixed in wine-9.21#>
+    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 9.21 ) {
+
+        choco install busybox
     
-    start-threadjob -ScriptBlock {
-      $sh = "$env:ProgramFiles\Microsoft Visual Studio\2019\Community\Common7\IDE\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\usr\bin\sh.exe";
-      while(!(Test-Path -Path "$sh" -PathType Leaf) ) {Sleep 2.0} ;
-      Copy-Item "$sh" "$($sh+'.back')" -force
-      Copy-Item "$env:Systemroot\system32\setx.exe" "$sh" -force
-    }
+        start-threadjob -ScriptBlock {
+          $sh = "$env:ProgramFiles\Microsoft Visual Studio\2019\Community\Common7\IDE\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\usr\bin\sh.exe";
+          while(!(Test-Path -Path "$sh" -PathType Leaf) ) {Sleep 2.0} ;
+          Copy-Item "$sh" "$($sh+'.back')" -force
+          Copy-Item "$env:Systemroot\system32\setx.exe" "$sh" -force
+        }
 @'
     function QPR.sh { <# sh.exe replacement #>
     $argv = CommandLineToArgvW $('sh.exe' + ' ' +$env:QPRCMDLINE) 
@@ -2523,8 +2799,7 @@ function func_vs19
 }
 '@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.sh\QPR.sh.psm1 -Force )
 
-     <# end hack sh.exe  #>
-
+    }  <# end hack sh.exe  #>
 
     set-executionpolicy bypass
 
@@ -2589,14 +2864,16 @@ function func_vs22
 
   #  7z x $env:TMP\\installer "-o$env:TMP\\opc" -y ;quit?('7z')
 
-    choco install busybox
+    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 9.21 ) {
+    <# hack to workaround hanging sh.exe (when cloning repository) , fixed in wine-9.21#>
+        choco install busybox
     
-    start-threadjob -ScriptBlock {
-      $sh = "$env:ProgramFiles\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\usr\bin\sh.exe";
-      while(!(Test-Path -Path "$sh" -PathType Leaf) ) {Sleep 2.0} ;
-      Copy-Item "$sh" "$($sh+'.back')" -force
-      Copy-Item "$env:Systemroot\system32\setx.exe" "$sh" -force
-    }
+        start-threadjob -ScriptBlock {
+          $sh = "$env:ProgramFiles\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\usr\bin\sh.exe";
+          while(!(Test-Path -Path "$sh" -PathType Leaf) ) {Sleep 2.0} ;
+          Copy-Item "$sh" "$($sh+'.back')" -force
+          Copy-Item "$env:Systemroot\system32\setx.exe" "$sh" -force
+        }
 @'
     function QPR.sh { <# sh.exe replacement #>
     $argv = CommandLineToArgvW $('sh.exe' + ' ' +$env:QPRCMDLINE) 
@@ -2604,6 +2881,8 @@ function func_vs22
 }
 '@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.sh\QPR.sh.psm1 -Force )
 
+    }  <# end hack sh.exe  #>
+    
     set-executionpolicy bypass
 
     New-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Avalon.Graphics' -Name 'DisableHWAcceleration' -Value 1 -PropertyType 'Dword' -force
@@ -2711,15 +2990,16 @@ function func_vs22_interactive_installer
  }
     (New-Object System.Net.WebClient).DownloadFile('https://aka.ms/vs/17/release/vs_community.exe', "$env:TMP\\vs_Community.exe") 
 
-    <# hack to workaround hanging sh.exe (when cloning repository) #>
-    choco install busybox
+    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 9.21 ) {
+    <# hack to workaround hanging sh.exe (when cloning repository), fixed in wine-9.21 #>
+        choco install busybox
     
-    start-threadjob -ScriptBlock {
-      $sh = "$env:ProgramFiles\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\usr\bin\sh.exe";
-      while(!(Test-Path -Path "$sh" -PathType Leaf) ) {Sleep 2.0} ;
-      Copy-Item "$sh" "$($sh+'.back')" -force
-      Copy-Item "$env:Systemroot\system32\setx.exe" "$sh" -force
-    }
+        start-threadjob -ScriptBlock {
+          $sh = "$env:ProgramFiles\Microsoft Visual Studio\2022\Community\Common7\IDE\CommonExtensions\Microsoft\TeamFoundation\Team Explorer\Git\usr\bin\sh.exe";
+          while(!(Test-Path -Path "$sh" -PathType Leaf) ) {Sleep 2.0} ;
+          Copy-Item "$sh" "$($sh+'.back')" -force
+          Copy-Item "$env:Systemroot\system32\setx.exe" "$sh" -force
+        }
 @'
     function QPR.sh { <# sh.exe replacement #>
     $argv = CommandLineToArgvW $('sh.exe' + ' ' +$env:QPRCMDLINE) 
@@ -2727,7 +3007,7 @@ function func_vs22_interactive_installer
 }
 '@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.sh\QPR.sh.psm1 -Force )
 
-     <# end hack sh.exe  #>
+   }  <# end hack sh.exe  #>
 
     & "$env:TMP\\vs_Community.exe" --wait
     
@@ -4220,7 +4500,7 @@ function write_keys_from_manifest([parameter(position=0)] [string] $manifest, [s
                    if( $value.Value ) { $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.windows)')),"$env:systemroot" -replace ([Regex]::Escape('$(runtime.inf)')),"$env:systemroot\\inf" }
 
                    if(!$to_file) { $null = New-ItemProperty -Path $path -Name $Regname -Value $value.Value -PropertyType $propertyType -Force -ErrorAction SilentlyContinue }  #-Verbose
-                   else { 'if(!(Test-Path ''' + $path + ''' )) {New-Item -Path ''' + $path +''' -Force};' + 'New-ItemProperty -Path ''' + $path +''' -Name ''' + $Regname + ''' -Value ''' + $value.Value +''' -PropertyType '''+ $propertyType + ''' -Force' |out-file "$env:TEMP\reg_keys.ps1" -append } #-Verbose
+                   else { '$v=''' + $path +''';if(!(Test-Path $v )) {New-Item -Path $v -Force}; New-ItemProperty -Path $v -Name ''' + $Regname + ''' -Value ''' + $value.Value +''' -PropertyType '''+ $propertyType + ''' -Force' |out-file "$env:TEMP\reg_keys.ps1" -append } #-Verbose
                 } 
             }
         }
@@ -4331,15 +4611,30 @@ function func_dotnet481
     foreach ($i in $(Get-ChildItem $env:TEMP\\dotnet481\\*.manifest).FullName) { install_from_manifest -manifestfile $i -prefix "$env:TEMP\$(verb)"  }
 
     foreach ($i in $(Get-ChildItem $env:TEMP\\dotnet481\\*.manifest).FullName ) { write_keys_from_manifest $i -to_file }
-    Write-Host -foregroundColor yellow 'Done , hopefully nothing''s screwed up ;)' 
+   
+    #find out compression flags: 7z l -slt ~/.cache/winetrickxs/dotnet481/dotnet481.7z | grep -e '^---' -e '^Path =' -e '^Method ='^C
    
     Push-Location ; Set-Location "$env:TEMP\$(verb)"
-    7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on  "$cachedir\$(verb)\$(verb).7z" ".\c:\"; quit?(7z)
+    7z a -m0=BCJ2   -m1=LZMA:29:lc8:pb1 -m2=LZMA:24 -m3=LZMA:24 -mx=9  -ms=on  "$cachedir\$(verb)\$(verb).7z" ".\c:\"; quit?(7z)
     Pop-Location
 
-    7z a -spf -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on  "$cachedir\$(verb)\$(verb).7z" "$env:TEMP\reg_keys.ps1"  ; quit?(7z)
- 
+    (Get-Content "$env:TEMP\reg_keys.ps1") | Foreach-Object {$_ -replace 'HKEY_', 'HKEY_LOCAL_MACHINE\HKEY_'} | Set-Content "$env:TEMP\reg_keys_tmp.ps1"
+    Write-Host -foregroundColor yellow 'Writing registry keys to temporary file, patience please...' 
+    $null =  . "$env:TEMP\reg_keys_tmp.ps1"
+    reg.exe EXPORT 'HKEY_LOCAL_MACHINE\HKEY_LOCAL_MACHINE' "$env:TEMP\reg_keys_hklm.ps1" /y
+    reg.exe EXPORT 'HKEY_LOCAL_MACHINE\HKEY_CLASSES_ROOT' "$env:TEMP\reg_keys_hkcr.ps1" /y  
+    (Get-Content "$env:TEMP\reg_keys_hklm.ps1") | Foreach-Object {$_ -replace ([Regex]::Escape('[HKEY_LOCAL_MACHINE\HKEY')) ,'[HKEY'} | Set-Content "$env:TEMP\reg_keys_hklm_def.ps1"
+    (Get-Content "$env:TEMP\reg_keys_hkcr.ps1") | Foreach-Object {$_ -replace ([Regex]::Escape('[HKEY_LOCAL_MACHINE\HKEY')) ,'[HKEY'} | Set-Content "$env:TEMP\reg_keys_hkcr_def.ps1"
+
+    Push-Location ; Set-Location "$env:TEMP\$(verb)"    
+    7z a -spf -m0=BCJ2   -m1=LZMA:29:lc8:pb1 -m2=LZMA:24 -m3=LZMA:24 -mx=9  -ms=on  "$cachedir\$(verb)\$(verb).7z" "$env:TEMP\reg_keys_hklm_def.ps1"  "$env:TEMP\reg_keys_hkcr_def.ps1" ; quit?(7z)
+    Pop-Location
+
+    reg.exe DELETE 'HKEY_LOCAL_MACHINE\HKEY_LOCAL_MACHINE' /f
+    reg.exe DELETE 'HKEY_LOCAL_MACHINE\HKEY_CLASSES_ROOT' /f
+     
     Remove-Item -Force -Recurse "$env:TEMP\$(verb)"
+    Remove-Item -Force "$cachedir\\$(verb)\\ndp481-x86-x64-allos-enu.exe"
     }  
         $sourcefile = @(
    'C:\windows\Microsoft.NET\assembly\GAC_MSIL\System\v4.0_4.0.0.0__b77a5c561934e089\System.dll',
@@ -4358,8 +4653,13 @@ function func_dotnet481
   
 
     & 'C:\Program Files\7-Zip\7z.exe' x -spf "$cachedir\$(verb)\$(verb).7z" -aoa 
-    $null =  . "$env:TEMP\reg_keys.ps1"
+    Write-Host -foregroundColor yellow 'Writing registry keys , patience please...' 
+    #$null =  . "$env:TEMP\reg_keys.ps1"
 
+    reg.exe IMPORT "$env:TEMP\reg_keys_hklm_def.ps1"
+    reg.exe IMPORT "$env:TEMP\reg_keys_hkcr_def.ps1"
+
+    Write-Host -foregroundColor yellow 'Done , hopefully nothing''s screwed up ;)' 
     
     <# FIXME:  mscoreei.dll is not installed as it is in use by pwsh.exe #>
     #Start-Process -FilePath $env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.3031\\ngen.exe -NoNewWindow -ArgumentList "eqi"
@@ -4487,13 +4787,16 @@ Copy-item "$env:TMP\\GE-Proton9-13/files/lib/wine/nvapi/*" "$env:systemroot/sysw
 
 function func_mspaint
 {
+
 choco install wget
 
 wget.exe -P "$env:TEMP\"  --referer 'https://win7games.com/' 'https://win7games.com/download/ClassicPaint.zip'
 
 7z x "$env:TEMP\ClassicPaint.zip" "-o$env:TEMP"
 
-& "$env:TEMP\ClassicPaint-1.1-setup.exe " /silent
+quit?('7z')
+
+& "$env:TEMP\ClassicPaint-1.1-setup.exe" /silent
 
 func_mfc42
 func_uiribbon
@@ -4525,6 +4828,7 @@ function func_chocolatey_upgrade
     choco.exe feature enable --name=powershellHost
     choco upgrade chocolatey    
 }
+
 
 <# Main function #> 
 if ( $args[0] -eq "no_args") {
