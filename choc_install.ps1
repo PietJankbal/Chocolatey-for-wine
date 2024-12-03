@@ -398,7 +398,7 @@ function QPR.wusa { <# wusa.exe replacement, Query program replacement for wusa.
 
 @'
 function QPR.schtasks { <# schtasks.exe replacement #>
-    $cmdline = $env:QPRCMDLINE #.SubString($env:QPRCMDLINE.IndexOf(" "), $env:QPRCMDLINE.Length - $env:QPRCMDLINE.IndexOf(" "))
+    $cmdline = $($([kernel32]::GetCommandLineW()).Split(" ",3)[2]) #.SubString($env:QPRCMDLINE.IndexOf(" "), $env:QPRCMDLINE.Length - $env:QPRCMDLINE.IndexOf(" "))
 
     $cmdline = $cmdline -replace '/create', '-create' -replace '/tn', '-tn' -replace "/tr", "-tr" <#-replace "'", "'`"'"#>  <# escape quotes (??) #> `
                         -replace "/sc", "-sc" -replace "/run", "-run" -replace "/delete", "-delete"
@@ -451,7 +451,7 @@ function QPR.setx { <# setx.exe replacement #>
     <# https://stackoverflow.com/questions/50368246/splitting-a-string-on-spaces-but-ignore-section-between-double-quotes #>
     #$argv = ($env:QPRCMDLINE| select-string '("[^"]*"|\S)+' -AllMatches | % matches | % value) -replace '"'
 
-    $argv = CommandLineToArgvW $('setx.exe' +' ' + $env:QPRCMDLINE)
+    $argv = CommandLineToArgvW $($([kernel32]::GetCommandLineW()).Split(" ",3)[2])
 
     New-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Session Manager\\Environment' -force -Name $argv[1] -Value $argv[2] -PropertyType 'String' 
     New-ItemProperty -Path 'HKCU:\\Environment' -force -Name $argv[1] -Value $argv[2] -PropertyType 'String' 
@@ -543,7 +543,7 @@ function QPR.wmic { <# wmic replacement, this part only rebuilds the arguments #
         $cmd = $(cat (Get-PSReadlineOption).HistorySavePath -tail 1).Trim(' ')
         $cmdline = $cmd.Substring($cmd.IndexOf(' ')+1).Trim(' ') + ' ' }
     else {
-        $cmdline = $env:QPRCMDLINE.Trim(' ') + ' '}
+        $cmdline = $($([kernel32]::GetCommandLineW()).Split(" ",4)[3]) }
      
     $hash = @{
         "path" = "-class "
