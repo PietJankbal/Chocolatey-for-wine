@@ -14,9 +14,6 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  * 
- * To make dummy program handle redirected input, insert after line 56:   FILE_FS_DEVICE_INFORMATION info;IO_STATUS_BLOCK io;HANDLE input=GetStdHandle(STD_INPUT_HANDLE);\
- * NtQueryVolumeInformationFile(input,&io,&info,sizeof(info),FileFsDeviceInformation );if(info.DeviceType==17||info.DeviceType==8){wcscat(cl, L" ");\
- * while(fgetws(cl+wcslen(cl),4096,stdin)!=NULL)continue;SetEnvironmentVariableW(L"QPRCMDLINE",cl+17);}
  * Build: For fun code is changed from standard main(argc,*argv[]) to something like https://nullprogram.com/blog/2016/01/31/ and https://scorpiosoftware.net/2023/03/16/minimal-executables/)
  * x86_64-w64-mingw32-gcc -Oz -fno-asynchronous-unwind-tables -municode -Wall -Wextra -mno-stack-arg-probe -nostartfiles\
    -Wl,-gc-sections -Xlinker --stack=0x100000,0x100000 mainv1.c -nostdlib -lucrtbase -lkernel32 -lntdll -s -o powershell64.exe && strip -R .reloc powershell64.exe
@@ -40,7 +37,7 @@ static BOOL is_last_option(const WCHAR* s) { return wcschr(L"cCfFeE\0", s[1]) ? 
 static void join(WCHAR* string1, const WCHAR* string2) { if (string2) _wcscat(_wcscat(string1, L" "), string2); }
 
 DWORD mainCRTStartup(PPEB peb) {
-    wchar_t *file = peb->ProcessParameters->ImagePathName.Buffer, *ptr, *token = wcstok_s(file, L"\\", &ptr), cl[4095]; /* cl = new outgoing cmdline */
+    wchar_t *file = peb->ProcessParameters->ImagePathName.Buffer, *ptr, *token = wcstok_s(file, L"\\", &ptr), *cl = calloc(4095, sizeof(WCHAR)); /* cl = new outgoing cmdline */
     DWORD exitcode;
     STARTUPINFOW si = {0};
     PROCESS_INFORMATION pi = {0};
@@ -51,9 +48,8 @@ DWORD mainCRTStartup(PPEB peb) {
     wcstok_s(token, L".", &ptr);
     
     /* I can also act as a dummy program if my exe-name is not powershell, allows to replace a system exe (like wusa.exe, or any exe really) by a function in profile.ps1 */
-    if (_wcsnicmp(token, L"Powershell", 10)) {         /* note: set desired exitcode in the function in profile.ps1 */
-        SetEnvironmentVariableW(L"QPRCMDLINE", cmd);   /* track cmdline via $env:QPRCMDLINE ($MyInvocation.Line seems to remove quotes (!)) */
-        _wcscat(_wcscat(cl, L"-nop -c QPR."), token);  /* add some prefix to the exe and execute it through pwsh , so we can query for program replacement in profile.ps1 */
+    if (_wcsnicmp(token, L"Powershell", 10)) {                       /* note: set desired exitcode in the function in profile.ps1;  */
+        _wcscat(_wcscat(_wcscat(cl, L"-nop -c QPR."), token), cmd);  /* add some prefix to the exe and execute it through pwsh , so we can query for program replacement in profile.ps1 */
     } else {
         token = (cmd ? wcstok_s(cmd, L" ", &ptr) : 0); /* Start breaking up cmdline to look for options */
 
@@ -68,10 +64,13 @@ DWORD mainCRTStartup(PPEB peb) {
                 join(cl, ptr);                   /* add remainder of cmdline and done */
                 break;
             }
+            
             if (_wcsnicmp(token, L"-nop", 4))    /* skip '-noprofile' to always enable hacks in profile.ps1 */
                 join(cl, token);                 /* add option */
+                
             if (!is_single_option(token))        /* add arg if it is an option with arg */
                 join(cl, token = wcstok_s(NULL, L" ", &ptr));
+
             token = wcstok_s(NULL, L" ", &ptr);
         }
     }
@@ -79,5 +78,6 @@ DWORD mainCRTStartup(PPEB peb) {
     // /*track the cmd:*/ FILE *fptr; fptr = fopen("c:\\log.txt", "a");fputws(L"used commandline is now: ",fptr); fputws(cl,fptr); fclose(fptr);
     CreateProcessW(!_wgetenv(L"PS51") ? _wgetenv(L"PS7") : L"c:\\Windows\\system32\\WindowsPowershell\\v1.0\\PS51.exe", cl, 0, 0, 0, 0, 0, 0, &si, &pi);
     WaitForSingleObject(pi.hProcess, INFINITE); GetExitCodeProcess(pi.hProcess, &exitcode); CloseHandle(pi.hProcess); CloseHandle(pi.hThread);
+    free(cl);
     return exitcode;
 }
