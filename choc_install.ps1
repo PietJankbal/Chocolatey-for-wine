@@ -206,7 +206,7 @@ Set-Alias gwmi Get-WmiObject
 Set-Alias Get-CIMInstance Get-CIMInstance_replacement
 
 <# winetricks: to support auto-tabcompletion only a comma seperated is supported when calling winetricks with multiple arguments, e.g. 'winetricks gdiplus,riched20' #>
-[array]$Qenu = iex "$((Get-Content $env:ProgramData\\Chocolatey-for-wine\\winetricks.ps1 -Delimiter 'marker line!!!')[1])"
+[array]$Qenu = iex "$([IO.File]::Readalltext("$env:ProgramData\\Chocolatey-for-wine\\winetricks.ps1").Split('marker line!!!',3)[1])"
                
 <# https://stackoverflow.com/questions/67356762/couldnt-use-predefined-array-inside-validateset-powershell #>
 for ( $j = 0; $j -lt $Qenu.count; $j+=3) { [string[]]$verblist += $Qenu[$j+1] }
@@ -730,8 +730,6 @@ function QPR_wmic { <# wmic replacement #>
         Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\$($file + '.exe')" -Force}
     <# Native Access needs this dir #>
     New-Item -Path "$env:Public" -Name "Downloads" -ItemType "directory" -ErrorAction SilentlyContinue
-    <# a game launcher tried to open this key, i think it should be present (?) #>
-    reg.exe COPY "HKLM\SYSTEM\CurrentControlSet" "HKLM\SYSTEM\ControlSet001" /s /f
     <# clean up #>
     Remove-Item "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache\\\\v4.8.03761" -force -recurse
 
