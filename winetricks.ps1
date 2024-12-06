@@ -33,10 +33,14 @@ else                      {$cachedir = ("$env:WINEHOMEDIR" + "\.cache\winetrickx
     "dlls","findstr", "findstr.exe",
     "dlls","gdiplus","GDI+ (gdiplus.dll)",
     "dlls","ie8","ie8 dlls",
+    "dlls","iertutil","iertutil.dll",
     "dlls","mfc42","mfc42.dll, mfc43u.dll",
+    "dlls","mdac28","mdac28 SP1",
+    "dlls","mdac_win7","mdac dlls from win 7",
     "dlls","msado15","MDAC and Jet40: some minimal mdac dlls (msado15.dll, oledb32.dll, dao360.dll)",
     "dlls","msdelta", "msdelta.dll",
     "dlls","mshtml", "experimental, dangerzone, might break things, only use on a per app base;ie8 dlls: mshtml.dll, ieframe.dll, urlmon.dll, jscript.dll, wininet.dll, shlwapi.dll, iertutil.dll",
+#   "dlls","mshtml_win7","experimental, dangerzone, might break things, only use on a per app base;ie8 dlls: mshtml.dll, ieframe.dll, urlmon.dll, jscript.dll, wininet.dll, shlwapi.dll, iertutil.dll",
     "dlls","mspatcha", "mspatcha.dll",
     "dlls","msvbvm60", "msvbvm60.dll",
     "dlls","msxml3","msxml3.dll",
@@ -50,6 +54,7 @@ else                      {$cachedir = ("$env:WINEHOMEDIR" + "\.cache\winetrickx
     "dlls","uianimation", "uianimation.dll",
     "dlls","uiautomationcore", "uiautomationcore.dll",
     "dlls","uiribbon", "uiribbon.dll",
+    "dlls","urlmon", "urlmon.dll",
     "dlls","uxtheme", "uxtheme.dll",
     "dlls","vcrun2019", "vcredist2019 (concrt140.dll, msvcp140.dll, msvcp140_1.dll, msvcp140_2.dll, vcruntime140.dll, vcruntime140_1.dll, ucrtbase.dll)",
     "dlls","vcrun2022", "vcredist2022 (concrt140.dll, msvcp140.dll, msvcp140_1.dll, msvcp140_2.dll, vcruntime140.dll, vcruntime140_1.dll, ucrtbase.dll)",
@@ -60,6 +65,7 @@ else                      {$cachedir = ("$env:WINEHOMEDIR" + "\.cache\winetrickx
     "dlls","wmiutils","wmiutils.dll",
     "dlls","wmp", "some wmp (windows media player) dlls, makes e-Sword start",
     "dlls","wsh57", "MS Windows Script Host (vbscript.dll scrrun.dll msscript.ocx jscript.dll scrobj.dll wshom.ocx)",
+#   "dlls","wsh_win7", "MS Windows Script Host (vbscript.dll scrrun.dll msscript.ocx jscript.dll scrobj.dll wshom.ocx)",
     "dlls","xmllite", "xmllite.dll",
     "font","segoeui", "Segoeui fonts",
     "font","lucida", "Lucida Console font",
@@ -299,6 +305,16 @@ function func_mspatcha
     foreach($i in 'mspatcha') { dlloverride 'native' $i }
 }  <# end mspatcha #>
 
+function func_urlmon
+{
+    $dlls = @('urlmon.dll'); check_aik_sanity;
+
+    foreach ($i in $dlls) {
+        7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
+        7z e "$cachedir\aik70\F1_WINPE.WIM" "-o$env:systemroot\syswow64" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z') 
+    foreach($i in 'urlmon') { dlloverride 'native' $i }
+}  <# end urlmon #>
+
 function func_xmllite
 {
     check_aik_sanity; $dldir = "aik70"
@@ -311,6 +327,19 @@ function func_xmllite
 
     foreach($i in 'xmllite') { dlloverride 'native' $i }
 } <# end xmllite #>
+
+function func_iertutil
+{
+    check_aik_sanity; $dldir = "aik70"
+    $expdlls = @( 'amd64_microsoft-windows-ie-runtimeutilities_31bf3856ad364e35_8.0.7600.16385_none_be52e3381d372f67/iertutil.dll', `
+                  'x86_microsoft-windows-ie-runtimeutilities_31bf3856ad364e35_8.0.7600.16385_none_623447b464d9be31/iertutil.dll' )
+		  
+    foreach ($i in $expdlls) {
+        if( $i.SubString(0,3) -eq 'amd' ) {7z e $cachedir\\$dldir\\F3_WINPE.WIM "-o$env:systemroot\\system32" Windows/winsxs/$i -y | Select-String 'ok' ; Write-Host processed 64-bit $($i.split('/')[-1])}
+        if( $i.SubString(0,3) -eq 'x86' ) {7z e $cachedir\\$dldir\\F1_WINPE.WIM "-o$env:systemroot\\syswow64" Windows/winsxs/$i -y | Select-String 'ok' ; Write-Host processed 32-bit $($i.split('/')[-1])}} quit?('7z')
+
+    foreach($i in 'iertutil') { dlloverride 'native' $i }
+} <# end iertutil #>
 
 function func_comctl32 <# comctl32 #>
 {
@@ -381,7 +410,7 @@ function func_oleaut32 <# oleaut32  #>
     New-ItemProperty -Path "HKCU:\\Software\\Wine\\AppDefaults\\$file\\DllOverrides" -Name "$(verb)" -Value 'native,builtin' -PropertyType 'String' -force
 } <# end oleaut32 #>
 
-function func_wsh57
+function func_wsh57_deprecated
 {
     check_aik_sanity; $dldir = "aik70"
     $dlls = @( 'amd64_microsoft-windows-scripting_31bf3856ad364e35_6.1.7600.16385_none_a45d44bd1a0af822/wshom.ocx',`
@@ -581,7 +610,7 @@ function func_expand
 
 } <# end expand #>
 
-function func_mshtml
+function func_mshtml_deprecated
 {
     check_aik_sanity; $dldir = "aik70"
 
@@ -4595,7 +4624,7 @@ function install_from_manifest ( [parameter(position=0)] [string] $manifestfile,
         else { if($file) { Write-Host -foregroundcolor yellow "***  No way found to install the file, copy it manually from location $file  ***" } else {Write-Host $null}<#FIXME#>}
 } <# end function install_from_manifest #>
 
-function func_dotnet481
+function func_dotnet481_deprecated
 {
     if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z" ) ) ){
 
@@ -4665,6 +4694,40 @@ function func_dotnet481
     #Start-Process -FilePath $env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.3031\\ngen.exe -NoNewWindow -ArgumentList "eqi"
     #Start-Process -FilePath $env:SystemRoot\\Microsoft.NET\\Framework\\v4.0.3031\\ngen.exe -NoNewWindow -ArgumentList "eqi"
 } <# end dotnet481 #>
+
+function func_dotnet481
+{   
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z" ) ) ){
+
+    w_download_to $(verb) "https://download.visualstudio.microsoft.com/download/pr/6f083c7e-bd40-44d4-9e3f-ffba71ec8b09/3951fd5af6098f2c7e8ff5c331a0679c/ndp481-x86-x64-allos-enu.exe" "ndp481-x86-x64-allos-enu.exe" 
+    7z x $cachedir\\$(verb)\\ndp481-x86-x64-allos-enu.exe "-o$env:TEMP\\$(verb)\\" "x64-Windows10.0-KB5011048-x64.cab" -y; quit?(7z)
+    7z x $env:TEMP\\$(verb)\\x64-Windows10.0-KB5011048-x64.cab "-o$env:TEMP\\$(verb)\\" "amd64*/*" "x86*/*" "wow64*/*" "*.manifest" -y; quit?(7z)
+
+    Stop-Process -Name mscorsvw -ErrorAction SilentlyContinue <# otherwise some dlls fail to be replaced as they are in use by mscorvw; only mscoreei.dll has to be copied manually afaict as it is in use by pwsh #>
+
+    Write-Host -foregroundColor yellow 'Starting copying files , this takes a while (> 3 minutes), patience...'    
+    foreach ($i in $(Get-ChildItem $env:TEMP\\$(verb)\\*.manifest).FullName) { install_from_manifest -manifestfile $i -prefix "$env:TEMP\$(verb)"  }
+
+    foreach ($i in $(Get-ChildItem $env:TEMP\\$(verb)\\*.manifest).FullName ) { write_keys_from_manifest_tofile $i -todir "$env:TEMP\$(verb)\c:\windows\temp"}
+   
+    Push-Location ; Set-Location "$env:TEMP\$(verb)"
+    & 'C:\Program Files\7-Zip\7z.exe' a -m0=BCJ2   -m1=LZMA:29:lc8:pb1 -m2=LZMA:24 -m3=LZMA:24 -mx=9  -ms=on  "$cachedir\$(verb)\$(verb).7z" ".\c:\"; quit?(7z)
+    Pop-Location
+
+    Remove-Item -Force -Recurse "$env:TEMP\$(verb)"
+    }   
+    
+    & 'C:\Program Files\7-Zip\7z.exe'  x -spf "$cachedir\$(verb)\$(verb).7z" -aoa <# do not use shimmed 7z here, then overwriting several dlls wil fail #> 
+    Write-Host -foregroundColor yellow 'Writing registry keys , patience please...' 
+
+    reg.exe IMPORT "c:\windows\temp\reg_keys64.ps1" /reg:64 ; Remove-Item -Force "c:\windows\temp\reg_keys64.ps1"
+    reg.exe IMPORT "c:\windows\temp\reg_keys32.ps1" /reg:32 ; Remove-Item -Force "c:\windows\temp\reg_keys32.ps1"
+    
+    Write-Host -foregroundColor yellow 'Done , hopefully nothing''s screwed up ;)'     <# FIXME:  mscoreei.dll is not installed as it is in use by pwsh.exe #>
+    #Start-Process -FilePath $env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.3031\\ngen.exe -NoNewWindow -ArgumentList "eqi"
+    #Start-Process -FilePath $env:SystemRoot\\Microsoft.NET\\Framework\\v4.0.3031\\ngen.exe -NoNewWindow -ArgumentList "eqi"
+} <# end dotnet481 #>
+
 
 function func_install_dll_from_msu
 {
@@ -4829,6 +4892,235 @@ function func_chocolatey_upgrade
     choco upgrade chocolatey    
 }
 
+function func_mdac28
+{
+if (![System.IO.File]::Exists("$cachedir\\$(verb)\\MDAC_TYP.EXE")) {
+
+choco install wget
+
+wget.exe -P "$cachedir\\$(verb)" "https://web.archive.org/web/20070127061938/https://download.microsoft.com/download/4/a/a/4aafff19-9d21-4d35-ae81-02c48dcbbbff/MDAC_TYP.EXE"
+
+}
+winecfg /v win2k
+
+start-process "$cachedir\\$(verb)\\MDAC_TYP.EXE" -argumentlist '/q /C:"setup /q"'
+
+quit?('mdac_typ'); quit?('setup');quit?('dasetup'); quit?('odbcconf');
+winecfg /v win10
+
+foreach ($i in 'mtxdm' ,'odbc32', 'oledb32', 'msdasql', 'odbccp32', 'msado15') { dlloverride 'native,builtin' $i }    
+}
+
+function func_mdac_deprecated_win7
+{
+    check_aik_sanity;
+    
+    if (![System.IO.File]::Exists("$cachedir\\$(verb)\\$(verb).7z")) {
+    
+    7z x $cachedir\\aik70\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB "-o$env:TEMP\\$(verb)\\"  -y; 
+    7z x $cachedir\\aik70\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB "-o$env:TEMP\\$(verb)\\"  -y; quit?(7z)
+    
+    Remove-Item -force   "$env:TEMP\reg_keys.ps1" -erroraction silentlycontinue 
+
+    Write-Host -foregroundColor yellow 'Starting copying files , this takes a while (> 3 minutes), patience...'    
+    foreach ($i in $(Get-ChildItem $env:TEMP\\$(verb)\\*.manifest).FullName) { install_from_manifest -manifestfile $i -prefix "$env:TEMP\$(verb)"  }
+
+    foreach ($i in $(Get-ChildItem $env:TEMP\\$(verb)\\*.manifest).FullName ) { write_keys_from_manifest $i -to_file }
+   
+    Push-Location ; Set-Location "$env:TEMP\$(verb)"
+    7z a -m0=BCJ2   -m1=LZMA:29:lc8:pb1 -m2=LZMA:24 -m3=LZMA:24 -mx=9  -ms=on  "$cachedir\$(verb)\$(verb).7z" ".\c:\"; quit?(7z)
+    Pop-Location
+
+    (Get-Content "$env:TEMP\reg_keys.ps1") | Foreach-Object {$_ -replace 'HKEY_', 'HKEY_LOCAL_MACHINE\HKEY_'} | Set-Content "$env:TEMP\reg_keys_tmp.ps1"
+    Write-Host -foregroundColor yellow 'Writing registry keys to temporary file, patience please...' 
+    $null =  . "$env:TEMP\reg_keys_tmp.ps1" 
+    reg.exe EXPORT 'HKEY_LOCAL_MACHINE\HKEY_LOCAL_MACHINE' "$env:TEMP\reg_keys_hklm.ps1" /y
+    reg.exe EXPORT 'HKEY_LOCAL_MACHINE\HKEY_CLASSES_ROOT' "$env:TEMP\reg_keys_hkcr.ps1" /y  
+    (Get-Content "$env:TEMP\reg_keys_hklm.ps1") | Foreach-Object {$_ -replace ([Regex]::Escape('[HKEY_LOCAL_MACHINE\HKEY')) ,'[HKEY'} | Set-Content "$env:TEMP\reg_keys_hklm_def.ps1"
+    (Get-Content "$env:TEMP\reg_keys_hkcr.ps1") | Foreach-Object {$_ -replace ([Regex]::Escape('[HKEY_LOCAL_MACHINE\HKEY')) ,'[HKEY'} | Set-Content "$env:TEMP\reg_keys_hkcr_def.ps1"
+
+    Push-Location ; Set-Location "$env:TEMP\$(verb)"    
+    7z a -spf -m0=BCJ2   -m1=LZMA:29:lc8:pb1 -m2=LZMA:24 -m3=LZMA:24 -mx=9  -ms=on  "$cachedir\$(verb)\$(verb).7z" "$env:TEMP\reg_keys_hklm_def.ps1"  "$env:TEMP\reg_keys_hkcr_def.ps1" ; quit?(7z)
+    Pop-Location
+
+    reg.exe DELETE 'HKEY_LOCAL_MACHINE\HKEY_LOCAL_MACHINE' /f
+    reg.exe DELETE 'HKEY_LOCAL_MACHINE\HKEY_CLASSES_ROOT' /f
+     
+    Remove-Item -Force -Recurse "$env:TEMP\$(verb)"
+
+    }   
+    
+    & 'C:\Program Files\7-Zip\7z.exe' x -spf "$cachedir\$(verb)\$(verb).7z" -aoa 
+    Write-Host -foregroundColor yellow 'Writing registry keys , patience please...' 
+    #$null =  . "$env:TEMP\reg_keys.ps1"
+
+    reg.exe IMPORT "$env:TEMP\reg_keys_hklm_def.ps1"
+    reg.exe IMPORT "$env:TEMP\reg_keys_hkcr_def.ps1"
+
+    foreach ($i in 'mtxdm' ,'odbc32', 'oledb32', 'msdasql', 'odbccp32', 'msado15') { dlloverride 'native,builtin' $i }  
+
+    Write-Host -foregroundColor yellow 'Done , hopefully nothing''s screwed up ;)' 
+}
+
+function func_mdac_win7
+{
+    check_aik_sanity;
+    
+    if (![System.IO.File]::Exists("$cachedir\\$(verb)\\$(verb).7z")) {
+    
+    7z x $cachedir\\aik70\\F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB "-o$env:TEMP\\$(verb)\\"  -y; 
+    7z x $cachedir\\aik70\\F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB "-o$env:TEMP\\$(verb)\\"  -y; quit?(7z)
+
+    Write-Host -foregroundColor yellow 'Starting copying files , this takes a while (> 3 minutes), patience...'    
+    foreach ($i in $(Get-ChildItem $env:TEMP\\$(verb)\\*.manifest).FullName) { install_from_manifest -manifestfile $i -prefix "$env:TEMP\$(verb)"  }
+
+    foreach ($i in $(Get-ChildItem $env:TEMP\\$(verb)\\*.manifest).FullName ) { write_keys_from_manifest_tofile $i -todir "$env:TEMP\$(verb)\c:\windows\temp"}
+   
+    Push-Location ; Set-Location "$env:TEMP\$(verb)"
+    7z a -m0=BCJ2   -m1=LZMA:29:lc8:pb1 -m2=LZMA:24 -m3=LZMA:24 -mx=9  -ms=on  "$cachedir\$(verb)\$(verb).7z" ".\c:\"; quit?(7z)
+    Pop-Location
+
+    Remove-Item -Force -Recurse "$env:TEMP\$(verb)"
+    }   
+    
+    & 'C:\Program Files\7-Zip\7z.exe' x -spf "$cachedir\$(verb)\$(verb).7z" -aoa 
+    Write-Host -foregroundColor yellow 'Writing registry keys , patience please...' 
+
+    reg.exe IMPORT "c:\windows\temp\reg_keys64.ps1" /reg:64 ; Remove-Item -Force "c:\windows\temp\reg_keys64.ps1"
+    reg.exe IMPORT "c:\windows\temp\reg_keys32.ps1" /reg:32 ; Remove-Item -Force "c:\windows\temp\reg_keys32.ps1"
+
+    foreach ($i in 'mtxdm' ,'odbc32', 'oledb32', 'msdasql', 'odbccp32', 'msado15') { dlloverride 'native,builtin' $i }  
+    
+    Write-Host -foregroundColor yellow 'Done , hopefully nothing''s screwed up ;)' 
+}
+
+function func_wsh57
+{
+    check_aik_sanity;
+    
+    if (![System.IO.File]::Exists("$cachedir\\$(verb)\\$(verb).7z")) {
+    
+    7z x $cachedir\\aik70\\F_WINPEOC_AMD64__WINPE_WINPE_SCRIPTING.CAB "-o$env:TEMP\\$(verb)\\"  -y; 
+    7z x $cachedir\\aik70\\F_WINPEOC_X86__WINPE_WINPE_SCRIPTING.CAB "-o$env:TEMP\\$(verb)\\"  -y; quit?(7z)
+
+    Write-Host -foregroundColor yellow 'Starting copying files , this takes a while (> 3 minutes), patience...'    
+    foreach ($i in $(Get-ChildItem $env:TEMP\\$(verb)\\*.manifest).FullName) { install_from_manifest -manifestfile $i -prefix "$env:TEMP\$(verb)"  }
+
+    foreach ($i in $(Get-ChildItem $env:TEMP\\$(verb)\\*.manifest).FullName ) { write_keys_from_manifest_tofile $i -todir "$env:TEMP\$(verb)\c:\windows\temp"}
+   
+    Push-Location ; Set-Location "$env:TEMP\$(verb)"
+    7z a -m0=BCJ2   -m1=LZMA:29:lc8:pb1 -m2=LZMA:24 -m3=LZMA:24 -mx=9  -ms=on  "$cachedir\$(verb)\$(verb).7z" ".\c:\"; quit?(7z)
+    Pop-Location
+
+    Remove-Item -Force -Recurse "$env:TEMP\$(verb)"
+    }   
+    
+    & 'C:\Program Files\7-Zip\7z.exe' x -spf "$cachedir\$(verb)\$(verb).7z" -aoa 
+    Write-Host -foregroundColor yellow 'Writing registry keys , patience please...' 
+
+    reg.exe IMPORT "c:\windows\temp\reg_keys64.ps1" /reg:64 ; Remove-Item -Force "c:\windows\temp\reg_keys64.ps1"
+    reg.exe IMPORT "c:\windows\temp\reg_keys32.ps1" /reg:32 ; Remove-Item -Force "c:\windows\temp\reg_keys32.ps1"
+
+    foreach($i in 'dispex', 'jscript', 'scrobj', 'scrrun', 'vbscript', 'msscript.ocx', 'wshom.ocx', 'wscript.exe', 'cscript.exe') { dlloverride 'native' $i }
+    
+    Write-Host -foregroundColor yellow 'Done , hopefully nothing''s screwed up ;)' 
+}
+
+function write_keys_from_manifest_tofile([parameter(position=0)] [string] $manifest, [string] $todir){
+
+    if (![System.IO.File]::Exists("$todir\reg_keys64.ps1")) { 
+        New-Item -Path "$todir\reg_keys64.ps1" -Force; "Windows Registry Editor Version 5.00" | out-file "$todir\reg_keys64.ps1"}
+    if (![System.IO.File]::Exists("$todir\reg_keys32.ps1")) {
+        New-Item -Path "$todir\reg_keys32.ps1" -Force; "Windows Registry Editor Version 5.00" | out-file "$todir\reg_keys32.ps1"}
+
+    $Xml = [xml](Get-Content -Path "$manifest")
+
+    if( $Xml.assembly.registryKeys ) { #try write regkeys from manifest file, thanks some guy from freenode webchat channel powershell who wrote skeleton of this in 4 minutes...
+ 
+        foreach ($key in $Xml.assembly.registryKeys.registryKey) {
+            $path = '[{0}]' -f $key.keyName
+    
+            if ( ($Xml.assembly.assemblyIdentity.processorArchitecture -eq 'wow64') -or  ($Xml.assembly.assemblyIdentity.processorArchitecture -eq 'x86') ) { $arch = '32' }
+	        else {$arch = '64'}
+	
+	        "`n"+$path  | out-file "$todir\reg_keys$arch.ps1" -append;
+	        
+            foreach ($value in $key.registryValue) {
+                $propertyType = switch ($value.valueType) {
+                    'REG_SZ'         { '' }
+                    'REG_BINARY'     { 'hex:' }
+                    'REG_DWORD'      { 'dword:'  }
+	            'REG_EXPAND_SZ'  { 'hex(2):' } 
+	            'REG_MULTI_SZ'   { '\MultiString'  } <# FIXME todo #>
+	            'REG_QWORD'      { 'hex(b):' }
+                    'REG_NONE'       { '' } 
+                }
+
+                $Regname = switch ($value.Name) {
+                    '' { ‘@’ }
+                    'registryValue' { ‘@’ } <#FIXME Bugs in script...#>
+                    default { '"' + $value.Name + '"' }
+                }
+                
+                    if ( $Xml.assembly.assemblyIdentity.processorArchitecture -eq 'amd64' -and $value.Value) {
+                        $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\system32" -replace ([Regex]::Escape('$(runtime.programFiles)')),"$env:ProgramFiles" `
+	                -replace ([Regex]::Escape('$(runtime.commonFiles)')),"$env:CommonProgramFiles" -replace ([Regex]::Escape('$(runtime.wbem)')),"$env:systemroot\system32\wbem" -replace ([Regex]::Escape('$(runtime.windows)')),"$env:systemroot" -replace ([Regex]::Escape('$(runtime.inf)')),"$env:systemroot\\inf" -replace '\\','\\'
+                    }
+                    if ( ($Xml.assembly.assemblyIdentity.processorArchitecture -eq 'wow64' -and $value.Value ) -or  ($Xml.assembly.assemblyIdentity.processorArchitecture -eq 'x86' -and $value.Value ) ) {            
+                        $value.Value = $value.Value -replace ([Regex]::Escape('$(runtime.system32)')),"$env:systemroot\syswow64" -replace ([Regex]::Escape('$(runtime.programFiles)')),"${env:ProgramFiles`(x86`)}" `
+	                -replace ([Regex]::Escape('$(runtime.commonFiles)')),"${env:CommonProgramFiles`(x86`)}" -replace ([Regex]::Escape('$(runtime.wbem)')),"$env:systemroot\syswow64\wbem" -replace ([Regex]::Escape('$(runtime.windows)')),"$env:systemroot" -replace ([Regex]::Escape('$(runtime.inf)')),"$env:systemroot\\inf" -replace '\\','\\'
+                    }	   
+
+                   $Regname = $Regname -replace ([Regex]::Escape('$(runtime.windows)')),"$env:systemroot" -replace '\\','\\' <# dotnet481 has regnames with $(runtime.windows)...#>
+
+                   if(($value.valueType -eq 'REG_SZ') <#-or ($value.valueType -eq 'REG_EXPAND_SZ')#>) { $quote='"' } else { $quote='' }
+                   if($value.valueType -eq 'REG_BINARY') { $value.value = ($value.value -split '(..)').Where({$_}) -join ',' }
+                   if($value.valueType -eq 'REG_EXPAND_SZ') { $value.value = ([System.Text.Encoding]::ASCII.GetBytes($value.value +"`0")  -replace '\\','\\' |Format-Hex).HexBytes -replace ' ',',' }
+                   if($value.valueType -eq 'REG_QWORD') { $value.value = ([int64]$value.value | Format-Hex).HexBytes -replace ' ',',' }
+
+                   $Regname + '=' + $quote + $propertyType + $value.Value + $quote |out-file "$todir\reg_keys$arch.ps1" -append -Verbose
+            }
+        }
+        }
+} <# end write_keys_from_manifest #>
+
+function func_mshtml
+{
+    check_aik_sanity;
+    
+    func_urlmon
+    func_iertutil
+    func_riched20 #for msls31/dll
+    func_wsh_win7
+    
+    if (![System.IO.File]::Exists("$cachedir\\$(verb)\\$(verb).7z")) {
+    
+    7z x $cachedir\\aik70\\F_WINPEOC_AMD64__WINPE_WINPE_HTA.CAB "-o$env:TEMP\\$(verb)\\"  -y; 
+    7z x $cachedir\\aik70\\F_WINPEOC_X86__WINPE_WINPE_HTA.CAB "-o$env:TEMP\\$(verb)\\"  -y; quit?(7z)
+
+    Write-Host -foregroundColor yellow 'Starting copying files , this takes a while (> 3 minutes), patience...'    
+    foreach ($i in $(Get-ChildItem $env:TEMP\\$(verb)\\*.manifest).FullName) { install_from_manifest -manifestfile $i -prefix "$env:TEMP\$(verb)"  }
+
+    foreach ($i in $(Get-ChildItem $env:TEMP\\$(verb)\\*.manifest).FullName ) { write_keys_from_manifest_tofile $i -todir "$env:TEMP\$(verb)\c:\windows\temp"}
+   
+    Push-Location ; Set-Location "$env:TEMP\$(verb)"
+    7z a -m0=BCJ2   -m1=LZMA:29:lc8:pb1 -m2=LZMA:24 -m3=LZMA:24 -mx=9  -ms=on  "$cachedir\$(verb)\$(verb).7z" ".\c:\"; quit?(7z)
+    Pop-Location
+
+    Remove-Item -Force -Recurse "$env:TEMP\$(verb)"
+    }   
+    
+    7z x -spf "$cachedir\$(verb)\$(verb).7z" -aoa 
+    Write-Host -foregroundColor yellow 'Writing registry keys , patience please...' 
+
+    reg.exe IMPORT "c:\windows\temp\reg_keys64.ps1" /reg:64 ; Remove-Item -Force "c:\windows\temp\reg_keys64.ps1"
+    reg.exe IMPORT "c:\windows\temp\reg_keys32.ps1" /reg:32 ; Remove-Item -Force "c:\windows\temp\reg_keys32.ps1"
+
+    foreach($i in 'mshtml', 'ieframe', 'urlmon', 'iertutil') { dlloverride 'native' $i }
+    foreach($i in 'msimtf') { dlloverride 'builtin' $i }
+    
+    Write-Host -foregroundColor yellow 'Done , hopefully nothing''s screwed up ;)' 
+}
 
 <# Main function #> 
 if ( $args[0] -eq "no_args") {
