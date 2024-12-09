@@ -4681,7 +4681,7 @@ function func_dotnet481_deprecated
      }
   
 
-    & 'C:\Program Files\7-Zip\7z.exe' x -spf "$cachedir\$(verb)\$(verb).7z" -aoa 
+    & "$env:ProgramFiles\7-Zip\7z.exe" x -spf "$cachedir\$(verb)\$(verb).7z" -aoa 
     Write-Host -foregroundColor yellow 'Writing registry keys , patience please...' 
     #$null =  . "$env:TEMP\reg_keys.ps1"
 
@@ -4711,13 +4711,13 @@ function func_dotnet481
     foreach ($i in $(Get-ChildItem $env:TEMP\\$(verb)\\*.manifest).FullName ) { write_keys_from_manifest_tofile $i -todir "$env:TEMP\$(verb)\c:\windows\temp"}
    
     Push-Location ; Set-Location "$env:TEMP\$(verb)"
-    & 'C:\Program Files\7-Zip\7z.exe' a -m0=BCJ2   -m1=LZMA:29:lc8:pb1 -m2=LZMA:24 -m3=LZMA:24 -mx=9  -ms=on  "$cachedir\$(verb)\$(verb).7z" ".\c:\"; quit?(7z)
+    & "$env:ProgramFiles\7-Zip\7z.exe" a -m0=BCJ2   -m1=LZMA:29:lc8:pb1 -m2=LZMA:24 -m3=LZMA:24 -mx=9  -ms=on  "$cachedir\$(verb)\$(verb).7z" ".\c:\"; quit?(7z)
     Pop-Location
 
     Remove-Item -Force -Recurse "$env:TEMP\$(verb)"
     }   
     
-    & 'C:\Program Files\7-Zip\7z.exe'  x -spf "$cachedir\$(verb)\$(verb).7z" -aoa <# do not use shimmed 7z here, then overwriting several dlls wil fail #> 
+    & "$env:ProgramFiles\7-Zip\7z.exe"  x -spf "$cachedir\$(verb)\$(verb).7z" -aoa <# do not use shimmed 7z here, then overwriting several dlls wil fail #> 
     Write-Host -foregroundColor yellow 'Writing registry keys , patience please...' 
 
     reg.exe IMPORT "c:\windows\temp\reg_keys64.ps1" /reg:64 ; Remove-Item -Force "c:\windows\temp\reg_keys64.ps1"
@@ -4950,7 +4950,7 @@ function func_mdac_deprecated_win7
 
     }   
     
-    & 'C:\Program Files\7-Zip\7z.exe' x -spf "$cachedir\$(verb)\$(verb).7z" -aoa 
+    & "$env:ProgramFiles\7-Zip\7z.exe" x -spf "$cachedir\$(verb)\$(verb).7z" -aoa 
     Write-Host -foregroundColor yellow 'Writing registry keys , patience please...' 
     #$null =  . "$env:TEMP\reg_keys.ps1"
 
@@ -4983,7 +4983,7 @@ function func_mdac_win7
     Remove-Item -Force -Recurse "$env:TEMP\$(verb)"
     }   
     
-    & 'C:\Program Files\7-Zip\7z.exe' x -spf "$cachedir\$(verb)\$(verb).7z" -aoa 
+    & "$env:ProgramFiles\7-Zip\7z.exe" x -spf "$cachedir\$(verb)\$(verb).7z" -aoa 
     Write-Host -foregroundColor yellow 'Writing registry keys , patience please...' 
 
     reg.exe IMPORT "c:\windows\temp\reg_keys64.ps1" /reg:64 ; Remove-Item -Force "c:\windows\temp\reg_keys64.ps1"
@@ -5015,7 +5015,7 @@ function func_wsh57
     Remove-Item -Force -Recurse "$env:TEMP\$(verb)"
     }   
     
-    & 'C:\Program Files\7-Zip\7z.exe' x -spf "$cachedir\$(verb)\$(verb).7z" -aoa 
+    & "$env:ProgramFiles\7-Zip\7z.exe" x -spf "$cachedir\$(verb)\$(verb).7z" -aoa 
     Write-Host -foregroundColor yellow 'Writing registry keys , patience please...' 
 
     reg.exe IMPORT "c:\windows\temp\reg_keys64.ps1" /reg:64 ; Remove-Item -Force "c:\windows\temp\reg_keys64.ps1"
