@@ -1949,31 +1949,52 @@ function func_d3dx
      w_download_to "$dldir" "https://download.microsoft.com/download/c/c/2/cc291a37-2ebd-4ac2-ba5f-4c9124733bf1/UAPSignedBinary_Microsoft.DirectX.x86.appx" "UAPSignedBinary_Microsoft.DirectX.x86.appx" 
      7z x $cachedir\\$dldir\\UAPSignedBinary_Microsoft.DirectX.x86.appx "-o$env:SystemRoot\\syswow64" -y
 } <# end d3dx #>
-
-function func_vcrun2019
+ 
+ function func_vcrun2019
 {
     func_expand
     
-    if ( ![System.IO.File]::Exists( [IO.Path]::Combine("$cachedir",  "$(verb)",  "64", "VC_redist.x64.exe" ) ) -or 
+<#    if ( ![System.IO.File]::Exists( [IO.Path]::Combine("$cachedir",  "$(verb)",  "64", "VC_redist.x64.exe" ) ) -or 
          ![System.IO.File]::Exists( [IO.Path]::Combine("$cachedir",  "$(verb)",  "32", "VC__redist.x86.exe") ) ) {
         choco install vcredist140 -n -force
         . $env:ProgramData\\chocolatey\\lib\\vcredist140\\tools\\data.ps1 
         w_download_to "$(verb)\\64" $installData64.url64 "VC_redist.x64.exe"
         w_download_to "$(verb)\\32" $installData32.url "VC__redist.x86.exe" 
     }
-    
-    iex "$cachedir\$(verb)\64\VC_redist.x64.exe /q"
-    iex "$cachedir\$(verb)\32\VC__redist.x86.exe /q"
-     
+#>
+    if ( ![System.IO.File]::Exists( [IO.Path]::Combine("$cachedir",  "$(verb)",  "64", "VC_redist.x64.exe" ) ) -or 
+         ![System.IO.File]::Exists( [IO.Path]::Combine("$cachedir",  "$(verb)",  "32", "VC__redist.x86.exe") ) ) {
+
+        w_download_to "$(verb)\\64" "https://aka.ms/vs/16/release/vc_redist.x64.exe" "VC_redist.x64.exe"
+        w_download_to "$(verb)\\32" "https://aka.ms/vs/16/release/vc_redist.x86.exe" "VC__redist.x86.exe" 
+    }
+         
     7z -t# x $cachedir\\$(verb)\\64\\VC_redist.x64.exe "-o$env:TEMP\\$(verb)\\64" 4.cab -y | Select-String 'ok'; quit?('7z')
-    7z e $env:TEMP\\$(verb)\\64\\4.cab "-o$env:TEMP\\$(verb)\\64" a2 -y | Select-String 'ok' ;quit?('7z')
+    7z e $env:TEMP\\$(verb)\\64\\4.cab "-o$env:TEMP\\$(verb)\\64" a2 a12 a13 -y | Select-String 'ok' ;quit?('7z')
 
     & $expand_exe "$env:TEMP\$(verb)\64\a2" -f:"Windows8.1-KB2999226-x64.cab" "$env:TEMP\\$(verb)\\64" 
     & $expand_exe  "$env:TEMP\$(verb)\64\Windows8.1-KB2999226-x64.cab" -f:"ucrtbase.dll" "$env:TEMP\\$(verb)\\64"
 
-    Copy-Item -Path "$env:TEMP\$(verb)\64\amd*\*" -Destination "$env:SystemRoot\\system32" -Force -Verbose
-    Copy-Item -Path "$env:TEMP\$(verb)\64\x86*\*" -Destination "$env:windir\\SysWOW64" -Force -Verbose
-    
+    Remove-Item   "$env:systemroot\\SysWOW64\\ucrtbase_weg.dll" -Force -Verbose -erroraction SilentlyContinue
+    Remove-Item   "$env:systemroot\\System32\\ucrtbase_weg.dll" -Force -Verbose -erroraction SilentlyContinue
+
+    Rename-Item  "$env:systemroot\\SysWOW64\\ucrtbase.dll" "$env:systemroot\\SysWOW64\\ucrtbase_weg.dll" -Force -Verbose
+    Rename-Item  "$env:systemroot\\System32\\ucrtbase.dll" "$env:systemroot\\System32\\ucrtbase_weg.dll" -Force -Verbose
+
+    Copy-Item -Path "$env:TEMP\$(verb)\64\amd*\ucrtbase.dll" -Destination "$env:SystemRoot\\system32" -Force -Verbose
+    Copy-Item -Path "$env:TEMP\$(verb)\64\x86*\ucrtbase.dll" -Destination "$env:windir\\SysWOW64" -Force -Verbose
+
+    7z x $env:TEMP\\$(verb)\\64\\a12  "-o$env:TEMP\\$(verb)\\64"
+    7z x $env:TEMP\\$(verb)\\64\\a13    mfc140.dll mfc140u.dll mfcm140.dll mfcm140u.dll "-o$env:TEMP\\$(verb)\\64"
+    foreach ($i in (get-item "$env:TEMP\\vcrun2019\\64\\*.dll").name) {Move-Item $env:TEMP\\$(verb)\\64\\$i $env:systemroot\\system32\\$i -force -verbose}  
+
+    7z -t# x $cachedir\\$(verb)\\32\\VC__redist.x86.exe "-o$env:TEMP\\$(verb)\\32" 4.cab -y | Select-String 'ok'; quit?('7z')
+    7z e $env:TEMP\\$(verb)\\32\\4.cab "-o$env:TEMP\\$(verb)\\32" a10 a11 -y | Select-String 'ok' ;quit?('7z')
+
+    7z x $env:TEMP\\$(verb)\\32\\a10   "-o$env:TEMP\\$(verb)\\32"
+    7z x $env:TEMP\\$(verb)\\32\\a11  mfc140.dll mfc140u.dll  mfcm140.dll mfcm140u.dll  "-o$env:TEMP\\$(verb)\\32"
+    foreach ($i in (get-item "$env:TEMP\\vcrun2019\\32\\*.dll").name) {Move-Item $env:TEMP\\$(verb)\\32\\$i $env:systemroot\\syswow64\\$i -force -verbose}  
+
     Remove-Item -Force -Recurse "$env:TEMP\$(verb)"
         
     foreach($i in 'concrt140', 'msvcp140', 'msvcp140_1', 'msvcp140_2', 'vcruntime140', 'vcruntime140_1', 'ucrtbase') { dlloverride 'native' $i }
@@ -1989,23 +2010,37 @@ function func_vcrun2022
         w_download_to "$(verb)\\64" "https://aka.ms/vs/17/release/vc_redist.x64.exe" "VC_redist.x64.exe"
         w_download_to "$(verb)\\32" "https://aka.ms/vs/17/release/vc_redist.x86.exe" "VC__redist.x86.exe" 
     }
-    
-    iex "$cachedir\$(verb)\64\VC_redist.x64.exe /q"
-    iex "$cachedir\$(verb)\32\VC__redist.x86.exe /q"
      
     7z -t# x $cachedir\\$(verb)\\64\\VC_redist.x64.exe "-o$env:TEMP\\$(verb)\\64" 4.cab -y | Select-String 'ok'; quit?('7z')
-    7z e $env:TEMP\\$(verb)\\64\\4.cab "-o$env:TEMP\\$(verb)\\64" a2 -y | Select-String 'ok' ;quit?('7z')
+    7z e $env:TEMP\\$(verb)\\64\\4.cab "-o$env:TEMP\\$(verb)\\64" a2 a12 a13 -y | Select-String 'ok' ;quit?('7z')
 
     & $expand_exe "$env:TEMP\$(verb)\64\a2" -f:"Windows8.1-KB2999226-x64.cab" "$env:TEMP\\$(verb)\\64" 
     & $expand_exe  "$env:TEMP\$(verb)\64\Windows8.1-KB2999226-x64.cab" -f:"ucrtbase.dll" "$env:TEMP\\$(verb)\\64"
 
-    Copy-Item -Path "$env:TEMP\$(verb)\64\amd*\*" -Destination "$env:SystemRoot\\system32" -Force -Verbose
-    Copy-Item -Path "$env:TEMP\$(verb)\64\x86*\*" -Destination "$env:windir\\SysWOW64" -Force -Verbose
+    Remove-Item   "$env:systemroot\\SysWOW64\\ucrtbase_weg.dll" -Force -Verbose -erroraction SilentlyContinue
+    Remove-Item   "$env:systemroot\\System32\\ucrtbase_weg.dll" -Force -Verbose -erroraction SilentlyContinue
+
+    Rename-Item  "$env:systemroot\\SysWOW64\\ucrtbase.dll" "$env:systemroot\\SysWOW64\\ucrtbase_weg.dll" -Force -Verbose
+    Rename-Item  "$env:systemroot\\System32\\ucrtbase.dll" "$env:systemroot\\System32\\ucrtbase_weg.dll" -Force -Verbose
+
+    Copy-Item -Path "$env:TEMP\$(verb)\64\amd*\ucrtbase.dll" -Destination "$env:SystemRoot\\system32" -Force -Verbose
+    Copy-Item -Path "$env:TEMP\$(verb)\64\x86*\ucrtbase.dll" -Destination "$env:windir\\SysWOW64" -Force -Verbose
+ 
+    7z x $env:TEMP\\$(verb)\\64\\a12  "-o$env:TEMP\\$(verb)\\64"
+    7z x $env:TEMP\\$(verb)\\64\\a13    mfc140.dll_amd64 mfc140u.dll_amd64 mfcm140.dll_amd64 mfcm140u.dll_amd64 "-o$env:TEMP\\$(verb)\\64"
+    foreach ($i in (get-item "$env:TEMP\\$(verb)\\64\\*.dll_amd64").name) {Move-Item $env:TEMP\\$(verb)\\64\\$i $env:systemroot\\system32\\$($i -replace '_amd64','' ) -force -verbose}  
+
+    7z -t# x $cachedir\\$(verb)\\32\\VC__redist.x86.exe "-o$env:TEMP\\$(verb)\\32" 4.cab -y | Select-String 'ok'; quit?('7z')
+    7z e $env:TEMP\\$(verb)\\32\\4.cab "-o$env:TEMP\\$(verb)\\32" a10 a11 -y | Select-String 'ok' ;quit?('7z')
+
+    7z x $env:TEMP\\$(verb)\\32\\a10   "-o$env:TEMP\\$(verb)\\32"
+    7z x $env:TEMP\\$(verb)\\32\\a11  mfc140.dll_x86 mfc140u.dll_x86  mfcm140.dll_x86 mfcm140u.dll_x86  "-o$env:TEMP\\$(verb)\\32"
+    foreach ($i in (get-item "$env:TEMP\\$(verb)\\32\\*.dll_x86").name) {Move-Item $env:TEMP\\$(verb)\\32\\$i $env:systemroot\\syswow64\\$($i -replace '_x86','') -force -verbose}  
     
     Remove-Item -Force -Recurse "$env:TEMP\$(verb)"
         
     foreach($i in 'concrt140', 'msvcp140', 'msvcp140_1', 'msvcp140_2', 'vcruntime140', 'vcruntime140_1', 'ucrtbase') { dlloverride 'native' $i }
-} <# end vcrun2019 #>
+} <# end vcrun2022 #>
 
 function func_cmd <# native cmd #>
 {
@@ -4709,15 +4744,26 @@ function func_dotnet481
     foreach ($i in $(Get-ChildItem $env:TEMP\\$(verb)\\*.manifest).FullName) { install_from_manifest -manifestfile $i -prefix "$env:TEMP\$(verb)"  }
 
     foreach ($i in $(Get-ChildItem $env:TEMP\\$(verb)\\*.manifest).FullName ) { write_keys_from_manifest_tofile $i -todir "$env:TEMP\$(verb)\c:\windows\temp"}
-   
+
     Push-Location ; Set-Location "$env:TEMP\$(verb)"
     & "$env:ProgramFiles\7-Zip\7z.exe" a -m0=BCJ2   -m1=LZMA:29:lc8:pb1 -m2=LZMA:24 -m3=LZMA:24 -mx=9  -ms=on  "$cachedir\$(verb)\$(verb).7z" ".\c:\"; quit?(7z)
+
+    7z a "$cachedir\$(verb)\$(verb).7z" "C:\users\louis\AppData\Local\Temp\dotnet481\C:\windows\Microsoft.NET\Framework64\v4.0.30319\mscoreei.dll"
     Pop-Location
 
     Remove-Item -Force -Recurse "$env:TEMP\$(verb)"
     }   
     
     & "$env:ProgramFiles\7-Zip\7z.exe"  x -spf "$cachedir\$(verb)\$(verb).7z" -aoa <# do not use shimmed 7z here, then overwriting several dlls wil fail #> 
+
+    Write-Host -foregroundColor yellow 'Replacing mscoreei...'
+
+    remove-item "C:\windows\Microsoft.NET\Framework64\v4.0.30319\mscoreei_old.dll" -force -erroraction silentlycontinue -verbose
+
+    Rename-Item  "C:\windows\Microsoft.NET\Framework64\v4.0.30319\mscoreei.dll" "C:\windows\Microsoft.NET\Framework64\v4.0.30319\mscoreei_old.dll" -Force -Verbose
+
+    Move-Item "$env:systemdrive\mscoreei.dll" "$env:systemroot\Microsoft.NET\Framework64\v4.0.30319\mscoreei.dll" -verbose -force
+
     Write-Host -foregroundColor yellow 'Writing registry keys , patience please...' 
 
     reg.exe IMPORT "c:\windows\temp\reg_keys64.ps1" /reg:64 ; Remove-Item -Force "c:\windows\temp\reg_keys64.ps1"
