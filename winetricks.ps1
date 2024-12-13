@@ -48,7 +48,7 @@ else                      {$cachedir = ("$env:WINEHOMEDIR" + "\.cache\winetrickx
     "dlls","oleaut32","native oleaut32, (dangerzone) can only be set on a per app base",
     "dlls","ps51_ise", "PowerShell 5.1 Integrated Scripting Environment",
     "dlls","ps51", "rudimentary PowerShell 5.1 (downloads yet another huge amount of Mb`s!)",
-    "dlls","riched20","riched20.dll, msls31.dll",
+    "dlls","riched20","riched20.dll, msls31.dll, msftedit.dll",
     "dlls","sapi", "Speech api (sapi.dll), experimental, makes Balabolka work",
     "dlls","sspicli", "dangerzone, only for testing, might break things, only use on a per app base (sspicli.dll)",
     "dlls","uianimation", "uianimation.dll",
@@ -216,16 +216,6 @@ function func_msxml3
     foreach($i in 'msxml3') { dlloverride 'native' $i }
 } <# end msxml3 #>
 
-function func_msxml6
-{
-    $dlls = @('msxml6.dll','msxml6r.dll'); check_aik_sanity;
-
-    foreach ($i in $dlls) {
-        7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
-        7z e "$cachedir\aik70\F1_WINPE.WIM" "-o$env:systemroot\syswow64" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z') 
-    foreach($i in 'msxml6') { dlloverride 'native' $i }
-} <# end msxml6 #>
-
 function func_mfc42
 {
     $dlls = @('mfc42.dll', 'mfc42u.dll'); check_aik_sanity;
@@ -237,12 +227,12 @@ function func_mfc42
 
 function func_riched20
 {
-    $dlls = @('riched20.dll','msls31.dll'); check_aik_sanity;
+    $dlls = @('riched20.dll','msls31.dll','msftedit.dll'); check_aik_sanity;
 
     foreach ($i in $dlls) {
         7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
         7z e "$cachedir\aik70\F1_WINPE.WIM" "-o$env:systemroot\syswow64" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z') 
-    foreach($i in 'riched20') { dlloverride 'native' $i }
+    foreach($i in 'riched20','msftedit') { dlloverride 'native' $i }
 } <# end riched20 #>
 
 function func_windowscodecs
@@ -409,6 +399,47 @@ function func_oleaut32 <# oleaut32  #>
     if(!(Test-Path "HKCU:\\Software\\Wine\\AppDefaults\\$file\\DllOverrides")) {New-Item  -Path "HKCU:\\Software\\Wine\\AppDefaults\\$file\\DllOverrides"}
     New-ItemProperty -Path "HKCU:\\Software\\Wine\\AppDefaults\\$file\\DllOverrides" -Name "$(verb)" -Value 'native,builtin' -PropertyType 'String' -force
 } <# end oleaut32 #>
+
+function func_msxml6 <# experimental... #>
+{
+    $url = "https://catalog.s.download.windowsupdate.com/c/msdownload/update/software/updt/2018/08/windows10.0-kb4343893-x64_bdae9c9c28d4102a673a24d37c371ed73d053338.msu"
+    $cab = "Windows10.0-KB4343893-x64.cab"
+    $sourcefile = @('msxml6.dll', 'msxml6r.dll')
+
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
+        check_msu_sanity $url $cab;
+        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\amd64*" "$cachedir\$(verb)\wow*" ; quit?('7z')
+
+        foreach($i in 'amd64', 'x86', 'wow64') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" }
+        
+        Remove-Item -Force "$cachedir\$(verb)\$cab" -ErrorAction SilentlyContinue
+    }
+
+    Rename-Item  "$env:systemroot\system32\msxml6.dll" "$env:systemroot\system32\msxml6_old.dll" -Force -Verbose -erroraction silentlycontinue
+    Rename-Item  "$env:systemroot\system32\msxml6r.dll" "$env:systemroot\system32\msxml6r_old.dll" -Force -Verbose -erroraction silentlycontinue
+
+    & "$env:ProgramFiles\7-Zip\7z.exe" e "$cachedir\$(verb)\$(verb).7z" "amd64*\*" "-o$env:systemroot\system32" -aoa
+    & "$env:ProgramFiles\7-Zip\7z.exe" e "$cachedir\$(verb)\$(verb).7z" "wow64*\*" "-o$env:systemroot\syswow64" -aoa
+
+    remove-item "$env:systemroot\system32\msxml6_old.dll" -force -erroraction silentlycontinue -verbose
+    remove-item "$env:systemroot\system32\msxml6r_old.dll" -force -erroraction silentlycontinue -verbose
+        
+    if( [System.IO.File]::Exists( $([IO.Path]::Combine($cachedir,  'wine_rpcrt4', "wine_rpcrt4.7z") )) -and ( (Get-FileHash  "$cachedir\wine_rpcrt4\wine_rpcrt4.7z").Hash -ne 'c82422a0bf6cc4045c142a91f250e557f841755aa1f8b169e1765a9ed3b6258c') )  {
+        Remove-Item -Force  "$cachedir\wine_rpcrt4\wine_rpcrt4.7z" 
+    }
+    w_download_to "wine_rpcrt4" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_rpcrt4.7z" "wine_rpcrt4.7z"
+
+    7z e "$cachedir\\wine_rpcrt4\\wine_rpcrt4.7z" "-o$env:systemroot\system32" "64/rpcrt4_64.dll" -aoa | Select-String 'ok' 
+    7z e "$cachedir\\wine_rpcrt4\\wine_rpcrt4.7z" "-o$env:systemroot\syswow64" "32/rpcrt4.dll" -aoa | Select-String 'ok'
+
+    remove-item "$env:systemroot\system32\rpcrt4_old.dll" -force -erroraction silentlycontinue -verbose
+    Rename-Item  "$env:systemroot\system32\rpcrt4.dll" "$env:systemroot\system32\rpcrt4_old.dll" -Force -Verbose -erroraction silentlycontinue
+    Rename-Item  "$env:systemroot\system32\rpcrt4_64.dll" "$env:systemroot\system32\rpcrt4.dll" -Force -Verbose -erroraction silentlycontinue
+    [system.console]::ForegroundColor='white'
+    
+    foreach($i in 'msxml6', 'rpcrt4') { dlloverride 'native,builtin' $i }
+} <# end msxml6 #>
 
 function func_wsh57_deprecated
 {
@@ -3083,13 +3114,10 @@ function func_vs22_interactive_installer
 
 function func_office365
 {
-if(!($ntdll::wine_get_build_id() |Select-string 'Tkg Staging')) {
-        Add-Type -AssemblyName System.Windows.Forms
-        $result = [System.Windows.Forms.MessageBox]::Show("This verb only works in Wine Tkg Staging releases like you can find here:`n https://github.com/Kron4ek/Wine-Builds/releases/`ndownload/9.18/wine-9.18-staging-tkg-amd64.tar.xz.`n
-After untar in for example /tmp you can run like`n /tmp/wine-9.18-staging-tkg-amd64/bin/wine conemu64, and try this verb again" , "Info" , 0)
-        return
-}
+
+
 winecfg /v win10
+
 func_msxml6
 func_riched20
 func_wine_sppc
