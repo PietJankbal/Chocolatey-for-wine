@@ -20,7 +20,7 @@
    i686-w64-mingw32-gcc -Oz -fno-asynchronous-unwind-tables -mno-stack-arg-probe -municode -Wall -Wextra -mno-stack-arg-probe -nostartfiles\
    -Wl,-gc-sections -Xlinker --stack=0x100000,0x100000 mainv1.c -nostdlib -lucrtbase -lkernel32 -lntdll -s -o powershell32.exe && strip -R .reloc  powershell32.exe
  */
-
+ 
 #include <wchar.h>
 #include <windows.h>
 #include <winternl.h>
@@ -37,7 +37,7 @@ static BOOL is_last_option(const WCHAR* s) { return wcschr(L"cCfFeE\0", s[1]) ? 
 static void join(WCHAR* string1, const WCHAR* string2) { if (string2) _wcscat(_wcscat(string1, L" "), string2); }
 
 DWORD mainCRTStartup(PPEB peb) {
-    wchar_t *file = peb->ProcessParameters->ImagePathName.Buffer, *ptr, *token = wcstok_s(file, L"\\", &ptr), *cl = calloc(4095, sizeof(WCHAR)); /* cl = new outgoing cmdline */
+    wchar_t *file = peb->ProcessParameters->ImagePathName.Buffer, *ptr, *token = wcstok_s(file, L"\\", &ptr), *cl = calloc(4095, sizeof(WCHAR)), pwsh[255]; /* cl = new outgoing cmdline */
     DWORD exitcode;
     STARTUPINFOW si = {0};
     PROCESS_INFORMATION pi = {0};
@@ -46,6 +46,7 @@ DWORD mainCRTStartup(PPEB peb) {
     if (!_wcsnicmp(cmd + 1, L"-v", 2)) cmd = (cmd = wcschr(++cmd, L' ')) ? wcschr(++cmd, L' ') : 0; /* skip incompatible version option, like '-version 3.0' */
     do { token = wcstok_s(NULL, L"\\", &ptr); } while (token && *ptr);                              /* get the filename */
     wcstok_s(token, L".", &ptr);
+    _wcscat(_wcscat(pwsh, _wgetenv(L"ProgramFiles")), L"\\Powershell\\7\\pwsh.exe");
     
     /* I can also act as a dummy program if my exe-name is not powershell, allows to replace a system exe (like wusa.exe, or any exe really) by a function in profile.ps1 */
     if (_wcsnicmp(token, L"Powershell", 10)) {                       /* note: set desired exitcode in the function in profile.ps1;  */
@@ -73,10 +74,9 @@ DWORD mainCRTStartup(PPEB peb) {
 
             token = wcstok_s(NULL, L" ", &ptr);
         }
-    }
-    
-    // /*track the cmd:*/ FILE *fptr; fptr = fopen("c:\\log.txt", "a");fputws(L"used commandline is now: ",fptr); fputws(cl,fptr); fclose(fptr);
-    CreateProcessW(!_wgetenv(L"PS51") ? _wgetenv(L"PS7") : L"c:\\Windows\\system32\\WindowsPowershell\\v1.0\\PS51.exe", cl, 0, 0, 0, 0, 0, 0, &si, &pi);
+    }       // /*track the cmd:*/ FILE *fptr; fptr = fopen("c:\\log.txt", "a");fputws(L"used commandline is now: ",fptr); fputws(cl,fptr); fclose(fptr);
+
+    CreateProcessW(!_wgetenv(L"PS51") ? pwsh : L"c:\\Windows\\system32\\WindowsPowershell\\v1.0\\PS51.exe", cl, 0, 0, 0, 0, 0, 0, &si, &pi);
     WaitForSingleObject(pi.hProcess, INFINITE); GetExitCodeProcess(pi.hProcess, &exitcode); CloseHandle(pi.hProcess); CloseHandle(pi.hThread);
     free(cl);
     return exitcode;
