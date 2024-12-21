@@ -1,8 +1,8 @@
 diff --git a/dlls/combase/combase.c b/dlls/combase/combase.c
-index e072c169953..4ad2f0087f7 100644
+index b3a1c9bd8fc..0be5135c2b7 100644
 --- a/dlls/combase/combase.c
 +++ b/dlls/combase/combase.c
-@@ -1029,7 +1029,7 @@ HRESULT WINAPI CoQueryProxyBlanket(IUnknown *proxy, DWORD *authn_service,
+@@ -1028,7 +1028,7 @@ HRESULT WINAPI CoQueryProxyBlanket(IUnknown *proxy, DWORD *authn_service,
          IClientSecurity_Release(client_security);
      }
  
@@ -34,10 +34,10 @@ index f638604f5a3..f49325297f0 100644
  
  static HRESULT WINAPI ProxyCliSec_CopyProxy(IClientSecurity *iface,
 diff --git a/dlls/combase/roapi.c b/dlls/combase/roapi.c
-index 02d9e0b536e..4446b777abf 100644
+index 0f8a9438821..795ec765200 100644
 --- a/dlls/combase/roapi.c
 +++ b/dlls/combase/roapi.c
-@@ -162,8 +162,51 @@ HRESULT WINAPI DECLSPEC_HOTPATCH RoGetActivationFactory(HSTRING classid, REFIID
+@@ -162,8 +162,52 @@ HRESULT WINAPI DECLSPEC_HOTPATCH RoGetActivationFactory(HSTRING classid, REFIID
      hr = get_library_for_classid(WindowsGetStringRawBuffer(classid, NULL), &library);
      if (FAILED(hr))
      {
@@ -54,7 +54,8 @@ index 02d9e0b536e..4446b777abf 100644
 +        {
 +            {L"Windows.Foundation.Diagnostics.AsyncCausalityTracer", L"c:\\windows\\system32\\combase.dll"},
 +            {L"Windows.UI.Xaml.Application", L"c:\\windows\\system32\\Windows.UI.Xaml.dll"},
-+            {L"Windows.UI.Xaml.Hosting.WindowsXamlManager", L"c:\\windows\\system32\\Windows.UI.Xaml.dll"}, 
++            {L"Windows.UI.Xaml.Hosting.WindowsXamlManager", L"c:\\windows\\system32\\Windows.UI.Xaml.dll"},
++            {L"Windows.Storage.Streams.DataWriter", L"c:\\windows\\system32\\wintypes.dll"},
 +        };
 +        
 +        int i;
@@ -91,7 +92,7 @@ index 02d9e0b536e..4446b777abf 100644
      }
  
      if (!(module = LoadLibraryW(library)))
-@@ -207,10 +250,15 @@ HRESULT WINAPI RoGetParameterizedTypeInstanceIID(UINT32 name_element_count, cons
+@@ -207,10 +251,15 @@ HRESULT WINAPI RoGetParameterizedTypeInstanceIID(UINT32 name_element_count, cons
                                                   const IRoMetaDataLocator *meta_data_locator, GUID *iid,
                                                   ROPARAMIIDHANDLE *hiid)
  {
