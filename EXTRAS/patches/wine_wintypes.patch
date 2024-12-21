@@ -1,105 +1,85 @@
+diff --git a/dlls/wintypes/Makefile.in b/dlls/wintypes/Makefile.in
+index b8958cdcd15..da78908f30a 100644
+--- a/dlls/wintypes/Makefile.in
++++ b/dlls/wintypes/Makefile.in
+@@ -1,6 +1,6 @@
+ MODULE    = wintypes.dll
+ IMPORTLIB = wintypes
+-IMPORTS   = combase
++IMPORTS   = combase shlwapi
+ 
+ SOURCES = \
+ 	classes.idl \
 diff --git a/dlls/wintypes/main.c b/dlls/wintypes/main.c
-index d5bfb5ad11c..8bc04c736af 100644
+index 46c2a1d7911..10b1d30c224 100644
 --- a/dlls/wintypes/main.c
 +++ b/dlls/wintypes/main.c
-@@ -25,6 +25,8 @@
+@@ -22,6 +22,7 @@
+ #include "initguid.h"
+ #include "windef.h"
+ #include "winbase.h"
++#include "shlwapi.h"
  #include "winstring.h"
  #include "wine/debug.h"
  #include "objbase.h"
-+#include "roapi.h"
-+
- 
- #include "activation.h"
- #include "rometadataresolution.h"
-@@ -354,16 +356,80 @@ HRESULT WINAPI RoIsApiContractMajorVersionPresent(const WCHAR *name, UINT16 majo
+@@ -147,7 +148,7 @@ static HRESULT STDMETHODCALLTYPE wintypes_ActivateInstance(IActivationFactory *i
+         IInspectable **instance)
+ {
+     FIXME("iface %p, instance %p stub!\n", iface, instance);
+-    return E_NOTIMPL;
++    return 0;  //E_NOTIMPL;
  }
  
- HRESULT WINAPI RoResolveNamespace(HSTRING name, HSTRING windowsMetaDataDir,
--                                  DWORD packageGraphDirsCount, const HSTRING *packageGraphDirs,
--                                  DWORD *metaDataFilePathsCount, HSTRING **metaDataFilePaths,
--                                  DWORD *subNamespacesCount, HSTRING **subNamespaces)
--{
+ static const struct IActivationFactoryVtbl activation_factory_vtbl =
+@@ -1231,13 +1232,50 @@ HRESULT WINAPI RoResolveNamespace(HSTRING name, HSTRING windowsMetaDataDir,
+                                   DWORD *metaDataFilePathsCount, HSTRING **metaDataFilePaths,
+                                   DWORD *subNamespacesCount, HSTRING **subNamespaces)
+ {
 -    FIXME("name %s, windowsMetaDataDir %s, metaDataFilePaths %p, subNamespaces %p stub!\n",
--            debugstr_hstring(name), debugstr_hstring(windowsMetaDataDir),
--            metaDataFilePaths, subNamespaces);
--
--    if (!metaDataFilePaths && !subNamespaces)
--        return E_INVALIDARG;
-+	DWORD packageGraphDirsCount, const HSTRING *packageGraphDirs,
-+		DWORD *metaDataFilePathsCount, HSTRING **metaDataFilePaths,
-+		DWORD *subNamespacesCount, HSTRING **subNamespaces)
-+{
-+	//https://learn.microsoft.com/en-us/windows/win32/api/rometadataresolution/nf-rometadataresolution-roresolvenamespace
-+	//name L"Windows.Services.Store", windowsMetaDataDir L"", metaDataFilePaths 0000000000419088, subNamespaces 0000000000000000 stub!
++    HRESULT hr;
++    const WCHAR *name_buffer;
++    /* We use a single giant .winmd file that combines lots of different .winmd files
++     * This works because winmd files are allowed to contain nested sub-namespaces:
++     * https://learn.microsoft.com/en-us/uwp/winrt-cref/winmd-files#winmd-file-name
++     * It gets copied into 'c:\windows\system32\WinMetadata' by wine.inf
++     * See wintypes.rc
++     */
++    const WCHAR *path = L"C:\\windows\\system32\\WinMetadata\\Windows.winmd";
 +
-+	const WCHAR a[][MAX_PATH] = { 
-+		L"Windows.applicationmodel",
-+		L"Windows.Data",
-+		L"Windows.Devices",
-+		L"Windows.Foundation",
-+		L"Windows.Gaming",
-+		L"Windows.Globalization",
-+		L"Windows.Graphics",
-+		L"Windows.Management",
-+		L"Windows.Media",
-+		L"Windows.Networking",
-+		L"Windows.Perception",
-+		L"Windows.Security",
-+		L"Windows.Services",
-+		L"Windows.Storage",
-+		L"Windows.System",
-+		L"Windows.UI",
-+		L"Windows.UI.Xaml",
-+		L"Windows.Web" };
-+
-+	int i = 0;
-+	HRESULT h;
-+
-+	if (!metaDataFilePaths && !subNamespaces)
-+		return E_INVALIDARG;
-+
-+	const WCHAR *buffer = WindowsGetStringRawBuffer(name, NULL);
-+	HSTRING *str = malloc(sizeof(HSTRING)), *str2 = malloc(sizeof(HSTRING));
-+	// const WCHAR *path = L"C:\\Windows\\system32\\WinMetadata\\Windows.Services.winmd";
-+
-+	FIXME("name %s, windowsMetaDataDir %s, metaDataFilePaths %p, subNamespaces %p stub!\n",
-+		debugstr_hstring(name), debugstr_hstring(windowsMetaDataDir),
-+		metaDataFilePaths, subNamespaces);
-+
-+	WCHAR path[MAX_PATH] = L"C:\\windows\\system32\\WinMetadata\\";
-+
-+	while (a[i])
-+	{
-+		if (wcsstr(buffer, a[i]) != 0)
-+		{
-+			wcscat(wcscat(path, a[i]), L".winmd");
-+
-+			if (WindowsCreateString(path, wcslen(path), str) == S_OK)
-+			{
-+				FIXME("Setting vars\n");
-+				*metaDataFilePaths = str;
-+				if (metaDataFilePathsCount) *metaDataFilePathsCount = 1;
-+
-+				FIXME("Done setting\n");
-+				h = S_OK;
-+			}
-+			else
-+			{
-+				FIXME("OUT OF MEMORY");
-+				h = E_OUTOFMEMORY;
-+			}
-+
-+			break;
-+			//*subNamespacesCount = 0;
-+			//WindowsCreateString(L"Profile.SystemManufacturers.SmbiosInformation", wcslen(L"Profile.SystemManufacturers.SmbiosInformation"), str2);
-+			//*subNamespaces = str2;
-+		}
-+
-+		i++;
-+	}
-+
-+	if (h != S_OK) h = RO_E_METADATA_NAME_NOT_FOUND;
-+	return h;
++    FIXME("name %s, windowsMetaDataDir %s, metaDataFilePaths %p, subNamespaces %p partial stub!\n",
+             debugstr_hstring(name), debugstr_hstring(windowsMetaDataDir),
+             metaDataFilePaths, subNamespaces);
  
--    return RO_E_METADATA_NAME_NOT_FOUND;
++    name_buffer = WindowsGetStringRawBuffer( name, NULL );
++
+     if (!metaDataFilePaths && !subNamespaces)
+         return E_INVALIDARG;
+ 
++    if (!StrCmpNIW(name_buffer, L"Windows", 7)) {
++        if (metaDataFilePathsCount) {
++            HSTRING *str = malloc(sizeof(HSTRING));
++            if (!str)
++                return E_OUTOFMEMORY;
++
++            if (FAILED(hr = WindowsCreateString(path, wcslen(path), str))) {
++                free(str);
++                return hr;
++            }
++            /* FIXME - when windowsMetaDataDir is passed in, we need to use the correct individual .winmd
++             * file path, instead of our special combined .winmd file
++             */
++            *metaDataFilePaths = str;
++            *metaDataFilePathsCount = 1;
++        }
++
++        /* FIXME - fill in subNamespaces correctly */
++        if(subNamespacesCount) {
++            *subNamespacesCount = 0;
++        }
++        /* FIXME - check that the requested name actually exists */
++        return S_OK;
++    }
++
+     return RO_E_METADATA_NAME_NOT_FOUND;
  }
+ 
