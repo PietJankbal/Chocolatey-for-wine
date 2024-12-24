@@ -227,22 +227,3 @@ index 8f9519d2ca8..a7cf491d5f9 100644
      TRACE("%3d: returning %s (%d)\n", id, debugstr_w(sii->szPath), sii->iIcon);
  
      return S_OK;
-diff --git a/dlls/shell32/shlexec.c b/dlls/shell32/shlexec.c
-index 828c7168a34..501ed0fcab9 100644
---- a/dlls/shell32/shlexec.c
-+++ b/dlls/shell32/shlexec.c
-@@ -1655,6 +1655,14 @@ static BOOL SHELL_execute( LPSHELLEXECUTEINFOW sei, SHELL_ExecuteW32 execfunc )
- 
-     sei->hProcess = NULL;
- 
-+    /* remove trailing spaces */
-+    if (sei_tmp.lpFile)
-+    {
-+        WCHAR *buf = wcsdup(sei->lpFile), *end = buf + wcslen( buf ) - 1;
-+        while (end >= buf && *end == ' ') *end-- = 0;
-+        sei_tmp.lpFile = buf;
-+    }
-+
-     /* make copies of all path/command strings */
-     if (!sei_tmp.lpFile)
-     {
