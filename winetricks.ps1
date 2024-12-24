@@ -44,7 +44,7 @@ else                      {$cachedir = ("$env:WINEHOMEDIR" + "\.cache\winetrickx
     "dlls","mspatcha", "mspatcha.dll",
     "dlls","msvbvm60", "msvbvm60.dll",
     "dlls","msxml3","msxml3.dll",
-    "dlls","msxml6","msxml6.dll",
+    "dlls","msxml6","(experimental) msxml6.dll",
     "dlls","oleaut32","native oleaut32, (dangerzone) can only be set on a per app base",
     "dlls","ps51_ise", "PowerShell 5.1 Integrated Scripting Environment",
     "dlls","ps51", "rudimentary PowerShell 5.1 (downloads yet another huge amount of Mb`s!)",
@@ -1744,7 +1744,7 @@ function func_windows.ui.xaml <# experimental... #>
 {
     $url = "http://download.windowsupdate.com/c/msdownload/update/software/updt/2016/11/windows10.0-kb3205436-x64_45c915e7a85a7cc7fc211022ecd38255297049c3.msu"
     $cab = "Windows10.0-KB3205436-x64.cab"
-    $sourcefile = @('coremessaging.dll', 'windows.ui.xaml.dll', 'bcp47langs.dll')
+    $sourcefile = @('coremessaging.dll', 'windows.ui.xaml.dll', 'bcp47langs.dll', 'windows.storage.dll')
 
     if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
         check_msu_sanity $url $cab;
@@ -2341,23 +2341,25 @@ function func_wine_wintrust <# wine wintrust with some hack faking success #>
 
 function func_wine_advapi32 { install_winedll wine_advapi32 '27b8ffd4abec1aa26936d769f0c6bcc74f5bfb2c6526acdd37223f2f199ccdfd'}
 
-function func_wine_shell32 { install_winedll wine_shell32 'b76038abf9aebfa8a570e4b42085c629f63234a6ded23f69d5ed42996f71d157'}
+function func_wine_shell32 { install_winedll wine_shell32 'dc3c91f357f26b5cc333b0776341947c769244d6d3fa2fe869730bf6a92094e1'}
 
-function func_wine_combase { install_winedll wine_combase 'c85261296b6a00234aa412910c019946c19de6c1c537708b6c2c1d2f2b2593e2'}
+function func_wine_combase { install_winedll wine_combase 'ab66f282f7feab67be6ddb8b3700a04126ba8f6808d193f4b5f0581b697781e8'}
 
 function func_wine_d2d1 { install_winedll wine_d2d1 'd93559790176ca68b8c5a35f99f9bd1d64231991b167110d64033ebae1ee65b0'}
 
-function func_wine_msxml3 { install_winedll wine_msxml3 '4a96a865a47d090eab3c1485fa923ca639b5d38fcff03c1b7b62785aa5921151'}
+function func_wine_msxml3 { install_winedll wine_msxml3 '97914e37847a1a73929b098b788c30e9703e41bea6ee1cacb7a479b724a796bf'}
 
 function func_wine_cfgmgr32 { install_winedll wine_cfgmgr32 '74bcee062772023de0da4ed05f0c9ccdedd86165ab8f8553b08c94b9c406dc01'}
 
 function func_wine_sxs { install_winedll wine_sxs '9ac670ae3105611a5211649aab25973b327dcd8ea932f1a8569e78adca6fedcb'}
 
-function func_wine_wintypes { install_winedll wine_wintypes 'e9dc32b89a48d69edbd1274ef11536efb1e93e7170212e2460113ee35d5e3d91'}
+function func_wine_wintypes { install_winedll wine_wintypes '7c99767ebecaba810b474eafe8b39056d354676950ed23e633e38e0bda57e4c4'}
 
-function func_wine_msi { install_winedll wine_msi 'e98eff493760e8426767d9f9ed2f52aa50b79b06be3d2cc803005cb55fe94a31'}
+function func_wine_msi { install_winedll wine_msi 'fc2e00c3265c2cc98b81fc0aa582bb9e4c1543a21c97ed6dd8e7e323a5e6ed27'}
 
 function func_wine_kernel32 { install_winedll wine_kernel32 '9cdccf50d0a5ad01fc4981126c93c0d79928bc84de30872692ca97535c7e81c0'}
+
+function func_wine_api-ms-win-appmodel-state-l1-2-0 { install_winedll wine_api-ms-win-appmodel-state-l1-2-0 '83dc31ac4b071e664d1121214baa89df352a004c817707f37548b2bcee7119b2'}
 
 #function func_wine_wintypes2 { install_winedll wine_wintypes2 'ead327788f98b617017a483e9a0500cf2bd627e9c5d23ae7e175cb8035dc0a9e'}
 
@@ -4956,6 +4958,9 @@ function func_winrt_hacks
     func_wine_wintypes
     func_winmetadata
     func_dotnet481
+    func_xmllite
+    func_windows.ui.xaml
+    func_wine_api-ms-win-appmodel-state-l1-2-0    
 }
 
 function func_chocolatey_upgrade
