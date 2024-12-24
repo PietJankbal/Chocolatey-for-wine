@@ -46,7 +46,7 @@ DWORD mainCRTStartup(PPEB peb) {
     if (!_wcsnicmp(cmd + 1, L"-v", 2)) cmd = (cmd = wcschr(++cmd, L' ')) ? wcschr(++cmd, L' ') : 0; /* skip incompatible version option, like '-version 3.0' */
     do { token = wcstok_s(NULL, L"\\", &ptr); } while (token && *ptr);                              /* get the filename */
     wcstok_s(token, L".", &ptr);
-    _wcscat(_wcscat(pwsh, _wgetenv(L"ProgramFiles")), L"\\Powershell\\7\\pwsh.exe");
+    _wcscat(_wcscat(pwsh, _wgetenv(L"ProgramW6432")), L"\\Powershell\\7\\pwsh.exe");
     
     /* I can also act as a dummy program if my exe-name is not powershell, allows to replace a system exe (like wusa.exe, or any exe really) by a function in profile.ps1 */
     if (_wcsnicmp(token, L"Powershell", 10)) {                       /* note: set desired exitcode in the function in profile.ps1;  */
