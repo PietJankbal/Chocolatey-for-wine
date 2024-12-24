@@ -672,19 +672,12 @@ function QPR_wmic { <# wmic replacement #>
     public static extern bool SetForegroundWindow(IntPtr hWnd);
     }
 "@
-    <# get the application and window handle and set it to foreground #>
-        $MethodDefinition = @"
-    [DllImport("ntdll.dll", CharSet = CharSet.Ansi)] public static extern string wine_get_version();
-"@
-    $ntdll = Add-Type -MemberDefinition $MethodDefinition -Namespace '' -Name 'ntdll' -PassThru
     
     while(!$p) {$p = Get-Process | Where-Object { $_.MainWindowTitle -Match "Conemu" }; Start-Sleep -Milliseconds 200}
     $h = $p[0].MainWindowHandle
     [void] [StartActivateProgramClass]::SetForegroundWindow($h)
     [void][System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms')
-    if( [System.Convert]::ToDecimal( ([ntdll]::wine_get_version() -replace '-rc','' ) )  -gt 8.19 ){
-        [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
-    } <# Dismiss ConEmu's fast configuration window by hitting enter #>
+    [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")  <# Dismiss ConEmu's fast configuration window by hitting enter #>
 ################################################################################################################### 
 #                                                                                                                 #
 #  Finish installation and some app specific tweaks                                                               #
@@ -741,5 +734,6 @@ d3d9.shaderModel = 1
 [ps51.exe]
 d3d9.shaderModel = 1
 "@ | Out-File -FilePath $env:ProgramData\\dxvk.conf
+
 #    Start-Process $env:systemroot\Microsoft.NET\Framework64\v4.0.30319\ngen.exe -NoNewWindow -Wait -ArgumentList  "eqi"
 #    Start-Process $env:systemroot\Microsoft.NET\Framework\v4.0.30319\ngen.exe -NoNewWindow -Wait -ArgumentList "eqi"
