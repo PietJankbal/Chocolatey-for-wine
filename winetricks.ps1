@@ -8,7 +8,7 @@ else                      {$cachedir = ("$env:WINEHOMEDIR" + "\.cache\winetrickx
 #   "apps","itunes","itunes, with fixed black GUI",
 #   "apps","mspaint","mspaint, inserting text does not work :(",
     "apps","nodejs","install node.js (a workaround for failing installer)",
-    "apps","office365","(only works in wine tkg)/Microsoft Office365HomePremium (registering does not work, many glitches...)",
+    "apps","office365","Microsoft Office365HomePremium (registering does not work, many glitches...)",
     "apps","use_chromium_as_browser", "replace winebrowser with chrome to open webpages",
     "apps","vs19", "Visual Studio 2019",
     "apps","vs22", "Visual Studio 2022",
@@ -44,6 +44,7 @@ else                      {$cachedir = ("$env:WINEHOMEDIR" + "\.cache\winetrickx
     "dlls","mspatcha", "mspatcha.dll",
     "dlls","msvbvm60", "msvbvm60.dll",
     "dlls","msxml3","msxml3.dll",
+       "dlls","msxml3_win10","msxml3.dll from win10", 
     "dlls","msxml6","(experimental) msxml6.dll",
     "dlls","oleaut32","native oleaut32, (dangerzone) can only be set on a per app base",
     "dlls","ps51_ise", "PowerShell 5.1 Integrated Scripting Environment",
@@ -77,8 +78,10 @@ else                      {$cachedir = ("$env:WINEHOMEDIR" + "\.cache\winetrickx
     "misc","embed-exe-in-psscript", "codesnippets from around the internet: samplescript howto embed and run an exe into a powershell-scripts (vkcube.exe); might trigger a viruswarning (!) but is really harmless",
 #   "misc","GE-Proton","Install bunch of dlls from GE-Proton",
     "msic","Get-PEHeader", "codesnippets from around the internet: add Get-PEHeader to cmdlets, handy to explore dlls imports/exports",
+    "msic","Get-MsiDatabaseProperties", "This function retrieves properties from a Windows Installer MSI database",
     "misc","glxgears", "test if your opengl in wine is working",
     "misc","install_dll_from_msu","extract and install a dll/file from an msu file (installation in right place might or might not work ;) )",
+    "misc","net_cmdlets", "some cmdlets to test net connection",
     "misc","ps2exe", "codesnippets from around the internet: convert a ps1-script into an executable; requires powershell 5.1, so 1st time usage may take very long time!!!",
     "misc","sharpdx", "directX with powershell (spinning cube), test if your d3d11 works, further rather useless verb for now ;)",
     "misc","vanara","vanara https://github.com/dahall/Vanara",
@@ -111,6 +114,11 @@ function quit?([string] $process)  <# wait for a process to quit #>
     Get-Process $process -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
 }
 
+if (![System.IO.File]::Exists("$env:ProgramData\Chocolatey-for-wine\wget2.exe")){
+    (New-Object System.Net.WebClient).DownloadFile("https://github.com/rockdaboot/wget2/releases/download/v2.1.0/wget2.exe", "$env:ProgramData\Chocolatey-for-wine\wget2.exe")
+    iex "$env:ProgramData\\chocolatey\\tools\\shimgen.exe --output=`"$env:ProgramData`"\\chocolatey\\bin\\wget2.exe --path=`"$env:ProgramData`"\Chocolatey-for-wine\wget2.exe"
+}
+
 function w_download_to
 {
     Param ($dldir, $w_url, $w_file)
@@ -125,8 +133,9 @@ function w_download_to
         Write-Host -foregroundcolor yellow "*        Patience please!                                *"
         Write-Host -foregroundcolor yellow "*                                                        *"
         Write-Host -foregroundcolor yellow "**********************************************************"
-
-        (New-Object System.Net.WebClient).DownloadFile($w_url, "$cachedir\\$dldir\\$w_file")}
+        
+         wget2 --restrict-file-names=nocontrol <# do not escape any character #> "$w_url" -P "$cachedir\\$dldir";
+        }
 }
 
 function check_msu_sanity <# some sanity checks before extracting from msu, like if dlls needed for expansion and the msu are present etc. #>
@@ -440,6 +449,49 @@ function func_msxml6 <# experimental... #>
     
     foreach($i in 'msxml6', 'rpcrt4') { dlloverride 'native,builtin' $i }
 } <# end msxml6 #>
+
+function func_msxml3_win10 <# experimental... #>
+{
+    $url = "https://catalog.s.download.windowsupdate.com/c/msdownload/update/software/updt/2018/08/windows10.0-kb4343893-x64_bdae9c9c28d4102a673a24d37c371ed73d053338.msu"
+    $cab = "Windows10.0-KB4343893-x64.cab"
+    $sourcefile = @('msxml3.dll', 'msxml3r.dll')
+
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
+        check_msu_sanity $url $cab;
+        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\amd64*" "$cachedir\$(verb)\wow*" ; quit?('7z')
+
+        foreach($i in 'amd64', 'x86', 'wow64') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" }
+        
+        Remove-Item -Force "$cachedir\$(verb)\$cab" -ErrorAction SilentlyContinue
+    }
+
+    Rename-Item  "$env:systemroot\system32\msxml6.dll" "$env:systemroot\system32\msxml3_old.dll" -Force -Verbose -erroraction silentlycontinue
+    Rename-Item  "$env:systemroot\system32\msxml6r.dll" "$env:systemroot\system32\msxml3r_old.dll" -Force -Verbose -erroraction silentlycontinue
+
+    & "$env:ProgramFiles\7-Zip\7z.exe" e "$cachedir\$(verb)\$(verb).7z" "amd64*\*" "-o$env:systemroot\system32" -aoa
+    & "$env:ProgramFiles\7-Zip\7z.exe" e "$cachedir\$(verb)\$(verb).7z" "wow64*\*" "-o$env:systemroot\syswow64" -aoa
+
+    remove-item "$env:systemroot\system32\msxml3_old.dll" -force -erroraction silentlycontinue -verbose
+    remove-item "$env:systemroot\system32\msxml3r_old.dll" -force -erroraction silentlycontinue -verbose
+        
+    if( [System.IO.File]::Exists( $([IO.Path]::Combine($cachedir,  'wine_rpcrt4', "wine_rpcrt4.7z") )) -and ( (Get-FileHash  "$cachedir\wine_rpcrt4\wine_rpcrt4.7z").Hash -ne 'c82422a0bf6cc4045c142a91f250e557f841755aa1f8b169e1765a9ed3b6258c') )  {
+        Remove-Item -Force  "$cachedir\wine_rpcrt4\wine_rpcrt4.7z" 
+    }
+    w_download_to "wine_rpcrt4" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_rpcrt4.7z" "wine_rpcrt4.7z"
+
+    7z e "$cachedir\\wine_rpcrt4\\wine_rpcrt4.7z" "-o$env:systemroot\system32" "64/rpcrt4_64.dll" -aoa | Select-String 'ok' 
+    7z e "$cachedir\\wine_rpcrt4\\wine_rpcrt4.7z" "-o$env:systemroot\syswow64" "32/rpcrt4.dll" -aoa | Select-String 'ok'
+
+    remove-item "$env:systemroot\system32\rpcrt4_old.dll" -force -erroraction silentlycontinue -verbose
+    Rename-Item  "$env:systemroot\system32\rpcrt4.dll" "$env:systemroot\system32\rpcrt4_old.dll" -Force -Verbose -erroraction silentlycontinue
+    Rename-Item  "$env:systemroot\system32\rpcrt4_64.dll" "$env:systemroot\system32\rpcrt4.dll" -Force -Verbose -erroraction silentlycontinue
+    [system.console]::ForegroundColor='white'
+    
+    foreach($i in 'msxml3', 'rpcrt4') { dlloverride 'native,builtin' $i }
+} <# end msxml3 #>
+
+
 
 function func_wsh57_deprecated
 {
@@ -1200,8 +1252,10 @@ function func_sapi <# Speech api #>
     reg.exe COPY "HKLM\Software\MicroSoft\Speech Server\v11.0" "HKLM\Software\MicroSoft\Speech" /s /f /reg:64
     reg.exe COPY "HKLM\Software\MicroSoft\Speech Server\v11.0" "HKLM\Software\MicroSoft\Speech" /s /f /reg:32
 
-    $voice = new-object -com SAPI.SpVoice
-    $voice.Speak("This is mostly a bunch of crap. Please improve me", 2)
+    pwsh -c {
+        $voice = new-object -com SAPI.SpVoice
+        $voice.Speak("This is mostly a bunch of crap. Please improve me", 2)
+    }
 } <# end sapi #>
 
 function deprecated_func_winmetadata <# winmetadata #>
@@ -1520,9 +1574,10 @@ $profile51 = @"
 #FIXME: following causes a hang when running pwsh from ps51 console:
 #`$env:PSModulepath = 'c:\windows\system32\WindowsPowershell\v1.0\Modules' + `$env:PSModulepath
 
+`$profile = "`$env:SystemRoot\system32\WindowsPowerShell\v1.0\profile.ps1"
 `$env:PSMOdulePath="`$env:SystemRoot\system32\WindowsPowershell\v1.0\Modules;`$env:ProgramFiles(x86)\WindowsPowerShell\Modules;`$env:ProgramFiles\WindowsPowerShell\Modules"
 
-#Import-Module `$env:SystemRoot\system32\WindowsPowerShell\v1.0\Modules\microsoft.powershell.utility\microsoft.powershell.utility.psm1
+Import-Module "`$env:ProgramFiles\PowerShell\7\Modules\PSReadLine\PSReadLine.psm1"
 
 `$env:PS51 = 1
 
@@ -1544,10 +1599,10 @@ Set-Alias -Name gcim -Value Get-CIMInstance
    foreach(`$line in `$lines) {if(`$line -match 'marker line!!!') {`$found+=1} else{ if((`$found -eq 1) -and !(`$line.StartsWith('#'))) {`$v+= `$line }; if(`$found -eq 2) {break;}}} 
    
    #https://stackoverflow.com/questions/50368246/splitting-a-string-on-spaces-but-ignore-section-between-double-quotes
-   `$Qenu=([regex]::Split( `$v, ',(?=(?:[^"]|"[^"]*")*`$)' )).TrimStart(' ').TrimEnd(' ') 
+   `$Qenu=([regex]::Split( `$v, ',(?=(?:[^"]|"[^"]*")*`$)' )).Trim(' ').Trim('"') 
                
 #https://stackoverflow.com/questions/67356762/couldnt-use-predefined-array-inside-validateset-powershell`$verblist =0
-for ( `$j = 0; `$j -lt `$Qenu.count; `$j+=3) { [string[]]`$verblist += `$Qenu[`$j+1].Trim('"') }
+for ( `$j = 0; `$j -lt `$Qenu.count; `$j+=3) { [string[]]`$verblist += `$Qenu[`$j+1] }
 
 function winetricks {
   [CmdletBinding()]
@@ -1573,13 +1628,7 @@ function winetricks {
       Add-Type -AssemblyName PresentationCore,PresentationFramework;
       [System.Windows.MessageBox]::Show("winetricks script is missing`nplease reinstall it in c:\\ProgramData\\Chocolatey-for-wine",'Congrats','ok','exclamation')
   }
-
-  if(`$arg) {
-     pwsh -nop -f  <# . #>  `$([System.IO.Path]::Combine("`$env:ProgramData","Chocolatey-for-wine", "winetricks.ps1")) `$arg
-  }
-  else {
-     pwsh -nop -f <# . #> `$([System.IO.Path]::Combine("`$env:ProgramData","Chocolatey-for-wine", "winetricks.ps1")) "no_args" `$Qenu 
-  }
+  .   `$([System.IO.Path]::Combine("`$env:ProgramData","Chocolatey-for-wine", "winetricks.ps1")) `$(`$arg -join ',')
 }
   
 Set-ExecutionPolicy ByPass
@@ -1744,7 +1793,7 @@ function func_windows.ui.xaml <# experimental... #>
 {
     $url = "http://download.windowsupdate.com/c/msdownload/update/software/updt/2016/11/windows10.0-kb3205436-x64_45c915e7a85a7cc7fc211022ecd38255297049c3.msu"
     $cab = "Windows10.0-KB3205436-x64.cab"
-    $sourcefile = @('coremessaging.dll', 'windows.ui.xaml.dll', 'bcp47langs.dll', 'windows.storage.dll')
+    $sourcefile = @('coremessaging.dll', 'windows.ui.xaml.dll', 'bcp47langs.dll', 'windows.storage.dll', 'windows.ui.dll', 'windows.ui.immersive.dll', 'twinapi.appcore.dll')
 
     if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
         check_msu_sanity $url $cab;
@@ -2341,15 +2390,15 @@ function func_wine_wintrust <# wine wintrust with some hack faking success #>
 
 function func_wine_advapi32 { install_winedll wine_advapi32 '27b8ffd4abec1aa26936d769f0c6bcc74f5bfb2c6526acdd37223f2f199ccdfd'}
 
-function func_wine_shell32 { install_winedll wine_shell32 'dc3c91f357f26b5cc333b0776341947c769244d6d3fa2fe869730bf6a92094e1'}
+function func_wine_shell32 { install_winedll wine_shell32 '21ed91f32180b4927239a5e02d557b9aa00731b8bf1af185a21a53c87f2a235c'}
 
 function func_wine_combase { install_winedll wine_combase 'ab66f282f7feab67be6ddb8b3700a04126ba8f6808d193f4b5f0581b697781e8'}
 
 function func_wine_d2d1 { install_winedll wine_d2d1 'd93559790176ca68b8c5a35f99f9bd1d64231991b167110d64033ebae1ee65b0'}
 
-function func_wine_msxml3 { install_winedll wine_msxml3 '97914e37847a1a73929b098b788c30e9703e41bea6ee1cacb7a479b724a796bf'}
+function func_wine_msxml3 { install_winedll wine_msxml3 '4a96a865a47d090eab3c1485fa923ca639b5d38fcff03c1b7b62785aa5921151'}
 
-function func_wine_cfgmgr32 { install_winedll wine_cfgmgr32 '74bcee062772023de0da4ed05f0c9ccdedd86165ab8f8553b08c94b9c406dc01'}
+function func_wine_cfgmgr32 { install_winedll wine_cfgmgr32 'f1975926672e216206a16fca848a647ea86d1367867426accffa4ef4039c61bc'}
 
 function func_wine_sxs { install_winedll wine_sxs '9ac670ae3105611a5211649aab25973b327dcd8ea932f1a8569e78adca6fedcb'}
 
@@ -2357,7 +2406,7 @@ function func_wine_wintypes { install_winedll wine_wintypes '7c99767ebecaba810b4
 
 function func_wine_msi { install_winedll wine_msi 'fc2e00c3265c2cc98b81fc0aa582bb9e4c1543a21c97ed6dd8e7e323a5e6ed27'}
 
-function func_wine_kernel32 { install_winedll wine_kernel32 '9cdccf50d0a5ad01fc4981126c93c0d79928bc84de30872692ca97535c7e81c0'}
+function func_wine_kernel32 { install_winedll wine_kernel32 'adc588a5fb250009858fceadf78cd715725d4b322ab0373d624330b4247a1b7c'}
 
 function func_wine_api-ms-win-appmodel-state-l1-2-0 { install_winedll wine_api-ms-win-appmodel-state-l1-2-0 '83dc31ac4b071e664d1121214baa89df352a004c817707f37548b2bcee7119b2'}
 
@@ -2569,13 +2618,103 @@ function func_dxvk20
     foreach($i in 'dxgi', 'd3d9', 'd3d10_1', 'd3d10core', 'd3d10', 'd3d11') { dlloverride 'native' $i }
 } <# end dxvk20 #>
 
+function func_net_cmdlets
+{
+@'
+function Test-NetConnection { <# stolen from https://copdips.com/2019/09/fast-tcp-port-check-in-powershell.html #>
+    [CmdletBinding()]
+    param ([Parameter(ValueFromPipeline = $true)][String[]]$ComputerName='internetbeacon.msedge.net', [Int]$Port = 80, [Int]$Timeout = 1000)
+
+    begin { $result = [System.Collections.ArrayList]::new() }
+
+    process {
+        foreach ($originalComputerName in $ComputerName) {
+            $remoteInfo = $originalComputerName.Split(":")
+            if ($remoteInfo.count -eq 1) { $remoteHostname = $originalComputerName; $remotePort = $Port } <# 'host' #>
+            elseif ($remoteInfo.count -eq 2) { $remoteHostname = $remoteInfo[0]; $remotePort = $remoteInfo[1] }
+            else { $msg = "Got unknown format "; Write-Error $msg;  return }
+
+            $tcpClient = New-Object System.Net.Sockets.TcpClient
+            $portOpened = $tcpClient.ConnectAsync($remoteHostname, $remotePort).Wait($Timeout)
+            if($portOpened) {
+            $ra = $tcpClient.Client.RemoteEndPoint.Address.ToString() }
+            $sa = $tcpClient.Client.LocalEndPoint.Address.ToString()
+
+            $null = $result.Add([PSCustomObject]@{
+                RemoteHostname = $remoteHostname   ; RemoteAddress = $ra         ; RemotePort = $remotePort
+                SourceAddress  = $sa               ; PortOpened    = $portOpened ; TimeoutInMillisecond = $Timeout
+                SourceHostname = $env:COMPUTERNAME ; OriginalComputerName = $originalComputerName })
+        }
+    }
+    end { return $result }
+}
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\Test-NetConnection\Test-NetConnection.psm1 -Force )
+
+@'
+function Get-NetIPAddress( [string]$AddressFamily='*', [string]$InterfaceIndex='*', [string]$IPAddress='*' ) 
+{
+    $netcfg = (Get-WmiObject  -Class Win32_NetworkAdapterConfiguration ) ; $ip = $netcfg.ipaddress; $ip += '127.0.0.1'
+    $result = @() ; $idx=0
+
+    foreach($i in $ip) { if($i) {
+        $result += New-Object PSObject -Property @{
+             IPAddress        = $i
+             InterfaceIndex   = $netcfg.Index[$idx] ? $netcfg.Index[$idx] : '1' 
+             InterfaceAlias   = ($i -eq '127.0.0.1') ? 'Loopback Pseudo-Interface 1' : 'Ethernet'
+             AddressFamily    = ( ([IPAddress]$i).AddressFamily -eq 'InterNetwork' ) ? 'IPv4' : 'IPv6'}
+             | where-object  {($_.AddressFamily -like $AddressFamily) -and ($_.InterfaceIndex -like $InterfaceIndex) -and ($_.IPAddress -like $IPAddress) } }
+        $idx++
+    }
+    $result |  Select ipaddress,interfaceindex,interfacealias,addressfamily  |fl
+}
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\Get-NetIPAddress\Get-NetIPAddress.psm1 -Force )
+
+@'
+function Get-NetRoute {
+      Get-WmiObject -query 'Select  Destination, NextHop From Win32_IP4RouteTable' |select Destination,NextHop |ft }
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\Get-NetRoute\Get-NetRoute.psm1 -Force )
+
+@'
+function Resolve-DnsName([string]$name) { <# https://askme4tech.com/how-resolve-hostname-ip-address-and-vice-versa-powershell #>
+    $type = [Uri]::CheckHostname($name)
+    if( $type -eq 'Dns')                            { [System.Net.Dns]::GetHostaddresses($name) |select IPAddressToString}
+    if( ($type -eq 'IPv4') || ($type -eq 'IPv6'))   { [System.Net.Dns]::GetHostentry($name).hostname}
+}
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\Resolve-DnsName\Resolve-DnsName.psm1 -Force )
+
+<#
+#Register-WMIEvent not available in PS Core, so for now just change into noop
+function Register-WMIEvent {
+    exit 0
+}
+  
+#Example (works on windows,requires admin rights): Set-WmiInstance -class win32_operatingsystem -arguments @{"description" = "MyDescription"}
+#Based on https://devblogs.microsoft.com/scripting/use-the-set-wmiinstance-powershell-cmdlet-to-ease-configuration/
+Function Set-WmiInstance( [string]$class, [hashtable]$arguments, [string]$computername = "localhost", `
+                          [string]$namespace = "root\cimv2" )
+{
+    $assembledpath = "\\" + $computername + "\" + $namespace + ":" + $class
+    $obj = ([wmiclass]"$assembledpath").CreateInstance()
+
+    foreach ($h in $arguments.GetEnumerator()) {
+        $obj.$($h.Name) = $($h.Value)
+    }
+    $result = $obj.put()
+
+    return $result.Path
+}
+#>
+
+
+}
+
 function func_ping <# fake ping for when wine's ping fails due to permission issues  #>
 {
 @'
 function QPR.ping
 {
-    $cmdline = $env:QPRCMDLINE #.SubString($env:QPRCMDLINE.IndexOf(" "), $env:QPRCMDLINE.Length - $env:QPRCMDLINE.IndexOf(" "))
-    iex  -Command ('QPR_ping' + $cmdline)
+    $cmdline = $($([kernel32]::GetCommandLineW()).Split(" ",4)[3])
+    iex  -Command ('QPR_ping ' + $cmdline)
 }
 
 #https://stackoverflow.com/questions/53522016/how-to-measure-tcp-and-icmp-connection-time-on-remote-machine-like-ping
@@ -2891,7 +3030,7 @@ function func_vs19
         }
 @'
     function QPR.sh { <# sh.exe replacement #>
-    $argv = CommandLineToArgvW $('sh.exe' + ' ' +$env:QPRCMDLINE) 
+    $argv = CommandLineToArgvW $('sh.exe' + ' ' + $($([kernel32]::GetCommandLineW()).Split(" ",4)[3])) 
     busybox sh $argv
 }
 '@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.sh\QPR.sh.psm1 -Force )
@@ -2973,7 +3112,7 @@ function func_vs22
         }
 @'
     function QPR.sh { <# sh.exe replacement #>
-    $argv = CommandLineToArgvW $('sh.exe' + ' ' +$env:QPRCMDLINE) 
+    $argv = CommandLineToArgvW $('sh.exe' + ' ' + $($([kernel32]::GetCommandLineW()).Split(" ",4)[3])) 
     busybox sh $argv
 }
 '@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.sh\QPR.sh.psm1 -Force )
@@ -3099,7 +3238,7 @@ function func_vs22_interactive_installer
         }
 @'
     function QPR.sh { <# sh.exe replacement #>
-    $argv = CommandLineToArgvW $('sh.exe' + ' ' +$env:QPRCMDLINE) 
+    $argv = CommandLineToArgvW $('sh.exe' + ' ' + $($([kernel32]::GetCommandLineW()).Split(" ",4)[3])) 
     busybox sh $argv
 }
 '@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.sh\QPR.sh.psm1 -Force )
@@ -3253,6 +3392,12 @@ function func_Get-PEHeader
 {
     . "$env:ProgramData\Chocolatey-for-wine\powershell_collected_codesnippets_examples.ps1"
     func_Get-PEHeader2
+}
+
+function func_Get-MsiDatabaseProperties
+{
+    . "$env:ProgramData\Chocolatey-for-wine\powershell_collected_codesnippets_examples.ps1"
+    func_Get-MsiDatabaseProperties2
 }
 
 function func_access_winrt_from_powershell
@@ -4088,7 +4233,6 @@ function func_dotnet35
 
 for ( $j = 0; $j -lt $dotnet20.count; $j+=2 ) {
     Copy-Item -recurse -Path $dotnet20[$j] -Destination ( Join-Path (New-item -Type Directory -Force $(Split-Path -Path $dotnet20[$j+1]))   $(Split-Path -Leaf $dotnet20[$j+1])   ) -Force  -Verbose }
-
 
 7z x $env:TEMP\\$(verb)\\wcu\\dotNetFramework\\dotNetFX35\\x64\\netfx35_x64.exe "-o$env:TEMP\\$(verb)\\wcu\\dotNetFramework\\dotNetFX35\\x64" -y;
 7z x $env:TEMP\\$(verb)\\wcu\\dotNetFramework\\dotNetFX35\\x64\\vs_setup.cab "-o$env:TEMP\\$(verb)\\wcu\\dotNetFramework\\dotNetFX35\\extr" -y;
@@ -4927,9 +5071,7 @@ Copy-item "$env:TMP\\GE-Proton9-13/files/lib/wine/nvapi/*" "$env:systemroot/sysw
 function func_mspaint
 {
 
-choco install wget
-
-wget.exe -P "$env:TEMP\"  --referer 'https://win7games.com/' 'https://win7games.com/download/ClassicPaint.zip'
+wget2.exe -P "$env:TEMP\"  --referer 'https://win7games.com/' 'https://win7games.com/download/ClassicPaint.zip'
 
 7z x "$env:TEMP\ClassicPaint.zip" "-o$env:TEMP"
 
@@ -4977,7 +5119,7 @@ if (![System.IO.File]::Exists("$cachedir\\$(verb)\\MDAC_TYP.EXE")) {
 
 choco install wget
 
-wget.exe -P "$cachedir\\$(verb)" "https://web.archive.org/web/20070127061938/https://download.microsoft.com/download/4/a/a/4aafff19-9d21-4d35-ae81-02c48dcbbbff/MDAC_TYP.EXE"
+wget2.exe -P "$cachedir\\$(verb)" "https://web.archive.org/web/20070127061938/https://download.microsoft.com/download/4/a/a/4aafff19-9d21-4d35-ae81-02c48dcbbbff/MDAC_TYP.EXE"
 
 }
 winecfg /v win2k
@@ -5200,11 +5342,11 @@ function func_mshtml
     
     Write-Host -foregroundColor yellow 'Done , hopefully nothing''s screwed up ;)' 
 }
-
 <# Main function #> 
-if ( $args[0] -eq "no_args") {
-    $custom_array = @()
-    for ( $j = 1; $j -lt $args.count; $j+=3 ) { $custom_array += [PSCustomObject]@{ category = $args[$j] ;name = $args[$j+1]; Description = $args[$j+2] } } 
-    $args =  $($custom_array  | select category,name,description | Out-GridView  -PassThru  -Title 'Make a  selection').name
-}
-foreach ($i in $args) { & $('func_' + $i); }
+if ( !$args) {
+    $custom_array = @(); 
+    for ( $j = 0; $j -lt $Qenu.count; $j+=3 ) { $custom_array += [PSCustomObject]@{ category = $Qenu[$j] ;name = $Qenu[$j+1]; Description = $Qenu[$j+2] } } 
+    $args =  ($custom_array  | select category,name,description |Out-GridView  -PassThru  -Title 'Make a  selection').name
+    }
+    if($args) {foreach ($i in $args -split ',') { & $('func_' + $i);  }}
+
