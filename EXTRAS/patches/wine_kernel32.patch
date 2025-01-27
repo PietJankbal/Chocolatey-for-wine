@@ -1,5 +1,5 @@
 diff --git a/dlls/kernel32/computername.c b/dlls/kernel32/computername.c
-index 7c2003664e8..2366533bd60 100644
+index 7c2003664e8..a57fdcad2a3 100644
 --- a/dlls/kernel32/computername.c
 +++ b/dlls/kernel32/computername.c
 @@ -32,9 +32,49 @@
@@ -1010,7 +1010,7 @@ index 7c2003664e8..2366533bd60 100644
 +}
 +
 diff --git a/dlls/kernel32/kernel32.spec b/dlls/kernel32/kernel32.spec
-index 7ed8048f5d0..5c25582f20d 100644
+index 3b6ef866705..c7aa7e9c9a1 100644
 --- a/dlls/kernel32/kernel32.spec
 +++ b/dlls/kernel32/kernel32.spec
 @@ -319,9 +319,9 @@
@@ -1043,7 +1043,7 @@ index 7ed8048f5d0..5c25582f20d 100644
  @ stdcall FreeLibraryAndExitThread(long long)
  @ stdcall FreeLibraryWhenCallbackReturns(ptr ptr) NTDLL.TpCallbackUnloadDllOnCompletion
  @ stdcall -import FreeResource(long)
-@@ -1073,7 +1073,7 @@
+@@ -1074,7 +1074,7 @@
  @ stdcall -import LoadLibraryW(wstr)
  @ stdcall LoadModule(str ptr)
  @ stdcall -import LoadPackagedLibrary(wstr long)
@@ -1052,7 +1052,7 @@ index 7ed8048f5d0..5c25582f20d 100644
  # @ stub LoadStringBaseExW
  # @ stub LoadStringBaseW
  @ stdcall -import LocalAlloc(long long)
-@@ -1603,7 +1603,7 @@
+@@ -1604,7 +1604,7 @@
  @ stdcall -import VirtualFree(ptr long long)
  @ stdcall -import VirtualFreeEx(long ptr long long)
  @ stdcall -import VirtualLock(ptr long)
@@ -1061,3 +1061,16 @@ index 7ed8048f5d0..5c25582f20d 100644
  @ stdcall -import VirtualProtectEx(long ptr long long ptr)
  @ stdcall -import VirtualQuery(ptr ptr long)
  @ stdcall -import VirtualQueryEx(long ptr ptr long)
+diff --git a/dlls/kernel32/version.c b/dlls/kernel32/version.c
+index f64a393e4a3..d2272a399a3 100644
+--- a/dlls/kernel32/version.c
++++ b/dlls/kernel32/version.c
+@@ -127,7 +127,7 @@ BOOL WINAPI VerifyVersionInfoW( LPOSVERSIONINFOEXW info, DWORD dwTypeMask,
+     TRACE("(%p 0x%lx 0x%s)\n", info, dwTypeMask, wine_dbgstr_longlong(dwlConditionMask));
+ 
+     ver.dwOSVersionInfoSize = sizeof(ver);
+-    if (!GetVersionExW((OSVERSIONINFOW*)&ver)) return FALSE;
++    if (RtlGetVersion((OSVERSIONINFOW*)&ver) != STATUS_SUCCESS) return FALSE;
+ 
+     if (!dwTypeMask || !dwlConditionMask)
+     {
