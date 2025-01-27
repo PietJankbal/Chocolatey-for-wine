@@ -5149,19 +5149,19 @@ function func_vanara2
 {
     $wc = New-Object System.Net.WebClient
 
-    if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:Temp,"vanara.core.3.4.16.nupkg")  )) {
-        $wc.DownloadFile('https://globalcdn.nuget.org/packages/vanara.core.3.4.16.nupkg', "$env:Temp\vanara.core.3.4.16.nupkg")
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:Temp,"vanara.core.4.0.4.nupkg")  )) {
+        $wc.DownloadFile('https://globalcdn.nuget.org/packages/vanara.core.4.0.4.nupkg', "$env:Temp\vanara.core.4.0.4.nupkg")
     } 
 
-    7z e "$env:Temp\vanara.core.3.4.16.nupkg" "-o$env:ProgramFiles\Powershell\7\modules\vanara" "lib/netstandard2.0/Vanara.Core.dll" -y 
+    7z e "$env:Temp\vanara.core.4.0.4.nupkg" "-o$env:ProgramFiles\Powershell\7\modules\vanara" "lib/netstandard2.0/Vanara.Core.dll" -y 
     
-    foreach( $i in '.ntdll', '.shared', '.kernel32', '.gdi32', '.user32' <# vanara #> )
+    foreach( $i in '.ntdll', '.shared', '.kernel32', '.gdi32', '.user32', '.shell32', '.comctl32' <# vanara #> )
     {
-        if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:Temp,"vanara.pinvoke$i.3.4.16.nupkg")  )) {
-            $wc.DownloadFile("https://globalcdn.nuget.org/packages/vanara.pinvoke$i.3.4.16.nupkg", "$env:Temp\vanara.pinvoke$i.3.4.16.nupkg")
+        if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:Temp,"vanara.pinvoke$i.4.0.4.nupkg")  )) {
+            $wc.DownloadFile("https://globalcdn.nuget.org/packages/vanara.pinvoke$i.4.0.4.nupkg", "$env:Temp\vanara.pinvoke$i.4.0.4.nupkg")
         } 
 
-        7z e "$env:Temp\vanara.pinvoke$i.3.4.16.nupkg" "-o$env:ProgramFiles\Powershell\7\modules\vanara" "lib/netstandard2.0/Vanara.PInvoke$i.dll" -y 
+        7z e "$env:Temp\vanara.pinvoke$i.4.0.4.nupkg" "-o$env:ProgramFiles\Powershell\7\modules\vanara" "lib/netstandard2.0/Vanara.PInvoke$i.dll" -y 
     }
 @'    
     function Vanara { }
@@ -5175,10 +5175,12 @@ ModuleVersion = '0.0.1'
 
 # Assemblies that must be loaded prior to importing this module
  RequiredAssemblies = @("$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.Core.dll" 
+ "$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.PInvoke.Comctl32.dll"
 "$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.PInvoke.Gdi32.dll"
 "$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.PInvoke.Kernel32.dll"
 "$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.PInvoke.NtDll.dll"
 "$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.PInvoke.Shared.dll"
+"$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.PInvoke.Shell32.dll"
 "$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.PInvoke.User32.dll"
 )
 }
@@ -6162,6 +6164,94 @@ PROCESS {
 }
 }
 '@
+
 New-Item -Force -ItemType Directory -Path "$env:ProgramFiles\PowerShell\7\Modules\Get-PEHeader"
 $script |Out-File "$env:ProgramFiles\PowerShell\7\Modules\Get-PEHeader\Get-PEHeader.psm1"
+}
+
+function func_Get-MsiDatabaseProperties2
+{
+$script = @'
+#https://gist.githubusercontent.com/hclpandv/4fa30f0c985b2febdf6522584f12d05d/raw/beadded44093b4ad6da77493ee5ae015473b2729/
+
+#PowerShell Function to Get MSI Properties.
+
+Function Get-MsiDatabaseProperties () {
+    <#     
+    .SYNOPSIS     This function retrieves properties from a Windows Installer MSI database.     
+    .DESCRIPTION     This function uses the WindowInstaller COM object to pull all values from the Property table from a MSI     
+    .EXAMPLE     Get-MsiDatabaseProperties 'MSI_PATH'     
+    .PARAMETER FilePath     The path to the MSI you'd like to query     
+    #>
+    [CmdletBinding()]
+    param (
+    [Parameter(Mandatory=$True,
+        ValueFromPipeline=$True,
+        ValueFromPipelineByPropertyName=$True,
+        HelpMessage='What is the path of the MSI you would like to query?')]
+    [IO.FileInfo[]]$FilePath
+    )
+ 
+    begin {
+        $com_object = New-Object -com WindowsInstaller.Installer
+    }
+ 
+    process {
+        try {
+ 
+            $database = $com_object.GetType().InvokeMember(
+                "OpenDatabase",
+                "InvokeMethod",
+                $Null,
+                $com_object,
+                @($FilePath.FullName, 0)
+            )
+ 
+            $query = "SELECT * FROM Property"  <# or other examples: "SELECT 'Key' FROM Registry"  or "SELECT * FROM LaunchConditions" #>
+            $View = $database.GetType().InvokeMember(
+                    "OpenView",
+                    "InvokeMethod",
+                    $Null,
+                    $database,
+                    ($query)
+            )
+ 
+            $View.GetType().InvokeMember("Execute", "InvokeMethod", $Null, $View, $Null)
+ 
+            $record = $View.GetType().InvokeMember(
+                    "Fetch",
+                    "InvokeMethod",
+                    $Null,
+                    $View,
+                    $Null
+            )
+ 
+            $msi_props = @{}
+            while ($record -ne $null) {
+                $prop_name = $record.GetType().InvokeMember("StringData", "GetProperty", $Null, $record, 1)
+                $prop_value = $record.GetType().InvokeMember("StringData", "GetProperty", $Null, $record, 2)
+                $msi_props[$prop_name] = $prop_value
+                $record = $View.GetType().InvokeMember(
+                    "Fetch",
+                    "InvokeMethod",
+                    $Null,
+                    $View,
+                    $Null
+                )
+            }
+ 
+            $msi_props
+ 
+        } catch {
+            throw "Failed to get MSI file version the error was: {0}." -f $_
+        }
+    }
+}
+
+#Usage Below
+#(Get-MsiDatabaseProperties -FilePath D:\abc.msi).ProductCode
+'@
+
+New-Item -Force -ItemType Directory -Path "$env:ProgramFiles\PowerShell\7\Modules\Get-MsiDatabaseProperties"
+$script |Out-File "$env:ProgramFiles\PowerShell\7\Modules\Get-MsiDatabaseProperties\Get-MsiDatabaseProperties.psm1"
 }
