@@ -43,7 +43,6 @@ DWORD mainCRTStartup(PPEB peb) {
     PROCESS_INFORMATION pi = {0};
 
     WCHAR* cmd = (clbuf[0] == L'"') ? wcschr(clbuf + 1, L'"') + 1 : wcschr(clbuf, L' ');            /* skip arg[0] to get the cmdline to be executed */
-    if (!_wcsnicmp(cmd + 1, L"-v", 2)) cmd = (cmd = wcschr(++cmd, L' ')) ? wcschr(++cmd, L' ') : 0; /* skip incompatible version option, like '-version 3.0' */
     do { token = wcstok_s(NULL, L"\\", &ptr); } while (token && *ptr);                              /* get the filename */
     wcstok_s(token, L".", &ptr);
     
@@ -51,7 +50,8 @@ DWORD mainCRTStartup(PPEB peb) {
     if (_wcsnicmp(token, L"Powershell", 10)) {                       /* note: set desired exitcode in the function in profile.ps1;  */
         _wcscat(_wcscat(_wcscat(cl, L"-nop -c QPR."), token), cmd);  /* add some prefix to the exe and execute it through pwsh , so we can query for program replacement in profile.ps1 */
     } else {
-        token = (cmd ? wcstok_s(cmd, L" ", &ptr) : 0); /* Start breaking up cmdline to look for options */
+		if (!_wcsnicmp(cmd + 1, L"-v", 2)) cmd = (cmd = wcschr(++cmd, L' ')) ? wcschr(++cmd, L' ') : 0; /* skip incompatible version option, like '-version 3.0' */
+        token = (cmd ? wcstok_s(cmd, L" ", &ptr) : 0);                                                  /* Start breaking up cmdline to look for options */
 
         /* Main program: pwsh requires a command option "-c" , powershell doesn`t; insert it e.g. 'powershell -nologo 2+1' should go into 'pwsh -nologo -c 2+1'*/
         while (token) {                                /* Break up cmdline manually (as CommandLineToArgVW seems to remove some (double) qoutes) */
