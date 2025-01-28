@@ -1,5 +1,11 @@
+From 815240c31667444351714f5f01c8f15d99940f06 Mon Sep 17 00:00:00 2001
+From: Aaron Hill <aa1ronham@gmail.com>
+Date: Thu, 15 Aug 2024 08:36:17 -0400
+Subject: [PATCH] wintypes: Partially implement RoResolveNamespace and add  'Windows.winmd'
+
+
 diff --git a/dlls/wintypes/Makefile.in b/dlls/wintypes/Makefile.in
-index b8958cdcd15..da78908f30a 100644
+index 840f47abd17..a2b8c056b8d 100644
 --- a/dlls/wintypes/Makefile.in
 +++ b/dlls/wintypes/Makefile.in
 @@ -1,6 +1,6 @@
@@ -11,18 +17,10 @@ index b8958cdcd15..da78908f30a 100644
  SOURCES = \
  	classes.idl \
 diff --git a/dlls/wintypes/main.c b/dlls/wintypes/main.c
-index 46c2a1d7911..10b1d30c224 100644
+index 79b4e57cc22..018937fced1 100644
 --- a/dlls/wintypes/main.c
 +++ b/dlls/wintypes/main.c
-@@ -22,6 +22,7 @@
- #include "initguid.h"
- #include "windef.h"
- #include "winbase.h"
-+#include "shlwapi.h"
- #include "winstring.h"
- #include "wine/debug.h"
- #include "objbase.h"
-@@ -147,7 +148,7 @@ static HRESULT STDMETHODCALLTYPE wintypes_ActivateInstance(IActivationFactory *i
+@@ -124,7 +124,7 @@ static HRESULT STDMETHODCALLTYPE api_information_statics_factory_ActivateInstanc
          IInspectable **instance)
  {
      FIXME("iface %p, instance %p stub!\n", iface, instance);
@@ -30,8 +28,8 @@ index 46c2a1d7911..10b1d30c224 100644
 +    return 0;  //E_NOTIMPL;
  }
  
- static const struct IActivationFactoryVtbl activation_factory_vtbl =
-@@ -1231,13 +1232,50 @@ HRESULT WINAPI RoResolveNamespace(HSTRING name, HSTRING windowsMetaDataDir,
+ static const struct IActivationFactoryVtbl api_information_statics_factory_vtbl =
+@@ -1325,13 +1325,50 @@ HRESULT WINAPI RoResolveNamespace(HSTRING name, HSTRING windowsMetaDataDir,
                                    DWORD *metaDataFilePathsCount, HSTRING **metaDataFilePaths,
                                    DWORD *subNamespacesCount, HSTRING **subNamespaces)
  {
@@ -83,3 +81,15 @@ index 46c2a1d7911..10b1d30c224 100644
      return RO_E_METADATA_NAME_NOT_FOUND;
  }
  
+diff --git a/dlls/wintypes/private.h b/dlls/wintypes/private.h
+index d01c4f630a0..e78806fd175 100644
+--- a/dlls/wintypes/private.h
++++ b/dlls/wintypes/private.h
+@@ -25,6 +25,7 @@
+ #include "winstring.h"
+ #include "wine/debug.h"
+ #include "objbase.h"
++#include "shlwapi.h"
+ 
+ #include "activation.h"
+ #include "rometadataresolution.h"
