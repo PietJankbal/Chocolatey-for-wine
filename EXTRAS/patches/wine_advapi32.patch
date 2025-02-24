@@ -1,14 +1,5 @@
-From 01e297aba3b56bb56f24308fe0817f72d1b8c0df Mon Sep 17 00:00:00 2001
-From: llde <lorenzofersteam@live.it>
-Date: Tue, 23 May 2023 00:07:04 +0200
-Subject: [PATCH] add implementation of PerfSetULongCounterValue and PerfSetULongLongCounterValue (for VS)
-
-I've put the changes from the author above and for RegLoadAppKey into advapi32 as this dll will not change much (in contrary to kernelbase)
-See https://bugs.winehq.org/show_bug.cgi?id=48023
-
-
 diff --git a/dlls/advapi32/advapi.c b/dlls/advapi32/advapi.c
-index 2284e92b263..0d48a94284f 100644
+index 2284e92b263..722c2caf928 100644
 --- a/dlls/advapi32/advapi.c
 +++ b/dlls/advapi32/advapi.c
 @@ -17,12 +17,20 @@
@@ -162,7 +153,7 @@ index 2284e92b263..0d48a94284f 100644
 +
 +    RegCreateKeyExA( HKEY_CURRENT_USER, "Software\\Wine\\WineAppKey\\", 0, 0,    0  /* or REG_OPTION_VOLATILE???*/,KEY_READ|KEY_WRITE|KEY_WOW64_64KEY /* KEY_ALL_ACCESS | KEY_WOW64_RES*/, 0, &hkey,0 );
 +
-+    return RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\Wine\\WineAppKey\\", KEY_ALL_ACCESS, 0, result);
++    return RegOpenKeyA(HKEY_CURRENT_USER, "Software\\Wine\\WineAppKey\\", result);
 +}
 +
 +/******************************************************************************
@@ -180,7 +171,7 @@ index 2284e92b263..0d48a94284f 100644
 +
 +    RegCreateKeyExW( HKEY_CURRENT_USER, L"Software\\Wine\\WineAppKey\\", 0, 0,    0  /* or REG_OPTION_VOLATILE???*/,KEY_READ|KEY_WRITE|KEY_WOW64_64KEY /*or KEY_ALL_ACCESS | KEY_WOW64_RES*/, 0, &hkey,0 );
 +
-+    return RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\Wine\\WineAppKey", KEY_ALL_ACCESS, 0, result);
++    return RegOpenKeyW(HKEY_CURRENT_USER, L"Software\\Wine\\WineAppKey",  result);
 +}
 diff --git a/dlls/advapi32/advapi32.spec b/dlls/advapi32/advapi32.spec
 index dde83cc7045..f175864077a 100644
@@ -239,4 +230,3 @@ index 58db53f5536..afa150b0c74 100644
  }
  
  /******************************************************************************
-
