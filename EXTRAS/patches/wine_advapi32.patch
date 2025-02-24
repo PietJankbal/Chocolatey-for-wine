@@ -1,3 +1,24 @@
+
+From 01e297aba3b56bb56f24308fe0817f72d1b8c0df Mon Sep 17 00:00:00 2001
+
+
+From: llde <lorenzofersteam@live.it>
+
+
+Date: Tue, 23 May 2023 00:07:04 +0200
+
+
+Subject: [PATCH] add implementation of PerfSetULongCounterValue and PerfSetULongLongCounterValue (for VS)
+
+
+
+
+
+I've put the changes from the author above and for RegLoadAppKey into advapi32 as this dll will not change much (in contrary to kernelbase)
+
+
+See https://bugs.winehq.org/show_bug.cgi?id=48023
+
 diff --git a/dlls/advapi32/advapi.c b/dlls/advapi32/advapi.c
 index 2284e92b263..722c2caf928 100644
 --- a/dlls/advapi32/advapi.c
