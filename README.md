@@ -1,4 +1,7 @@
 # Chocolatey-for-wine
+
+NOTE: wine-10.2 has a bug, and the installation will crash and fail with it. Wait for wine-10.3 or downgrade to 10.1 to try the installation. 
+
 Chocolatey packagemanager automatic installer in wine, handy to install quickly programs in wine (and subsequently find bugs in wine ;) )  
 For some bugs workarounds are added like for Visual Studio Community 2022 and nodejs, see further on.  
 To install Visual Studio Community 2022: do 'winetricks vs22_interactive_installer' to install something via the Visual Studio 2022 installer; 'winetricks vs22_interactive_installer' now got me in ten minutes into the main program (selected Desktop development with C++).
