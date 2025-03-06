@@ -20,7 +20,7 @@ I've put the changes from the author above and for RegLoadAppKey into advapi32 a
 See https://bugs.winehq.org/show_bug.cgi?id=48023
 
 diff --git a/dlls/advapi32/advapi.c b/dlls/advapi32/advapi.c
-index 2284e92b263..722c2caf928 100644
+index 2284e92b263..78962981f36 100644
 --- a/dlls/advapi32/advapi.c
 +++ b/dlls/advapi32/advapi.c
 @@ -17,12 +17,20 @@
@@ -44,11 +44,12 @@ index 2284e92b263..722c2caf928 100644
  #include "windef.h"
  #include "winbase.h"
  #include "winnls.h"
-@@ -32,13 +40,47 @@
+@@ -32,13 +40,48 @@
  #include "wincred.h"
  #include "wct.h"
  #include "perflib.h"
 +#include "winperf.h"
++#include "evntprov.h"
 +
 +
  
@@ -92,7 +93,7 @@ index 2284e92b263..722c2caf928 100644
  /******************************************************************************
   * GetUserNameA [ADVAPI32.@]
   */
-@@ -361,3 +403,101 @@ ULONG WINAPI PerfQueryCounterData( HANDLE query, PERF_DATA_HEADER *data, DWORD d
+@@ -361,3 +404,125 @@ ULONG WINAPI PerfQueryCounterData( HANDLE query, PERF_DATA_HEADER *data, DWORD d
  
      return ERROR_SUCCESS;
  }
@@ -170,11 +171,7 @@ index 2284e92b263..722c2caf928 100644
 +    if (!file || reserved)
 +        return ERROR_INVALID_PARAMETER;
 +
-+    HKEY hkey = 0;
-+
-+    RegCreateKeyExA( HKEY_CURRENT_USER, "Software\\Wine\\WineAppKey\\", 0, 0,    0  /* or REG_OPTION_VOLATILE???*/,KEY_READ|KEY_WRITE|KEY_WOW64_64KEY /* KEY_ALL_ACCESS | KEY_WOW64_RES*/, 0, &hkey,0 );
-+
-+    return RegOpenKeyA(HKEY_CURRENT_USER, "Software\\Wine\\WineAppKey\\", result);
++    return RegCreateKeyA( HKEY_CURRENT_USER, "Software\\Wine\\WineAppKey\\" , result );
 +}
 +
 +/******************************************************************************
@@ -188,16 +185,58 @@ index 2284e92b263..722c2caf928 100644
 +    if (!file || reserved)
 +        return ERROR_INVALID_PARAMETER;
 +
-+    HKEY hkey = 0;
++    return RegCreateKeyW( HKEY_CURRENT_USER, L"Software\\Wine\\WineAppKey\\" , result );
++}
 +
-+    RegCreateKeyExW( HKEY_CURRENT_USER, L"Software\\Wine\\WineAppKey\\", 0, 0,    0  /* or REG_OPTION_VOLATILE???*/,KEY_READ|KEY_WRITE|KEY_WOW64_64KEY /*or KEY_ALL_ACCESS | KEY_WOW64_RES*/, 0, &hkey,0 );
 +
-+    return RegOpenKeyW(HKEY_CURRENT_USER, L"Software\\Wine\\WineAppKey",  result);
++ULONG WINAPI EventWrite( REGHANDLE handle, const EVENT_DESCRIPTOR *descriptor, ULONG count,
++    EVENT_DATA_DESCRIPTOR *data )
++{
++    //FIXME("(%s, %p, %lu, %p): stub\n", wine_dbgstr_longlong(handle), descriptor, count, data);
++    return ERROR_SUCCESS;
++}
++
++/*********************************************************************
++ *                  EtwEventSetInformation   (NTDLL.@)
++ */
++ULONG WINAPI EventSetInformation( REGHANDLE handle, EVENT_INFO_CLASS class, void *info,
++                                     ULONG length )
++{
++    //FIXME("(%s, %u, %p, %lu) stub\n", wine_dbgstr_longlong(handle), class, info, length);
++    return ERROR_SUCCESS;
++}
++
++/******************************************************************************
++ *                  EtwEventRegister (NTDLL.@)
++ */
++ULONG WINAPI EventRegister( LPCGUID provider, PENABLECALLBACK callback, PVOID context,
++                PREGHANDLE handle )
++{
++    WARN("(%s, %p, %p, %p) stub.\n", debugstr_guid(provider), callback, context, handle);
++
++    if (!handle) return ERROR_INVALID_PARAMETER;
++
++    *handle = (REGHANDLE)CreateEventW(NULL, TRUE, FALSE, NULL);
++    return ERROR_SUCCESS;
 +}
 diff --git a/dlls/advapi32/advapi32.spec b/dlls/advapi32/advapi32.spec
-index dde83cc7045..f175864077a 100644
+index dde83cc7045..3076b0bfc67 100644
 --- a/dlls/advapi32/advapi32.spec
 +++ b/dlls/advapi32/advapi32.spec
+@@ -290,10 +290,10 @@
+ @ stdcall EventActivityIdControl(long ptr) ntdll.EtwEventActivityIdControl
+ @ stdcall EventEnabled(int64 ptr) ntdll.EtwEventEnabled
+ @ stdcall EventProviderEnabled(int64 long int64) ntdll.EtwEventProviderEnabled
+-@ stdcall EventRegister(ptr ptr ptr ptr) ntdll.EtwEventRegister
+-@ stdcall EventSetInformation(int64 long ptr long) ntdll.EtwEventSetInformation
++@ stdcall EventRegister(ptr ptr ptr ptr)
++@ stdcall EventSetInformation(int64 long ptr long)
+ @ stdcall EventUnregister(int64) ntdll.EtwEventUnregister
+-@ stdcall EventWrite(int64 ptr long ptr) ntdll.EtwEventWrite
++@ stdcall EventWrite(int64 ptr long ptr)
+ # @ stub EventWriteEndScenario
+ # @ stub EventWriteEx
+ # @ stub EventWriteStartScenario
 @@ -577,8 +577,8 @@
  # @ stub PerfRegSetValue
  @ stdcall -import PerfSetCounterRefValue(long ptr long ptr)
@@ -251,3 +290,4 @@ index 58db53f5536..afa150b0c74 100644
  }
  
  /******************************************************************************
+
