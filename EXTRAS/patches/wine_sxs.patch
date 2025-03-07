@@ -1,25 +1,58 @@
 diff --git a/dlls/sxs/sxs.c b/dlls/sxs/sxs.c
-index 150a49a322f..37c18ab08ef 100644
+index 150a49a322f..a7aa4f630a7 100644
 --- a/dlls/sxs/sxs.c
 +++ b/dlls/sxs/sxs.c
-@@ -104,9 +104,19 @@ BOOL WINAPI SxsLookupClrGuid(DWORD flags, GUID *clsid, HANDLE actctx, void *buff
-     char *ret_strings;
-     ULONG_PTR cookie;
+@@ -24,6 +24,8 @@
+ #include "windef.h"
+ #include "winbase.h"
  
--    TRACE("%#lx, %s, %p, %p, %Ix, %p.\n", flags, wine_dbgstr_guid(clsid), actctx,
-+    FIXME("%#lx, %s, %p, %p, %Ix, %p.\n", flags, wine_dbgstr_guid(clsid), actctx,
-           buffer, buffer_len, buffer_len_required);
- 
-+    /*** FIXME Stupid hacks below for Visual Studio 2022 ***/
++#include "wine/exception.h"
 +
-+    if(!strcmp(wine_dbgstr_guid(clsid), "{1ded92b5-9a46-4b29-93ef-b5e07016659e}")) {return 0;}
-+    if(!strcmp(wine_dbgstr_guid(clsid), "{88ac98c7-b38c-404b-bd86-d2a4f2e89dca}")) {return 0;}
-+    if(!strcmp(wine_dbgstr_guid(clsid), "{d83d60e3-229f-4660-8dd0-28b629eedcda}")) {return 0;}
-+    if(!strcmp(wine_dbgstr_guid(clsid), "{45fb4600-e6e8-4928-b25e-50476ff79425}")) {return 0;}
-+    if(!strcmp(wine_dbgstr_guid(clsid), "{177f0c4a-1cd3-4de7-a32c-71dbbb9fa36d}")) {return 0;}
-+    if(!strcmp(wine_dbgstr_guid(clsid), "{f5e7e71e-1401-11d1-883b-0000f87579d2}")) {return 0;}
-+    
-+    
+ #include "wine/debug.h"
+ 
+ WINE_DEFAULT_DEBUG_CHANNEL(sxs);
+@@ -199,21 +201,42 @@ BOOL WINAPI SxsLookupClrGuid(DWORD flags, GUID *clsid, HANDLE actctx, void *buff
+     ret->pcwszAssemblyIdentity = (WCHAR *)ret_strings;
+     ret_strings += len_identity;
+ 
++    /* FIXME the offsets like in ptr_name = (char *)surrogate + surrogate->name_offset; (line 175) seem to contain bogus values ???? */
++    __TRY 
++    {
+     memcpy(ret_strings, ptr_name, len_name);
+     ret->pcwszTypeName = (WCHAR *)ret_strings;
+     ret_strings += len_name;
++    }
++    __EXCEPT_PAGE_FAULT
++    {
++	ret->pcwszTypeName=0;	
++	}
++    __ENDTRY
++
++
++
+ 
+     if (len_version > 0)
+-    {
++    {   __TRY 
++		{
+         memcpy(ret_strings, ptr_version, len_version);
+         ret->pcwszRuntimeVersion = (WCHAR *)ret_strings;
++	    }
++	    __EXCEPT_PAGE_FAULT
++	    {
++	    ret->pcwszRuntimeVersion = NULL;
++	    }
++	    __ENDTRY
+     }
+     else
+         ret->pcwszRuntimeVersion = NULL;
+ 
++
++
+     SetLastError(0);
+ 
+-out:
++out: if(retval) FIXME("version /identity /name = %s, %s, %s\n", wine_dbgstr_w(ret->pcwszRuntimeVersion), wine_dbgstr_w(ret->pcwszAssemblyIdentity), wine_dbgstr_w(ret->pcwszTypeName));
+     ReleaseActCtx(guid_info.hActCtx);
+ 
      if (flags & SXS_LOOKUP_CLR_GUID_USE_ACTCTX)
-     {
-         if (!ActivateActCtx(actctx, &cookie))
