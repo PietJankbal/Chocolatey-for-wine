@@ -1,8 +1,7 @@
-
-From 3ff2eb332095ab1cbafdf4dcf0a4d60af79a8b45 Mon Sep 17 00:00:00 2001
+From be0fbef50483da8fe3fd0c4b74469d15a5c9f1ea Mon Sep 17 00:00:00 2001
 From: Philipp Knechtges <philipp-dev@knechtges.com>
 Date: Fri, 13 Sep 2024 16:37:31 +0200
-Subject: [PATCH 2/2] d2d1: Implement drawing for ID2D1GeometryGroup
+Subject: [PATCH] d2d1: Implement drawing for ID2D1GeometryGroup
 
 Drawing of ID2D1GeometryGroup was so far unimplemented and resulted in
 blank drawing buffers. This partially fixes the rendering issues mentioned
@@ -276,48 +275,5 @@ index 3da3ad2e65b..93925408077 100644
  }
  
 -- 
-GitLab
-
-https://bugs.winehq.org/show_bug.cgi?id=47165
-
-Subject: [PATCH] iTunes 12.13.2.3 rendering fix
----
-Index: dlls/d2d1/dc_render_target.c
-<+>UTF-8
-===================================================================
-diff --git a/dlls/d2d1/dc_render_target.c b/dlls/d2d1/dc_render_target.c
---- a/dlls/d2d1/dc_render_target.c	(revision b87f35898d22b90e36970e0b1fce1172ba64eb15)
-+++ b/dlls/d2d1/dc_render_target.c	(revision 326b60dd227fee1bd3f6f5a35953b7408f896d09)
-@@ -589,6 +589,31 @@
- 
-     TRACE("iface %p.\n", iface);
- 
-+    // iTunes 12.13.2.3 expects that a NtGdiAlphaBlend between SetTarget and BeginDraw is reflected in the final image
-+    // Simulate that by copying over the target into our src_hdc here
-+    // this should be safe because calling BeginDraw/EndDraw twice is not allowed
-+
-+    const RECT *dst_rect = &render_target->dst_rect;
-+    RECT empty_rect;
-+    HDC src_hdc;
-+    HRESULT hr;
-+
-+    if (!render_target->hdc)
-+      return D2DERR_WRONG_STATE;
-+
-+    if (FAILED(hr = IDXGISurface1_GetDC(render_target->dxgi_surface, FALSE, &src_hdc)))
-+    {
-+        WARN("GetDC() failed, %#lx.\n", hr);
-+        return S_OK;
-+    }
-+
-+    BitBlt(src_hdc, 0, 0, dst_rect->right - dst_rect->left, dst_rect->bottom - dst_rect->top,
-+           render_target->hdc, dst_rect->left, dst_rect->top, SRCCOPY);
-+
-+    SetRectEmpty(&empty_rect);
-+    IDXGISurface1_ReleaseDC(render_target->dxgi_surface, &empty_rect);
-+
-+
-     ID2D1RenderTarget_BeginDraw(render_target->dxgi_target);
- }
- 
+2.45.2
 
