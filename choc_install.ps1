@@ -37,6 +37,7 @@ REGEDIT4
 [HKEY_CURRENT_USER\Software\Wine\AppDefaults\pwsh.exe\DllOverrides]
 "amsi"=""
 "dwmapi"=""
+"rpcrt4"="native,builtin"
 
 [HKEY_CURRENT_USER\Software\ConEmu\.Vanilla]
 "CmdLine"="%ProgramFiles%\\Powershell\\7\\pwsh.exe"
@@ -92,7 +93,7 @@ REGEDIT4
 "Arial (TrueType)"="arial.ttf"
 
 [HKEY_CURRENT_USER\Software\Wine\Debug]
-"RelayExclude"="user32.CharNextA;KERNEL32.GetProcessHeap;KERNEL32.GetCurrentThreadId;KERNEL32.TlsGetValue;KERNEL32.GetCurrentThreadId;KERNEL32.TlsSetValue;ntdll.RtlEncodePointer;ntdll.RtlDecodePointer;ntdll.RtlEnterCriticalSection;ntdll.RtlLeaveCriticalSection;kernel32.94;kernel32.95;kernel32.96;kernel32.97;kernel32.98;KERNEL32.TlsGetValue;KERNEL32.FlsGetValue;ntdll.RtlFreeHeap;ntdll.RtlAllocateHeap;KERNEL32.InterlockedDecrement;KERNEL32.InterlockedCompareExchange;ntdll.RtlTryEnterCriticalSection;KERNEL32.InitializeCriticalSection;ntdll.RtlDeleteCriticalSection;KERNEL32.InterlockedExchange;KERNEL32.InterlockedIncrement;KERNEL32.LocalFree;Kernel32.LocalAlloc;ntdll.RtlReAllocateHeap;KERNEL32.VirtualAlloc;Kernel32.VirtualFree;Kernel32.HeapFree;KERNEL32.QueryPerformanceCounter;KERNEL32.QueryThreadCycleTime;ntdll.RtlFreeHeap;ntdll.memmove;ntdll.memcmp;KERNEL32.GetTickCount;kernelbase.InitializeCriticalSectionEx;ntdll.RtlInitializeCriticalSectionEx;ntdll.RtlInitializeCriticalSection;kernelbase.FlsGetValue"
+"RelayExclude"="user32.CharNextA;KERNEL32.GetProcessHeap;KERNEL32.GetCurrentThreadId;KERNEL32.TlsGetValue;KERNEL32.GetCurrentThreadId;KERNEL32.TlsSetValue;ntdll.RtlEncodePointer;ntdll.RtlDecodePointer;ntdll.RtlEnterCriticalSection;ntdll.RtlLeaveCriticalSection;kernel32.94;kernel32.95;kernel32.96;kernel32.97;kernel32.98;KERNEL32.TlsGetValue;KERNEL32.FlsGetValue;ntdll.RtlFreeHeap;ntdll.RtlAllocateHeap;KERNEL32.InterlockedDecrement;KERNEL32.InterlockedCompareExchange;ntdll.RtlTryEnterCriticalSection;KERNEL32.InitializeCriticalSection;ntdll.RtlDeleteCriticalSection;KERNEL32.InterlockedExchange;KERNEL32.InterlockedIncrement;KERNEL32.LocalFree;Kernel32.LocalAlloc;ntdll.RtlReAllocateHeap;KERNEL32.VirtualAlloc;Kernel32.VirtualFree;Kernel32.HeapFree;KERNEL32.QueryPerformanceCounter;KERNEL32.QueryThreadCycleTime;ntdll.RtlFreeHeap;ntdll.memmove;ntdll.memcmp;KERNEL32.GetTickCount;kernelbase.InitializeCriticalSectionEx;ntdll.RtlInitializeCriticalSectionEx;ntdll.RtlInitializeCriticalSection;kernelbase.FlsGetValue;ntdll.RtlTryAcquireSRWLockExclusive;ntdll.RtlReleaseSRWLockExclusive;ntdll.RtlNtStatusToDosError"
 "RelayFromExclude"="winex11.drv;user32;gdi32;advapi32;kernel32"
 '@ | Out-File $env:TEMP\\misc.reg
 <# FIXME these keys are different from regular winetricks dotnet48 install????
@@ -255,11 +256,11 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
 
     if ((Test-Path -Path "$cachedir\v4.8.03761\netfx_Full.mzz" -PathType Leaf)) {  $is_cached = 1} 
 
-    if (!(Test-Path -Path "$cachedir\7z2407-x64.exe".substring(4) -PathType Leaf)) { 
-        (New-Object System.Net.WebClient).DownloadFile('https://d3.7-zip.org/a/7z2407-x64.exe', $(Join-Path $setupcache '7z2407-x64.exe') ); $cachedir = $setupcache
+    if (!(Test-Path -Path "$cachedir\7z2409-x64.exe".substring(4) -PathType Leaf)) { 
+        (New-Object System.Net.WebClient).DownloadFile('https://d3.7-zip.org/a/7z2409-x64.exe', $(Join-Path $setupcache '7z2409-x64.exe') ); $cachedir = $setupcache
     }
 
-    iex "$(Join-Path "$cachedir" '7z2407-x64.exe') /S"; while(!(Test-Path -Path "$env:ProgramW6432\\7-zip\\7z.exe") ) {Sleep 0.25}
+    iex "$(Join-Path "$cachedir" '7z2409-x64.exe') /S"; while(!(Test-Path -Path "$env:ProgramW6432\\7-zip\\7z.exe") ) {Sleep 0.25}
     $cachedir = "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4);
     
     if (!$is_cached) { <# First download/extract/install dotnet48 as job, this takes most time #>
@@ -271,7 +272,7 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
              'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47.dll', `
              'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47_32.dll', `
              'https://github.com/Maximus5/ConEmu/releases/download/v23.07.24/ConEmuPack.230724.7z', `
-             'https://globalcdn.nuget.org/packages/sevenzipextractor.1.0.17.nupkg',
+             'https://globalcdn.nuget.org/packages/sevenzipextractor.1.0.19.nupkg',
              'https://catalog.s.download.windowsupdate.com/msdownload/update/software/updt/2009/11/windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe'
              )
     <# Download stuff #>
@@ -297,7 +298,6 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
     
     <# Install Chocolatey #>
 #   $env:chocolateyVersion = '1.4.0'
-#   iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
     while(!(Test-path "$env:ProgramData\chocolatey") ) {start-Sleep 0.25};
     iex  "& ""$env:ProgramW6432\\7-zip\\7z.exe"" x  -x!""*resources.dll"" ""$cachedir\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe""  ""Microsoft.Powershell*.dll""   ""Microsoft.WSman*.dll"" ""system.management.automation.dll"" ""-o$env:ProgramData\chocolatey"""
     #Get-Process 'msiexec' -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
@@ -309,7 +309,14 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
     Remove-Item "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{92FB6C44-E685-45AD-9B20-CADF4CABA132} - 1033" -recurse -force
 
     # Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
-    iex  "& ""$env:ProgramW6432\\7-zip\\7z.exe"" x  -spf ""$(Join-Path $args[0] 'c_drive.7z')"" -aoa";
+    iex  "& ""$env:ProgramW6432\\7-zip\\7z.exe"" x  -spf ""$(Join-Path $args[0] 'c_drive.7z')"" -aoa"
+
+    $bytes = [System.IO.File]::ReadAllBytes("$env:systemdrive\Conemu\conemu64.exe")
+    $bytes[1968524]='0x5f' <# rename 'USER32.dll to allow loading it from none-system directory (find exact position by 'grep -oba "USER32.dll")' #>
+    [System.IO.File]::WriteAllBytes("$env:systemdrive\Conemu\conemu64.exe",$bytes)
+        
+    Get-Process '7z' -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit()}
+    Move-Item -Path "$env:systemdrive\Conemu\user32.dll" -Destination "$env:systemdrive\Conemu\_ser32.dll"
 
     Start-Process "c:\conemu\conemu64" -ArgumentList " -NoUpdate -LoadRegistry -run %ProgramFiles%\\Powershell\\7\\pwsh.exe -noe -c Write-Host Installed Software: ; Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* |? DisplayName| Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Format-Table ;"
 ################################################################################################################### 
@@ -352,7 +359,7 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
         Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework64\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\$i
     }
 
-    Start-Process $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList "e $cachedir\\sevenzipextractor.1.0.17.nupkg -o$env:systemroot\\system32\\WindowsPowerShell\\v1.0  lib/netstandard2.0/SevenZipExtractor.dll -aoa"
+    Start-Process $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList "e $cachedir\\sevenzipextractor.1.0.19.nupkg -o$env:systemroot\\system32\\WindowsPowerShell\\v1.0  lib/netstandard2.0/SevenZipExtractor.dll -aoa"
     Copy-Item -Path "$cachedir\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_47.dll" -Force
     Copy-Item -Path "$cachedir\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_43.dll" -Force
     Copy-Item -Path "$cachedir\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_47.dll" -Force
@@ -360,7 +367,7 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
     <# Backup files if wanted #>
     if (Test-Path 'env:SAVEINSTALLFILES') { 
         New-Item -Path "$env:WINEHOMEDIR\.cache\".substring(4) -Name "choc_install_files" -ItemType "directory" -ErrorAction SilentlyContinue
-        foreach($i in 'PowerShell-7.4.5-win-x64.msi', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2407-x64.exe', 'sevenzipextractor.1.0.17.nupkg', 'ConEmuPack.230724.7z', 'windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe') {
+        foreach($i in 'PowerShell-7.4.5-win-x64.msi', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2409-x64.exe', 'sevenzipextractor.1.0.19.nupkg', 'ConEmuPack.230724.7z', 'windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe') {
             Move-Item -Path "$setupcache\\$i" -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4) -force }
         #Copy-Item -Path "$env:TEMP\choc_inst_files\v4.8.03761" -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4) -recurse -force
         Move-Item -path  "$setupcache\\v4.8.03761" -destination "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4);
@@ -593,5 +600,6 @@ function QPR_wmic { <# wmic replacement #>
         ([wmisearcher]$("SELECT " +  ($property -join ",") + " FROM " + $class + $where + $filter)).get() |ft ($property |sort) -autosize |Out-string -Stream | Select -skipindex (2)| ?{$_.trim() -ne ""}}
 }
 '@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.wmic\QPR.wmic.psm1 -Force )
+
 #    Start-Process $env:systemroot\Microsoft.NET\Framework64\v4.0.30319\ngen.exe -NoNewWindow -Wait -ArgumentList  "eqi"
 #    Start-Process $env:systemroot\Microsoft.NET\Framework\v4.0.30319\ngen.exe -NoNewWindow -Wait -ArgumentList "eqi"
