@@ -4960,7 +4960,7 @@ if(1) {
 
 function func_glxgears2
 {
-<# compiled from https://raw.githubusercontent.com/CalvinHartwell/windows-glxgears/master/glxgears/main.cpp + added copyright notice
+<# adapted from https://raw.githubusercontent.com/CalvinHartwell/windows-glxgears/master/glxgears/main.cpp 
 
 /*
  * Copyright (C) 1999-2001  Brian Paul   All Rights Reserved.
@@ -4995,131 +4995,528 @@ function func_glxgears2
 
 /* Modified from X11/GLX to Win32/WGL by Ben Skeggs 25th October 2004 */
 
-/* Modified to compile in Visual Studio 2012 by Calvin Hartwell 28th February 2013 */ #>
+/* Modified to compile in Visual Studio 2012 by Calvin Hartwell 28th February 2013 */ 
+
+ // Compile: x86_64-w64-mingw32-gcc -Oz -fno-asynchronous-unwind-tables  -Wall -Wextra -mno-stack-arg-probe -nostartfiles   -Wl,-gc-sections  -fno-builtin-{sin,cos}{,f}  untitled.c -nostdlib -lucrtbase -lkernel32 -lopengl32 -lgdi32 -luser32 -lglu32 -s -o glxgears.exe && strip -R .reloc  glxgears.exe
+
+#include <windows.h>
+#include <GL/gl.h>
+#include <GL/wgl.h>
+
+// Removed out-dated un-required WGL header file 
+
+#include <math.h>
+#include <stdlib.h>
+
+#include <string.h>
+#include <ctype.h>
+#include <math.h>
+
+/* XXX this probably isn't very portable */
+#include <time.h>
+
+typedef struct FILE FILE;
+#undef stdin
+#undef stdout
+#undef stderr
+//__declspec(dllimport)
+extern __declspec(dllimport) FILE* __cdecl __acrt_iob_func(unsigned);
+#define stdin  (__acrt_iob_func(0))
+#define stdout (__acrt_iob_func(1))
+#define stderr (__acrt_iob_func(2))
+
+__declspec(dllimport)  int __cdecl __stdio_common_vfprintf(long long, FILE*, char const* , int, va_list);
+
+int printf(const char * format, ...)
+{
+	int ret;
+	va_list vl;
+	va_start(vl, format);
+	ret = __stdio_common_vfprintf(0, stdout, format, 0, vl);
+	va_end(vl);
+	return ret;
+}
+
+#ifndef M_PI
+#define M_PI 3.14159265
+#endif /* !M_PI */
+
+/* Turn a NULL pointer string into an empty string */
+#define NULLSTR(x) (((x)!=NULL)?(x):(""))
+//#define Log(x) { if(verbose) printf x; }
+
+#define Bool int
+#define False 0
+#define True 1
+
+#if 1
+/* wgl extensions */
+PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = 0;
+#endif
+
+/* Global vars */
+static HDC hDC;
+static HGLRC hRC;
+static HWND hWnd;
+static HINSTANCE hInst;
+static RECT winrect;
+
+static GLfloat view_rotx = 20.0, view_roty = 30.0, view_rotz = 0.0;
+static GLint gear1, gear2, gear3;
+static GLfloat angle = 0.0;
+
+/* return current time (in seconds) */
+static int current_time(void) {
+	return (int)time(NULL);
+}
+
+/*
+ *
+ *  Draw a gear wheel.  You'll probably want to call this function when
+ *  building a display list since we do a lot of trig here.
+ *
+ *  Input:  inner_radius - radius of hole at center
+ *          outer_radius - radius at center of teeth
+ *          width - width of gear
+ *          teeth - number of teeth
+ *          tooth_depth - depth of tooth
+ */
+static void
+gear(GLfloat inner_radius, GLfloat outer_radius, GLfloat width,
+     GLint teeth, GLfloat tooth_depth)
+{
+   GLint i;
+   GLfloat r0, r1, r2;
+   GLfloat angle, da;
+   GLfloat u, v, len;
+
+   r0 = inner_radius;
+   r1 = outer_radius - tooth_depth / 2.0;
+   r2 = outer_radius + tooth_depth / 2.0;
+
+   da = 2.0 * M_PI / teeth / 4.0;
+
+   glShadeModel(GL_FLAT);
+
+   glNormal3f(0.0, 0.0, 1.0);
+
+   /* draw front face */
+   glBegin(GL_QUAD_STRIP);
+   for (i = 0; i <= teeth; i++) {
+      angle = i * 2.0 * M_PI / teeth;
+      glVertex3f(r0 * cos(angle), r0 * sin(angle), width * 0.5);
+      glVertex3f(r1 * cos(angle), r1 * sin(angle), width * 0.5);
+      if (i < teeth) {
+	 glVertex3f(r0 * cos(angle), r0 * sin(angle), width * 0.5);
+	 glVertex3f(r1 * cos(angle + 3 * da), r1 * sin(angle + 3 * da),
+		    width * 0.5);
+      }
+   }
+   glEnd();
+
+   /* draw front sides of teeth */
+   glBegin(GL_QUADS);
+   da = 2.0 * M_PI / teeth / 4.0;
+   for (i = 0; i < teeth; i++) {
+      angle = i * 2.0 * M_PI / teeth;
+
+      glVertex3f(r1 * cos(angle), r1 * sin(angle), width * 0.5);
+      glVertex3f(r2 * cos(angle + da), r2 * sin(angle + da), width * 0.5);
+      glVertex3f(r2 * cos(angle + 2 * da), r2 * sin(angle + 2 * da),
+		 width * 0.5);
+      glVertex3f(r1 * cos(angle + 3 * da), r1 * sin(angle + 3 * da),
+		 width * 0.5);
+   }
+   glEnd();
+
+   glNormal3f(0.0, 0.0, -1.0);
+
+   /* draw back face */
+   glBegin(GL_QUAD_STRIP);
+   for (i = 0; i <= teeth; i++) {
+      angle = i * 2.0 * M_PI / teeth;
+      glVertex3f(r1 * cos(angle), r1 * sin(angle), -width * 0.5);
+      glVertex3f(r0 * cos(angle), r0 * sin(angle), -width * 0.5);
+      if (i < teeth) {
+	 glVertex3f(r1 * cos(angle + 3 * da), r1 * sin(angle + 3 * da),
+		    -width * 0.5);
+	 glVertex3f(r0 * cos(angle), r0 * sin(angle), -width * 0.5);
+      }
+   }
+   glEnd();
+
+   /* draw back sides of teeth */
+   glBegin(GL_QUADS);
+   da = 2.0 * M_PI / teeth / 4.0;
+   for (i = 0; i < teeth; i++) {
+      angle = i * 2.0 * M_PI / teeth;
+
+      glVertex3f(r1 * cos(angle + 3 * da), r1 * sin(angle + 3 * da),
+		 -width * 0.5);
+      glVertex3f(r2 * cos(angle + 2 * da), r2 * sin(angle + 2 * da),
+		 -width * 0.5);
+      glVertex3f(r2 * cos(angle + da), r2 * sin(angle + da), -width * 0.5);
+      glVertex3f(r1 * cos(angle), r1 * sin(angle), -width * 0.5);
+   }
+   glEnd();
+
+   /* draw outward faces of teeth */
+   glBegin(GL_QUAD_STRIP);
+   for (i = 0; i < teeth; i++) {
+      angle = i * 2.0 * M_PI / teeth;
+
+      glVertex3f(r1 * cos(angle), r1 * sin(angle), width * 0.5);
+      glVertex3f(r1 * cos(angle), r1 * sin(angle), -width * 0.5);
+      u = r2 * cos(angle + da) - r1 * cos(angle);
+      v = r2 * sin(angle + da) - r1 * sin(angle);
+      len = sqrt(u * u + v * v);
+      u /= len;
+      v /= len;
+      glNormal3f(v, -u, 0.0);
+      glVertex3f(r2 * cos(angle + da), r2 * sin(angle + da), width * 0.5);
+      glVertex3f(r2 * cos(angle + da), r2 * sin(angle + da), -width * 0.5);
+      glNormal3f(cos(angle), sin(angle), 0.0);
+      glVertex3f(r2 * cos(angle + 2 * da), r2 * sin(angle + 2 * da),
+		 width * 0.5);
+      glVertex3f(r2 * cos(angle + 2 * da), r2 * sin(angle + 2 * da),
+		 -width * 0.5);
+      u = r1 * cos(angle + 3 * da) - r2 * cos(angle + 2 * da);
+      v = r1 * sin(angle + 3 * da) - r2 * sin(angle + 2 * da);
+      glNormal3f(v, -u, 0.0);
+      glVertex3f(r1 * cos(angle + 3 * da), r1 * sin(angle + 3 * da),
+		 width * 0.5);
+      glVertex3f(r1 * cos(angle + 3 * da), r1 * sin(angle + 3 * da),
+		 -width * 0.5);
+      glNormal3f(cos(angle), sin(angle), 0.0);
+   }
+
+   // VS2012 could not use cos & sin with integers, have to cast to double
+   glVertex3f(r1 * cos((double)0), r1 * sin((double)0), width * 0.5);
+   glVertex3f(r1 * cos((double)0), r1 * sin((double)0), -width * 0.5);
+
+   glEnd();
+
+   glShadeModel(GL_SMOOTH);
+
+   /* draw inside radius cylinder */
+   glBegin(GL_QUAD_STRIP);
+   for (i = 0; i <= teeth; i++) {
+      angle = i * 2.0 * M_PI / teeth;
+      glNormal3f(-cos(angle), -sin(angle), 0.0);
+      glVertex3f(r0 * cos(angle), r0 * sin(angle), -width * 0.5);
+      glVertex3f(r0 * cos(angle), r0 * sin(angle), width * 0.5);
+   }
+   glEnd();
+}
+
+
+static void
+draw(void)
+{
+   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+   glPushMatrix();
+   glRotatef(view_rotx, 1.0, 0.0, 0.0);
+   glRotatef(view_roty, 0.0, 1.0, 0.0);
+   glRotatef(view_rotz, 0.0, 0.0, 1.0);
+
+   glPushMatrix();
+   glTranslatef(-3.0, -2.0, 0.0);
+   glRotatef(angle, 0.0, 0.0, 1.0);
+   glCallList(gear1);
+   glPopMatrix();
+
+   glPushMatrix();
+   glTranslatef(3.1, -2.0, 0.0);
+   glRotatef(-2.0 * angle - 9.0, 0.0, 0.0, 1.0);
+   glCallList(gear2);
+   glPopMatrix();
+
+   glPushMatrix();
+   glTranslatef(-3.1, 4.2, 0.0);
+   glRotatef(-2.0 * angle - 25.0, 0.0, 0.0, 1.0);
+   glCallList(gear3);
+   glPopMatrix();
+
+   glPopMatrix();
+}
+
+
+/* new window size or exposure */
+static void
+reshape(int width, int height)
+{
+   GLfloat h = (GLfloat) height / (GLfloat) width;
+
+   glViewport(0, 0, (GLint) width, (GLint) height);
+   glMatrixMode(GL_PROJECTION);
+   glLoadIdentity();
+   glFrustum(-1.0, 1.0, -h, h, 5.0, 60.0);
+   glMatrixMode(GL_MODELVIEW);
+   glLoadIdentity();
+   glTranslatef(0.0, 0.0, -40.0);
+}
+
+
+static void
+init(void)
+{
+   static GLfloat pos[4] = { 5.0, 5.0, 10.0, 0.0 };
+   static GLfloat red[4] = { 0.8, 0.1, 0.0, 1.0 };
+   static GLfloat green[4] = { 0.0, 0.8, 0.2, 1.0 };
+   static GLfloat blue[4] = { 0.2, 0.2, 1.0, 1.0 };
+
+   glLightfv(GL_LIGHT0, GL_POSITION, pos);
+   glEnable(GL_CULL_FACE);
+   glEnable(GL_LIGHTING);
+   glEnable(GL_LIGHT0);
+   glEnable(GL_DEPTH_TEST);
+
+   /* make the gears */
+   gear1 = glGenLists(1);
+   glNewList(gear1, GL_COMPILE);
+   glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, red);
+   gear(1.0, 4.0, 1.0, 20, 0.7);
+   glEndList();
+
+   gear2 = glGenLists(1);
+   glNewList(gear2, GL_COMPILE);
+   glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, green);
+   gear(0.5, 2.0, 2.0, 10, 0.7);
+   glEndList();
+
+   gear3 = glGenLists(1);
+   glNewList(gear3, GL_COMPILE);
+   glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, blue);
+   gear(1.3, 2.0, 0.5, 10, 0.7);
+   glEndList();
+
+   glEnable(GL_NORMALIZE);
+}
+
+LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+	switch (uMsg) {
+	case WM_CLOSE:
+		PostQuitMessage(0);
+		return 0;
+	case WM_SIZE:
+		reshape(LOWORD(lParam), HIWORD(lParam));
+		return 0;
+	case WM_KEYDOWN:
+		if (wParam == VK_LEFT)
+			view_roty += 5.0;
+		else if (wParam == VK_RIGHT)
+			view_roty -= 5.0;
+		else if (wParam == VK_UP)
+			view_rotx += 5.0;
+		else if (wParam == VK_DOWN)
+			view_rotx -= 5.0;
+		else if (wParam == VK_ESCAPE)
+			PostQuitMessage(0);
+		return 0;
+	}
+
+	return DefWindowProc(hWnd, uMsg, wParam, lParam);
+}
+
+/*
+ * Create an RGB, double-buffered window.
+ * Return the window and context handles.
+ */
+static void make_window(const char *name, int x, int y, int width, int height) {
+	GLuint PixelFormat;
+	WNDCLASS wc;
+	DWORD dwExStyle, dwStyle;
+	static PIXELFORMATDESCRIPTOR pfd = {
+		sizeof(PIXELFORMATDESCRIPTOR),
+		1,
+		PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
+		PFD_TYPE_RGBA,
+		24,
+		0, 0, 0, 0, 0, 0,
+		0,
+		0,
+		0,
+		0, 0, 0, 0,
+		16,
+		0,
+		0,
+		PFD_MAIN_PLANE,
+		0,
+		0, 0, 0
+	};
+
+	winrect.left = (long)0;
+	winrect.right = (long)width;
+	winrect.top = (long) 0;
+	winrect.bottom = (long)height;
+
+	hInst = GetModuleHandle(NULL);
+	wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+	wc.lpfnWndProc = (WNDPROC)WndProc;
+	wc.cbClsExtra = 0;
+	wc.cbWndExtra = 0;
+	wc.hInstance = hInst;
+	wc.hIcon = LoadIcon(NULL, IDI_WINLOGO);
+	wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+	wc.hbrBackground = NULL;
+	wc.lpszMenuName = NULL;
+	wc.lpszClassName = name;
+	if (!RegisterClass(&wc)) {
+	;//	printf("failed to register class\n");
+		exit(0);
+	}
+
+	dwExStyle = WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;
+	dwStyle = WS_OVERLAPPEDWINDOW;
+	AdjustWindowRectEx(&winrect, dwStyle, False, dwExStyle);
+
+	if (!(hWnd = CreateWindowEx(dwExStyle, name, name,
+		WS_CLIPSIBLINGS | WS_CLIPCHILDREN | dwStyle, 0, 0,
+		winrect.right - winrect.left, winrect.bottom - winrect.top,
+		NULL, NULL, hInst, NULL))) {
+		;//printf("failed to create window\n");
+		exit(0);
+	}
+
+	if (!(hDC = GetDC(hWnd)) ||
+		!(PixelFormat = ChoosePixelFormat(hDC, &pfd)) ||
+		!(SetPixelFormat(hDC, PixelFormat, &pfd)) ||
+		!(hRC = wglCreateContext(hDC)) ||
+		!(wglMakeCurrent(hDC, hRC))) {
+		;//printf("failed to initialise opengl\n");
+		exit(0);
+	}
+
+	ShowWindow(hWnd, SW_SHOW);
+	SetForegroundWindow(hWnd);
+	SetFocus(hWnd);
+}
+
+
+static void event_loop() {
+	MSG msg;
+	int t, t0 = current_time();
+	int frames = 0;
+
+	while(1) {
+		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+			if (msg.message == WM_QUIT) break;;
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+
+		angle += 2.0;
+		draw();
+		SwapBuffers(hDC);
+
+		/* calc framerate */
+		t = current_time();
+		frames++;
+		if (t - t0 >= 5.0) {
+			GLfloat s = t - t0;
+			GLfloat fps = frames / s;
+			printf("%d frames in %3.1f seconds = %6.3f FPS\n", frames, s, fps);
+	 		t0 = t;
+			frames = 0;
+		}
+	}
+}
+
+int
+ mainCRTStartup()
+{
+	make_window("glxgears", 0, 0, 500, 500);
+	reshape(500, 500);
+
+/* force vsync off */
+#if 1
+	wglSwapIntervalEXT = wglGetProcAddress("wglSwapIntervalEXT");
+	if (!wglSwapIntervalEXT) {
+		;//printf("warning: wglSwapIntervalEXT missing, cannot force vsync off\n");
+	} else if (!wglSwapIntervalEXT(0)) {
+		;//printf("warning: failed to force vsync off, it may still be on\n");
+	}
+#endif
+
+      printf("GL_RENDERER   = %s\n", (char *) glGetString(GL_RENDERER));
+      printf("GL_VERSION    = %s\n", (char *) glGetString(GL_VERSION));
+      printf("GL_VENDOR     = %s\n", (char *) glGetString(GL_VENDOR));
+      printf("GL_EXTENSIONS = %s\n", (char *) glGetString(GL_EXTENSIONS));
+
+   init();
+
+   event_loop();
+
+/* cleanup */
+	wglMakeCurrent (NULL, NULL);
+	wglDeleteContext (hRC);
+	ReleaseDC (hWnd, hDC);
+
+	return EXIT_SUCCESS;
+}
+#>
 
 <#generated this base64 string in linux: 'cat glxgears.exe | base64 -w 120 ' #>
 
 $glxgears ='
-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
+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
-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
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABABgAAAAYAACAAAAAAAAAAAAAAAAAAAABAAEAAAAwAACAAAAAAAAA
-AAAAAAAAAAABAAkEAABIAAAAXLAAAH0BAAAAAAAAAAAAAGBwAAA8P3htbCB2ZXJzaW9uPScxLjAnIGVuY29kaW5nPSdVVEYtOCcgc3RhbmRhbG9uZT0neWVz
-Jz8+DQo8YXNzZW1ibHkgeG1sbnM9J3VybjpzY2hlbWFzLW1pY3Jvc29mdC1jb206YXNtLnYxJyBtYW5pZmVzdFZlcnNpb249JzEuMCc+DQogIDx0cnVzdElu
-Zm8geG1sbnM9InVybjpzY2hlbWFzLW1pY3Jvc29mdC1jb206YXNtLnYzIj4NCiAgICA8c2VjdXJpdHk+DQogICAgICA8cmVxdWVzdGVkUHJpdmlsZWdlcz4N
-CiAgICAgICAgPHJlcXVlc3RlZEV4ZWN1dGlvbkxldmVsIGxldmVsPSdhc0ludm9rZXInIHVpQWNjZXNzPSdmYWxzZScgLz4NCiAgICAgIDwvcmVxdWVzdGVk
-UHJpdmlsZWdlcz4NCiAgICA8L3NlY3VyaXR5Pg0KICA8L3RydXN0SW5mbz4NCjwvYXNzZW1ibHk+DQoAAAAAAAAAAAAAAAAAAABMswAA4LIAAAAAAAAAAAAA
-AAAAAGuzAADosgAAAAAAAAAAAAAAAAAAjLMAAPCyAAAAAAAAAAAAAAAAAACrswAA+LIAAAAAAAAAAAAAAAAAAM2zAAAAswAAAAAAAAAAAAAAAAAA7bMAAAiz
-AAAAAAAAAAAAAAAAAAAOtAAAELMAAAAAAAAAAAAAAAAAAC20AAAYswAAAAAAAAAAAAAAAAAAN7QAACCzAAAAAAAAAAAAAAAAAABEtAAANLMAAAAAAAAAAAAA
-AAAAAFG0AAA8swAAAAAAAAAAAAAAAAAAXLQAAESzAAAAAAAAAAAAAAAAAAAAAAAAAAAAAG60AAAAAAAAfrQAAAAAAACUtAAAAAAAAKa0AAAAAAAArLQAAAAA
-AAC4tAAAAAAAAMK0AAAAAAAAzLQAAAAAAAD4tAAA2rQAAOi0AAAGtQAAAAAAABa1AAAAAAAAHrUAAAAAAAAmtQAAAAAAAGFwaS1tcy13aW4tY3J0LWhlYXAt
-bDEtMS0wLmRsbABhcGktbXMtd2luLWNydC1sb2NhbGUtbDEtMS0wLmRsbABhcGktbXMtd2luLWNydC1tYXRoLWwxLTEtMC5kbGwAYXBpLW1zLXdpbi1jcnQt
-cnVudGltZS1sMS0xLTAuZGxsAGFwaS1tcy13aW4tY3J0LXN0ZGlvLWwxLTEtMC5kbGwAYXBpLW1zLXdpbi1jcnQtc3RyaW5nLWwxLTEtMC5kbGwAYXBpLW1z
-LXdpbi1jcnQtdGltZS1sMS0xLTAuZGxsAEdESTMyLmRsbABLRVJORUwzMi5ETEwAT1BFTkdMMzIuZGxsAFVTRVIzMi5kbGwAVkNSVU5USU1FMTQwLmRsbAAA
-AABfc2V0X25ld19tb2RlAAAAX2NvbmZpZ3RocmVhZGxvY2FsZQAAAF9fc2V0dXNlcm1hdGhlcnIAAGV4aXQAAF9zZXRfZm1vZGUAAHN0cm5jbXAAAABfdGlt
-ZTY0AAAAU3dhcEJ1ZmZlcnMAAABFeGl0UHJvY2VzcwAAAEdldFByb2NBZGRyZXNzAABMb2FkTGlicmFyeUEAAFZpcnR1YWxQcm90ZWN0AABnbEVuZAAAAEdl
-dERDAAAAbWVtc2V0AAAAoAAAFAAAAII8kD6UPpw+9D4MPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4JAAAHiQAAAAAAAAAAAAAAAAAADqkAAAiJAAAAAAAAAAAAAAAAAAAPeQAACwkAAAAAAAAAAAAAAAAAAA
+BJEAAMCQAAAAAAAAAAAAAAAAAAARkQAA0JAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHJEAAAAAAAAAAAAAAAAAAEiRAAAAAAAAKpEAAAAAAAA4kQAAAAAAAFaR
+AAAAAAAAAAAAAAAAAABmkQAAAAAAAAAAAAAAAAAAbpEAAAAAAAAAAAAAAAAAAHSRAAAAAAAAAAAAAAAAAABHREkzMi5kbGwAS0VSTkVMMzIuRExMAE9QRU5H
+TDMyLmRsbAB1Y3J0YmFzZS5kbGwAVVNFUjMyLmRsbAAAAFN3YXBCdWZmZXJzAAAARXhpdFByb2Nlc3MAAABHZXRQcm9jQWRkcmVzcwAATG9hZExpYnJhcnlB
+AABWaXJ0dWFsUHJvdGVjdAAAZ2xFbmQAAABjb3MAAABHZXREQwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA='
 
 [IO.File]::WriteAllBytes("$env:Temp\glxgears.exe", [System.Convert]::FromBase64String($glxgears))
 
@@ -5149,49 +5546,39 @@ function func_vanara2
 {
     $wc = New-Object System.Net.WebClient
 
-    if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:Temp,"vanara.core.4.0.4.nupkg")  )) {
-        $wc.DownloadFile('https://globalcdn.nuget.org/packages/vanara.core.4.0.4.nupkg', "$env:Temp\vanara.core.4.0.4.nupkg")
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:Temp,"vanara.core.4.0.5.nupkg")  )) {
+        $wc.DownloadFile('https://globalcdn.nuget.org/packages/vanara.core.4.0.5.nupkg', "$env:Temp\vanara.core.4.0.5.nupkg")
     } 
 
-    7z e "$env:Temp\vanara.core.4.0.4.nupkg" "-o$env:ProgramFiles\Powershell\7\modules\vanara" "lib/netstandard2.0/Vanara.Core.dll" -y 
+    7z e "$env:Temp\vanara.core.4.0.5.nupkg" "-o$env:ProgramFiles\Powershell\7\modules\vanara" "lib/netstandard2.0/Vanara.Core.dll" -y
+      
+@'
+    @{
+
+    # Version number of this module.
+    ModuleVersion = '0.0.1'
+
+    # Assemblies that must be loaded prior to importing this module
+    RequiredAssemblies = @("$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.Core.dll" 
+'@  |Out-File $env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.psd1 -Force
     
-    foreach( $i in '.ntdll', '.shared', '.kernel32', '.gdi32', '.user32', '.shell32', '.comctl32' <# vanara #> )
+    foreach( $i in '.ntdll', '.shared', '.kernel32', '.gdi32', '.user32', '.shell32', '.comctl32', '.d3dcompiler' , '.dxgi'<# vanara #> )
     {
-        if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:Temp,"vanara.pinvoke$i.4.0.4.nupkg")  )) {
-            $wc.DownloadFile("https://globalcdn.nuget.org/packages/vanara.pinvoke$i.4.0.4.nupkg", "$env:Temp\vanara.pinvoke$i.4.0.4.nupkg")
+        if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:Temp,"vanara.pinvoke$i.4.0.5.nupkg")  )) {
+            $wc.DownloadFile("https://globalcdn.nuget.org/packages/vanara.pinvoke$i.4.0.5.nupkg", "$env:Temp\vanara.pinvoke$i.4.0.5.nupkg")
         } 
 
-        7z e "$env:Temp\vanara.pinvoke$i.4.0.4.nupkg" "-o$env:ProgramFiles\Powershell\7\modules\vanara" "lib/netstandard2.0/Vanara.PInvoke$i.dll" -y 
+        7z e "$env:Temp\vanara.pinvoke$i.4.0.5.nupkg" "-o$env:ProgramFiles\Powershell\7\modules\vanara" "lib/netstandard2.0/Vanara.PInvoke$i.dll" -y 
+        "    `"`$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.PInvoke$i.dll`"" |Out-File  $env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.psd1 -Append
     }
-@'    
-    function Vanara { }
-'@ |Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.psm1 -Force )
+        
+    "function Vanara { }" |Out-File $env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.psm1 -Force
+    "    )`n    }"        |Out-File  $env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.psd1 -Append
 
-@'
-@{
 
-# Version number of this module.
-ModuleVersion = '0.0.1'
-
-# Assemblies that must be loaded prior to importing this module
- RequiredAssemblies = @("$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.Core.dll" 
- "$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.PInvoke.Comctl32.dll"
-"$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.PInvoke.Gdi32.dll"
-"$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.PInvoke.Kernel32.dll"
-"$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.PInvoke.NtDll.dll"
-"$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.PInvoke.Shared.dll"
-"$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.PInvoke.Shell32.dll"
-"$env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.PInvoke.User32.dll"
-)
+    Import-Module Vanara
+    [Vanara.PInvoke.User32]::MessageBox([Vanara.PInvoke.HWND]::NULL,'Vanara Install completed','Message','MB_ICONEXCLAMATION')
 }
-'@ |Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\Vanara\Vanara.psd1 -Force ) 
-
-Import-module Vanara
-
-[Vanara.PInvoke.User32]::MessageBox([IntPtr]::Zero,'Do "Import-Module Vanara" to use the functions  ','',0)
-
-}
-
 
 function func_Get-PEHeader2
 {
@@ -6160,7 +6547,6 @@ PROCESS {
 
     return $PEHeader
     
-
 }
 }
 '@
@@ -6240,12 +6626,16 @@ Function Get-MsiDatabaseProperties () {
                 )
             }
  
-            $msi_props
- 
-        } catch {
+            $msi_props |fl
+            
+            [System.Runtime.Interopservices.Marshal]::ReleaseComObject($view) | Out-Null
+[System.Runtime.Interopservices.Marshal]::ReleaseComObject($database) | Out-Null
+[System.Runtime.Interopservices.Marshal]::ReleaseComObject($com_object) | Out-Null
+         } catch {
             throw "Failed to get MSI file version the error was: {0}." -f $_
         }
     }
+    
 }
 
 #Usage Below
