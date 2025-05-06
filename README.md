@@ -1,34 +1,35 @@
 # Chocolatey-for-wine
 
-NOTE: wine-10.2 has a bug, and the installation will crash and fail with it. Wait for wine-10.3 or downgrade to 10.1 to try the installation. 
-
 Chocolatey packagemanager automatic installer in wine, handy to install quickly programs in wine (and subsequently find bugs in wine ;) )  
 For some bugs workarounds are added like for Visual Studio Community 2022 and nodejs, see further on.  
-To install Visual Studio Community 2022: do 'winetricks vs22_interactive_installer' to install something via the Visual Studio 2022 installer; 'winetricks vs22_interactive_installer' now got me in ten minutes into the main program (selected Desktop development with C++).
+
+As I was bored during lock-down I wrote a custom winetricks(.ps1) with verbs I find handy. Just do 'winetricks' to see them.
+For some verbs a full restart of wine is needed (due to recent wine changes). You'll see a messagebox and the session will be ended. Just start powershell again and retry the verb. If this is done once, it won't be needed anymore for any verb.
+Example:
+'winetricks vs22_interactiveinstaller'  ( --> session will be ended)
+do 'wine powershell'
+do 'winetricks vs22_interactiveinstaller'
+
+(BTW via 'winetricks vs22_interactive_installer' you can install something via the Visual Studio 2022 installer; 'winetricks vs22_interactive_installer' now got me in ten minutes into the main program (selected Desktop development with C++)).
 
 Install :
-- Download and unzip the release zip-file and do 'wine ChoCinstaller_0.5a.735.exe' (takes about a minute to complete)
+- Download and unzip the release zip-file and do 'wine ChoCinstaller_0.5a.751.exe' (takes about a minute to complete)
 
 Optional:
-- Check if things went well: "choco install chromium" and  "start chrome.exe (--no-sandbox not needed anymore as of wine-8,4)" 
-  
-Optional:
-
-- Run the installer like 'SAVEINSTALLFILES=1 wine ChoCinstaller_0.5c.745.exe' , then the install files (like Powershell*.msi and dotnet48) are saved in 
+- Run the installer like 'SAVEINSTALLFILES=1 wine ChoCinstaller_0.5a.751.exe' , then the install files (like Powershell*.msi and dotnet48) are saved in 
   '$HOME/.cache/choc_install_files' and they don't need to be downloaded again if you create a new prefix)
 
 Optional:
-- Install (rudimentary) powershell 5.1 via winetricks (see below) to get better compability for scripts: occasionally a chocolatey install script might fail as it is written for Windows Powershell (not for Powershell Core). Installing powershell 5.1 and enabling builtin powershell host might help workaround this:
-    - winetricks ps51 (takes very long time to complete!, see below)
-    - choco.exe feature enable --name=powershellHost 
-  
+- Check if things went well: "choco install chromium" and  "start chrome.exe (--no-sandbox not needed anymore as of wine-8,4)" 
+
 ![Screenshot from 2022-08-26 12-31-18](https://user-images.githubusercontent.com/26839562/186885380-d5a617c4-9cf4-4831-a475-2bd85a3b5784.png)
-
-Updates:
-
-- Update : As I was bored during lock-down I wrote a custom winetricks(.ps1) with some verbs I find handy. 
-
 About PowerShell:
+
+Tip: Chocolatey usually installs the latest version of a program, which might reveal new wine bugs. You might have more luck with an older version of the software. Example:
+choco search --exact microsoft-edge --all (--> list all versions)
+choco install microsoft-edge --version --version='135.0.3179.98'
+
+General info:
 
 - 'wine powershell.exe' starts the PowerShell-Core console.
 
@@ -43,9 +44,6 @@ About PowerShell:
 - by setting environment variable "$env:PS51=1" you can start a new powershell 5.1 console by just "powershell" 
   (or from linux bash: "PS51=1 wine powershell")
 - or you could work in graphical PowerShell 5.1 Integrated Scripting Environment with 'winetricks ps51_ise' 
-
-
-![Screenshot from 2022-09-10 19-36-30](https://user-images.githubusercontent.com/26839562/189495238-2b4893ba-09d1-4e60-bb4c-f326d4939482.png)
 
 
 About ConEmu:
