@@ -82,7 +82,7 @@ else                      {$cachedir = ("$env:WINEHOMEDIR" + "\.cache\winetrickx
     "misc","install_dll_from_msu","extract and install a dll/file from an msu file (installation in right place might or might not work ;) )",
     "misc","net_cmdlets", "some cmdlets to test net connection",
     "misc","ps2exe", "codesnippets from around the internet: convert a ps1-script into an executable; requires powershell 5.1, so 1st time usage may take very long time!!!",
-    "misc","sharpdx", "directX with powershell (spinning cube), test if your d3d11 works, further rather useless verb for now ;)",
+#   "misc","sharpdx", "directX with powershell (spinning cube), test if your d3d11 works, further rather useless verb for now ;)",
     "misc","vanara","vanara https://github.com/dahall/Vanara",
     "misc","winrt_hacks","WIP, enable all included wine hacks for (hopefully) bit more winrt ",
     "misc","wpf_msgbox", "codesnippets from around the internet: some fancy messageboxes (via wpf) in powershell",
@@ -113,9 +113,9 @@ function quit?([string] $process)  <# wait for a process to quit #>
     Get-Process $process -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
 }
 
-if (![System.IO.File]::Exists("$env:ProgramData\Chocolatey-for-wine\wget2.exe")){
-    (New-Object System.Net.WebClient).DownloadFile("https://github.com/rockdaboot/wget2/releases/download/v2.1.0/wget2.exe", "$env:ProgramData\Chocolatey-for-wine\wget2.exe")
-    iex "$env:ProgramData\\chocolatey\\tools\\shimgen.exe --output=`"$env:ProgramData`"\\chocolatey\\bin\\wget2.exe --path=`"$env:ProgramData`"\Chocolatey-for-wine\wget2.exe"
+if (![System.IO.File]::Exists("$env:ProgramData\chocolatey\bin\wget2.exe")){
+    (New-Object System.Net.WebClient).DownloadFile("https://github.com/rockdaboot/wget2/releases/download/v2.1.0/wget2.exe", "$env:ProgramData\chocolatey\bin\wget2.exe")
+    #iex "$env:ProgramData\\chocolatey\\tools\\shimgen.exe --output=`"$env:ProgramData`"\\chocolatey\\bin\\wget2.exe --path=`"$env:ProgramData`"\Chocolatey-for-wine\wget2.exe"
 }
 
 function w_download_to
@@ -195,15 +195,25 @@ function verb { return $((Get-PSCallStack)[1].Command).replace('func_', '') }
 
 function system_install <# install dlls in the systemdirectories #>
 {
-    Param ($7z_archive, $hash) <# hash only for wine dlls  7z_archive = name of archive in winetrickx cache #>
+    Param ($7z_archive, $hash, $verb_might_need_restart) <# hash only for wine dlls  7z_archive = name of archive in winetrickx cache #>
 
     $path=[IO.Path]::Combine($cachedir, $7z_archive, "$7z_archive.7z" )
     
     if($hash) {
-        if( [System.IO.File]::Exists($path) -and ( (Get-FileHash $path).Hash -ne 'f82422a0bf6cc4045c142a91f250e557f841755aa1f8b169e1765a9ed3b6258c') )  {
+        if( [System.IO.File]::Exists($path) -and ( (Get-FileHash $path).Hash -ne $hash) )  {
             Remove-Item -Force $path 
         }
         w_download_to "$7z_archive" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$7z_archive.7z" "$7z_archive.7z"
+    }
+
+    if($verb_might_need_restart) {
+        if([Microsoft.Win32.RegistryKey]::OpenBaseKey('LocalMachine',0).OpenSubKey('System\ControlSet001\Control\Session Manager\KnownDLLs')) {
+            $KnownDLLs = [Microsoft.Win32.RegistryKey]::OpenBaseKey('LocalMachine',0).OpenSubKey('System\ControlSet001\Control\Session Manager', $true)
+            $KnownDLLs.DeleteSubKey('KnownDLLs')
+            Add-Type -AssemblyName PresentationCore,PresentationFramework;    
+            [System.Windows.MessageBox]::Show("!!!This verb first needs a restart of wine, so the current session will be terminated!!!`r`n Do 'wine powershell' after this session is has ended, and retry your command",'Message','ok','exclamation');
+            Get-Process -name "pwsh" | Stop-Process
+        }
     }
 
     $out = & "$env:ProgramFiles\7-Zip\7z.exe" e -ba -bb3 "$path" "amd64*\*" "64\*"  "-o$env:systemroot\system32\catroot" -aoa
@@ -216,7 +226,6 @@ function system_install <# install dlls in the systemdirectories #>
 
     foreach($j in 'system32','syswow64') {
         foreach($i in $dlls) {
-            #Rename-Item  $env:systemroot\$j\$("$i" + "__")  $("$i" + "___") -Force -Verbose -erroraction silentlycontinue
             Rename-Item  "$env:systemroot\$j\$i" $("__" + "$i") -Force -Verbose -erroraction silentlycontinue
             Move-Item    "$env:systemroot\$j\catroot\$i" "$env:systemroot\$j\$i" -Force -Verbose -erroraction silentlycontinue
             #Remove-Item  $env:systemroot\$j\$("$i" + "_*") -Force -Verbose -erroraction silentlycontinue
@@ -447,18 +456,18 @@ function func_msxml6 <# experimental... #>
         Remove-Item -Force "$cachedir\$(verb)\$cab" -ErrorAction SilentlyContinue
     }
 
-    system_install $(verb)
-    system_install wine_rpcrt4 'c82422a0bf6cc4045c142a91f250e557f841755aa1f8b169e1765a9ed3b6258c'
+    system_install wine_rpcrt4 'c82422a0bf6cc4045c142a91f250e557f841755aa1f8b169e1765a9ed3b6258c' $true
+    system_install $(verb) $null $false
       
     [system.console]::ForegroundColor='white'
     
     foreach($i in 'msxml6', 'rpcrt4') { dlloverride 'native,builtin' $i }
     
-    echo $null >> $env:SystemRoot\\system32\\msxml6_installed.txt
+#    echo $null >> $env:SystemRoot\\system32\\msxml6_installed.txt
 
-    Add-Type -AssemblyName PresentationCore,PresentationFramework;    
-    [System.Windows.MessageBox]::Show("This verb needs a restart of powershell, so the current session will be terminated!!!`r`n Do 'wine powershell' after this session is has ended.",'Message','ok','exclamation');
-    Get-Process -name "pwsh" | Stop-Process
+#    Add-Type -AssemblyName PresentationCore,PresentationFramework;    
+#    [System.Windows.MessageBox]::Show("This verb needs a restart of powershell, so the current session will be terminated!!!`r`n Do 'wine powershell' after this session is has ended.",'Message','ok','exclamation');
+#    Get-Process -name "pwsh" | Stop-Process
 
 } <# end msxml6 #>
 
@@ -813,8 +822,9 @@ function func_gdiplus
 
     foreach($i in "$cab", "amd64", "x86", "wow64") { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" -Erroraction SilentlyContinue }
 
-    7z e "$cachedir\$(verb)\$(verb).7z" "amd64*\*" -o"$env:systemroot\\system32" -aoa
-    7z e "$cachedir\$(verb)\$(verb).7z" "x86*\*" -o"$env:systemroot\\syswow64" -aoa
+    system_install $(verb) $null $true
+#    7z e "$cachedir\$(verb)\$(verb).7z" "amd64*\*" -o"$env:systemroot\\system32" -aoa
+#    7z e "$cachedir\$(verb)\$(verb).7z" "x86*\*" -o"$env:systemroot\\syswow64" -aoa
 		  
     foreach($i in 'gdiplus') { dlloverride 'native' $i }  
 } <# end gdiplus #>
@@ -2397,29 +2407,29 @@ function func_wine_wintrust <# wine wintrust with some hack faking success #>
     foreach($i in $(verb).substring(5) ) { dlloverride 'native' $i }
 } <# end wintrust #>
 
-function func_wine_advapi32 { system_install wine_advapi32 '27b8ffd4abec1aa26936d769f0c6bcc74f5bfb2c6526acdd37223f2f199ccdfd' }
+function func_wine_advapi32 { system_install wine_advapi32 '27b8ffd4abec1aa26936d769f0c6bcc74f5bfb2c6526acdd37223f2f199ccdfd' $true}
 
-function func_wine_shell32  { system_install wine_shell32  '21ed91f32180b4927239a5e02d557b9aa00731b8bf1af185a21a53c87f2a235c' }
+function func_wine_shell32  { system_install wine_shell32  '21ed91f32180b4927239a5e02d557b9aa00731b8bf1af185a21a53c87f2a235c' $true}
 
-function func_wine_combase  { system_install wine_combase  'ab66f282f7feab67be6ddb8b3700a04126ba8f6808d193f4b5f0581b697781e8' }
+function func_wine_combase  { system_install wine_combase  'ab66f282f7feab67be6ddb8b3700a04126ba8f6808d193f4b5f0581b697781e8' $true}
 
-function func_wine_d2d1     { system_install wine_d2d1     'd93559790176ca68b8c5a35f99f9bd1d64231991b167110d64033ebae1ee65b0' }
+function func_wine_d2d1     { system_install wine_d2d1     'd93559790176ca68b8c5a35f99f9bd1d64231991b167110d64033ebae1ee65b0' $false}
 
-function func_wine_msxml3   { system_install wine_msxml3   '4a96a865a47d090eab3c1485fa923ca639b5d38fcff03c1b7b62785aa5921151' }
+function func_wine_msxml3   { system_install wine_msxml3   '4a96a865a47d090eab3c1485fa923ca639b5d38fcff03c1b7b62785aa5921151' $false}
 
-function func_wine_cfgmgr32 { system_install wine_cfgmgr32 'f1975926672e216206a16fca848a647ea86d1367867426accffa4ef4039c61bc' }
+function func_wine_cfgmgr32 { system_install wine_cfgmgr32 'f1975926672e216206a16fca848a647ea86d1367867426accffa4ef4039c61bc' $false}
 
-function func_wine_sxs      { system_install wine_sxs      '9ac670ae3105611a5211649aab25973b327dcd8ea932f1a8569e78adca6fedcb' }
+function func_wine_sxs      { system_install wine_sxs      '9ac670ae3105611a5211649aab25973b327dcd8ea932f1a8569e78adca6fedcb' $false}
 
-function func_wine_wintypes { system_install wine_wintypes '7c99767ebecaba810b474eafe8b39056d354676950ed23e633e38e0bda57e4c4' }
+function func_wine_wintypes { system_install wine_wintypes '7c99767ebecaba810b474eafe8b39056d354676950ed23e633e38e0bda57e4c4' $false}
 
-function func_wine_msi      { system_install wine_msi      'fc2e00c3265c2cc98b81fc0aa582bb9e4c1543a21c97ed6dd8e7e323a5e6ed27' }
+function func_wine_msi      { system_install wine_msi      'fc2e00c3265c2cc98b81fc0aa582bb9e4c1543a21c97ed6dd8e7e323a5e6ed27' $false}
 
-function func_wine_kernel32 { system_install wine_kernel32 'adc588a5fb250009858fceadf78cd715725d4b322ab0373d624330b4247a1b7c' }
+function func_wine_kernel32 { system_install wine_kernel32 'adc588a5fb250009858fceadf78cd715725d4b322ab0373d624330b4247a1b7c' $true}
 
-function func_wine_sppc     { system_install wine_sppc     'fc2e00c3265c2cc98b81fc0aa582bb9e4c1543a21c97ed6dd8e7e323a5e6ed27' }
+function func_wine_sppc     { system_install wine_sppc     'fc2e00c3265c2cc98b81fc0aa582bb9e4c1543a21c97ed6dd8e7e323a5e6ed27' $false}
 
-function func_wine_hnetcfg  { system_install wine_hnetcfg  'fc2e00c3265c2cc98b81fc0aa582bb9e4c1543a21c97ed6dd8e7e323a5e6ed27' }
+function func_wine_hnetcfg  { system_install wine_hnetcfg  'fc2e00c3265c2cc98b81fc0aa582bb9e4c1543a21c97ed6dd8e7e323a5e6ed27' $false}
 
 function func_wine_api-ms-win-appmodel-state-l1-2-0 <# wine api-ms-win-appmodel-state-l1-2-0 #>
 {
@@ -3839,10 +3849,10 @@ func_wine_wintypes
 
 function func_webview2
 {
-foreach($i in 'wldp') { dlloverride 'disabled' $i }
-winecfg /v win7
-choco install webview2-runtime --version 109.0.1518.69 --ignore-checksums
-foreach($i in 'wldp') { dlloverride 'builtin' $i }
+#foreach($i in 'wldp') { dlloverride 'disabled' $i }
+#winecfg /v win7
+choco install webview2-runtime  --ignore-checksums
+#foreach($i in 'wldp') { dlloverride 'builtin' $i }
 }
 
 function func_use_chromium_as_browser { <# replace winebrowser with chrome to open webpages #>
