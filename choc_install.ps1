@@ -10,7 +10,7 @@ REGEDIT4
 "mscoree"="native"
 "d3dcompiler_47"="native"
 "d3dcompiler_43"="native"
-"wusa.exe"="native"
+;"wusa.exe"="native"
 "mscorsvw.exe"=""
 "schtasks.exe"="native"
 "setx.exe"="native"
@@ -27,6 +27,9 @@ REGEDIT4
 
 [HKEY_CURRENT_USER\Software\Wine\AppDefaults\conemu64.exe]
 "Version"="win81"
+
+[HKEY_CURRENT_USER\Software\Wine\AppDefaults\msedgewebview2.exe]
+"Version"="win7"
 
 [HKEY_CURRENT_USER\Software\Wine\AppDefaults\conemu64.exe\DllOverrides]
 "dwmapi"=""
@@ -48,7 +51,11 @@ REGEDIT4
 "DisplayName"="ConEmu 230724.x64"
 "DisplayVersion"="11.230.7240"
 "Publisher"="ConEmu-Maximus5"
- 
+
+[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Uninstall\7-Zip]
+"DisplayName"="7-Zip (console only) 24.07 (x64)"
+"DisplayVersion"="24.07"
+"Publisher"="Igor Pavlov"
 
 [HKEY_LOCAL_MACHINE\Software\Microsoft\.NETFramework]
 "OnlyUseLatestCLR"=dword:00000001
@@ -248,44 +255,7 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
 #  Install dotnet48, ConEmu, Chocolatey, 7z, d3dcompiler_47 and a few extras (wine robocopy + wine taskschd)                   #
 #                                                                                                                              #
 ################################################################################################################################   
-    Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072;
-    $cachedir = "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4)
-    $setupcache = "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache"
 
-    iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
-
-    if ((Test-Path -Path "$cachedir\v4.8.03761\netfx_Full.mzz" -PathType Leaf)) {  $is_cached = 1} 
-
-    if (!(Test-Path -Path "$cachedir\7z2409-x64.exe".substring(4) -PathType Leaf)) { 
-        (New-Object System.Net.WebClient).DownloadFile('https://d3.7-zip.org/a/7z2409-x64.exe', $(Join-Path $setupcache '7z2409-x64.exe') ); $cachedir = $setupcache
-    }
-
-    iex "$(Join-Path "$cachedir" '7z2409-x64.exe') /S"; while(!(Test-Path -Path "$env:ProgramW6432\\7-zip\\7z.exe") ) {Sleep 0.25}
-    $cachedir = "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4);
-    
-    if (!$is_cached) { <# First download/extract/install dotnet48 as job, this takes most time #>
-        (New-Object System.Net.WebClient).DownloadFile('https://download.visualstudio.microsoft.com/download/pr/7afca223-55d2-470a-8edc-6a1739ae3252/abd170b4b0ec15ad0222a809b761a036/ndp48-x86-x64-allos-enu.exe', $(Join-Path $setupcache 'ndp48-x86-x64-allos-enu.exe') )
-         Start-Process -FilePath $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -ArgumentList  "x -x!*.cab -x!netfx_c* -x!netfx_e* -x!NetFx4* -ms190M $env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache\\ndp48-x86-x64-allos-enu.exe -o$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache\\v4.8.03761"
-        while(!(Test-Path -Path "c:\\windows\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache\\v4.8.03761\\1025") ) {Start-Sleep 0.25} ; &{ c:\\windows\\system32\\msiexec.exe /i c:\\windows\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache\\v4.8.03761\\netfx_Full_x64.msi EXTUI=1  /sfxlang:1033 /q /norestart}
-    }
-    $url = @('http://download.windowsupdate.com/msdownload/update/software/crup/2010/06/windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', `
-             'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47.dll', `
-             'https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47_32.dll', `
-             'https://github.com/Maximus5/ConEmu/releases/download/v23.07.24/ConEmuPack.230724.7z', `
-             'https://globalcdn.nuget.org/packages/sevenzipextractor.1.0.19.nupkg',
-             'https://catalog.s.download.windowsupdate.com/msdownload/update/software/updt/2009/11/windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe'
-             )
-    <# Download stuff #>
-    foreach($i in $url) {          `
-         if (!(Test-Path -Path "$cachedir\$i.split('/')[-1]".substring(4) -PathType Leaf)) { 
-              (New-Object System.Net.WebClient).DownloadFile($i, $(Join-Path "$setupcache" $i.split('/')[-1]) ); $cachedir = "$setupcache" 
-         }
-    }
-
-    <# we probably only need this from regular dotnet40 install (???) #>
-    iex "& ""wusa.exe""   ""$cachedir\\windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu"""
-    iex "& ""$env:ProgramW6432\\7-zip\\7z.exe"" x  ""$cachedir\ConEmuPack.230724.7z"" ""-o$env:SystemDrive\ConEmu""";
-            
     foreach($i in $(Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*)) {
         if($i.DisplayName -match 'Mono') { Remove-Item -force  $i.PSPath -recurse  }
     }
@@ -293,29 +263,52 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
     <# Import reg keys: keys from mscoree manifest files, tweaks to advertise compability with lower .Net versions, and set some native dlls #>
     reg.exe  IMPORT  $env:TMP\\misc.reg /reg:64
     reg.exe  IMPORT  $env:TMP\\misc.reg /reg:32 
-    <# fix up the 'highlight selection'-hack for ConEmu #>
-    Copy-Item $env:SystemRoot\\system32\\user32.dll $env:SystemRoot\\system32\\user32dummy.dll -force
-    
-    <# Install Chocolatey #>
-#   $env:chocolateyVersion = '1.4.0'
-    while(!(Test-path "$env:ProgramData\chocolatey") ) {start-Sleep 0.25};
-    iex  "& ""$env:ProgramW6432\\7-zip\\7z.exe"" x  -x!""*resources.dll"" ""$cachedir\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe""  ""Microsoft.Powershell*.dll""   ""Microsoft.WSman*.dll"" ""system.management.automation.dll"" ""-o$env:ProgramData\chocolatey"""
-    #Get-Process 'msiexec' -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit() }
+
+    Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072;
+    $cachedir = "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4)
+    $setupcache = "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache"
+
+    <# setup chocolatey #>
+    Move-Item "$env:ProgramData\\tools\\ChocolateyInstall" "$env:ProgramData\\chocolatey"
+    mkdir "$env:ProgramData\\chocolatey\\bin"
+    Copy-Item "$env:ProgramData\\chocolatey\\redirects\\choco.exe" "$env:ProgramData\\chocolatey\\bin\\choco.exe"
+    Import-Module "$env:ProgramData\chocolatey\helpers\chocolateyProfile.psm1"
+    [Environment]::SetEnvironmentVariable('PATH',[Environment]::GetEnvironmentVariable('PATH', 'Machine') + ";$env:ProgramData\chocolatey\bin\", 'Machine')
+    [Environment]::SetEnvironmentVariable('ChocolateyInstall',"$env:ProgramData\chocolatey", 'Machine')
+    iex 'refreshenv'
+ 
+    if (([System.IO.File]::Exists("$cachedir\\windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu"))) {
+        $cab_path = "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4) }
+    else {
+        $cab_path = "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache" }
+    iex "& ""wusa.exe""   ""$cab_path\\windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu"""
+    if (([System.IO.File]::Exists("$cachedir\ConEmuPack.230724.7z"))) {
+        $cab_path = "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4) }
+    else {
+        $cab_path = "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache" }
+    iex "& ""$(Join-Path $args[0] '7z.exe')"" x  ""$cab_path\ConEmuPack.230724.7z"" ""-o$env:SystemDrive\ConEmu""";
+    if (([System.IO.File]::Exists("$cachedir\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe"))) {
+        $cab_path = "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4) }
+    else {
+        $cab_path = "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache" }
+    iex  "& ""$(Join-Path $args[0] '7z.exe')"" x  -x!""*resources.dll"" ""$cab_path\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe""  ""Microsoft.Powershell*.dll""   ""Microsoft.WSman*.dll"" ""system.management.automation.dll"" ""-o$env:ProgramData\chocolatey"""
+
     New-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{DE293FDE-C181-46C0-8DCC-1F75EA35833D}" -Name "InstallDate" -Value "$(Get-Date -Format FileDate)" -PropertyType 'String' -force
-#   choco pin add -n chocolatey
-    <# end install Chocolatey #>
-    
+    New-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\7-zip" -Name "InstallDate" -Value "$(Get-Date -Format FileDate)" -PropertyType 'String' -force
+
+    Copy-Item $env:SystemRoot\\system32\\user32.dll $env:SystemRoot\\system32\\user32dummy.dll -force
+
     [System.Environment]::SetEnvironmentVariable("POWERSHELL_UPDATECHECK", 'Off','Machine')
     Remove-Item "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{92FB6C44-E685-45AD-9B20-CADF4CABA132} - 1033" -recurse -force
 
     # Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
-    iex  "& ""$env:ProgramW6432\\7-zip\\7z.exe"" x  -spf ""$(Join-Path $args[0] 'c_drive.7z')"" -aoa"
-
+    <# fix up the 'highlight selection'-hack for ConEmu #>
     $bytes = [System.IO.File]::ReadAllBytes("$env:systemdrive\Conemu\conemu64.exe")
     $bytes[1968524]='0x5f' <# rename 'USER32.dll to allow loading it from none-system directory (find exact position by 'grep -oba "USER32.dll")' #>
     [System.IO.File]::WriteAllBytes("$env:systemdrive\Conemu\conemu64.exe",$bytes)
         
     Get-Process '7z' -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit()}
+    while (![Microsoft.Win32.RegistryKey]::OpenBaseKey('LocalMachine',0).OpenSubKey('Software\Microsoft\Windows\CurrentVersion\Uninstall\{16735AF7-1D8D-3681-94A5-C578A61EC832}')) {Sleep 0.25}
     Move-Item -Path "$env:systemdrive\Conemu\user32.dll" -Destination "$env:systemdrive\Conemu\_ser32.dll"
 
     Start-Process "c:\conemu\conemu64" -ArgumentList " -NoUpdate -LoadRegistry -run %ProgramFiles%\\Powershell\\7\\pwsh.exe -noe -c Write-Host Installed Software: ; Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* |? DisplayName| Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Format-Table ;"
@@ -347,30 +340,46 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
 #                                                                                                                 #
 ###################################################################################################################
     <# do not use chocolatey's builtin powershell host #>
-    while(!(Test-path "$env:systemroot\\system32\\ucrtbase_clr0400.dll") ) {start-Sleep 0.50}
+    while(!(Test-path "$env:systemroot\\system32\\ucrtbase_clr0400.dll") ) {start-Sleep 0.25}
     cd c:\; c:\\ProgramData\\chocolatey\\choco.exe feature disable --name=powershellHost; winecfg /v win10
     c:\\ProgramData\\chocolatey\\choco.exe feature enable -n allowGlobalConfirmation <# to confirm automatically (no -y needed) #>
+    mkdir "$env:ProgramFiles\7-zip"
+    Copy-Item  $(Join-Path $args[0] '7z.*') "$env:ProgramFiles\7-zip\"
     <# easy access to 7z #>
     iex "$env:ProgramData\\chocolatey\\tools\\shimgen.exe --output=`"$env:ProgramData`"\\chocolatey\\bin\\7z.exe --path=`"$env:ProgramW6432`"\\7-zip\\7z.exe"
-    Remove-Item -force -recurse "$env:systemroot\mono";
+    #Remove-Item -force -recurse "$env:systemroot\mono";
+    [System.IO.Directory]::Delete("$env:systemroot\mono",'true')
+    
     <# This makes Astro Photography Tool happy #>
     foreach($i in 'regasm.exe') { 
         Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\$i
         Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework64\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\$i
     }
 
-    Start-Process $env:ProgramW6432\\7-zip\\7z.exe -NoNewWindow -Wait -ArgumentList "e $cachedir\\sevenzipextractor.1.0.19.nupkg -o$env:systemroot\\system32\\WindowsPowerShell\\v1.0  lib/netstandard2.0/SevenZipExtractor.dll -aoa"
-    Copy-Item -Path "$cachedir\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_47.dll" -Force
-    Copy-Item -Path "$cachedir\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_43.dll" -Force
-    Copy-Item -Path "$cachedir\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_47.dll" -Force
-    Copy-Item -Path "$cachedir\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_43.dll" -Force
+    if (([System.IO.File]::Exists("$cachedir\\sevenzipextractor.1.0.19.nupkg"))) {
+        $cab_path = "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4) }
+    else {
+        $cab_path = "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache" }
+    Start-Process $(Join-Path $args[0] '7z.exe') -NoNewWindow -Wait -ArgumentList "e $cab_path\\sevenzipextractor.1.0.19.nupkg -o$env:systemroot\\system32\\WindowsPowerShell\\v1.0  lib/netstandard2.0/SevenZipExtractor.dll -aoa"
+    if (([System.IO.File]::Exists("$cachedir\\d3dcompiler_47_32.dll"))) {
+        $cab_path = "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4) }
+    else {
+        $cab_path = "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache" }
+    Copy-Item -Path "$cab_path\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_47.dll" -Force
+    Copy-Item -Path "$cab_path\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_43.dll" -Force
+    if (([System.IO.File]::Exists("$cachedir\\d3dcompiler_47.dll"))) {
+        $cab_path = "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4) }
+    else {
+        $cab_path = "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache" }
+    Copy-Item -Path "$cab_path\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_47.dll" -Force
+    Copy-Item -Path "$cab_path\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_43.dll" -Force
     <# Backup files if wanted #>
     if (Test-Path 'env:SAVEINSTALLFILES') { 
         New-Item -Path "$env:WINEHOMEDIR\.cache\".substring(4) -Name "choc_install_files" -ItemType "directory" -ErrorAction SilentlyContinue
-        foreach($i in 'PowerShell-7.4.5-win-x64.msi', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2409-x64.exe', 'sevenzipextractor.1.0.19.nupkg', 'ConEmuPack.230724.7z', 'windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe') {
-            Move-Item -Path "$setupcache\\$i" -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4) -force }
+        foreach($i in 'PowerShell-7.5.1-win-x64.msi', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2409-x64.exe', 'sevenzipextractor.1.0.19.nupkg', 'ConEmuPack.230724.7z', 'windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe', 'chocolatey.2.4.3.nupkg') {
+            Move-Item -Path "$setupcache\\$i" -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4) -force -ErrorAction SilentlyContinue}
         #Copy-Item -Path "$env:TEMP\choc_inst_files\v4.8.03761" -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4) -recurse -force
-        Move-Item -path  "$setupcache\\v4.8.03761" -destination "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4);
+        Move-Item -path  "$setupcache\\v4.8.03761" -destination "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4) -ErrorAction SilentlyContinue;
     }
     <# Replace some system programs by functions; This also makes wusa a dummy program: we don`t want windows updates and it doesn`t work anyway #>
     ForEach ($file in "wusa","schtasks","getmac","setx","wbem\\wmic", "ie4uinit", "openfiles") {
@@ -380,10 +389,14 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
         Copy-Item -Path "$env:winsysdir\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:winsysdir\\$($file + '.exe')" -Force}
     <# Native Access needs this dir #>
     New-Item -Path "$env:Public" -Name "Downloads" -ItemType "directory" -ErrorAction SilentlyContinue
+    <# make wusa noop #>
+    New-ItemProperty -Path "HKCU:\Software\Wine\DllOverrides" -Name "wusa.exe" -Value "native" -PropertyType 'String' -force
     <# clean up #>
-    Remove-Item $setupcache -force -recurse
+    [System.IO.Directory]::Delete($setupcache,'true')
     <# dxvk (if installed) doesn't work well with WPF, add workaround from dxvk site  #>
-$dxvkconf = @"
+#####################################################################################################
+
+@"
 [pwsh.exe]
 d3d9.shaderModel = 1
 
@@ -600,6 +613,5 @@ function QPR_wmic { <# wmic replacement #>
         ([wmisearcher]$("SELECT " +  ($property -join ",") + " FROM " + $class + $where + $filter)).get() |ft ($property |sort) -autosize |Out-string -Stream | Select -skipindex (2)| ?{$_.trim() -ne ""}}
 }
 '@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.wmic\QPR.wmic.psm1 -Force )
-
 #    Start-Process $env:systemroot\Microsoft.NET\Framework64\v4.0.30319\ngen.exe -NoNewWindow -Wait -ArgumentList  "eqi"
 #    Start-Process $env:systemroot\Microsoft.NET\Framework\v4.0.30319\ngen.exe -NoNewWindow -Wait -ArgumentList "eqi"
