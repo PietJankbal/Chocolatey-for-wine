@@ -4,11 +4,16 @@ Chocolatey packagemanager automatic installer in wine, handy to install quickly 
 For some bugs workarounds are added like for Visual Studio Community 2022 and nodejs, see further on.  
 
 As I was bored during lock-down I wrote a custom winetricks(.ps1) with verbs I find handy. Just do 'winetricks' to see them.
-For some verbs a full restart of wine is needed (due to recent wine changes). You'll see a messagebox and the session will be ended. Just start powershell again and retry the verb. If this is done once, it won't be needed anymore for any verb.
-Example:
-'winetricks vs22_interactiveinstaller'  ( --> session will be ended)
-do 'wine powershell'
-do 'winetricks vs22_interactiveinstaller'
+For some verbs a full restart of wine is needed (due to recent wine changes). You'll see a messagebox and the session will be ended. Just start powershell again and retry the verb. If this is done once, it won't be needed anymore for any verb.  
+
+Example:  
+
+'winetricks vs22_interactiveinstaller'  ( --> session will be ended)  
+
+do 'wine powershell'  
+
+do 'winetricks vs22_interactiveinstaller'  
+
 
 (BTW via 'winetricks vs22_interactive_installer' you can install something via the Visual Studio 2022 installer; 'winetricks vs22_interactive_installer' now got me in ten minutes into the main program (selected Desktop development with C++)).
 
@@ -25,8 +30,11 @@ Optional:
 ![Screenshot from 2022-08-26 12-31-18](https://user-images.githubusercontent.com/26839562/186885380-d5a617c4-9cf4-4831-a475-2bd85a3b5784.png)
 About PowerShell:
 
-Tip: Chocolatey usually installs the latest version of a program, which might reveal new wine bugs. You might have more luck with an older version of the software. Example:
-choco search --exact microsoft-edge --all (--> list all versions)
+Tip: Chocolatey usually installs the latest version of a program, which might reveal new wine bugs. You might have more luck with an older version of the software.  
+Example:  
+
+choco search --exact microsoft-edge --all (--> list all versions)  
+
 choco install microsoft-edge --version --version='135.0.3179.98'
 
 General info:
