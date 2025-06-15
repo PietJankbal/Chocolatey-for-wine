@@ -20,7 +20,7 @@ I've put the changes from the author above and for RegLoadAppKey into advapi32 a
 See https://bugs.winehq.org/show_bug.cgi?id=48023
 
 diff --git a/dlls/advapi32/advapi.c b/dlls/advapi32/advapi.c
-index 2284e92b263..78962981f36 100644
+index 2284e92b263..f2af8ebb7b6 100644
 --- a/dlls/advapi32/advapi.c
 +++ b/dlls/advapi32/advapi.c
 @@ -17,12 +17,20 @@
@@ -216,11 +216,11 @@ index 2284e92b263..78962981f36 100644
 +
 +    if (!handle) return ERROR_INVALID_PARAMETER;
 +
-+    *handle = (REGHANDLE)CreateEventW(NULL, TRUE, FALSE, NULL);
++    *handle = (REGHANDLE)0xdadadada;
 +    return ERROR_SUCCESS;
 +}
 diff --git a/dlls/advapi32/advapi32.spec b/dlls/advapi32/advapi32.spec
-index dde83cc7045..3076b0bfc67 100644
+index e4b6c5a981a..3a42b730a21 100644
 --- a/dlls/advapi32/advapi32.spec
 +++ b/dlls/advapi32/advapi32.spec
 @@ -290,10 +290,10 @@
@@ -241,8 +241,8 @@ index dde83cc7045..3076b0bfc67 100644
  # @ stub PerfRegSetValue
  @ stdcall -import PerfSetCounterRefValue(long ptr long ptr)
  @ stdcall -import PerfSetCounterSetInfo(long ptr long)
--# @ stub PerfSetULongCounterValue
--# @ stub PerfSetULongLongCounterValue
+-@ stdcall -import PerfSetULongCounterValue(long ptr long long)
+-@ stdcall -import PerfSetULongLongCounterValue(long ptr long int64)
 +@ stdcall PerfSetULongCounterValue(long ptr long long)
 +@ stdcall PerfSetULongLongCounterValue(long ptr long int64)
  @ stdcall -import PerfStartProvider(ptr ptr ptr)
@@ -259,35 +259,4 @@ index dde83cc7045..3076b0bfc67 100644
  @ stdcall -import RegLoadKeyA(long str str)
  @ stdcall -import RegLoadKeyW(long wstr wstr)
  @ stdcall -import RegLoadMUIStringA(long str str long ptr long str)
-diff --git a/dlls/advapi32/eventlog.c b/dlls/advapi32/eventlog.c
-index 58db53f5536..afa150b0c74 100644
---- a/dlls/advapi32/eventlog.c
-+++ b/dlls/advapi32/eventlog.c
-@@ -429,7 +429,7 @@ HANDLE WINAPI OpenBackupEventLogW( LPCWSTR lpUNCServerName, LPCWSTR lpFileName )
-         return NULL;
-     }
- 
--    return (HANDLE)0xcafe4242;
-+    return CreateEventW(NULL, TRUE, FALSE, NULL);
- }
- 
- /******************************************************************************
-@@ -482,7 +482,7 @@ HANDLE WINAPI OpenEventLogW( LPCWSTR uncname, LPCWSTR source )
-         return NULL;
-     }
- 
--    return (HANDLE)0xcafe4242;
-+    return CreateEventW(NULL, TRUE, FALSE, NULL);
- }
- 
- /******************************************************************************
-@@ -567,7 +567,7 @@ HANDLE WINAPI RegisterEventSourceA( LPCSTR lpUNCServerName, LPCSTR lpSourceName
- HANDLE WINAPI RegisterEventSourceW( LPCWSTR lpUNCServerName, LPCWSTR lpSourceName )
- {
-     FIXME("(%s,%s): stub\n", debugstr_w(lpUNCServerName), debugstr_w(lpSourceName));
--    return (HANDLE)0xcafe4242;
-+    return CreateEventW(NULL, TRUE, FALSE, NULL);
- }
- 
- /******************************************************************************
 
