@@ -19,6 +19,7 @@ do 'winetricks vs22_interactiveinstaller'
 
 Install :
 - Download and unzip the release zip-file and do 'wine ChoCinstaller_0.5a.751.exe' (takes about a minute to complete)
+(Note: The installer assumes that wine-mono is already installed as a seperate package, or that you confirm the install in the dialog (on every new prefix initialization) where it asks you if you want to install mono)
 
 Optional:
 - Run the installer like 'SAVEINSTALLFILES=1 wine ChoCinstaller_0.5a.751.exe' , then the install files (like Powershell*.msi and dotnet48) are saved in 
