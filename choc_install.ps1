@@ -18,6 +18,7 @@ REGEDIT4
 "robocopy.exe"="native"
 "wmic.exe"="native"
 "ngen.exe"="native"
+;"MicrosoftEdgeUpdate.exe"="native"
 "version"="native,builtin" ;Bug 29678
 "shdocvw"="native,builtin" ;Bug 20777
 "riched20"="native,builtin" ;Bug 14980
@@ -42,10 +43,52 @@ REGEDIT4
 "dwmapi"=""
 "rpcrt4"="native,builtin"
 
+;[HKEY_CURRENT_USER\Software\Wine\AppDefaults\MicrosoftEdgeUpdate.exe\DllOverrides]
+;"kernel32"=""
+
 [HKEY_CURRENT_USER\Software\ConEmu\.Vanilla]
+"BackColorIdx"=hex:10
 "CmdLine"="%ProgramFiles%\\Powershell\\7\\pwsh.exe"
 "ColorTable00"=dword:00562401
+"ColorTable01"=dword:00423607
+"ColorTable02"=dword:00808000
+"ColorTable03"=dword:00a48231
+"ColorTable04"=dword:00164bcb
+"ColorTable05"=dword:00b6369c
+"ColorTable06"=dword:00009985
+"ColorTable07"=dword:00d5e8ee
+"ColorTable08"=dword:00a1a193
+"ColorTable09"=dword:00d28b26
+"ColorTable10"=dword:0036b64f
+"ColorTable11"=dword:0098a12a
+"ColorTable12"=dword:002f32dc
+"ColorTable13"=dword:008236d3
 "ColorTable14"=dword:0000ffff
+"ColorTable15"=dword:00e3f6fd
+"FontSize"=dword:0000000e
+"FontUseDpi"=hex:01
+"FontUseUnits"=hex:01
+"KeyboardHooks"=hex:01
+"PopBackColorIdx"=hex:10
+"PopTextColorIdx"=hex:10
+"QuakeStyle"=hex:00
+"SingleInstance"=hex:00
+"StartFarEditors"=hex:00
+"StartFarFolders"=hex:00
+"StartTasksFile"=""
+"StartTasksName"=""
+"StartType"=hex:00
+"StatusFontHeight"=dword:0000000c
+"TabFontHeight"=dword:0000000d
+"TextColorIdx"=hex:10
+"Update.CheckHourly"=hex:01
+"Update.CheckOnStartup"=hex:01
+"Update.ConfirmDownload"=hex:01
+"Update.UseBuilds"=hex:01
+"UseInjects"=hex:01
+
+[HKEY_CURRENT_USER\Software\ConEmu\.Vanilla\HotKeys]
+"MinimizeRestore"=dword:000011c0
 
 [HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Uninstall\{DE293FDE-C181-46C0-8DCC-1F75EA35833D}]
 "DisplayName"="ConEmu 230724.x64"
@@ -100,7 +143,7 @@ REGEDIT4
 "Arial (TrueType)"="arial.ttf"
 
 [HKEY_CURRENT_USER\Software\Wine\Debug]
-"RelayExclude"="user32.CharNextA;KERNEL32.GetProcessHeap;KERNEL32.GetCurrentThreadId;KERNEL32.TlsGetValue;KERNEL32.GetCurrentThreadId;KERNEL32.TlsSetValue;ntdll.RtlEncodePointer;ntdll.RtlDecodePointer;ntdll.RtlEnterCriticalSection;ntdll.RtlLeaveCriticalSection;kernel32.94;kernel32.95;kernel32.96;kernel32.97;kernel32.98;KERNEL32.TlsGetValue;KERNEL32.FlsGetValue;ntdll.RtlFreeHeap;ntdll.RtlAllocateHeap;KERNEL32.InterlockedDecrement;KERNEL32.InterlockedCompareExchange;ntdll.RtlTryEnterCriticalSection;KERNEL32.InitializeCriticalSection;ntdll.RtlDeleteCriticalSection;KERNEL32.InterlockedExchange;KERNEL32.InterlockedIncrement;KERNEL32.LocalFree;Kernel32.LocalAlloc;ntdll.RtlReAllocateHeap;KERNEL32.VirtualAlloc;Kernel32.VirtualFree;Kernel32.HeapFree;KERNEL32.QueryPerformanceCounter;KERNEL32.QueryThreadCycleTime;ntdll.RtlFreeHeap;ntdll.memmove;ntdll.memcmp;KERNEL32.GetTickCount;kernelbase.InitializeCriticalSectionEx;ntdll.RtlInitializeCriticalSectionEx;ntdll.RtlInitializeCriticalSection;kernelbase.FlsGetValue;ntdll.RtlTryAcquireSRWLockExclusive;ntdll.RtlReleaseSRWLockExclusive;ntdll.RtlNtStatusToDosError"
+"RelayExclude"="user32.CharNextA;KERNEL32.GetProcessHeap;KERNEL32.GetCurrentThreadId;KERNEL32.TlsGetValue;KERNEL32.GetCurrentThreadId;KERNEL32.TlsSetValue;ntdll.RtlEncodePointer;ntdll.RtlDecodePointer;ntdll.RtlEnterCriticalSection;ntdll.RtlLeaveCriticalSection;kernel32.94;kernel32.95;kernel32.96;kernel32.97;kernel32.98;KERNEL32.TlsGetValue;KERNEL32.FlsGetValue;ntdll.RtlFreeHeap;ntdll.RtlAllocateHeap;KERNEL32.InterlockedDecrement;KERNEL32.InterlockedCompareExchange;ntdll.RtlTryEnterCriticalSection;KERNEL32.InitializeCriticalSection;ntdll.RtlDeleteCriticalSection;KERNEL32.InterlockedExchange;KERNEL32.InterlockedIncrement;KERNEL32.LocalFree;Kernel32.LocalAlloc;ntdll.RtlReAllocateHeap;KERNEL32.VirtualAlloc;Kernel32.VirtualFree;Kernel32.HeapFree;KERNEL32.QueryPerformanceCounter;KERNEL32.QueryThreadCycleTime;ntdll.RtlFreeHeap;ntdll.memmove;ntdll.memcmp;KERNEL32.GetTickCount;kernelbase.InitializeCriticalSectionEx;ntdll.RtlInitializeCriticalSectionEx;ntdll.RtlInitializeCriticalSection;kernelbase.FlsGetValue;ntdll.RtlTryAcquireSRWLockExclusive;ntdll.RtlReleaseSRWLockExclusive;ntdll.RtlNtStatusToDosError;ntdll.RtlInterlockedPushEntrySList"
 "RelayFromExclude"="winex11.drv;user32;gdi32;advapi32;kernel32"
 '@ | Out-File $env:TEMP\\misc.reg
 <# FIXME these keys are different from regular winetricks dotnet48 install????
@@ -311,29 +354,8 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
     while (![Microsoft.Win32.RegistryKey]::OpenBaseKey('LocalMachine',0).OpenSubKey('Software\Microsoft\Windows\CurrentVersion\Uninstall\{16735AF7-1D8D-3681-94A5-C578A61EC832}')) {Sleep 0.25}
     Move-Item -Path "$env:systemdrive\Conemu\user32.dll" -Destination "$env:systemdrive\Conemu\_ser32.dll"
 
-    Start-Process "c:\conemu\conemu64" -ArgumentList " -NoUpdate -LoadRegistry -run %ProgramFiles%\\Powershell\\7\\pwsh.exe -noe -c Write-Host Installed Software: ; Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* |? DisplayName| Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Format-Table ;"
-################################################################################################################### 
-#  All code below is only for sending a single keystroke (ENTER) to ConEmu's annoying                             #
-#  fast configuration window to dismiss it...............                                                         #
-#  Based on https://github.com/nylyst/PowerShell/blob/master/Send-KeyPress.ps1 -> so credits to that author       #
-###################################################################################################################
-    <# add a C# class to access the WIN32 API SetForegroundWindow #>
-    Add-Type @"
-    using System;
-    using System.Runtime.InteropServices;
-
-    public class StartActivateProgramClass {
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool SetForegroundWindow(IntPtr hWnd);
-    }
-"@
-    
-    while(!$p) {$p = Get-Process | Where-Object { $_.MainWindowTitle -Match "Conemu" }; Start-Sleep -Milliseconds 200}
-    $h = $p[0].MainWindowHandle
-    [void] [StartActivateProgramClass]::SetForegroundWindow($h)
-    [void][System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms')
-    [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")  <# Dismiss ConEmu's fast configuration window by hitting enter #>
+    if(!($args[1] -eq '/q') -and !($args[2] -eq '/q')) {
+        Start-Process "c:\conemu\conemu64" -ArgumentList " -NoUpdate -LoadRegistry -run %ProgramFiles%\\Powershell\\7\\pwsh.exe -noe -c Write-Host Installed Software: ; Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* |? DisplayName| Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Format-Table ;"}
 ################################################################################################################### 
 #                                                                                                                 #
 #  Finish installation and some app specific tweaks                                                               #
@@ -374,7 +396,7 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
     Copy-Item -Path "$cab_path\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_47.dll" -Force
     Copy-Item -Path "$cab_path\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_43.dll" -Force
     <# Backup files if wanted #>
-    if (Test-Path 'env:SAVEINSTALLFILES') { 
+    if(($args[1] -eq '/s') -or ($args[2] -eq '/s')) { 
         New-Item -Path "$env:WINEHOMEDIR\.cache\".substring(4) -Name "choc_install_files" -ItemType "directory" -ErrorAction SilentlyContinue
         foreach($i in 'PowerShell-7.5.1-win-x64.msi', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2409-x64.exe', 'sevenzipextractor.1.0.19.nupkg', 'ConEmuPack.230724.7z', 'windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe', 'chocolatey.2.4.3.nupkg') {
             Move-Item -Path "$setupcache\\$i" -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4) -force -ErrorAction SilentlyContinue}
@@ -382,7 +404,7 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
         Move-Item -path  "$setupcache\\v4.8.03761" -destination "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4) -ErrorAction SilentlyContinue;
     }
     <# Replace some system programs by functions; This also makes wusa a dummy program: we don`t want windows updates and it doesn`t work anyway #>
-    ForEach ($file in "wusa","schtasks","getmac","setx","wbem\\wmic", "ie4uinit", "openfiles") {
+    ForEach ($file in "wusa","schtasks","getmac","setx","wbem\\wmic", "ie4uinit", "openfiles","MicrosoftEdgeUpdate") {
         Move-Item -Path "$env:windir\\SysWOW64\\$($file + '.exe')" -Destination "$env:windir\\SysWOW64\\$($file + '.back.exe')" -Force -ErrorAction SilentlyContinue
         Move-Item -Path "$env:winsysdir\\$($file + '.exe')" -Destination "$env:winsysdir\\$($file + '.back.exe')" -Force -ErrorAction SilentlyContinue
         Copy-Item -Path "$env:windir\\SysWOW64\\WindowsPowerShell\\v1.0\\powershell.exe" -Destination "$env:windir\\SysWOW64\\$($file + '.exe')" -Force
@@ -434,6 +456,14 @@ function QPR.wusa { <# wusa.exe replacement, Query program replacement for wusa.
      exit 0;
 }
 '@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.wusa\QPR.wusa.psm1 -Force )
+
+@'
+function QPR.MicrosoftEdgeUpdate { <# MicrosoftEdgeUpdate.exe replacement #>
+     Write-Host "This is MicrosoftEdgeUpdate.exe dummy doing nothing..."
+     exit 0;
+}
+
+'@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.MicrosoftEdgeUpdate\QPR.MicrosoftEdgeUpdate.psm1 -Force )
 
 @'
 function QPR.schtasks { <# schtasks.exe replacement #>
