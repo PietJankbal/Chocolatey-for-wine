@@ -29,6 +29,7 @@ struct paths {
     wchar_t *filenameW;
     wchar_t sevenzippath[MAX_PATH];
     wchar_t cache_dir[MAX_PATH];
+    wchar_t argv[MAX_PATH];
 };
 
 DWORD WINAPI net48_install(void *ptr){
@@ -128,7 +129,7 @@ DWORD WINAPI pscore_install(void *ptr){
     
     WaitForSingleObject(pi.hProcess, INFINITE); CloseHandle(pi.hProcess); CloseHandle(pi.hThread);
     
-    wcscat(wcscat(wcscat( wcscat( wcscat(cmdlineW, L" -f ") , p->pathW ), L"\\"), L"choc_install.ps1 "), p->pathW);
+    wcscat(wcscat(wcscat(wcscat( wcscat( wcscat(cmdlineW, L" -f ") , p->pathW ), L"\\"), L"choc_install.ps1 "), p->pathW), p->argv);
 
     CreateProcessW(pwsh_pathW, cmdlineW, 0, 0, 0, 0, 0, 0, &si1, &pi1);
     WaitForSingleObject(pi1.hProcess, INFINITE); /*GetExitCodeProcess(pi1.hProcess, &exitcode);*/ CloseHandle(pi1.hProcess); CloseHandle(pi1.hThread);
@@ -152,10 +153,12 @@ DWORD WINAPI cdrive_install(void *ptr){
 
 __attribute__((externally_visible)) /* for -fwhole-program */
 int mainCRTStartup(void) {
-    wchar_t bufW[MAX_PATH] = L"",bufW1[MAX_PATH] = L"",   pwsh_pathW[MAX_PATH];
-    int i = 0;
+    wchar_t bufW[MAX_PATH] = L"",bufW1[MAX_PATH] = L"",   pwsh_pathW[MAX_PATH], **argv;
+    int i = 0, argc;
     HKEY hKey; HANDLE hThread[4];
     struct paths p = {0};
+
+    argv = CommandLineToArgvW(GetCommandLineW(), &argc);
 
     RegCreateKeyExW(HKEY_CURRENT_USER, L"Software\\Wine\\DllOverrides", 0, NULL, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hKey, NULL);
     const WCHAR info[] = L""; RegSetValueExW(hKey, L"mscorsvc", 0, REG_SZ, (BYTE*) info, sizeof(info)); RegCloseKey(hKey);
@@ -169,6 +172,7 @@ int mainCRTStartup(void) {
    
     p.filenameW = wcsdup(wcsrchr(p.pathW, L'\\')); p.pathW[ wcslen(p.pathW) - 26] = 0;
     wcscat(wcscat(p.sevenzippath, p.pathW), L"\\7z.exe");
+    for(int i = 1; i < argc; i++) wcscat(wcscat(p.argv,L" "), argv[i]);
 
     wchar_t url[] = L"https://download.visualstudio.microsoft.com/download/pr/7afca223-55d2-470a-8edc-6a1739ae3252/abd170b4b0ec15ad0222a809b761a036/ndp48-x86-x64-allos-enu.exe";
 
@@ -180,8 +184,8 @@ int mainCRTStartup(void) {
     hThread[2] = CreateThread(NULL, 0, pscore_install, &p, 0, 0);  
     hThread[1] = CreateThread(NULL, 0, chocolatey_install, &p, 0, 0);
     SetThreadPriority(hThread[0],THREAD_PRIORITY_HIGHEST);
-    WaitForMultipleObjects(4, hThread, TRUE, INFINITE);   
-    do {CloseHandle(hThread[i]);} while(hThread[i++]);
+    WaitForMultipleObjects(4, hThread, TRUE, INFINITE);
+    for (int i = 0; i < 4; i++)  CloseHandle(hThread[i]); 
     
-    return 0;
+    ExitProcess(0);
 }
