@@ -133,7 +133,7 @@ function w_download_to
         Write-Host -foregroundcolor yellow "*                                                        *"
         Write-Host -foregroundcolor yellow "**********************************************************"
         
-         wget2 --restrict-file-names=nocontrol <# do not escape any character #> "$w_url" -P "$cachedir\\$dldir";
+         wget2 --restrict-file-names=nocontrol <# do not escape any character #> "$w_url" -P "$cachedir\\$dldir"; quit?('wget2')
         }
 }
 
@@ -3145,6 +3145,10 @@ function func_vs22
     if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\X11 Driver')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\X11 Driver'}
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\X11 Driver' -Name 'Decorated' -Value 'N' -PropertyType 'String' -force
 
+    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe'}
+    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe\\DllOverrides'}
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe\\DllOverrides' -Name 'kernel32' -Value '' -PropertyType 'String' -force
+
     New-Item  -Path "HKLM:\\Software\\Classes\\CLSID\\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}"
     New-Item  -Path "HKLM:\\Software\\Classes\\CLSID\\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}\\InprocServer32"
     New-ItemProperty -Path "HKLM:\\Software\\Classes\\CLSID\\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}\\InprocServer32" -Name "(Default)" -Value 'c:\windows\system32\es.dll' -PropertyType 'String' -force
@@ -3216,6 +3220,11 @@ function func_vs22_interactive_installer
     if(!(Test-Path "HKCU:\\Software\\Wine\\AppDefaults\\$i")) {New-Item  -Path "HKCU:\\Software\\Wine\\AppDefaults\\$i"}
     New-ItemProperty -Path "HKCU:\\Software\\Wine\\AppDefaults\\$i" -Name 'Version' -Value 'win7' -PropertyType 'String' -force
  }
+ 
+    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe'}
+    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe\\DllOverrides'}
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe\\DllOverrides' -Name 'kernel32' -Value '' -PropertyType 'String' -force
+
     (New-Object System.Net.WebClient).DownloadFile('https://aka.ms/vs/17/release/vs_community.exe', "$env:TMP\\vs_Community.exe") 
 
     New-Item  -Path "HKLM:\\Software\\Classes\\CLSID\\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}"
