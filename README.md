@@ -18,12 +18,14 @@ do 'winetricks vs22_interactiveinstaller'
 (BTW via 'winetricks vs22_interactive_installer' you can install something via the Visual Studio 2022 installer; 'winetricks vs22_interactive_installer' now got me in ten minutes into the main program (selected Desktop development with C++)).
 
 Install :
-- Download and unzip the release zip-file and do 'wine ChoCinstaller_0.5a.751.exe' (takes about a minute to complete)
+- Download and unzip the release zip-file and do 'wine ChoCinstaller_0.5c.751.exe' (takes about a minute to complete)
 (Note: The installer assumes that wine-mono is already installed as a seperate package, or that you confirm the install in the dialog (on every new prefix initialization) where it asks you if you want to install mono)
 
 Optional:
-- Run the installer like 'SAVEINSTALLFILES=1 wine ChoCinstaller_0.5a.751.exe' , then the install files (like Powershell*.msi and dotnet48) are saved in 
+- Run the installer like 'wine ChoCinstaller_0.5a.751.exe /s' , then the install files (like Powershell*.msi and dotnet48) are saved in 
   '$HOME/.cache/choc_install_files' and they don't need to be downloaded again if you create a new prefix)
+Optional:
+- Run the installer like 'wine ChoCinstaller_0.5a.751.exe /q' to prevent the automatic launch of the powershell window (so install only). 
 
 Optional:
 - Check if things went well: "choco install chromium" and  "start chrome.exe (--no-sandbox not needed anymore as of wine-8,4)" 
