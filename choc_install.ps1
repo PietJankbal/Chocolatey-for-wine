@@ -17,7 +17,7 @@ REGEDIT4
 "taskschd"="native"
 "robocopy.exe"="native"
 "wmic.exe"="native"
-"ngen.exe"="native"
+"ngen.exe"="builtin"
 ;"MicrosoftEdgeUpdate.exe"="native"
 "version"="native,builtin" ;Bug 29678
 "shdocvw"="native,builtin" ;Bug 20777
