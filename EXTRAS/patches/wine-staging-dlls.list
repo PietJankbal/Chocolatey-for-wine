@@ -1,0 +1,7 @@
+The dlls below were taken from wine-staging. 
+Their patches can be found at: https://github.com/wine-staging/wine-staging/tree/master/patches.
+
+- cfgmgr (no patch, just for backward compatibilaty with wine-10.0)
+- comctl32
+- d2d1
+- msxml3 
