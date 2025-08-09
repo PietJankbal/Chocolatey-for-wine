@@ -96,8 +96,8 @@ REGEDIT4
 "Publisher"="ConEmu-Maximus5"
 
 [HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Uninstall\7-Zip]
-"DisplayName"="7-Zip (console only) 24.07 (x64)"
-"DisplayVersion"="24.07"
+"DisplayName"="7-Zip (console only) 25.01 (x64)"
+"DisplayVersion"="25.01"
 "Publisher"="Igor Pavlov"
 
 [HKEY_LOCAL_MACHINE\Software\Microsoft\.NETFramework]
@@ -398,7 +398,7 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
     <# Backup files if wanted #>
     if(($args[1] -eq '/s') -or ($args[2] -eq '/s')) { 
         New-Item -Path "$env:WINEHOMEDIR\.cache\".substring(4) -Name "choc_install_files" -ItemType "directory" -ErrorAction SilentlyContinue
-        foreach($i in 'PowerShell-7.5.1-win-x64.msi', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2409-x64.exe', 'sevenzipextractor.1.0.19.nupkg', 'ConEmuPack.230724.7z', 'windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe', 'chocolatey.2.4.3.nupkg') {
+        foreach($i in 'PowerShell-7.5.1-win-x64.msi', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2409-x64.exe', 'sevenzipextractor.1.0.19.nupkg', 'ConEmuPack.230724.7z', 'windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe', 'chocolatey.2.5.0.nupkg') {
             Move-Item -Path "$setupcache\\$i" -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4) -force -ErrorAction SilentlyContinue}
         #Copy-Item -Path "$env:TEMP\choc_inst_files\v4.8.03761" -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4) -recurse -force
         Move-Item -path  "$setupcache\\v4.8.03761" -destination "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4) -ErrorAction SilentlyContinue;

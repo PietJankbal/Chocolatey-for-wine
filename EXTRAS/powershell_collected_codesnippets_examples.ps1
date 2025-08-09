@@ -6645,3 +6645,85 @@ Function Get-MsiDatabaseProperties () {
 New-Item -Force -ItemType Directory -Path "$env:ProgramFiles\PowerShell\7\Modules\Get-MsiDatabaseProperties"
 $script |Out-File "$env:ProgramFiles\PowerShell\7\Modules\Get-MsiDatabaseProperties\Get-MsiDatabaseProperties.psm1"
 }
+
+function func_Get-MsiDatabaseRegistryKeys2
+{
+$script = @'
+#https://gist.githubusercontent.com/hclpandv/4fa30f0c985b2febdf6522584f12d05d/raw/beadded44093b4ad6da77493ee5ae015473b2729/
+
+#PowerShell Function to Get MSI RegKeys.
+
+Function Get-MsiDatabaseRegistryKeys() {
+    <#     
+    .SYNOPSIS     This function retrieves properties from a Windows Installer MSI database.     
+    .DESCRIPTION     This function uses the WindowInstaller COM object to pull all values from the Property table from a MSI     
+    .EXAMPLE     Get-MsiDatabaseProperties 'MSI_PATH'     
+    .PARAMETER FilePath     The path to the MSI you'd like to query     
+    #>
+    [CmdletBinding()]
+    param (
+    [Parameter(Mandatory=$True,
+        ValueFromPipeline=$True,
+        ValueFromPipelineByPropertyName=$True,
+        HelpMessage='What is the path of the MSI you would like to query?')]
+    [IO.FileInfo[]]$FilePath
+    )
+ 
+    begin {
+        $com_object = New-Object -com WindowsInstaller.Installer
+    }
+ 
+    process {
+        try {
+ 
+            $database = $com_object.GetType().InvokeMember( "OpenDatabase", "InvokeMethod", $Null, $com_object, @($FilePath.FullName, 0) )
+ 
+            $query = "SELECT * FROM Registry"  <# or other examples: "SELECT 'Key' FROM Registry"  or "SELECT * FROM LaunchConditions" #>
+            $View = $database.GetType().InvokeMember( "OpenView", "InvokeMethod", $Null, $database, ($query) )
+ 
+            $View.GetType().InvokeMember("Execute", "InvokeMethod", $Null, $View, $Null)
+ 
+            $record = $View.GetType().InvokeMember( "Fetch", "InvokeMethod", $Null, $View, $Null )
+ 
+            $msi_props = @{}
+            while ($record -ne $null) {
+                $prop_root = $record.GetType().InvokeMember("StringData", "GetProperty", $Null, $record, 2)
+                if($prop_root -eq '0') {$prop_root = 'HKEY_CLASSES_ROOT'}
+                if($prop_root -eq '2') {$prop_root = 'HKEY_LOCAL_MACHINE'}
+                $prop_key = $record.GetType().InvokeMember("StringData", "GetProperty", $Null, $record, 3)
+                $( '[' + "$prop_root" + '\' + "$prop_key" + ']') 
+                $prop_name = $record.GetType().InvokeMember("StringData", "GetProperty", $Null, $record, 4)
+                $prop_value = $record.GetType().InvokeMember("StringData", "GetProperty", $Null, $record, 5)
+                $quote = '"'; $type = ''; $idx = 0
+                if($prop_value[0] -eq '#') { 
+                    $quote = ''; $idx = 0
+                    if($prop_value[1] -eq 'x') {$type = 'hex:'; $idx = 2}
+                    else                      {$type = 'dword:'; $idx = 1}
+                 }
+                $quote +  "$prop_name" + $quote + '=' + $quote + $type + $prop_value.SubString($idx) + $quote
+
+                $record = $View.GetType().InvokeMember( "Fetch", "InvokeMethod", $Null, $View, $Null)
+
+            }
+             
+            [System.Runtime.Interopservices.Marshal]::ReleaseComObject($view) | Out-Null
+            [System.Runtime.Interopservices.Marshal]::ReleaseComObject($database) | Out-Null
+            [System.Runtime.Interopservices.Marshal]::ReleaseComObject($com_object) | Out-Null
+         } catch {
+            throw "Failed to get MSI file version the error was: {0}." -f $_
+        }
+    }
+    
+}
+
+#Usage Below
+#(Get-MsiDatabaseProperties -FilePath D:\abc.msi).ProductCode
+'@
+
+New-Item -Force -ItemType Directory -Path "$env:ProgramFiles\PowerShell\7\Modules\Get-MsiDatabaseRegistryKeys"
+$script |Out-File "$env:ProgramFiles\PowerShell\7\Modules\Get-MsiDatabaseRegistryKeys\Get-MsiDatabaseRegistryKeys.psm1"
+}
+
+#https://learn-powershell.net/2012/11/02/powershell-and-wpf-stackpanel/
+
+#https://learn-powershell.net/2012/10/14/powershell-and-wpf-writing-data-to-a-ui-from-a-different-runspace/

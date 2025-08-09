@@ -59,7 +59,7 @@ DWORD WINAPI net48_install(void *ptr){
 
 DWORD WINAPI chocolatey_install(void *ptr){
 
-    wchar_t dest[MAX_PATH], bufW[MAX_PATH]=L"", bufW1[525]=L"", url[] = L"https://packages.chocolatey.org/chocolatey.2.4.3.nupkg";
+    wchar_t dest[MAX_PATH], bufW[MAX_PATH]=L"", bufW1[525]=L"", url[] = L"https://packages.chocolatey.org/chocolatey.2.5.0.nupkg";
     struct paths *p = (struct paths*)ptr;
     STARTUPINFOW si = {0};
     PROCESS_INFORMATION pi = {0};

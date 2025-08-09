@@ -12,7 +12,8 @@ else                      {$cachedir = ("$env:WINEHOMEDIR" + "\.cache\winetrickx
     "apps","use_chromium_as_browser", "replace winebrowser with chrome to open webpages",
     "apps","vs19", "Visual Studio 2019",
     "apps","vs22", "Visual Studio 2022",
-    "apps","vs22_interactive_installer", "vs22_interactive_installer",
+    "apps","vs19_interactive_installer", "Visual Studio 2019 interactive installer",
+    "apps","vs22_interactive_installer", "Visual Studio 2022 interactive installer",
     "apps","vulkansamples", "51 vulkan samples to test if your vulkan works, do shift-ctrl^c if you wanna leave earlier ;)",
     "apps","webview2", "Microsoft Edge WebView2",
     "dlls","bitstransfer", "Add Bitstransfer cmdlets to Powershell 5.1",     
@@ -76,8 +77,9 @@ else                      {$cachedir = ("$env:WINEHOMEDIR" + "\.cache\winetrickx
     "misc","chocolatey_upgrade","upgrade chocolatey to the latest (>v2.2), requires Powershell 5.1 so on first usage might take >15 minutes!",
     "misc","embed-exe-in-psscript", "codesnippets from around the internet: samplescript howto embed and run an exe into a powershell-scripts (vkcube.exe); might trigger a viruswarning (!) but is really harmless",
 #   "misc","GE-Proton","Install bunch of dlls from GE-Proton",
-    "msic","Get-PEHeader", "codesnippets from around the internet: add Get-PEHeader to cmdlets, handy to explore dlls imports/exports",
-    "msic","Get-MsiDatabaseProperties", "This function retrieves properties from a Windows Installer MSI database",
+    "misc","Get-PEHeader", "codesnippets from around the internet: add Get-PEHeader to cmdlets, handy to explore dlls imports/exports",
+    "misc","Get-MsiDatabaseProperties", "This function retrieves properties from a Windows Installer MSI database",
+    "misc","Get-MsiDatabaseRegistryKeys", "This function retrieves Registry Keys from a Windows Installer MSI database",
     "misc","glxgears", "test if your opengl in wine is working",
     "misc","install_dll_from_msu","extract and install a dll/file from an msu file (installation in right place might or might not work ;) )",
     "misc","net_cmdlets", "some cmdlets to test net connection",
@@ -114,7 +116,7 @@ function quit?([string] $process)  <# wait for a process to quit #>
 }
 
 if (![System.IO.File]::Exists("$env:ProgramData\chocolatey\bin\wget2.exe")){
-    (New-Object System.Net.WebClient).DownloadFile("https://github.com/rockdaboot/wget2/releases/download/v2.1.0/wget2.exe", "$env:ProgramData\chocolatey\bin\wget2.exe")
+    (New-Object System.Net.WebClient).DownloadFile("https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/refs/heads/main/EXTRAS/wget2/wget2.exe", "$env:ProgramData\chocolatey\bin\wget2.exe")
     #iex "$env:ProgramData\\chocolatey\\tools\\shimgen.exe --output=`"$env:ProgramData`"\\chocolatey\\bin\\wget2.exe --path=`"$env:ProgramData`"\Chocolatey-for-wine\wget2.exe"
 }
 
@@ -161,7 +163,21 @@ function check_aik_sanity <# some sanity checks to see if cached files from wind
     foreach($i in 'F_WINPEOC_AMD64__WINPE_WINPE_SCRIPTING.CAB', 'F_WINPEOC_AMD64__WINPE_WINPE_MDAC.CAB', 'F_WINPEOC_AMD64__WINPE_WINPE_HTA.CAB', 'F1_WINPE.WIM', `
                   'F_WINPEOC_X86__WINPE_WINPE_SCRIPTING.CAB', 'F_WINPEOC_X86__WINPE_WINPE_MDAC.CAB', 'F_WINPEOC_X86__WINPE_WINPE_HTA.CAB', 'F3_WINPE.WIM' ) {
         if(![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  "aik70",  $i) ) ) { #assuming all cached files are gone, re-extract everything
-            w_download_to "aik70" "$url" "KB3AIK_EN.iso"
+            #w_download_to "aik70" "$url" "KB3AIK_EN.iso"
+            if (![System.IO.Directory]::Exists("$cachedir\\aik70")){ [System.IO.Directory]::CreateDirectory("$cachedir\\aik70")}
+
+        if (![System.IO.File]::Exists("$cachedir\\aik70\\KB3AIK_EN.iso")){
+            Write-Host -foregroundcolor yellow "**********************************************************"
+            Write-Host -foregroundcolor yellow "*                                                        *"
+            Write-Host -foregroundcolor yellow "*        Downloading file(s) and extracting might        *"
+            Write-Host -foregroundcolor yellow "*        take several minutes!                           *"
+            Write-Host -foregroundcolor yellow "*        Patience please!                                *"
+            Write-Host -foregroundcolor yellow "*                                                        *"
+            Write-Host -foregroundcolor yellow "**********************************************************"
+        
+            wget2 --restrict-file-names=nocontrol <# do not escape any character #> --header "Range: bytes=0-1099999999"  "$url" -P "$cachedir\\aik70";
+        }
+                     
             7z x "$cachedir\aik70\KB3AIK_EN.iso" "Neutral.cab" "WinPE.cab" "-o$cachedir\aik70" -y; quit?('7z')
             Remove-Item -Force "$cachedir\aik70\KB3AIK_EN.iso" 
             7z x "$cachedir\aik70\WinPE.cab" "F1_WINPE.WIM" "F3_WINPE.WIM" "-o$cachedir\aik70" -y; quit?('7z')
@@ -3258,6 +3274,43 @@ function func_vs22_interactive_installer
 #    & "${env:ProgramFiles}\Microsoft` Visual` Studio\2022\Community\Common7\IDE\DDConfigCA.exe" | & "${env:ProgramFiles}\Microsoft` Visual` Studio\2022\Community\Common7\IDE\StorePID.exe" 09299
 }
 
+function func_vs19_interactive_installer
+{
+    func_wine_msxml3
+    #func_ps51
+#   func_vcrun2019
+    #func_xmllite
+    #func_cmd
+    func_wine_advapi32
+    func_wine_combase
+    func_wine_shell32
+    #func_wine_wintypes
+    func_winmetadata
+
+    winecfg /v win10
+    
+    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe'}
+    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\X11 Driver')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\X11 Driver'}
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\X11 Driver' -Name 'Decorated' -Value 'N' -PropertyType 'String' -force
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe' -Name 'Version' -Value 'win7' -PropertyType 'String' -force
+
+    New-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Avalon.Graphics' -Name 'DisableHWAcceleration' -Value 1 -PropertyType 'Dword' -force
+
+    foreach($i in 'concrt140') { dlloverride 'native,builtin' $i }
+
+  
+#    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe'}
+#    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe\\DllOverrides'}
+#    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe\\DllOverrides' -Name 'kernel32' -Value '' -PropertyType 'String' -force
+
+    (New-Object System.Net.WebClient).DownloadFile('https://aka.ms/vs/16/release/vs_community.exe', "$env:TMP\\vs_Community.exe") 
+
+    & "$env:TMP\\vs_Community.exe" --wait
+    
+    quit?('vs_Community')
+    
+}
+
 function func_office365
 {
 
@@ -3403,6 +3456,12 @@ function func_Get-MsiDatabaseProperties
 {
     . "$env:ProgramData\Chocolatey-for-wine\powershell_collected_codesnippets_examples.ps1"
     func_Get-MsiDatabaseProperties2
+}
+
+function func_Get-MsiDatabaseRegistryKeys
+{
+    . "$env:ProgramData\Chocolatey-for-wine\powershell_collected_codesnippets_examples.ps1"
+    func_Get-MsiDatabaseRegistryKeys2
 }
 
 function func_access_winrt_from_powershell
