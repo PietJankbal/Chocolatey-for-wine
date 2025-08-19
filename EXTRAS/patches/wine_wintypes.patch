@@ -51,22 +51,30 @@ implementation is good enough for Visual Studio 2022
 
 
 diff --git a/dlls/wintypes/Makefile.in b/dlls/wintypes/Makefile.in
-index 840f47abd17..a2b8c056b8d 100644
+index a512d3fec63..f4b3237ade8 100644
 --- a/dlls/wintypes/Makefile.in
 +++ b/dlls/wintypes/Makefile.in
 @@ -1,6 +1,6 @@
  MODULE    = wintypes.dll
  IMPORTLIB = wintypes
 -IMPORTS   = combase
-+IMPORTS   = combase shlwapi
++IMPORTS   = combase shlwapi urlmon
  
  SOURCES = \
- 	classes.idl \
+ 	buffer.c \
 diff --git a/dlls/wintypes/main.c b/dlls/wintypes/main.c
-index 79b4e57cc22..018937fced1 100644
+index cb0a9b6fab0..2fd3b00aee0 100644
 --- a/dlls/wintypes/main.c
 +++ b/dlls/wintypes/main.c
-@@ -124,7 +124,7 @@ static HRESULT STDMETHODCALLTYPE api_information_statics_factory_ActivateInstanc
+@@ -18,6 +18,7 @@
+ 
+ #include "initguid.h"
+ #include "private.h"
++#include "urlmon.h"
+ 
+ WINE_DEFAULT_DEBUG_CHANNEL(wintypes);
+ 
+@@ -124,7 +125,7 @@ static HRESULT STDMETHODCALLTYPE api_information_statics_factory_ActivateInstanc
          IInspectable **instance)
  {
      FIXME("iface %p, instance %p stub!\n", iface, instance);
@@ -75,7 +83,7 @@ index 79b4e57cc22..018937fced1 100644
  }
  
  static const struct IActivationFactoryVtbl api_information_statics_factory_vtbl =
-@@ -1325,13 +1325,50 @@ HRESULT WINAPI RoResolveNamespace(HSTRING name, HSTRING windowsMetaDataDir,
+@@ -1741,13 +1742,58 @@ HRESULT WINAPI RoResolveNamespace(HSTRING name, HSTRING windowsMetaDataDir,
                                    DWORD *metaDataFilePathsCount, HSTRING **metaDataFilePaths,
                                    DWORD *subNamespacesCount, HSTRING **subNamespaces)
  {
@@ -89,7 +97,15 @@ index 79b4e57cc22..018937fced1 100644
 +     * See wintypes.rc
 +     */
 +    const WCHAR *path = L"C:\\windows\\system32\\WinMetadata\\Windows.winmd";
-+
++    
++    const WCHAR *url = L"https://raw.githubusercontent.com/microsoft/windows-rs/master/crates/libs/bindgen/default/Windows.winmd";
++    
++    if(GetFileAttributesW( path ) == INVALID_FILE_ATTRIBUTES)
++    {
++        CreateDirectoryW(L"C:\\windows\\system32\\WinMetadata", 0);
++        URLDownloadToFileW(NULL, url, path, 0, NULL);
++    }
++    
 +    FIXME("name %s, windowsMetaDataDir %s, metaDataFilePaths %p, subNamespaces %p partial stub!\n",
              debugstr_hstring(name), debugstr_hstring(windowsMetaDataDir),
              metaDataFilePaths, subNamespaces);
@@ -128,7 +144,7 @@ index 79b4e57cc22..018937fced1 100644
  }
  
 diff --git a/dlls/wintypes/private.h b/dlls/wintypes/private.h
-index d01c4f630a0..e78806fd175 100644
+index f8d8b4e2eef..f7981b30696 100644
 --- a/dlls/wintypes/private.h
 +++ b/dlls/wintypes/private.h
 @@ -25,6 +25,7 @@
@@ -136,6 +152,10 @@ index d01c4f630a0..e78806fd175 100644
  #include "wine/debug.h"
  #include "objbase.h"
 +#include "shlwapi.h"
+ 
+ #include "activation.h"
+ #include "rometadataresolution.h"
+
  
  #include "activation.h"
  #include "rometadataresolution.h"
