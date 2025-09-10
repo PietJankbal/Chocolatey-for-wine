@@ -3211,7 +3211,7 @@ function func_vs22_interactive_installer
 #   func_vcrun2019
     #func_xmllite
     #func_cmd
-#    func_wine_sxs  <# FIXME: now very sad hack, probably disabling functionality (?), needs more work to figure out what goes wrong #>
+    func_wine_sxs  <# FIXME: now very sad hack, probably disabling functionality (?), needs more work to figure out what goes wrong #>
     func_wine_advapi32
     func_wine_combase
     func_wine_shell32
