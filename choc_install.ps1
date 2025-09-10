@@ -25,6 +25,29 @@ REGEDIT4
 "winhttp"="native,builtin" ;Bug 47053
 "packager"="native,builtin" ;Bug 43472
 "d3d8"="native,builtin" ;Bug 47120
+"icu"=""
+"msi"="native"
+"wintypes"="native"
+"concrt140"="native,builtin"
+"mscorsvc"=""
+"msvcp140"="native,builtin"
+"msvcp140_1"="native,builtin"
+"msvcp140_2"="native,builtin"
+"msvcp140_atomic_wait"="native,builtin"
+"msvcp140_codecvt_ids"="native,builtin"
+"msvcr140"="native,builtin"
+"ucrtbase"="native,builtin"
+"vcomp140"="native,builtin"
+"vcruntime140"="native,builtin"
+"vcruntime140_1"="native,builtin"
+"vccorlib140"="native,builtin"
+
+[HKEY_CURRENT_USER\Software\Wine]
+"HideWineExports"="Y"
+
+[HKEY_CURRENT_USER\Software\Wine\Fonts\Replacements]
+"Segoe UI"="Arial"
+"Verdana"="Arial"
 
 [HKEY_CURRENT_USER\Software\Wine\AppDefaults\conemu64.exe]
 "Version"="win81"
@@ -142,6 +165,9 @@ REGEDIT4
 [HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Fonts]
 "Arial (TrueType)"="arial.ttf"
 
+[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Fonts]
+"Arial (TrueType)"="arial.ttf"
+
 [HKEY_CURRENT_USER\Software\Wine\Debug]
 "RelayExclude"="user32.CharNextA;KERNEL32.GetProcessHeap;KERNEL32.GetCurrentThreadId;KERNEL32.TlsGetValue;KERNEL32.GetCurrentThreadId;KERNEL32.TlsSetValue;ntdll.RtlEncodePointer;ntdll.RtlDecodePointer;ntdll.RtlEnterCriticalSection;ntdll.RtlLeaveCriticalSection;kernel32.94;kernel32.95;kernel32.96;kernel32.97;kernel32.98;KERNEL32.TlsGetValue;KERNEL32.FlsGetValue;ntdll.RtlFreeHeap;ntdll.RtlAllocateHeap;KERNEL32.InterlockedDecrement;KERNEL32.InterlockedCompareExchange;ntdll.RtlTryEnterCriticalSection;KERNEL32.InitializeCriticalSection;ntdll.RtlDeleteCriticalSection;KERNEL32.InterlockedExchange;KERNEL32.InterlockedIncrement;KERNEL32.LocalFree;Kernel32.LocalAlloc;ntdll.RtlReAllocateHeap;KERNEL32.VirtualAlloc;Kernel32.VirtualFree;Kernel32.HeapFree;KERNEL32.QueryPerformanceCounter;KERNEL32.QueryThreadCycleTime;ntdll.RtlFreeHeap;ntdll.memmove;ntdll.memcmp;KERNEL32.GetTickCount;kernelbase.InitializeCriticalSectionEx;ntdll.RtlInitializeCriticalSectionEx;ntdll.RtlInitializeCriticalSection;kernelbase.FlsGetValue;ntdll.RtlTryAcquireSRWLockExclusive;ntdll.RtlReleaseSRWLockExclusive;ntdll.RtlNtStatusToDosError;ntdll.RtlInterlockedPushEntrySList"
 "RelayFromExclude"="winex11.drv;user32;gdi32;advapi32;kernel32"
@@ -183,6 +209,28 @@ if (Test-Path($ChocolateyProfile)) {
     Import-Module "$ChocolateyProfile"
 }
 
+<# if wineprefix is updated by running another wine version we have to update the hack for ConEmu bug https://bugs.winehq.org/show_bug.cgi?id=48761 #>
+if( !( (Get-FileHash C:\windows\system32\user32.dll).Hash -eq (Get-FileHash C:\ConEmu\user32dummy.dll).Hash) ) {
+     Copy-item $env:SystemDrive\windows\system32\user32.dll $env:SystemDrive\ConEmu\user32dummy.dll -force -erroraction silentlycontinue
+}
+
+<# get the wine-version from ntdll_unix_so so Staging's 'Hide wine version' won't interfere#>
+if ("$env:WINEBUILDDIR") {$ntdll_so =  $("$env:WINEBUILDDIR\\dlls\ntdll\ntdll.so").Substring(4)}
+else {$ntdll_so = ("$env:WINEDLLDIR0").Substring(4) + '\\x86_64-unix\\ntdll.so'}
+
+if (!([System.IO.File]::Exists("$env:SystemRoot\\system32\\ntdll_unix_so")) -or !( (Get-FileHash "$env:SystemRoot\\system32\\ntdll_unix_so").Hash -eq (Get-FileHash $ntdll_so).Hash) ) {
+    [System.IO.File]::Copy($ntdll_so, "$env:SystemRoot\\system32\\ntdll_unix_so", $true);
+    $null = iex  "& ""$env:ProgramFiles\\7-zip\\7z.exe"" x $ntdll_so "".rodata"" -o""$env:systemroot\\system32\\"" -y"
+    
+    $c = gc -AsByteStream "C:\windows\system32\.rodata" -Tail 200
+    $version = [System.Text.Encoding]::ASCII.GetString($c)
+    $substring = $version.Substring($version.IndexOf('ine-'))
+    [int]$i=0
+    while($substring[$i]) {$i++} 
+    'w' + $substring.SubString(0,$i) |Out-file "$env:systemroot\\system32\\wine_version.txt"
+    Remove-Variable c,i,version,substring,ntdll_so -erroraction silentlycontinue
+} <# end get wine-version #>
+
 <# if powershell is started without args let's start conemu, but not if redirected or from pipe ( like 'powershell < a.ps1'  or '"echo hello" | powershell') #>
 $MethodDefinition = @"
     public enum  FSINFOCLASS
@@ -214,8 +262,6 @@ $MethodDefinition = @"
      }
 
     [DllImport("ntdll.dll",  SetLastError=true)] public static extern long NtQueryVolumeInformationFile(IntPtr FileHandle,  ref IO_STATUS_BLOCK IoStatusBlock,ref FILE_FS_DEVICE_INFORMATION FsInformation, UInt32 Length, FSINFOCLASS FsInformationClass);
-    [DllImport("ntdll.dll", CharSet = CharSet.Ansi)] public static extern string wine_get_version();
-    [DllImport("ntdll.dll", CharSet = CharSet.Ansi)] public static extern string wine_get_build_id();
 "@
 
 $ntdll = Add-Type -MemberDefinition $MethodDefinition -Namespace '' -name 'ntdll' -PassThru
@@ -242,12 +288,7 @@ if(($parent.processname -eq 'powershell') -and  ( $kernel32::GetCommandLineW() -
     Stop-process -id  ([System.Diagnostics.Process]::GetCurrentProcess()).Id
 }  <# end start ConEmu #>
 
-if($([System.Diagnostics.Process]::GetCurrentProcess().Parent.processname) -eq 'ConEmuC64' ) {Write-Host "";Write-Host -Foregroundcolor yellow Running Power Shell Core $PSVersionTable.PSVersion.ToString() on ([ntdll]::wine_get_build_id()); Write-Host "";[system.console]::ForegroundColor='white'}
-
-<# if wineprefix is updated by running another wine version we have to update the hack for ConEmu bug https://bugs.winehq.org/show_bug.cgi?id=48761 #>
-if( !( (Get-FileHash C:\windows\system32\user32.dll).Hash -eq (Get-FileHash C:\windows\system32\user32dummy.dll).Hash) ) {
-    Copy-Item $env:SystemRoot\\system32\\user32.dll $env:SystemRoot\\system32\\user32dummy.dll -force -erroraction silentlycontinue
-}
+if($([System.Diagnostics.Process]::GetCurrentProcess().Parent.processname) -eq 'ConEmuC64' ) {Write-Host "";Write-Host -Foregroundcolor yellow Running Power Shell Core $PSVersionTable.PSVersion.ToString() on (gc -Encoding ascii C:\windows\system32\wine_version.txt); Write-Host "";[system.console]::ForegroundColor='white'}
 
 #Easy access to the C# compiler
 Set-Alias csc c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
@@ -287,18 +328,17 @@ function winetricks {
   }
   
   .   $([System.IO.Path]::Combine("$env:ProgramData","Chocolatey-for-wine", "winetricks.ps1")) $($arg -join ',')
-  
+}
+
 #Remove ~/Documents/Powershell/Modules from modulepath; it becomes a mess because it`s not removed when one deletes the wineprefix... 
 $path = $env:PSModulePath -split ';'
 $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -join ';'
-}
 '@ | Out-File ( New-Item -Path $env:ProgramData\\Chocolatey-for-wine\\profile_essentials.ps1 -Force)
 ################################################################################################################################ 
 #                                                                                                                              #
 #  Install dotnet48, ConEmu, Chocolatey, 7z, d3dcompiler_47 and a few extras (wine robocopy + wine taskschd)                   #
 #                                                                                                                              #
 ################################################################################################################################   
-
     foreach($i in $(Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*)) {
         if($i.DisplayName -match 'Mono') { Remove-Item -force  $i.PSPath -recurse  }
     }
@@ -306,6 +346,9 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
     <# Import reg keys: keys from mscoree manifest files, tweaks to advertise compability with lower .Net versions, and set some native dlls #>
     reg.exe  IMPORT  $env:TMP\\misc.reg /reg:64
     reg.exe  IMPORT  $env:TMP\\misc.reg /reg:32 
+
+    mkdir "$env:ProgramFiles\7-zip"
+    Copy-Item  $(Join-Path $args[0] '7z.*') "$env:ProgramFiles\7-zip\"
 
     Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072;
     $cachedir = "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4)
@@ -339,7 +382,7 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
     New-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{DE293FDE-C181-46C0-8DCC-1F75EA35833D}" -Name "InstallDate" -Value "$(Get-Date -Format FileDate)" -PropertyType 'String' -force
     New-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\7-zip" -Name "InstallDate" -Value "$(Get-Date -Format FileDate)" -PropertyType 'String' -force
 
-    Copy-Item $env:SystemRoot\\system32\\user32.dll $env:SystemRoot\\system32\\user32dummy.dll -force
+    [System.IO.File]::Copy("$env:SystemDrive\windows\system32\user32.dll","$env:SystemDrive\ConEmu\user32dummy.dll",$true)
 
     [System.Environment]::SetEnvironmentVariable("POWERSHELL_UPDATECHECK", 'Off','Machine')
     Remove-Item "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{92FB6C44-E685-45AD-9B20-CADF4CABA132} - 1033" -recurse -force
@@ -347,7 +390,7 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
     # Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
     <# fix up the 'highlight selection'-hack for ConEmu #>
     $bytes = [System.IO.File]::ReadAllBytes("$env:systemdrive\Conemu\conemu64.exe")
-    $bytes[1968524]='0x5f' <# rename 'USER32.dll to allow loading it from none-system directory (find exact position by 'grep -oba "USER32.dll")' #>
+    $bytes[1968524]='0x5f' <# rename 'USER32.dll to allow loading it from none-system directory (find exact position with 'grep -oba "USER32.dll")' #>
     [System.IO.File]::WriteAllBytes("$env:systemdrive\Conemu\conemu64.exe",$bytes)
         
     Get-Process '7z' -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit()}
@@ -365,8 +408,8 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
     while(!(Test-path "$env:systemroot\\system32\\ucrtbase_clr0400.dll") ) {start-Sleep 0.25}
     cd c:\; c:\\ProgramData\\chocolatey\\choco.exe feature disable --name=powershellHost; winecfg /v win10
     c:\\ProgramData\\chocolatey\\choco.exe feature enable -n allowGlobalConfirmation <# to confirm automatically (no -y needed) #>
-    mkdir "$env:ProgramFiles\7-zip"
-    Copy-Item  $(Join-Path $args[0] '7z.*') "$env:ProgramFiles\7-zip\"
+#    mkdir "$env:ProgramFiles\7-zip"
+#    Copy-Item  $(Join-Path $args[0] '7z.*') "$env:ProgramFiles\7-zip\"
     <# easy access to 7z #>
     iex "$env:ProgramData\\chocolatey\\tools\\shimgen.exe --output=`"$env:ProgramData`"\\chocolatey\\bin\\7z.exe --path=`"$env:ProgramW6432`"\\7-zip\\7z.exe"
     #Remove-Item -force -recurse "$env:systemroot\mono";
@@ -643,5 +686,6 @@ function QPR_wmic { <# wmic replacement #>
         ([wmisearcher]$("SELECT " +  ($property -join ",") + " FROM " + $class + $where + $filter)).get() |ft ($property |sort) -autosize |Out-string -Stream | Select -skipindex (2)| ?{$_.trim() -ne ""}}
 }
 '@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.wmic\QPR.wmic.psm1 -Force )
+
 #    Start-Process $env:systemroot\Microsoft.NET\Framework64\v4.0.30319\ngen.exe -NoNewWindow -Wait -ArgumentList  "eqi"
 #    Start-Process $env:systemroot\Microsoft.NET\Framework\v4.0.30319\ngen.exe -NoNewWindow -Wait -ArgumentList "eqi"
