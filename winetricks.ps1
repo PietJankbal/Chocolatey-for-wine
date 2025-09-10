@@ -7,7 +7,7 @@ else                      {$cachedir = ("$env:WINEHOMEDIR" + "\.cache\winetrickx
     "apps","git.portable","Access to several unix-commands like tar, file, sed etc. etc.",
 #   "apps","itunes","itunes, with fixed black GUI",
 #   "apps","mspaint","mspaint, inserting text does not work :(",
-    "apps","nodejs","install node.js (a workaround for failing installer)",
+#   "apps","nodejs","install node.js (a workaround for failing installer)",
     "apps","office365","Microsoft Office365HomePremium (registering does not work, many glitches...)",
     "apps","use_chromium_as_browser", "replace winebrowser with chrome to open webpages",
     "apps","vs19", "Visual Studio 2019",
@@ -62,6 +62,7 @@ else                      {$cachedir = ("$env:WINEHOMEDIR" + "\.cache\winetrickx
     "dlls","vcrun2019", "vcredist2019 (concrt140.dll, msvcp140.dll, msvcp140_1.dll, msvcp140_2.dll, vcruntime140.dll, vcruntime140_1.dll, ucrtbase.dll)",
     "dlls","vcrun2022", "vcredist2022 (concrt140.dll, msvcp140.dll, msvcp140_1.dll, msvcp140_2.dll, vcruntime140.dll, vcruntime140_1.dll, ucrtbase.dll)",
     "dlls","windowscodecs", "windowscodecs.dll",
+    "dlls","wbemdisp", "wbemdisp.dll",
     "dlls","windows.ui.xaml", "windows.ui.xaml, experimental...",
     "dlls","winmetadata", "alternative for winmetadata, requires much less downloadtime",
     "dlls","wmf", "some media foundation dlls",
@@ -232,8 +233,8 @@ function system_install <# install dlls in the systemdirectories #>
         }
     }
 
-    $out = & "$env:ProgramFiles\7-Zip\7z.exe" e -ba -bb3 "$path" "amd64*\*" "64\*"  "-o$env:systemroot\system32\catroot" -aoa
-    & "$env:ProgramFiles\7-Zip\7z.exe" e -ba -bb3 "$path" "wow64*\*" "32\*" "x86\*" "-o$env:systemroot\syswow64\catroot" -aoa; quit?('7z')
+    $out = & "$env:ProgramFiles\7-Zip\7z.exe" e -ba -bb3 "$path" "amd64*\*" "64\*"  "-o$env:systemroot\system32\WindowsPowerShell" -aoa
+    & "$env:ProgramFiles\7-Zip\7z.exe" e -ba -bb3 "$path" "wow64*\*" "32\*" "x86*\*" "-o$env:systemroot\syswow64\WindowsPowerShell" -aoa; quit?('7z')
 
    foreach($i in $($out.IndexOf('Type = 7z') + 7)..$($out.IndexOf('Everything is Ok')-1) ){ <# use 7z output to get names of dlls in archive #>
        if( ( ($out[$i]).Substring(2,2) -eq 'am') -or ( ($out[$i]).Substring(2,2) -eq '64')  ) {
@@ -243,7 +244,7 @@ function system_install <# install dlls in the systemdirectories #>
     foreach($j in 'system32','syswow64') {
         foreach($i in $dlls) {
             Rename-Item  "$env:systemroot\$j\$i" $("__" + "$i") -Force -Verbose -erroraction silentlycontinue
-            Move-Item    "$env:systemroot\$j\catroot\$i" "$env:systemroot\$j\$i" -Force -Verbose -erroraction silentlycontinue
+            Move-Item    "$env:systemroot\$j\WindowsPowerShell\$i" "$env:systemroot\$j\$i" -Force -Verbose -erroraction silentlycontinue
             #Remove-Item  $env:systemroot\$j\$("$i" + "_*") -Force -Verbose -erroraction silentlycontinue
          }
     }
@@ -1368,7 +1369,6 @@ function func_ie8 <# ie8 #>
     # iexplore -unregserver needded???
     # w_override_dlls builtin updspapi needded???
 
-
  
 #        foreach($i in "$env:SystemRoot\syswow64\iexplore.exe", "$env:SystemRoot\system32\iexplore.exe", "$env:ProgramFiles\Internet Explorer\iexplore.exe", "${env:ProgramFiles`(x86`)}\\Internet Explorer\\iexplore.exe")
         foreach($i in  "$env:ProgramFiles\Internet Explorer\iexplore.exe")
@@ -2206,6 +2206,34 @@ function func_wmiutils <# native wmiutils #>
     foreach($i in 'wmiutils') { dlloverride 'native' $i }
 } <# end wmiutils #>
 
+function func_wbemdisp <# native wbemdisp #>
+{
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z" ) ) ){
+    
+        w_download_to "$(verb)" "https://catalog.s.download.windowsupdate.com/msdownload/update/v3-19990518/cabpool/windowsserver2003.windowsxp-kb914961-sp2-x64-enu_7f8e909c52d23ac8b5dbfd73f1f12d3ee0fe794c.exe" "windowsserver2003.windowsxp-kb914961-sp2-x64-enu_7f8e909c52d23ac8b5dbfd73f1f12d3ee0fe794c.exe"
+
+        7z x "$cachedir\$(verb)\windowsserver2003.windowsxp-kb914961-sp2-x64-enu_7f8e909c52d23ac8b5dbfd73f1f12d3ee0fe794c.exe" "-o$env:Temp\$(verb)" "amd64/wbemdisp.dl_" -aoa; quit?('7z')
+        7z e "$env:Temp\$(verb)\amd64\wbemdisp.dl_" "-o$env:Temp\$(verb)\$(verb)\64" "wbemdisp.dll"-aoa | Select-String 'ok' ; quit?('7z');
+
+        7z x "$cachedir\$(verb)\windowsserver2003.windowsxp-kb914961-sp2-x64-enu_7f8e909c52d23ac8b5dbfd73f1f12d3ee0fe794c.exe" "-o$env:Temp\$(verb)" "amd64/wow/wwbemdisp.dl_" -aoa; quit?('7z')
+        7z e "$env:Temp\$(verb)\amd64\wow\wwbemdisp.dl_" "-o$env:Temp\$(verb)\$(verb)\32" "wwbemdisp.dll" -aoa | Select-String 'ok' ; quit?('7z');
+        Move-Item "$env:Temp\$(verb)\$(verb)\32\wwbemdisp.dll" "$env:Temp\$(verb)\$(verb)\32\wbemdisp.dll"
+
+        Remove-Item -Force "$cachedir\$(verb)\windowsserver2003.windowsxp-kb914961-sp2-x64-enu_7f8e909c52d23ac8b5dbfd73f1f12d3ee0fe794c.exe"
+ 
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$env:Temp\$(verb)\$(verb)\64" "$env:Temp\$(verb)\$(verb)\32" ;quit?(7z)
+        Remove-Item -Force "$env:Temp\$(verb)" -recurse
+    }
+    7z e "$cachedir\$(verb)\$(verb).7z" "-o$env:systemroot\system32\wbem" "64\wbemdisp.dll" -y 
+    7z e "$cachedir\$(verb)\$(verb).7z" "-o$env:systemroot\syswow64\wbem" "32\wbemdisp.dll"  -y
+    
+    foreach($i in 'wbemdisp') { dlloverride 'native' $i }
+    
+    foreach($i in 'wbemdisp.dll') {
+        & "$env:systemroot\\syswow64\\regsvr32" /s "$env:systemroot\\syswow64\\wbem\\$i"
+        & "$env:systemroot\\system32\\regsvr32" /s "$env:systemroot\\system32\\wbem\\$i" }
+} <# end wbemdisp #>
+
 function func_wine_wbemprox
 {
     w_download_to "$(verb)" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/$(verb).7z" "$(verb).7z"
@@ -2451,10 +2479,10 @@ function func_wine_api-ms-win-appmodel-state-l1-2-0 <# wine api-ms-win-appmodel-
 {
     w_download_to "wine_kernelbase" "https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_kernelbase.7z" "wine_kernelbase.7z"
 
-    7z e "$cachedir\\wine_kernelbase\\wine_kernelbase.7z" "-o$env:systemroot\system32\catroot" "64/kernelbase.dll" -aoa | Select-String 'ok' 
-    7z e "$cachedir\\\\wine_kernelbase\\wine_kernelbase.7z" "-o$env:systemroot\syswow64\catroot" "32/kernelbase.dll" -aoa | Select-String 'ok'
-    Move-Item "$env:systemroot\syswow64\catroot\kernelbase.dll" "$env:systemroot\syswow64\api-ms-win-appmodel-state-l1-2-0.dll" -force -erroraction SilentlyContinue
-    Move-Item "$env:systemroot\system32\catroot\kernelbase.dll" "$env:systemroot\system32\api-ms-win-appmodel-state-l1-2-0.dll" -force -erroraction SilentlyContinue
+    7z e "$cachedir\\wine_kernelbase\\wine_kernelbase.7z" "-o$env:systemroot\system32\WindowsPowerShell" "64/kernelbase.dll" -aoa | Select-String 'ok' 
+    7z e "$cachedir\\\\wine_kernelbase\\wine_kernelbase.7z" "-o$env:systemroot\syswow64\WindowsPowerShell" "32/kernelbase.dll" -aoa | Select-String 'ok'
+    Move-Item "$env:systemroot\syswow64\WindowsPowerShell\kernelbase.dll" "$env:systemroot\syswow64\api-ms-win-appmodel-state-l1-2-0.dll" -force -erroraction SilentlyContinue
+    Move-Item "$env:systemroot\system32\WindowsPowerShell\kernelbase.dll" "$env:systemroot\system32\api-ms-win-appmodel-state-l1-2-0.dll" -force -erroraction SilentlyContinue
 } <# end api-ms-win-appmodel-state-l1-2-0 #>
 
 #function func_wine_wintypes2 { install_winedll wine_wintypes2 'ead327788f98b617017a483e9a0500cf2bd627e9c5d23ae7e175cb8035dc0a9e'}
@@ -3183,7 +3211,7 @@ function func_vs22_interactive_installer
 #   func_vcrun2019
     #func_xmllite
     #func_cmd
-    func_wine_sxs  <# FIXME: now very sad hack, probably disabling functionality (?), needs more work to figure out what goes wrong #>
+#    func_wine_sxs  <# FIXME: now very sad hack, probably disabling functionality (?), needs more work to figure out what goes wrong #>
     func_wine_advapi32
     func_wine_combase
     func_wine_shell32
@@ -3778,8 +3806,8 @@ function func_dotnet481_deprecated
     #    7z e "$cachedir\$(verb)\$(verb).7z" -o"$env:TEMP" $i -aoa
         #Move-Item "$env:TEMP\$(([System.IO.FileInfo]$i).Name)" $i -force -verbose
      }
+    
   
-
     & "$env:ProgramFiles\7-Zip\7z.exe" x -spf "$cachedir\$(verb)\$(verb).7z" -aoa 
     Write-Host -foregroundColor yellow 'Writing registry keys , patience please...' 
     #$null =  . "$env:TEMP\reg_keys.ps1"
@@ -4232,10 +4260,12 @@ function func_mshtml
     
     Write-Host -foregroundColor yellow 'Done , hopefully nothing''s screwed up ;)' 
 }
+
 <# Main function #> 
 if ( !$args) {
     $custom_array = @(); 
     for ( $j = 0; $j -lt $Qenu.count; $j+=3 ) { $custom_array += [PSCustomObject]@{ category = $Qenu[$j] ;name = $Qenu[$j+1]; Description = $Qenu[$j+2] } } 
     $args =  ($custom_array  | select category,name,description |Out-GridView  -PassThru  -Title 'Make a  selection').name
     }
-    if($args) {foreach ($i in $args -split ',') { & $('func_' + $i);  }}
+if($args) {foreach ($i in $args -split ',') { & $('func_' + $i);  }
+}
