@@ -171,12 +171,81 @@ REGEDIT4
 [HKEY_CURRENT_USER\Software\Wine\Debug]
 "RelayExclude"="user32.CharNextA;KERNEL32.GetProcessHeap;KERNEL32.GetCurrentThreadId;KERNEL32.TlsGetValue;KERNEL32.GetCurrentThreadId;KERNEL32.TlsSetValue;ntdll.RtlEncodePointer;ntdll.RtlDecodePointer;ntdll.RtlEnterCriticalSection;ntdll.RtlLeaveCriticalSection;kernel32.94;kernel32.95;kernel32.96;kernel32.97;kernel32.98;KERNEL32.TlsGetValue;KERNEL32.FlsGetValue;ntdll.RtlFreeHeap;ntdll.RtlAllocateHeap;KERNEL32.InterlockedDecrement;KERNEL32.InterlockedCompareExchange;ntdll.RtlTryEnterCriticalSection;KERNEL32.InitializeCriticalSection;ntdll.RtlDeleteCriticalSection;KERNEL32.InterlockedExchange;KERNEL32.InterlockedIncrement;KERNEL32.LocalFree;Kernel32.LocalAlloc;ntdll.RtlReAllocateHeap;KERNEL32.VirtualAlloc;Kernel32.VirtualFree;Kernel32.HeapFree;KERNEL32.QueryPerformanceCounter;KERNEL32.QueryThreadCycleTime;ntdll.RtlFreeHeap;ntdll.memmove;ntdll.memcmp;KERNEL32.GetTickCount;kernelbase.InitializeCriticalSectionEx;ntdll.RtlInitializeCriticalSectionEx;ntdll.RtlInitializeCriticalSection;kernelbase.FlsGetValue;ntdll.RtlTryAcquireSRWLockExclusive;ntdll.RtlReleaseSRWLockExclusive;ntdll.RtlNtStatusToDosError;ntdll.RtlInterlockedPushEntrySList"
 "RelayFromExclude"="winex11.drv;user32;gdi32;advapi32;kernel32"
+
+[HKEY_LOCAL_MACHINE\Software\Classes\CLSID\{937C1A34-151D-4610-9CA6-A8CC9BDB5D83}\TypeLib]
+@="{7D868ACD-1A5D-4a47-A247-F39741353012}"
 '@ | Out-File $env:TEMP\\misc.reg
 <# FIXME these keys are different from regular winetricks dotnet48 install????
 [HKEY_CLASSES_ROOT\CLSID\{E5CB7A31-7512-11D2-89CE-0080C792E5D8}]
 "MasterVersion"=dword:0x00000002
 [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Eventlog\Application\.NET Runtime]
 "TypesSupported"=dword:0x00000007 #>
+<# additional mono registry keys #>
+@'
+REGEDIT4
+
+[HKEY_LOCAL_MACHINE\Software\Microsoft\.NETFramework\policy\v1.0]
+[HKEY_LOCAL_MACHINE\Software\Microsoft\.NETFramework\policy\v1.1]
+[HKEY_LOCAL_MACHINE\Software\Microsoft\.NETFramework\policy\v3.0]
+
+[HKEY_LOCAL_MACHINE\Software\Microsoft\NET Framework Setup\NDP\v1.1.4322]
+"Install"=dword:1
+"SP"=dword:1
+[HKEY_LOCAL_MACHINE\Software\Microsoft\NET Framework Setup\NDP\v2.0.50727]
+"Install"=dword:1
+"SP"=dword:2
+"OCM"=dword:1
+"Version"="2.2.50727.4927"
+[HKEY_LOCAL_MACHINE\Software\Microsoft\NET Framework Setup\NDP\v3.0]
+"Install"=dword:1
+"SP"=dword:2
+[HKEY_LOCAL_MACHINE\Software\Microsoft\NET Framework Setup\NDP\v3.0\Setup]
+"InstallSuccess"=dword:1
+[HKEY_LOCAL_MACHINE\Software\Microsoft\NET Framework Setup\NDP\v3.5]
+"Install"=dword:1
+"SP"=dword:1
+[HKEY_LOCAL_MACHINE\Software\Microsoft\NET Framework Setup\NDP\v3.5\1033]
+"Install"=dword:1
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Active Setup\Installed Components\{7131646D-CD3C-40F4-97B9-CD9E4E6262EF}]
+@=".NET Framework"
+"ComponentID"=".NETFramework"
+"Locale"=""
+"Version"="2,0,50727,0"
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Active Setup\Installed Components\{CB2F7EDD-9D1F-43C1-90FC-4F52EAE172A1}]
+@=".NET Framework"
+"ComponentID"=".NETFramework"
+"Locale"=""
+"Version"="1,0,4322,1"
+[HKEY_LOCAL_MACHINE\Software\Classes\Installer\Products\1F3B805BA42A0C233B0158879691FE82]
+
+[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Installer\UserData\S-1-5-18\Products\1F3B805BA42A0C233B0158879691FE82\InstallProperties]
+"WindowsInstaller"=dword:1
+[HKEY_LOCAL_MACHINE\Software\Classes\Installer\Products\DC3BF90CC0D3D2F398A9A6D1762F70F3]
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Active Setup\Installed Components\{7131646D-CD3C-40F4-97B9-CD9E4E6262EF}]
+@=".NET Framework"
+"ComponentID"=".NETFramework"
+"Locale"=""
+"Version"="2,0,50727,0"
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Active Setup\Installed Components\{CB2F7EDD-9D1F-43C1-90FC-4F52EAE172A1}]
+@=".NET Framework"
+"ComponentID"=".NETFramework"
+"Locale"=""
+"Version"="1,0,4322,1"
+
+[HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Installer\UserData\S-1-5-18\Products\DC3BF90CC0D3D2F398A9A6D1762F70F3\InstallProperties]
+WindowsInstaller=dword:1
+".NET CLR 2.0.50727"=""
+".NET CLR 3.0.30729"=""
+".NET CLR 3.5.30729"=""
+".NET4.0C"=""
+".NET4.0E"=""
+[HKEY_LOCAL_MACHINE\Software\Microsoft\XNA\Framework\v4.0]
+"Installed"=dword:1
+"ProductVersion"="4.0.20823.0"
+"Installed"=dword:1
+"ProductVersion"="4.0.20823.0"
+'@ | Out-File $env:TEMP\\mono.reg
 ################################################################################################################### 
 #                                                                                                                 #
 #  profile.ps1: Put workarounds/hacks here. It goes into c:\\Program Files\\Powershell\\7\\profile.ps1            #
@@ -351,7 +420,7 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
     Copy-Item  $(Join-Path $args[0] '7z.*') "$env:ProgramFiles\7-zip\"
 
     Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072;
-    $cachedir = "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4)
+    $cachedir =  [System.IO.Path]::Combine( "$([Environment]::GetFolderPath('mydocuments'))", "Chocolatey-for-wine", "choc_install_files" ); 
     $setupcache = "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache"
 
     <# setup chocolatey #>
@@ -362,19 +431,19 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
     [Environment]::SetEnvironmentVariable('PATH',[Environment]::GetEnvironmentVariable('PATH', 'Machine') + ";$env:ProgramData\chocolatey\bin\", 'Machine')
     [Environment]::SetEnvironmentVariable('ChocolateyInstall',"$env:ProgramData\chocolatey", 'Machine')
     iex 'refreshenv'
- 
-    if (([System.IO.File]::Exists("$cachedir\\windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu"))) {
-        $cab_path = "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4) }
+
+    if (([System.IO.File]::Exists("$cachedir\\windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu"))) { 
+        $cab_path = "$cachedir" }
     else {
         $cab_path = "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache" }
     iex "& ""wusa.exe""   ""$cab_path\\windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu"""
     if (([System.IO.File]::Exists("$cachedir\ConEmuPack.230724.7z"))) {
-        $cab_path = "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4) }
+        $cab_path = "$cachedir" }
     else {
         $cab_path = "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache" }
     iex "& ""$(Join-Path $args[0] '7z.exe')"" x  ""$cab_path\ConEmuPack.230724.7z"" ""-o$env:SystemDrive\ConEmu""";
     if (([System.IO.File]::Exists("$cachedir\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe"))) {
-        $cab_path = "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4) }
+        $cab_path = "$cachedir" }
     else {
         $cab_path = "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache" }
     iex  "& ""$(Join-Path $args[0] '7z.exe')"" x  -x!""*resources.dll"" ""$cab_path\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe""  ""Microsoft.Powershell*.dll""   ""Microsoft.WSman*.dll"" ""system.management.automation.dll"" ""-o$env:ProgramData\chocolatey"""
@@ -399,6 +468,7 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
 
     if(!($args[1] -eq '/q') -and !($args[2] -eq '/q')) {
         Start-Process "c:\conemu\conemu64" -ArgumentList " -NoUpdate -LoadRegistry -run %ProgramFiles%\\Powershell\\7\\pwsh.exe -noe -c Write-Host Installed Software: ; Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* |? DisplayName| Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Format-Table ;"}
+
 ################################################################################################################### 
 #                                                                                                                 #
 #  Finish installation and some app specific tweaks                                                               #
@@ -413,38 +483,51 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
     <# easy access to 7z #>
     iex "$env:ProgramData\\chocolatey\\tools\\shimgen.exe --output=`"$env:ProgramData`"\\chocolatey\\bin\\7z.exe --path=`"$env:ProgramW6432`"\\7-zip\\7z.exe"
     #Remove-Item -force -recurse "$env:systemroot\mono";
-    [System.IO.Directory]::Delete("$env:systemroot\mono",'true')
-    
+    if( [System.IO.Directory]::Exists("$env:systemroot\mono") ) { [System.IO.Directory]::Delete("$env:systemroot\mono",'true') }
+    else {
+        reg.exe  IMPORT  $env:TMP\\mono.reg /reg:64
+        reg.exe  IMPORT  $env:TMP\\mono.reg /reg:32
+        foreach ($i in 'Framework64', 'Framework') {
+                [System.IO.Directory]::CreateDirectory("$env:systemroot\Microsoft.NET\$i\v2.0.50727\")
+				[System.IO.Directory]::CreateDirectory("$env:systemroot\Microsoft.NET\$i\v3.0\windows communication foundation\")
+#      			[System.IO.Directory]::CreateDirectory("$env:systemroot\Microsoft.NET\$i\v3.0\wpf\")
+				[System.IO.Directory]::CreateDirectory("$env:systemroot\Microsoft.NET\$i\v3.5\")
+				[System.IO.File]::Copy("$env:systemroot\Microsoft.NET\$i\v4.0.30319\msbuild.exe", "$env:systemroot\Microsoft.NET\$i\v3.5\msbuild.exe", $true);
+				[System.IO.File]::Copy("$env:systemroot\Microsoft.NET\$i\v4.0.30319\msbuild.exe", "$env:systemroot\Microsoft.NET\$i\v2.0.50727\msbuild.exe", $true);
+				[System.IO.File]::Copy("$env:systemroot\Microsoft.NET\$i\v4.0.30319\installutil.exe", "$env:systemroot\Microsoft.NET\$i\v2.0.50727\installutil.exe", $true);
+        }
+    }  
     <# This makes Astro Photography Tool happy #>
     foreach($i in 'regasm.exe') { 
         Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\$i
-        Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework64\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\$i
+        Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework64\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework64\\v2.0.50727\\$i
     }
 
     if (([System.IO.File]::Exists("$cachedir\\sevenzipextractor.1.0.19.nupkg"))) {
-        $cab_path = "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4) }
+        $cab_path = "$cachedir" }
     else {
         $cab_path = "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache" }
     Start-Process $(Join-Path $args[0] '7z.exe') -NoNewWindow -Wait -ArgumentList "e $cab_path\\sevenzipextractor.1.0.19.nupkg -o$env:systemroot\\system32\\WindowsPowerShell\\v1.0  lib/netstandard2.0/SevenZipExtractor.dll -aoa"
     if (([System.IO.File]::Exists("$cachedir\\d3dcompiler_47_32.dll"))) {
-        $cab_path = "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4) }
+        $cab_path = "$cachedir" }
     else {
         $cab_path = "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache" }
     Copy-Item -Path "$cab_path\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_47.dll" -Force
     Copy-Item -Path "$cab_path\\d3dcompiler_47_32.dll" -Destination "$env:SystemRoot\\SysWOW64\\d3dcompiler_43.dll" -Force
     if (([System.IO.File]::Exists("$cachedir\\d3dcompiler_47.dll"))) {
-        $cab_path = "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4) }
+        $cab_path = "$cachedir" }
     else {
         $cab_path = "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache" }
     Copy-Item -Path "$cab_path\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_47.dll" -Force
     Copy-Item -Path "$cab_path\\d3dcompiler_47.dll" -Destination "$env:SystemRoot\\System32\\d3dcompiler_43.dll" -Force
     <# Backup files if wanted #>
-    if(($args[1] -eq '/s') -or ($args[2] -eq '/s')) { 
-        New-Item -Path "$env:WINEHOMEDIR\.cache\".substring(4) -Name "choc_install_files" -ItemType "directory" -ErrorAction SilentlyContinue
-        foreach($i in 'PowerShell-7.5.1-win-x64.msi', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2409-x64.exe', 'sevenzipextractor.1.0.19.nupkg', 'ConEmuPack.230724.7z', 'windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe', 'chocolatey.2.5.0.nupkg') {
-            Move-Item -Path "$setupcache\\$i" -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4) -force -ErrorAction SilentlyContinue}
-        #Copy-Item -Path "$env:TEMP\choc_inst_files\v4.8.03761" -Destination "$env:WINEHOMEDIR\.cache\choc_install_files\".substring(4) -recurse -force
-        Move-Item -path  "$setupcache\\v4.8.03761" -destination "$env:WINEHOMEDIR\.cache\choc_install_files".substring(4) -ErrorAction SilentlyContinue;
+    if(($args[1] -eq '/s') -or ($args[2] -eq '/s')) {
+        [System.IO.Directory]::CreateDirectory("$cachedir")
+       # New-Item -Path "$cachedir\" -Name "choc_install_files" -ItemType "directory" -ErrorAction SilentlyContinue
+        foreach($i in 'PowerShell-7.5.3-win-x64.msi', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2409-x64.exe', 'sevenzipextractor.1.0.19.nupkg', 'ConEmuPack.230724.7z', 'windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe', 'chocolatey.2.5.0.nupkg') {
+            Move-Item -Path "$setupcache\\$i" -Destination "$cachedir" -force -ErrorAction SilentlyContinue}
+        #Copy-Item -Path "$env:TEMP\choc_inst_files\v4.8.03761" -Destination "$cachedir\choc_install_files\".substring(4) -recurse -force
+        Move-Item -path  "$setupcache\\v4.8.03761" -destination "$cachedir" -ErrorAction SilentlyContinue;
     }
     <# Replace some system programs by functions; This also makes wusa a dummy program: we don`t want windows updates and it doesn`t work anyway #>
     ForEach ($file in "wusa","schtasks","getmac","setx","wbem\\wmic", "ie4uinit", "openfiles","MicrosoftEdgeUpdate") {
@@ -460,7 +543,6 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
     [System.IO.Directory]::Delete($setupcache,'true')
     <# dxvk (if installed) doesn't work well with WPF, add workaround from dxvk site  #>
 #####################################################################################################
-
 @"
 [pwsh.exe]
 d3d9.shaderModel = 1
