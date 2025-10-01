@@ -15,13 +15,15 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Compile: // For fun I changed code from standard main(argc,*argv[]) to something like https://nullprogram.com/blog/2016/01/31/)
- * x86_64-w64-mingw32-gcc -O1 -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x200000,0x200000\
-  -nostdlib  -Wall -Wextra  -finline-limit=64 -Wl,-gc-sections  installer.c -lurlmon -lkernel32 -lucrtbase -luser32 -nostdlib -ladvapi32 -lntdll -lshell32 -s -o ChoCinstaller_0.5c.751.exe && strip -R .reloc ChoCinstaller_0.5a.751.exe
+ * x86_64-w64-mingw32-gcc -Oz -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x200000,0x200000\
+  -nostdlib  -Wall -Wextra  -finline-limit=64 -Wl,-gc-sections  installer.c -lurlmon -lkernel32 -lucrtbase -luser32 -nostdlib -ladvapi32 -lntdll -lshell32 -lole32 -luuid -s -o ChoCinstaller_0.5a.753.exe && strip -R .reloc ChoCinstaller_0.5a.753.exe
  */
  
 #include <stdio.h>
 #include <windows.h>
 #include <winternl.h>
+#include <shlobj.h>
+#include <knownfolders.h>
 
 struct paths {
     wchar_t pathW[MAX_PATH];
@@ -39,7 +41,7 @@ DWORD WINAPI net48_install(void *ptr){
     STARTUPINFOW si = {0}, si1 = {0};
     PROCESS_INFORMATION pi = {0}, pi1= {0};
 
-    if(GetFileAttributesW( wcscat(wcscat(bufW1, p->cache_dir + 4), L"v4.8.03761\\netfx_Full_x64.msi")) != INVALID_FILE_ATTRIBUTES)
+    if(GetFileAttributesW( wcscat(wcscat(bufW1, p->cache_dir), L"v4.8.03761\\netfx_Full_x64.msi")) != INVALID_FILE_ATTRIBUTES)
         wcscat(wcscat(wcscat(bufW, L"msiexec.exe /i "), bufW1), L" MSIFASTINSTALL=2 DISABLEROLLBACK=1 /QN");
     else {
         wcscat(wcscat(wcscat(wcscat(wcscat(wcscat(bufW,p->sevenzippath) ,L" x -x!\"*.cab\" -x!\"netfx_c*\" -x!\"netfx_e*\" -x!\"NetFx4*\" -ms190M "), p->setupcache),L"\\ndp48-x86-x64-allos-enu.exe -o"), p->setupcache), L"\\v4.8.03761" );
@@ -66,11 +68,11 @@ DWORD WINAPI chocolatey_install(void *ptr){
 
     ExpandEnvironmentStringsW(L"%ProgramData%", dest, MAX_PATH + 1);
 
-    if(GetFileAttributesW( wcscat(wcscat(bufW1, p->cache_dir + 4), wcsrchr(url, L'/') + 1)) == INVALID_FILE_ATTRIBUTES) {
+    if(GetFileAttributesW( wcscat(wcscat(bufW1, p->cache_dir), wcsrchr(url, L'/') + 1)) == INVALID_FILE_ATTRIBUTES) {
         URLDownloadToFileW(NULL, url, wcscat(wcscat(bufW, p->setupcache), wcsrchr(url, L'/') + 1), 0, NULL);
     }
     else {
-        wcscat(wcscat(bufW, p->cache_dir + 4), wcsrchr(url, L'/') + 1);
+        wcscat(wcscat(bufW, p->cache_dir), wcsrchr(url, L'/') + 1);
     }
     
     bufW1[0] = 0;
@@ -102,7 +104,7 @@ DWORD WINAPI pscore_install(void *ptr){
         
     wchar_t *ps_url = wcscat(wcscat(wcscat(wcscat(downloadW, L"https://github.com/PowerShell/PowerShell/releases/download/v"), versionW), L"/"), msiW);
     
-    if(GetFileAttributesW( wcscat(wcscat(bufW1, p->cache_dir + 4), wcsrchr(ps_url, L'/') + 1)) == INVALID_FILE_ATTRIBUTES) {
+    if(GetFileAttributesW( wcscat(wcscat(bufW1, p->cache_dir), wcsrchr(ps_url, L'/') + 1)) == INVALID_FILE_ATTRIBUTES) {
         bufW1[0] = 0;
         URLDownloadToFileW(NULL, ps_url, wcscat(wcscat(bufW1, p->setupcache), wcsrchr(ps_url, L'/') + 1) , 0, NULL);
     }
@@ -118,7 +120,7 @@ DWORD WINAPI pscore_install(void *ptr){
  
     for(i=0 ; i<6; i++) {
 		bufW[0]=0;
-        if(GetFileAttributesW( wcscat(wcscat(bufW, p->cache_dir + 4), wcsrchr(url[i], L'/') + 1)) == INVALID_FILE_ATTRIBUTES) {
+        if(GetFileAttributesW( wcscat(wcscat(bufW, p->cache_dir), wcsrchr(url[i], L'/') + 1)) == INVALID_FILE_ATTRIBUTES) {
             bufW[0]=0;
             URLDownloadToFileW(NULL, url[i], wcscat(wcscat(bufW,p->setupcache),  wcsrchr(url[i],L'/') + 1) , 0, NULL);
         }
@@ -153,7 +155,7 @@ DWORD WINAPI cdrive_install(void *ptr){
 
 __attribute__((externally_visible)) /* for -fwhole-program */
 int mainCRTStartup(void) {
-    wchar_t bufW[MAX_PATH] = L"",bufW1[MAX_PATH] = L"",   pwsh_pathW[MAX_PATH], **argv;
+    wchar_t bufW[MAX_PATH] = L"",bufW1[MAX_PATH] = L"",   pwsh_pathW[MAX_PATH], **argv, *ptr , subdir[] = L"Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache\\", *token = wcstok_s( subdir, L"\\", &ptr), rootdir[MAX_PATH];
     int i = 0, argc;
     HKEY hKey; HANDLE hThread[4];
     struct paths p = {0};
@@ -163,11 +165,21 @@ int mainCRTStartup(void) {
     RegCreateKeyExW(HKEY_CURRENT_USER, L"Software\\Wine\\DllOverrides", 0, NULL, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hKey, NULL);
     const WCHAR info[] = L""; RegSetValueExW(hKey, L"mscorsvc", 0, REG_SZ, (BYTE*) info, sizeof(info)); RegCloseKey(hKey);
 
-    ExpandEnvironmentStringsW(L"%WINEHOMEDIR%\\.cache\\choc_install_files\\", p.cache_dir, MAX_PATH + 1);
+    wchar_t* path = 0;
+    HRESULT hr = SHGetKnownFolderPath(&FOLDERID_Documents, 0, 0, &path);
+    wcscat( wcscat( p.cache_dir, path ), L"\\Chocolatey-for-wine\\choc_install_files\\" );
+    if(path) { CoTaskMemFree(path); }
+    
     ExpandEnvironmentStringsW(L"%ProgramFiles%\\Powershell\\7\\pwsh.exe", pwsh_pathW, MAX_PATH + 1);
     ExpandEnvironmentStringsW(L"%SystemRoot%\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache\\", p.setupcache, MAX_PATH + 1);
-    CreateDirectoryW(p.setupcache, 0);
-
+    ExpandEnvironmentStringsW(L"%SystemRoot%\\", rootdir, MAX_PATH + 1);
+    
+    if( GetFileAttributesW( wcscat( rootdir, L"Microsoft.NET\\" ) ) == INVALID_FILE_ATTRIBUTES) {
+        CreateDirectoryW( rootdir, 0 );  
+        while ( token = wcstok_s( NULL, L"\\", &ptr) ) CreateDirectoryW( wcscat( wcscat( rootdir, token ), L"\\" ), 0 );
+    } else {
+        CreateDirectoryW(p.setupcache, 0);
+    }
     GetModuleFileNameW(NULL, p.pathW, MAX_PATH);
    
     p.filenameW = wcsdup(wcsrchr(p.pathW, L'\\')); p.pathW[ wcslen(p.pathW) - 26] = 0;
@@ -176,7 +188,7 @@ int mainCRTStartup(void) {
 
     wchar_t url[] = L"https://download.visualstudio.microsoft.com/download/pr/7afca223-55d2-470a-8edc-6a1739ae3252/abd170b4b0ec15ad0222a809b761a036/ndp48-x86-x64-allos-enu.exe";
 
-    if(GetFileAttributesW( wcscat(wcscat(bufW1, p.cache_dir + 4), L"v4.8.03761\\netfx_Full_x64.msi")) == INVALID_FILE_ATTRIBUTES)
+    if(GetFileAttributesW( wcscat(wcscat(bufW1, p.cache_dir), L"\\v4.8.03761\\netfx_Full_x64.msi")) == INVALID_FILE_ATTRIBUTES)
        URLDownloadToFileW(NULL, url, wcscat(wcscat(bufW, p.setupcache), wcsrchr(url, L'/') + 1), 0, NULL);
     /* https://aljensencprogramming.wordpress.com/tag/createthread/ */
     hThread[3] = CreateThread(NULL, 0, cdrive_install, &p, 0, 0);   
