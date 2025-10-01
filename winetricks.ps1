@@ -1,5 +1,5 @@
 if("$env:WINETRICKXHOME") {$cachedir = "$env:WINETRICKXHOME"}
-else                      {$cachedir = ("$env:WINEHOMEDIR" + "\.cache\winetrickxs").substring(4)}
+else                      {$cachedir = [System.IO.Path]::Combine( "$([Environment]::GetFolderPath('mydocuments'))", "Chocolatey-for-wine", "winetrickxs" )}
 
 <#   winetricks verb list: insert new verbs in list below #>
 
@@ -3348,6 +3348,7 @@ winecfg /v win10
 func_msxml6
 func_riched20
 func_wine_sppc
+func_wine_d2d1
 
 foreach($i in 'sppc') { dlloverride 'native' $i }
         
@@ -3355,16 +3356,6 @@ choco install Office365HomePremium
 
 #  if(!(Test-Path 'HKCU:\\Software\\Wine\\Direct3D')) {New-Item  -Path 'HKCU:\\Software\\Wine\\Direct3D'}
 #  New-ItemProperty -Path 'HKCU:\\Software\\Wine\\Direct3D' -Name 'MaxVersionGL' -Value '0x30002' -PropertyType 'DWORD' -force
-
-
-(New-Object System.Net.WebClient).DownloadFile('https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/wine_wbemprox.7z', "$env:ProgramFiles\Microsoft Office 15\root\office15\wine_wbemprox.7z")
-7z e "$env:ProgramFiles\Microsoft Office 15\root\office15\wine_wbemprox.7z" "-o$env:SystemRoot\syswow64\wbem" "32/wbemprox.dll"-y
-7z e "$env:ProgramFiles\Microsoft Office 15\root\office15\wine_wbemprox.7z" "-o$env:SystemRoot\system32\wbem" "64/wbemprox.dll"-y
-
-
-  if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\onenote.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\onenote.exe'}
-  if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\onenote.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\onenote.exe\\DllOverrides'}
-  New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\onenote.exe\\DllOverrides' -Name 'wbemprox' -Value 'native' -PropertyType 'String' -force
 
 #  if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\powerpnt.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\powerpnt.exe'}
 #  if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\powerpnt.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\powerpnt.exe\\DllOverrides'}
