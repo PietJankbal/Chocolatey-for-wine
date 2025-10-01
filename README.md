@@ -15,7 +15,7 @@ do 'wine powershell'
 do 'winetricks vs22_interactiveinstaller'  
 
 
-(BTW via 'winetricks vs22_interactive_installer' you can install something via the Visual Studio 2022 installer; 'winetricks vs22_interactive_installer' now got me in ten minutes into the main program (selected Desktop development with C++)).
+(BTW via 'winetricks vs22_interactive_installer' you can install select what to install via the Visual Studio 2022 installer; 'winetricks vs22_interactive_installer' now got me in ten minutes into the main program (selected Desktop development with C++)).
 
 Install :
 - Download and unzip the release zip-file and do 'wine ChoCinstaller_0.5c.751.exe' (takes about a minute to complete)
