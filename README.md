@@ -19,11 +19,10 @@ do 'winetricks vs22_interactiveinstaller'
 
 Install :
 - Download and unzip the release zip-file and do 'wine ChoCinstaller_0.5c.751.exe' (takes about a minute to complete)
-(Note: The installer assumes that wine-mono is already installed as a seperate package, or that you confirm the install in the dialog (on every new prefix initialization) where it asks you if you want to install mono)
 
 Optional:
 - Run the installer like 'wine ChoCinstaller_0.5a.751.exe /s' , then the install files (like Powershell*.msi and dotnet48) are saved in 
-  '$HOME/.cache/choc_install_files' and they don't need to be downloaded again if you create a new prefix)
+  MyDocuments and they don't need to be downloaded again if you create a new prefix)
 Optional:
 - Run the installer like 'wine ChoCinstaller_0.5a.751.exe /q' to prevent the automatic launch of the powershell window (so install only). 
 
@@ -44,19 +43,7 @@ General info:
 
 - 'wine powershell.exe' starts the PowerShell-Core console.
 
-  There's also some PowerShell 5.1 support:
-
-- From PowerShell-Core console do 'winetricks ps51' (takes very long time to complete!!!)
-
-  Then from PowerShell-Core console you could:
-
-- start powershell 5.1 console by "ps51"
-- or execute some command through powershell 5.1 like (an example)  " ps51 '$PSVersionTable' "
-- by setting environment variable "$env:PS51=1" you can start a new powershell 5.1 console by just "powershell" 
-  (or from linux bash: "PS51=1 wine powershell")
-- or you could work in graphical PowerShell 5.1 Integrated Scripting Environment with 'winetricks ps51_ise' 
-
-
+ 
 About ConEmu:
 
 ConEmu console suffers from a few wine-bugs:
@@ -67,7 +54,7 @@ About winetricks(.ps1):
 
 - If you don't call it ('winetricks' in powershell-console) , nothing gets downloaded so no overhead there. 
 - A lot of verbs (like powershell 5.1) need a few essential files to extract stuff from msu packages. Installing these essential files requires first huge downloads , and  takes lots of time during 1st time usage. But after things are cached it goes quickly . For example if you might wanna try 'winetricks ps51' first, it will take about  approx. 15 minutes. Some other verbs might take 5 minutes on first time usage. But after you called a verb once this nuisance is gone.
-- Files are cached in directory '$HOME/.cache/winetrickxs'. If you call all verbs it'll take about 800 MB there.
+- Files are cached in directory MyDocuments. If you call all verbs it'll take about 800 MB there.
 - Hopefully some better 64-bit support for various verbs.
 - Possibility to extract a file and (try) install from an msu file. Do 'winetricks install_dll_from_msu' to see how.
 - A rudimentary Powershell 5.1.
@@ -75,8 +62,7 @@ About winetricks(.ps1):
 - Autotab-completion. Note: while using multiple verbs from command line they have to be seperated by a comma
   from now on (this is how powershell handles multiple arguments)
   So 'winetricks riched20 gdiplus' won't work anymore, use 'winetricks riched20,gdiplus' instead
-- Some programs fail to install/run when you try them via Chocolatey due to wine-bugs. I added a few workarounds in winetricks for them, see below:
-- A special verb to install requirements to get Affinity Photo/Designer started.
+- Some programs fail to install/run when you try them via Chocolatey due to wine-bugs. I added a few workarounds in winetricks for them, see below.
 - Special verbs (winetricks vs19, vs22 and vs22_interactive_installer) to install working Visual Studio Community 2019 and 2022 (see screenshot, >10 mins to install and requires approx. 10GB!, after install start devenv.exe from directory c:\Program\ Files (x86)\Microsoft Visual Studio\2019\Community\Common7\IDE/)
   ![screenshot](https://github.com/PietJankbal/Chocolatey-for-wine/assets/26839562/d576a619-c752-4eb1-81c2-6f6b66b50ff6)
 - Special verb to get access to various unix commands like grep,sed, file, less, curl etc. etc. (winetricks git.portable, Disclaimer: some commands do not yet work due to wine bugs
@@ -108,7 +94,7 @@ Notes:
   - Updating from a previous version is for now not (yet) supported, maybe later
 
 Compile:
-  - If you want to compile yourself instead of downloading binaries: see compilation instructions in mainv1.c  
+  - If you want to compile yourself instead of downloading binaries: see compilation instructions in mainv1.c and installer.c 
   - Then copy choc_install.ps1 into the same directory
   - Then do 'wine ChoCinstaller_0.5a.735.exe'
   
