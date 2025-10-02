@@ -7,7 +7,6 @@ else                      {$cachedir = [System.IO.Path]::Combine( "$([Environmen
     "apps","git.portable","Access to several unix-commands like tar, file, sed etc. etc.",
 #   "apps","itunes","itunes, with fixed black GUI",
 #   "apps","mspaint","mspaint, inserting text does not work :(",
-#   "apps","nodejs","install node.js (a workaround for failing installer)",
     "apps","office365","Microsoft Office365HomePremium (registering does not work, many glitches...)",
     "apps","use_chromium_as_browser", "replace winebrowser with chrome to open webpages",
     "apps","vs19", "Visual Studio 2019",
