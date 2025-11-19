@@ -48,6 +48,14 @@ REGEDIT4
 [HKEY_CURRENT_USER\Software\Wine\Fonts\Replacements]
 "Segoe UI"="Arial"
 "Verdana"="Arial"
+"Consolas"="Arial"
+"Consolas Bold"="Arial"
+"Consolas Bold Italic"="Arial"
+"Consolas Italic"="Arial"
+"Segoe UI Bold"="Arial"
+"Segoe UI Bold Italic"="Arial"
+"Segoe UI Italic"="Arial"
+"Segoe UI Light"="Arial"
 
 [HKEY_CURRENT_USER\Software\Wine\AppDefaults\conemu64.exe]
 "Version"="win81"
@@ -297,7 +305,7 @@ if (!([System.IO.File]::Exists("$env:SystemRoot\\system32\\ntdll_unix_so")) -or 
     [int]$i=0
     while($substring[$i]) {$i++} 
     'w' + $substring.SubString(0,$i) |Out-file "$env:systemroot\\system32\\wine_version.txt"
-    Remove-Variable c,i,version,substring,ntdll_so -erroraction silentlycontinue
+    Remove-Variable c,i,version,substring -erroraction silentlycontinue
 } <# end get wine-version #>
 
 <# if powershell is started without args let's start conemu, but not if redirected or from pipe ( like 'powershell < a.ps1'  or '"echo hello" | powershell') #>
@@ -351,7 +359,7 @@ $null=[ntdll]::NtQueryVolumeInformationFile($h,[ref]$io,[ref]$info,[System.Runti
 
 $parent = [System.Diagnostics.Process]::GetCurrentProcess().Parent
 
-if(($parent.processname -eq 'powershell') -and  ( $kernel32::GetCommandLineW() -eq """$env:ProgramFiles\Powershell\7\pwsh.exe""") -and  ($info.DeviceType -eq 80) ) {
+if(($parent.processname -eq 'powershell') -and  ( $kernel32::GetCommandLineW() -eq 'pwsh') -and  ($info.DeviceType -eq 80) ) {
     Start-Process c:\\ConEmu\\conemu64 |Out-Null
     #Stop-process -id $parent.Id
     Stop-process -id  ([System.Diagnostics.Process]::GetCurrentProcess()).Id
@@ -402,6 +410,9 @@ function winetricks {
 #Remove ~/Documents/Powershell/Modules from modulepath; it becomes a mess because it`s not removed when one deletes the wineprefix... 
 $path = $env:PSModulePath -split ';'
 $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -join ';'
+
+Remove-Variable ntdll_so,MethodDefinition2,MethodDefinition,ntdll,kernel32,info,io,j -erroraction silentlycontinue
+
 '@ | Out-File ( New-Item -Path $env:ProgramData\\Chocolatey-for-wine\\profile_essentials.ps1 -Force)
 ################################################################################################################################ 
 #                                                                                                                              #
@@ -420,7 +431,8 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
     Copy-Item  $(Join-Path $args[0] '7z.*') "$env:ProgramFiles\7-zip\"
 
     Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072;
-    $cachedir =  [System.IO.Path]::Combine( "$([Environment]::GetFolderPath('mydocuments'))", "Chocolatey-for-wine", "choc_install_files" ); 
+    if([Environment]::GetEnvironmentVariable('CFW_CACHE')) { $cachedir = [System.IO.Path]::Combine( [Environment]::GetEnvironmentVariable('CFW_CACHE'), "choc_install_files" )}
+    else { $cachedir =  [System.IO.Path]::Combine( "$([Environment]::GetFolderPath('mydocuments'))", "Chocolatey-for-wine", "choc_install_files" );}
     $setupcache = "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache"
 
     <# setup chocolatey #>
@@ -468,7 +480,6 @@ $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -joi
 
     if(!($args[1] -eq '/q') -and !($args[2] -eq '/q')) {
         Start-Process "c:\conemu\conemu64" -ArgumentList " -NoUpdate -LoadRegistry -run %ProgramFiles%\\Powershell\\7\\pwsh.exe -noe -c Write-Host Installed Software: ; Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* |? DisplayName| Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Format-Table ;"}
-
 ################################################################################################################### 
 #                                                                                                                 #
 #  Finish installation and some app specific tweaks                                                               #
@@ -592,7 +603,14 @@ function QPR.MicrosoftEdgeUpdate { <# MicrosoftEdgeUpdate.exe replacement #>
 
 @'
 function QPR.schtasks { <# schtasks.exe replacement #>
-    $cmdline = $($([kernel32]::GetCommandLineW()).Split(" ",3)[2]) #.SubString($env:QPRCMDLINE.IndexOf(" "), $env:QPRCMDLINE.Length - $env:QPRCMDLINE.IndexOf(" "))
+$MethodDefinition2 = @" 
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] public static extern string GetCommandLineW();
+    [DllImport("kernel32.dll", SetLastError = true)] public static extern IntPtr GetStdHandle(int nStdHandle);
+"@
+
+    $kernel32 = Add-Type -MemberDefinition $MethodDefinition2 -Namespace '' -Name 'kernel32' -PassThru    
+
+    $cmdline = $($([kernel32]::GetCommandLineW()).Split(" ",5)[4]) #.SubString($env:QPRCMDLINE.IndexOf(" "), $env:QPRCMDLINE.Length - $env:QPRCMDLINE.IndexOf(" "))
 
     $cmdline = $cmdline -replace '/create', '-create' -replace '/tn', '-tn' -replace "/tr", "-tr" <#-replace "'", "'`"'"#>  <# escape quotes (??) #> `
                         -replace "/sc", "-sc" -replace "/run", "-run" -replace "/delete", "-delete"
@@ -645,7 +663,13 @@ function QPR.setx { <# setx.exe replacement #>
     <# https://stackoverflow.com/questions/50368246/splitting-a-string-on-spaces-but-ignore-section-between-double-quotes #>
     #$argv = ($env:QPRCMDLINE| select-string '("[^"]*"|\S)+' -AllMatches | % matches | % value) -replace '"'
 
-    $argv = CommandLineToArgvW $($([kernel32]::GetCommandLineW()).Split(" ",3)[2])
+$MethodDefinition2 = @" 
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] public static extern string GetCommandLineW();
+    [DllImport("kernel32.dll", SetLastError = true)] public static extern IntPtr GetStdHandle(int nStdHandle);
+"@
+    $kernel32 = Add-Type -MemberDefinition $MethodDefinition2 -Namespace '' -Name 'kernel32' -PassThru  
+
+    $argv = CommandLineToArgvW $($([kernel32]::GetCommandLineW()).Split(" ",4)[3])
 
     New-ItemProperty -Path 'HKLM:\\System\\CurrentControlSet\\Control\\Session Manager\\Environment' -force -Name $argv[1] -Value $argv[2] -PropertyType 'String' 
     New-ItemProperty -Path 'HKCU:\\Environment' -force -Name $argv[1] -Value $argv[2] -PropertyType 'String' 
@@ -737,7 +761,13 @@ function QPR.wmic { <# wmic replacement, this part only rebuilds the arguments #
         $cmd = $(cat (Get-PSReadlineOption).HistorySavePath -tail 1).Trim(' ')
         $cmdline = $cmd.Substring($cmd.IndexOf(' ')+1).Trim(' ') + ' ' }
     else {
-        $cmdline = $($([kernel32]::GetCommandLineW()).Split(" ",4)[3]) }
+$MethodDefinition2 = @" 
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] public static extern string GetCommandLineW();
+    [DllImport("kernel32.dll", SetLastError = true)] public static extern IntPtr GetStdHandle(int nStdHandle);
+"@
+
+    $kernel32 = Add-Type -MemberDefinition $MethodDefinition2 -Namespace '' -Name 'kernel32' -PassThru    
+    $cmdline = $($([kernel32]::GetCommandLineW()).Split(" ",5)[4]) }
      
     $hash = @{
         "path" = "-class "
