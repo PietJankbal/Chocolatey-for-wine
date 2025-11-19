@@ -1,4 +1,4 @@
-if("$env:WINETRICKXHOME") {$cachedir = "$env:WINETRICKXHOME"}
+if("$env:CFW_CACHE") {$cachedir = "$env:CFW_CACHE"}
 else                      {$cachedir = [System.IO.Path]::Combine( "$([Environment]::GetFolderPath('mydocuments'))", "Chocolatey-for-wine", "winetrickxs" )}
 
 <#   winetricks verb list: insert new verbs in list below #>
@@ -7,6 +7,7 @@ else                      {$cachedir = [System.IO.Path]::Combine( "$([Environmen
     "apps","git.portable","Access to several unix-commands like tar, file, sed etc. etc.",
 #   "apps","itunes","itunes, with fixed black GUI",
 #   "apps","mspaint","mspaint, inserting text does not work :(",
+#   "apps","nodejs","install node.js (a workaround for failing installer)",
     "apps","office365","Microsoft Office365HomePremium (registering does not work, many glitches...)",
     "apps","use_chromium_as_browser", "replace winebrowser with chrome to open webpages",
     "apps","vs19", "Visual Studio 2019",
@@ -1367,8 +1368,6 @@ function func_ie8 <# ie8 #>
         
     # iexplore -unregserver needded???
     # w_override_dlls builtin updspapi needded???
-
- 
 #        foreach($i in "$env:SystemRoot\syswow64\iexplore.exe", "$env:SystemRoot\system32\iexplore.exe", "$env:ProgramFiles\Internet Explorer\iexplore.exe", "${env:ProgramFiles`(x86`)}\\Internet Explorer\\iexplore.exe")
         foreach($i in  "$env:ProgramFiles\Internet Explorer\iexplore.exe")
 {
@@ -1516,7 +1515,7 @@ function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
  
     
      #Temporary workaround: In staging running ps51.exe frequently hangs in recent versions (e.g. 8.15)
-    if("$($ntdll::wine_get_build_id())".Contains('(Staging)')) { 
+    if($(cat "$env:systemroot\system32\wine_version.txt").Contains('(Staging)')) { 
         func_wine_shell32
         if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe'}
         if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe\\DllOverrides'}
@@ -2742,7 +2741,14 @@ function func_ping <# fake ping for when wine's ping fails due to permission iss
 @'
 function QPR.ping
 {
-    $cmdline = $($([kernel32]::GetCommandLineW()).Split(" ",4)[3])
+$MethodDefinition2 = @" 
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)] public static extern string GetCommandLineW();
+    [DllImport("kernel32.dll", SetLastError = true)] public static extern IntPtr GetStdHandle(int nStdHandle);
+"@
+
+    $kernel32 = Add-Type -MemberDefinition $MethodDefinition2 -Namespace '' -Name 'kernel32' -PassThru
+        
+    $cmdline = $($([kernel32]::GetCommandLineW()).Split(" ",5)[4])
     iex  -Command ('QPR_ping ' + $cmdline)
 }
 
