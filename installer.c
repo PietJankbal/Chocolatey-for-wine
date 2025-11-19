@@ -34,6 +34,13 @@ struct paths {
     wchar_t argv[MAX_PATH];
 };
 
+     __attribute__((section(".text")))   __attribute__((aligned(8))) static const WCHAR url[6][165] = {L"http://download.windowsupdate.com/msdownload/update/software/crup/2010/06/windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu",
+             L"https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47.dll",
+             L"https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47_32.dll",
+             L"https://github.com/Maximus5/ConEmu/releases/download/v23.07.24/ConEmuPack.230724.7z",
+             L"https://globalcdn.nuget.org/packages/sevenzipextractor.1.0.19.nupkg",
+             L"https://catalog.s.download.windowsupdate.com/msdownload/update/software/updt/2009/11/windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe"};
+ 
 DWORD WINAPI net48_install(void *ptr){
 
     wchar_t bufW[525]=L"", bufW1[MAX_PATH]=L"";
@@ -111,13 +118,7 @@ DWORD WINAPI pscore_install(void *ptr){
     
     CreateProcessW(0, wcscat(  wcscat( wcscat(bufW, L"msiexec.exe /i "), bufW1), L" DISABLE_TELEMETRY=1 ENABLE_PSREMOTING=1 REGISTER_MANIFEST=1 MSIFASTINSTALL=2 DISABLEROLLBACK=1 MSIDISABLEEEUI=1 /QN"), 0, 0, 0, REALTIME_PRIORITY_CLASS, 0, 0, &si, &pi);
 
-    WCHAR url[6][MAX_PATH] = {L"http://download.windowsupdate.com/msdownload/update/software/crup/2010/06/windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu",
-             L"https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47.dll",
-             L"https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47_32.dll",
-             L"https://github.com/Maximus5/ConEmu/releases/download/v23.07.24/ConEmuPack.230724.7z",
-             L"https://globalcdn.nuget.org/packages/sevenzipextractor.1.0.19.nupkg",
-             L"https://catalog.s.download.windowsupdate.com/msdownload/update/software/updt/2009/11/windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe"};
- 
+
     for(i=0 ; i<6; i++) {
 		bufW[0]=0;
         if(GetFileAttributesW( wcscat(wcscat(bufW, p->cache_dir), wcsrchr(url[i], L'/') + 1)) == INVALID_FILE_ATTRIBUTES) {
@@ -166,9 +167,12 @@ int mainCRTStartup(void) {
     const WCHAR info[] = L""; RegSetValueExW(hKey, L"mscorsvc", 0, REG_SZ, (BYTE*) info, sizeof(info)); RegCloseKey(hKey);
 
     wchar_t* path = 0;
-    HRESULT hr = SHGetKnownFolderPath(&FOLDERID_Documents, 0, 0, &path);
-    wcscat( wcscat( p.cache_dir, path ), L"\\Chocolatey-for-wine\\choc_install_files\\" );
-    if(path) { CoTaskMemFree(path); }
+    if(_wgetenv(L"CFW_CACHE")) wcscat( wcscat( p.cache_dir, _wgetenv(L"CFW_CACHE") ), L"\\choc_install_files\\" );
+    else { 
+        HRESULT hr = SHGetKnownFolderPath(&FOLDERID_Documents, 0, 0, &path);
+        wcscat( wcscat( p.cache_dir, path ), L"\\choc_install_files\\" );
+        if(path) { CoTaskMemFree(path); }
+    }
     
     ExpandEnvironmentStringsW(L"%ProgramFiles%\\Powershell\\7\\pwsh.exe", pwsh_pathW, MAX_PATH + 1);
     ExpandEnvironmentStringsW(L"%SystemRoot%\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache\\", p.setupcache, MAX_PATH + 1);
