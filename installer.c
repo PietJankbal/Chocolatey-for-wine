@@ -146,7 +146,7 @@ DWORD WINAPI cdrive_install(void *ptr){
     struct paths *p = (struct paths*)ptr;
     STARTUPINFOW si = {0};
     PROCESS_INFORMATION pi = {0};
-    wcscat(wcscat(wcscat(wcscat(bufW, p->sevenzippath), L" x -spf -aoa "), p->pathW), L"\\c_drive.7z" );
+    wcscat(wcscat(wcscat(wcscat(bufW, p->sevenzippath), L" x -spf -aot "), p->pathW), L"\\c_drive.7z" );
 
     CreateProcessW(0, bufW, 0, 0, 0, 0, 0, 0, &si, &pi);
     WaitForSingleObject(pi.hProcess, INFINITE); /*GetExitCodeProcess(pi.hProcess, &exitcode);*/ CloseHandle(pi.hProcess); CloseHandle(pi.hThread);
