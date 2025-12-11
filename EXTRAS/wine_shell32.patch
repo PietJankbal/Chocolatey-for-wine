@@ -1,0 +1,51 @@
+From 4262294bbcb5fa4b5a02396794de475d09cbf873 Mon Sep 17 00:00:00 2001
+From: llde <lorenzofersteam@live.it>
+Date: Mon, 3 Jul 2023 00:52:34 +0200
+Subject: [PATCH] Partial implement SHAssocEnumHandlersForProtocolByApplication
+https://bugs.winehq.org/show_bug.cgi?id=48023
+
+
+
+diff --git a/dlls/shell32/assoc.c b/dlls/shell32/assoc.c
+index 74df71241e4..bec8c5553c9 100644
+--- a/dlls/shell32/assoc.c
++++ b/dlls/shell32/assoc.c
+@@ -1134,11 +1134,35 @@ HRESULT WINAPI SHAssocEnumHandlers(const WCHAR *extra, ASSOC_FILTER filter, IEnu
+     return S_OK;
+ }
+ 
++
++
++
+ /**************************************************************************
+  * SHAssocEnumHandlersForProtocolByApplication            [SHELL32.@]
+  */
+-HRESULT WINAPI SHAssocEnumHandlersForProtocolByApplication(const WCHAR *protocol, REFIID riid, void **handlers)
++HRESULT WINAPI SHAssocEnumHandlersForProtocolByApplication(const WCHAR *protocol, REFIID riid, void **enumhandlers)
+ {
+-    FIXME("(%s %s %p): stub\n", debugstr_w(protocol), debugstr_guid(riid), handlers);
+-    return E_NOTIMPL;
++    struct enumassochandlers *enumassoc;
++
++    FIXME("stub\n");
++    
++    if(!IsEqualIID(riid, &IID_IEnumAssocHandlers))
++    {
++        FIXME("Not implemented objects except IID_IEnumAssocHandlers\n");
++        return E_NOTIMPL;
++    }
++    
++    *enumhandlers = NULL;
++
++    enumassoc = SHAlloc(sizeof(*enumassoc));
++    if (!enumassoc)
++        return E_OUTOFMEMORY;
++
++    enumassoc->IEnumAssocHandlers_iface.lpVtbl = &enumassochandlersvtbl;
++    enumassoc->ref = 1;
++
++    *enumhandlers = &enumassoc->IEnumAssocHandlers_iface;
++    return S_OK;
+ }
++
++

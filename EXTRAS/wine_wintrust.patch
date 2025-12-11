@@ -1,0 +1,13 @@
+diff --git a/dlls/wintrust/wintrust_main.c b/dlls/wintrust/wintrust_main.c
+index 925ae7ca85a..8c8adb21379 100644
+--- a/dlls/wintrust/wintrust_main.c
++++ b/dlls/wintrust/wintrust_main.c
+@@ -683,7 +683,7 @@ static void dump_wintrust_data(WINTRUST_DATA *data)
+  *   HKLM\SOFTWARE\Microsoft\Cryptography\Providers\Trust\
+  */
+ LONG WINAPI WinVerifyTrust( HWND hwnd, GUID *ActionID, LPVOID ActionData )
+-{
++{ return 0;
+     static const GUID unknown = { 0xC689AAB8, 0x8E78, 0x11D0, { 0x8C,0x47,
+      0x00,0xC0,0x4F,0xC2,0x95,0xEE } };
+     static const GUID published_software = WIN_SPUB_ACTION_PUBLISHED_SOFTWARE;

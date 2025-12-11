@@ -1,0 +1,67 @@
+
+From 54ddd94b75963a81f82fae54afd1e80930541dbc Mon Sep 17 00:00:00 2001
+From: Hans Chen <hxchennz@gmail.com>
+Date: Sun, 30 Nov 2025 22:39:56 +1300
+Subject: [PATCH] sxs: check len_name is set
+
+---
+ dlls/sxs/sxs.c | 30 +++++++++++++++++++-----------
+ 1 file changed, 19 insertions(+), 11 deletions(-)
+
+diff --git a/dlls/sxs/sxs.c b/dlls/sxs/sxs.c
+index 150a49a322f..2b89bf369f0 100644
+--- a/dlls/sxs/sxs.c
++++ b/dlls/sxs/sxs.c
+@@ -97,7 +97,7 @@ BOOL WINAPI SxsLookupClrGuid(DWORD flags, GUID *clsid, HANDLE actctx, void *buff
+     ACTCTX_SECTION_KEYED_DATA guid_info = { sizeof(ACTCTX_SECTION_KEYED_DATA) };
+     ACTIVATION_CONTEXT_ASSEMBLY_DETAILED_INFORMATION *assembly_info = NULL;
+     SIZE_T bytes_assembly_info;
+-    unsigned int len_version = 0, len_name, len_identity;
++    unsigned int len_version = 0, len_name = 0, len_identity = 0;
+     const void *ptr_name, *ptr_version, *ptr_identity;
+     SXS_GUID_INFORMATION_CLR *ret = buffer;
+     BOOL retval = FALSE;
+@@ -160,12 +160,15 @@ BOOL WINAPI SxsLookupClrGuid(DWORD flags, GUID *clsid, HANDLE actctx, void *buff
+         const struct comclassredirect_data *redirect_data = guid_info.lpData;
+         const struct clrclass_data *class_data;
+ 
+-        class_data = (void *)((char *)redirect_data + redirect_data->clrdata_offset);
+-        ptr_name = (char *)class_data + class_data->name_offset;
+-        ptr_version = (char *)class_data + class_data->version_offset;
+-        len_name = class_data->name_len + sizeof(WCHAR);
+-        if (class_data->version_len)
+-            len_version = class_data->version_len + sizeof(WCHAR);
++        if(redirect_data->clrdata_len)
++        {
++            class_data = (void *)((char *)redirect_data + redirect_data->clrdata_offset);
++            ptr_name = (char *)class_data + class_data->name_offset;
++            ptr_version = (char *)class_data + class_data->version_offset;
++            len_name = class_data->name_len + sizeof(WCHAR);
++            if (class_data->version_len)
++                len_version = class_data->version_len + sizeof(WCHAR);
++        }
+     }
+     else
+     {
+@@ -199,10 +202,15 @@ BOOL WINAPI SxsLookupClrGuid(DWORD flags, GUID *clsid, HANDLE actctx, void *buff
+     ret->pcwszAssemblyIdentity = (WCHAR *)ret_strings;
+     ret_strings += len_identity;
+ 
+-    memcpy(ret_strings, ptr_name, len_name);
+-    ret->pcwszTypeName = (WCHAR *)ret_strings;
+-    ret_strings += len_name;
+-
++    if(len_name > 0)
++    {
++        memcpy(ret_strings, ptr_name, len_name);
++        ret->pcwszTypeName = (WCHAR *)ret_strings;
++        ret_strings += len_name;
++    }
++    else
++        ret->pcwszTypeName = NULL;
++        
+     if (len_version > 0)
+     {
+         memcpy(ret_strings, ptr_version, len_version);
+-- 
+GitLab

@@ -1,0 +1,47 @@
+diff --git a/dlls/msi/action.c b/dlls/msi/action.c
+index f750b875d6b..bd8a02eb66c 100644
+--- a/dlls/msi/action.c
++++ b/dlls/msi/action.c
+@@ -432,7 +432,7 @@ static UINT ITERATE_Actions(MSIRECORD *row, LPVOID param)
+         rc = ERROR_SUCCESS;
+ 
+     if (rc != ERROR_SUCCESS)
+-        ERR("Execution halted, action %s returned %i\n", debugstr_w(action), rc);
++        {ERR("Execution halted but faking success; istallation might be imcomplete!!!, action %s returned %i\n", debugstr_w(action), rc); rc =0; MessageBoxW(0,L"An error occurred due to a wine-bug. The installation tries to continue but might be incomplete!",L"Infomessage from wine",0x30);}
+ 
+     if (package->need_reboot_now)
+     {
+diff --git a/dlls/msi/msiquery.c b/dlls/msi/msiquery.c
+index 62d17998781..afec44d5adb 100644
+--- a/dlls/msi/msiquery.c
++++ b/dlls/msi/msiquery.c
+@@ -945,14 +945,14 @@ UINT WINAPI MsiDatabaseGenerateTransformA( MSIHANDLE hdb, MSIHANDLE hdbref, cons
+                                            int iReserved1, int iReserved2 )
+ {
+     FIXME( "%lu, %lu, %s, %d, %d\n", hdb, hdbref, debugstr_a(szTransformFile), iReserved1, iReserved2 );
+-    return ERROR_CALL_NOT_IMPLEMENTED;
++    return 0;//ERROR_CALL_NOT_IMPLEMENTED;
+ }
+ 
+ UINT WINAPI MsiDatabaseGenerateTransformW( MSIHANDLE hdb, MSIHANDLE hdbref, const WCHAR *szTransformFile,
+                                            int iReserved1, int iReserved2 )
+ {
+     FIXME( "%lu, %lu, %s, %d, %d\n", hdb, hdbref, debugstr_w(szTransformFile), iReserved1, iReserved2 );
+-    return ERROR_CALL_NOT_IMPLEMENTED;
++    return 0;//ERROR_CALL_NOT_IMPLEMENTED;
+ }
+ 
+ UINT WINAPI MsiDatabaseCommit( MSIHANDLE hdb )
+diff --git a/dlls/msi/suminfo.c b/dlls/msi/suminfo.c
+index 76f0c5a4326..c11d14d24c7 100644
+--- a/dlls/msi/suminfo.c
++++ b/dlls/msi/suminfo.c
+@@ -1238,7 +1238,7 @@ UINT WINAPI MsiCreateTransformSummaryInfoW( MSIHANDLE db, MSIHANDLE db_ref, cons
+                                             int validation )
+ {
+     FIXME( "%lu, %lu, %s, %d, %d\n", db, db_ref, debugstr_w(transform), error, validation );
+-    return ERROR_FUNCTION_FAILED;
++    return 0;//ERROR_FUNCTION_FAILED;
+ }
+ 
+ UINT msi_load_suminfo_properties( MSIPACKAGE *package )

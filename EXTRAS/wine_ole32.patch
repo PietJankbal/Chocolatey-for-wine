@@ -1,0 +1,31 @@
+Stolen from https://bugs.winehq.org/show_bug.cgi?id=59040
+
+
+diff --git a/dlls/ole32/ole2.c b/dlls/ole32/ole2.c
+index b37b5b0e387..67ceaa23f13 100644
+--- a/dlls/ole32/ole2.c
++++ b/dlls/ole32/ole2.c
+@@ -622,6 +622,7 @@ HRESULT WINAPI RevokeDragDrop(HWND hwnd)
+   IStream *stream;
+   IDropTarget *drop_target;
+   HRESULT hr;
++  DWORD pid = 0;
+ 
+   TRACE("(%p)\n", hwnd);
+ 
+@@ -636,6 +637,15 @@ HRESULT WINAPI RevokeDragDrop(HWND hwnd)
+     return DRAGDROP_E_NOTREGISTERED;
+ 
+   drop_target = GetPropW(hwnd, prop_oledroptarget);
++
++  /* block release for other processes windows */
++  GetWindowThreadProcessId(hwnd, &pid);
++  if (pid != GetCurrentProcessId())
++  {
++      ERR("hwnd belongs to different process, not calling IDropTarget_Release."
++          " hwnd=%p drop_target=%p GetCurrentProcessId()=%04lx hwnd-pid=%04lx\n",
++          hwnd, drop_target, GetCurrentProcessId(), pid);
++  } else
+   if(drop_target) IDropTarget_Release(drop_target);
+ 
+   RemovePropW(hwnd, prop_oledroptarget);
