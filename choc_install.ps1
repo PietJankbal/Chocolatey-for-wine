@@ -466,16 +466,16 @@ Remove-Variable ntdll_so,MethodDefinition2,MethodDefinition,ntdll,kernel32,info,
     [System.IO.File]::Copy("$env:SystemDrive\windows\system32\user32.dll","$env:SystemDrive\ConEmu\user32dummy.dll",$true)
 
     [System.Environment]::SetEnvironmentVariable("POWERSHELL_UPDATECHECK", 'Off','Machine')
-    Remove-Item "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{92FB6C44-E685-45AD-9B20-CADF4CABA132} - 1033" -recurse -force
 
     # Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show('Chocolatey installed','Congrats','ok','exclamation')
     <# fix up the 'highlight selection'-hack for ConEmu #>
     $bytes = [System.IO.File]::ReadAllBytes("$env:systemdrive\Conemu\conemu64.exe")
-    $bytes[1968524]='0x5f' <# rename 'USER32.dll to allow loading it from none-system directory (find exact position with 'grep -oba "USER32.dll")' #>
+    $bytes[1968524]='0x5f' <# rename 'USER32.dll to allow loading it from non-system directory (find exact position with 'grep -oba "USER32.dll")' #>
     [System.IO.File]::WriteAllBytes("$env:systemdrive\Conemu\conemu64.exe",$bytes)
         
     Get-Process '7z' -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit()}
     while (![Microsoft.Win32.RegistryKey]::OpenBaseKey('LocalMachine',0).OpenSubKey('Software\Microsoft\Windows\CurrentVersion\Uninstall\{16735AF7-1D8D-3681-94A5-C578A61EC832}')) {Sleep 0.25}
+    Remove-Item "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{92FB6C44-E685-45AD-9B20-CADF4CABA132} - 1033" -recurse -force
     Move-Item -Path "$env:systemdrive\Conemu\user32.dll" -Destination "$env:systemdrive\Conemu\_ser32.dll"
 
     if(!($args[1] -eq '/q') -and !($args[2] -eq '/q')) {
@@ -535,7 +535,7 @@ Remove-Variable ntdll_so,MethodDefinition2,MethodDefinition,ntdll,kernel32,info,
     if(($args[1] -eq '/s') -or ($args[2] -eq '/s')) {
         [System.IO.Directory]::CreateDirectory("$cachedir")
        # New-Item -Path "$cachedir\" -Name "choc_install_files" -ItemType "directory" -ErrorAction SilentlyContinue
-        foreach($i in 'PowerShell-7.5.3-win-x64.msi', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2409-x64.exe', 'sevenzipextractor.1.0.19.nupkg', 'ConEmuPack.230724.7z', 'windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe', 'chocolatey.2.5.0.nupkg') {
+        foreach($i in 'PowerShell-7.5.3-win-x64.msi', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2409-x64.exe', 'sevenzipextractor.1.0.19.nupkg', 'ConEmuPack.230724.7z', 'windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe', 'chocolatey.2.6.0.nupkg') {
             Move-Item -Path "$setupcache\\$i" -Destination "$cachedir" -force -ErrorAction SilentlyContinue}
         #Copy-Item -Path "$env:TEMP\choc_inst_files\v4.8.03761" -Destination "$cachedir\choc_install_files\".substring(4) -recurse -force
         Move-Item -path  "$setupcache\\v4.8.03761" -destination "$cachedir" -ErrorAction SilentlyContinue;
