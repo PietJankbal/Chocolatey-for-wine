@@ -68,7 +68,7 @@ DWORD WINAPI net48_install(void *ptr){
 
 DWORD WINAPI chocolatey_install(void *ptr){
 
-    wchar_t dest[MAX_PATH], bufW[MAX_PATH]=L"", bufW1[525]=L"", url[] = L"https://packages.chocolatey.org/chocolatey.2.5.0.nupkg";
+    wchar_t dest[MAX_PATH], bufW[MAX_PATH]=L"", bufW1[525]=L"", url[] = L"https://packages.chocolatey.org/chocolatey.2.6.0.nupkg";
     struct paths *p = (struct paths*)ptr;
     STARTUPINFOW si = {0};
     PROCESS_INFORMATION pi = {0};
@@ -199,7 +199,7 @@ int mainCRTStartup(void) {
     hThread[0] = CreateThread(NULL, 0, net48_install, &p, 0, 0);   
     hThread[2] = CreateThread(NULL, 0, pscore_install, &p, 0, 0);  
     hThread[1] = CreateThread(NULL, 0, chocolatey_install, &p, 0, 0);
-    SetThreadPriority(hThread[0],THREAD_PRIORITY_HIGHEST);
+    SetThreadPriority(hThread[0], 15);
     WaitForMultipleObjects(4, hThread, TRUE, INFINITE);
     for (int i = 0; i < 4; i++)  CloseHandle(hThread[i]); 
     
