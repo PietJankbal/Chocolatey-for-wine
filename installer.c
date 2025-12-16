@@ -170,7 +170,7 @@ int mainCRTStartup(void) {
     if(_wgetenv(L"CFW_CACHE")) wcscat( wcscat( p.cache_dir, _wgetenv(L"CFW_CACHE") ), L"\\choc_install_files\\" );
     else { 
         HRESULT hr = SHGetKnownFolderPath(&FOLDERID_Documents, 0, 0, &path);
-        wcscat( wcscat( p.cache_dir, path ), L"\\choc_install_files\\" );
+        wcscat( wcscat( p.cache_dir, path ), L"\\Chocolatey-for-wine\\choc_install_files\\" );
         if(path) { CoTaskMemFree(path); }
     }
     
