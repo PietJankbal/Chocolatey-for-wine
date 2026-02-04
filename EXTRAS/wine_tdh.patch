@@ -1,0 +1,318 @@
+diff --git a/dlls/tdh/Makefile.in b/dlls/tdh/Makefile.in
+index 34c97e13cdb..4d8bff6a34c 100644
+--- a/dlls/tdh/Makefile.in
++++ b/dlls/tdh/Makefile.in
+@@ -1,5 +1,5 @@
+ MODULE    = tdh.dll
+-IMPORTLIB = tdh
++IMPORTS   = uuid oleaut32 ole32 
+ 
+ EXTRADLLFLAGS = -Wb,--prefer-native
+ 
+@@ -7,4 +7,5 @@ VER_FILEDESCRIPTION_STR = "Wine Event Trace Helper Library"
+ VER_PRODUCTVERSION      = 10,0,16299,15
+ 
+ SOURCES = \
++	tdh_classes.idl \
+ 	tdh_main.c
+diff --git a/dlls/tdh/tdh.spec b/dlls/tdh/tdh.spec
+index 0a2663714fe..d1cf45eb016 100644
+--- a/dlls/tdh/tdh.spec
++++ b/dlls/tdh/tdh.spec
+@@ -1,3 +1,5 @@
++@ stdcall -private DllCanUnloadNow()
++@ stdcall -private DllGetClassObject(ptr ptr ptr)
+ @ stub TdhAggregatePayloadFilters
+ @ stub TdhApplyPayloadFilter
+ @ stub TdhCleanupPayloadEventFilterDescriptor
+diff --git a/dlls/tdh/tdh_classes.idl b/dlls/tdh/tdh_classes.idl
+new file mode 100644
+index 00000000000..5456472b1be
+--- /dev/null
++++ b/dlls/tdh/tdh_classes.idl
+@@ -0,0 +1,33 @@
++/*
++ * COM Classes for wbemdisp
++ *
++ * Copyright 2013 Hans Leidekker for CodeWeavers
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
++ */
++
++#pragma makedep register
++
++
++
++
++[
++    threading(both),
++    uuid(7b40792d-05ff-44c4-9058-f440c71f17d4),
++    progid("WINMGMTS.1"),
++    vi_progid("WINMGMTS")
++]
++coclass WinMGMTS { interface ITraceRelogger; }
++
+diff --git a/dlls/tdh/tdh_main.c b/dlls/tdh/tdh_main.c
+index 1b46ac793f0..ff37b2c6fad 100644
+--- a/dlls/tdh/tdh_main.c
++++ b/dlls/tdh/tdh_main.c
+@@ -55,3 +55,209 @@ ULONG WINAPI TdhEnumerateProviders( PROVIDER_ENUMERATION_INFO *buffer, ULONG *bu
+     buffer->NumberOfProviders = 0;
+     return ERROR_SUCCESS;
+ }
++
++
++
++
++
++
++#include <stdarg.h>
++#include  <initguid.h>
++#define COBJMACROS
++
++#include "windef.h"
++#include "winbase.h"
++#include "objbase.h"
++
++#include "rpcproxy.h"
++#include "relogger.h"
++
++
++#include "tdh_private.h"
++#include "tdh_classes.h"
++
++
++
++
++
++
++
++
++static HRESULT WINAPI WinMGMTS_QueryInterface(ITraceRelogger *iface, REFIID riid, void **ppv)
++{
++    if(IsEqualGUID(riid, &IID_IUnknown)) {
++        TRACE("(IID_IUnknown %p)\n", ppv);
++        *ppv = iface;
++    }else if(IsEqualGUID(riid, &IID_ITraceRelogger)) {
++        TRACE("(IID_IParseDisplayName %p)\n", ppv);
++        *ppv = iface;
++    }else {
++        WARN("Unsupported riid %s\n", debugstr_guid(riid));
++        *ppv = NULL;
++        return E_NOINTERFACE;
++    }
++
++    IUnknown_AddRef((IUnknown*)*ppv);
++    return S_OK;
++}
++
++static ULONG WINAPI WinMGMTS_AddRef(ITraceRelogger *iface)
++{
++    return 2;
++}
++
++static ULONG WINAPI WinMGMTS_Release(ITraceRelogger *iface)
++{
++    return 1;
++}
++
++
++
++static HRESULT WINAPI WinMGMTS_ParseDisplayName(ITraceRelogger *iface, IBindCtx *pbc, LPOLESTR pszDisplayName,
++        ULONG *pchEaten, IMoniker **ppmkOut)
++{
++ 
++    return 0;//hr;
++}
++
++/*** ITraceRelogger methods ***/
++static HRESULT WINAPI WinMGMTS_AddLogfileTraceStream(ITraceRelogger* This,BSTR LogfileName,void *UserContext,TRACEHANDLE *TraceHandle) {
++      FIXME( "stub\n" );   return 0;
++}
++
++static HRESULT WINAPI WinMGMTS_AddRealtimeTraceStream(ITraceRelogger* This,BSTR LoggerName,void *UserContext,TRACEHANDLE *TraceHandle) {
++   FIXME( "stub\n" ); if(TraceHandle) *TraceHandle = (TRACEHANDLE)0xdadadada;  return 0;
++}
++static HRESULT WINAPI WinMGMTS_RegisterCallback(ITraceRelogger* This,ITraceEventCallback *Callback) {
++   FIXME( "stub\n" );   return 0;
++}
++static HRESULT WINAPI WinMGMTS_Inject(ITraceRelogger* This,ITraceEvent *Event) {
++    FIXME( "stub\n" );  return 0;
++}
++static HRESULT WINAPI WinMGMTS_CreateEventInstance(ITraceRelogger* This,TRACEHANDLE TraceHandle,ULONG Flags,ITraceEvent **Event) {
++   FIXME( "stub\n" );   return 0;
++}
++static HRESULT WINAPI WinMGMTS_ProcessTrace(ITraceRelogger* This) {
++   FIXME( "stub\n" );   return 0;
++}
++static HRESULT WINAPI WinMGMTS_SetOutputFilename(ITraceRelogger* This,BSTR LogfileName) {
++  FIXME( "stub\n" );    return 0;
++}
++static HRESULT WINAPI WinMGMTS_SetCompressionMode(ITraceRelogger* This,BOOLEAN CompressionMode) {
++   FIXME( "stub\n" );  
++   
++    return 0;
++}
++static HRESULT WINAPI WinMGMTS_Cancel(ITraceRelogger* This) {
++   FIXME( "stub\n" );   return E_NOTIMPL;
++}
++
++
++static const ITraceReloggerVtbl WinMGMTSVtbl = {
++    WinMGMTS_QueryInterface,
++    WinMGMTS_AddRef,
++    WinMGMTS_Release,
++    WinMGMTS_AddLogfileTraceStream,
++   WinMGMTS_AddRealtimeTraceStream,
++ WinMGMTS_RegisterCallback,
++  WinMGMTS_Inject,
++   WinMGMTS_CreateEventInstance,
++   WinMGMTS_ProcessTrace,
++     WinMGMTS_SetOutputFilename,
++     WinMGMTS_SetCompressionMode,
++      WinMGMTS_Cancel  
++};
++
++static ITraceRelogger winmgmts = { &WinMGMTSVtbl };
++
++static HRESULT WinMGMTS_create(void **ppv)
++{
++    *ppv = &winmgmts;
++    return S_OK;
++}
++
++struct factory
++{
++    IClassFactory IClassFactory_iface;
++    HRESULT (*fnCreateInstance)( LPVOID * );
++};
++
++static inline struct factory *impl_from_IClassFactory( IClassFactory *iface )
++{
++    return CONTAINING_RECORD( iface, struct factory, IClassFactory_iface );
++}
++
++static HRESULT WINAPI factory_QueryInterface( IClassFactory *iface, REFIID riid, LPVOID *obj )
++{
++    if (IsEqualGUID( riid, &IID_IUnknown ) || IsEqualGUID( riid, &IID_IClassFactory ))
++    {
++        IClassFactory_AddRef( iface );
++        *obj = iface;
++        return S_OK;
++    }
++    WARN( "interface %s not implemented\n", debugstr_guid(riid) );
++    return E_NOINTERFACE;
++}
++
++static ULONG WINAPI factory_AddRef( IClassFactory *iface )
++{
++    return 2;
++}
++
++static ULONG WINAPI factory_Release( IClassFactory *iface )
++{
++    return 1;
++}
++
++static HRESULT WINAPI factory_CreateInstance( IClassFactory *iface, LPUNKNOWN outer, REFIID riid,
++                                              LPVOID *obj )
++{
++    struct factory *factory = impl_from_IClassFactory( iface );
++    IUnknown *unk;
++    HRESULT hr;
++
++    TRACE( "%p, %s, %p\n", outer, debugstr_guid(riid), obj );
++
++    *obj = NULL;
++    if (outer) return CLASS_E_NOAGGREGATION;
++
++    hr = factory->fnCreateInstance( (LPVOID *)&unk );
++    if (FAILED( hr ))
++        return hr;
++
++    hr = IUnknown_QueryInterface( unk, riid, obj );
++    IUnknown_Release( unk );
++    return hr;
++}
++
++static HRESULT WINAPI factory_LockServer( IClassFactory *iface, BOOL lock )
++{
++    FIXME( "%p, %d\n", iface, lock );
++    return S_OK;
++}
++
++static const struct IClassFactoryVtbl factory_vtbl =
++{
++    factory_QueryInterface,
++    factory_AddRef,
++    factory_Release,
++    factory_CreateInstance,
++    factory_LockServer
++};
++
++static struct factory winmgmts_cf = { { &factory_vtbl }, WinMGMTS_create };
++
++HRESULT WINAPI DllGetClassObject( REFCLSID rclsid, REFIID iid, LPVOID *obj )
++{
++    IClassFactory *cf = NULL;
++
++    TRACE( "%s, %s, %p\n", debugstr_guid(rclsid), debugstr_guid(iid), obj );
++
++    if (IsEqualGUID( rclsid, &CLSID_CTraceRelogger ))
++        cf = &winmgmts_cf.IClassFactory_iface;
++
++    else
++        return CLASS_E_CLASSNOTAVAILABLE;
++
++    return IClassFactory_QueryInterface( cf, iid, obj );
++}
+diff --git a/dlls/tdh/tdh_private.h b/dlls/tdh/tdh_private.h
+new file mode 100644
+index 00000000000..eada3962b65
+--- /dev/null
++++ b/dlls/tdh/tdh_private.h
+@@ -0,0 +1,20 @@
++/*
++ * Copyright 2013 Hans Leidekker for CodeWeavers
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
++ */
++
++HRESULT SWbemLocator_create(LPVOID *);
++HRESULT SWbemNamedValueSet_create(void **);
+diff --git a/dlls/tdh/tests/Makefile.in b/dlls/tdh/tests/Makefile.in
+index 4e0c6aeddb1..42385579581 100644
+--- a/dlls/tdh/tests/Makefile.in
++++ b/dlls/tdh/tests/Makefile.in
+@@ -1,5 +1,5 @@
+-TESTDLL   = tdh.dll
+-IMPORTS   = tdh
++TESTDLL   = wbemdisp.dll
++IMPORTS   = oleaut32 ole32
+ 
+ SOURCES = \
+ 	tdh.c
