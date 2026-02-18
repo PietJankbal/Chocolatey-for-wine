@@ -1,0 +1,18 @@
+diff --git a/dlls/crypt32/chain.c b/dlls/crypt32/chain.c
+index 1b38e789f15..3a838a2123e 100644
+--- a/dlls/crypt32/chain.c
++++ b/dlls/crypt32/chain.c
+@@ -229,8 +229,11 @@ BOOL WINAPI CertCreateCertificateChainEngine(PCERT_CHAIN_ENGINE_CONFIG pConfig,
+     TRACE("(%p, %p)\n", pConfig, phChainEngine);
+ 
+     if (pConfig->cbSize != sizeof(CERT_CHAIN_ENGINE_CONFIG_NO_EXCLUSIVE_ROOT)
+-     && pConfig->cbSize != sizeof(CERT_CHAIN_ENGINE_CONFIG))
+-    {
++     && pConfig->cbSize != sizeof(CERT_CHAIN_ENGINE_CONFIG) && pConfig->cbSize != sizeof(CERT_CHAIN_ENGINE_CONFIG)+2*sizeof(BYTE))
++    {//https://github.com/curl/curl/blob/master/lib/vtls/schannel_verify.c
++		//git remote-https origin https://github.com/notepad-plus-plus/notepad-plus-plus.git
++		FIXME("(%d, %d), %d\n", pConfig->cbSize, sizeof(CERT_CHAIN_ENGINE_CONFIG_NO_EXCLUSIVE_ROOT), sizeof(CERT_CHAIN_ENGINE_CONFIG));
++
+         SetLastError(E_INVALIDARG);
+         return FALSE;
+     }
