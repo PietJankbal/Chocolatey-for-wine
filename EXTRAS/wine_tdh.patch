@@ -1,20 +1,14 @@
 diff --git a/dlls/tdh/Makefile.in b/dlls/tdh/Makefile.in
-index 34c97e13cdb..4d8bff6a34c 100644
+index 971bf129d62..c6df43089de 100644
 --- a/dlls/tdh/Makefile.in
 +++ b/dlls/tdh/Makefile.in
-@@ -1,5 +1,5 @@
- MODULE    = tdh.dll
--IMPORTLIB = tdh
-+IMPORTS   = uuid oleaut32 ole32 
- 
+@@ -4,5 +4,6 @@ IMPORTLIB = tdh
  EXTRADLLFLAGS = -Wb,--prefer-native
- 
-@@ -7,4 +7,5 @@ VER_FILEDESCRIPTION_STR = "Wine Event Trace Helper Library"
- VER_PRODUCTVERSION      = 10,0,16299,15
  
  SOURCES = \
 +	tdh_classes.idl \
- 	tdh_main.c
+ 	tdh_main.c \
+ 	version.rc
 diff --git a/dlls/tdh/tdh.spec b/dlls/tdh/tdh.spec
 index 0a2663714fe..d1cf45eb016 100644
 --- a/dlls/tdh/tdh.spec
@@ -27,10 +21,10 @@ index 0a2663714fe..d1cf45eb016 100644
  @ stub TdhCleanupPayloadEventFilterDescriptor
 diff --git a/dlls/tdh/tdh_classes.idl b/dlls/tdh/tdh_classes.idl
 new file mode 100644
-index 00000000000..5456472b1be
+index 00000000000..a5f1702f915
 --- /dev/null
 +++ b/dlls/tdh/tdh_classes.idl
-@@ -0,0 +1,33 @@
+@@ -0,0 +1,30 @@
 +/*
 + * COM Classes for wbemdisp
 + *
@@ -55,20 +49,46 @@ index 00000000000..5456472b1be
 +
 +
 +
-+
 +[
 +    threading(both),
-+    uuid(7b40792d-05ff-44c4-9058-f440c71f17d4),
-+    progid("WINMGMTS.1"),
-+    vi_progid("WINMGMTS")
++    uuid(7b40792d-05ff-44c4-9058-f440c71f17d4)
 +]
-+coclass WinMGMTS { interface ITraceRelogger; }
++coclass TraceRelogger { interface ITraceRelogger; }
 +
 diff --git a/dlls/tdh/tdh_main.c b/dlls/tdh/tdh_main.c
-index 1b46ac793f0..ff37b2c6fad 100644
+index 1b46ac793f0..2d6e5dbed83 100644
 --- a/dlls/tdh/tdh_main.c
 +++ b/dlls/tdh/tdh_main.c
-@@ -55,3 +55,209 @@ ULONG WINAPI TdhEnumerateProviders( PROVIDER_ENUMERATION_INFO *buffer, ULONG *bu
+@@ -24,8 +24,28 @@
+ #include "winbase.h"
+ #include "winternl.h"
+ #include "tdh.h"
++#include "initguid.h"
++
++#include <stdarg.h>
++
++#define COBJMACROS
++
++#include "windef.h"
++#include "winbase.h"
++#include "ole2.h"
++#include "rpcproxy.h"
+ #include "wine/debug.h"
+ 
++
++
++
++#include "relogger.h"
++
++
++#include "tdh_classes.h"
++
++
++
+ WINE_DEFAULT_DEBUG_CHANNEL(tdh);
+ 
+ ULONG WINAPI TdhLoadManifest(LPWSTR manifest)
+@@ -55,3 +75,371 @@ ULONG WINAPI TdhEnumerateProviders( PROVIDER_ENUMERATION_INFO *buffer, ULONG *bu
      buffer->NumberOfProviders = 0;
      return ERROR_SUCCESS;
  }
@@ -78,214 +98,10 @@ index 1b46ac793f0..ff37b2c6fad 100644
 +
 +
 +
-+#include <stdarg.h>
-+#include  <initguid.h>
-+#define COBJMACROS
-+
-+#include "windef.h"
-+#include "winbase.h"
-+#include "objbase.h"
-+
-+#include "rpcproxy.h"
-+#include "relogger.h"
-+
-+
-+#include "tdh_private.h"
-+#include "tdh_classes.h"
-+
-+
-+
-+
-+
-+
-+
-+
-+static HRESULT WINAPI WinMGMTS_QueryInterface(ITraceRelogger *iface, REFIID riid, void **ppv)
-+{
-+    if(IsEqualGUID(riid, &IID_IUnknown)) {
-+        TRACE("(IID_IUnknown %p)\n", ppv);
-+        *ppv = iface;
-+    }else if(IsEqualGUID(riid, &IID_ITraceRelogger)) {
-+        TRACE("(IID_IParseDisplayName %p)\n", ppv);
-+        *ppv = iface;
-+    }else {
-+        WARN("Unsupported riid %s\n", debugstr_guid(riid));
-+        *ppv = NULL;
-+        return E_NOINTERFACE;
-+    }
-+
-+    IUnknown_AddRef((IUnknown*)*ppv);
-+    return S_OK;
-+}
-+
-+static ULONG WINAPI WinMGMTS_AddRef(ITraceRelogger *iface)
-+{
-+    return 2;
-+}
-+
-+static ULONG WINAPI WinMGMTS_Release(ITraceRelogger *iface)
-+{
-+    return 1;
-+}
-+
-+
-+
-+static HRESULT WINAPI WinMGMTS_ParseDisplayName(ITraceRelogger *iface, IBindCtx *pbc, LPOLESTR pszDisplayName,
-+        ULONG *pchEaten, IMoniker **ppmkOut)
-+{
-+ 
-+    return 0;//hr;
-+}
-+
-+/*** ITraceRelogger methods ***/
-+static HRESULT WINAPI WinMGMTS_AddLogfileTraceStream(ITraceRelogger* This,BSTR LogfileName,void *UserContext,TRACEHANDLE *TraceHandle) {
-+      FIXME( "stub\n" );   return 0;
-+}
-+
-+static HRESULT WINAPI WinMGMTS_AddRealtimeTraceStream(ITraceRelogger* This,BSTR LoggerName,void *UserContext,TRACEHANDLE *TraceHandle) {
-+   FIXME( "stub\n" ); if(TraceHandle) *TraceHandle = (TRACEHANDLE)0xdadadada;  return 0;
-+}
-+static HRESULT WINAPI WinMGMTS_RegisterCallback(ITraceRelogger* This,ITraceEventCallback *Callback) {
-+   FIXME( "stub\n" );   return 0;
-+}
-+static HRESULT WINAPI WinMGMTS_Inject(ITraceRelogger* This,ITraceEvent *Event) {
-+    FIXME( "stub\n" );  return 0;
-+}
-+static HRESULT WINAPI WinMGMTS_CreateEventInstance(ITraceRelogger* This,TRACEHANDLE TraceHandle,ULONG Flags,ITraceEvent **Event) {
-+   FIXME( "stub\n" );   return 0;
-+}
-+static HRESULT WINAPI WinMGMTS_ProcessTrace(ITraceRelogger* This) {
-+   FIXME( "stub\n" );   return 0;
-+}
-+static HRESULT WINAPI WinMGMTS_SetOutputFilename(ITraceRelogger* This,BSTR LogfileName) {
-+  FIXME( "stub\n" );    return 0;
-+}
-+static HRESULT WINAPI WinMGMTS_SetCompressionMode(ITraceRelogger* This,BOOLEAN CompressionMode) {
-+   FIXME( "stub\n" );  
-+   
-+    return 0;
-+}
-+static HRESULT WINAPI WinMGMTS_Cancel(ITraceRelogger* This) {
-+   FIXME( "stub\n" );   return E_NOTIMPL;
-+}
-+
-+
-+static const ITraceReloggerVtbl WinMGMTSVtbl = {
-+    WinMGMTS_QueryInterface,
-+    WinMGMTS_AddRef,
-+    WinMGMTS_Release,
-+    WinMGMTS_AddLogfileTraceStream,
-+   WinMGMTS_AddRealtimeTraceStream,
-+ WinMGMTS_RegisterCallback,
-+  WinMGMTS_Inject,
-+   WinMGMTS_CreateEventInstance,
-+   WinMGMTS_ProcessTrace,
-+     WinMGMTS_SetOutputFilename,
-+     WinMGMTS_SetCompressionMode,
-+      WinMGMTS_Cancel  
-+};
-+
-+static ITraceRelogger winmgmts = { &WinMGMTSVtbl };
-+
-+static HRESULT WinMGMTS_create(void **ppv)
-+{
-+    *ppv = &winmgmts;
-+    return S_OK;
-+}
-+
-+struct factory
-+{
-+    IClassFactory IClassFactory_iface;
-+    HRESULT (*fnCreateInstance)( LPVOID * );
-+};
-+
-+static inline struct factory *impl_from_IClassFactory( IClassFactory *iface )
-+{
-+    return CONTAINING_RECORD( iface, struct factory, IClassFactory_iface );
-+}
-+
-+static HRESULT WINAPI factory_QueryInterface( IClassFactory *iface, REFIID riid, LPVOID *obj )
-+{
-+    if (IsEqualGUID( riid, &IID_IUnknown ) || IsEqualGUID( riid, &IID_IClassFactory ))
-+    {
-+        IClassFactory_AddRef( iface );
-+        *obj = iface;
-+        return S_OK;
-+    }
-+    WARN( "interface %s not implemented\n", debugstr_guid(riid) );
-+    return E_NOINTERFACE;
-+}
-+
-+static ULONG WINAPI factory_AddRef( IClassFactory *iface )
-+{
-+    return 2;
-+}
-+
-+static ULONG WINAPI factory_Release( IClassFactory *iface )
-+{
-+    return 1;
-+}
-+
-+static HRESULT WINAPI factory_CreateInstance( IClassFactory *iface, LPUNKNOWN outer, REFIID riid,
-+                                              LPVOID *obj )
-+{
-+    struct factory *factory = impl_from_IClassFactory( iface );
-+    IUnknown *unk;
-+    HRESULT hr;
-+
-+    TRACE( "%p, %s, %p\n", outer, debugstr_guid(riid), obj );
-+
-+    *obj = NULL;
-+    if (outer) return CLASS_E_NOAGGREGATION;
-+
-+    hr = factory->fnCreateInstance( (LPVOID *)&unk );
-+    if (FAILED( hr ))
-+        return hr;
-+
-+    hr = IUnknown_QueryInterface( unk, riid, obj );
-+    IUnknown_Release( unk );
-+    return hr;
-+}
-+
-+static HRESULT WINAPI factory_LockServer( IClassFactory *iface, BOOL lock )
-+{
-+    FIXME( "%p, %d\n", iface, lock );
-+    return S_OK;
-+}
-+
-+static const struct IClassFactoryVtbl factory_vtbl =
-+{
-+    factory_QueryInterface,
-+    factory_AddRef,
-+    factory_Release,
-+    factory_CreateInstance,
-+    factory_LockServer
-+};
-+
-+static struct factory winmgmts_cf = { { &factory_vtbl }, WinMGMTS_create };
-+
-+HRESULT WINAPI DllGetClassObject( REFCLSID rclsid, REFIID iid, LPVOID *obj )
-+{
-+    IClassFactory *cf = NULL;
-+
-+    TRACE( "%s, %s, %p\n", debugstr_guid(rclsid), debugstr_guid(iid), obj );
-+
-+    if (IsEqualGUID( rclsid, &CLSID_CTraceRelogger ))
-+        cf = &winmgmts_cf.IClassFactory_iface;
-+
-+    else
-+        return CLASS_E_CLASSNOTAVAILABLE;
-+
-+    return IClassFactory_QueryInterface( cf, iid, obj );
-+}
-diff --git a/dlls/tdh/tdh_private.h b/dlls/tdh/tdh_private.h
-new file mode 100644
-index 00000000000..eada3962b65
---- /dev/null
-+++ b/dlls/tdh/tdh_private.h
-@@ -0,0 +1,20 @@
 +/*
-+ * Copyright 2013 Hans Leidekker for CodeWeavers
++ * Network Configuration Objects implementation
++ *
++ * Copyright 2013 Austin English
 + *
 + * This library is free software; you can redistribute it and/or
 + * modify it under the terms of the GNU Lesser General Public
@@ -302,17 +118,345 @@ index 00000000000..eada3962b65
 + * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
 + */
 +
-+HRESULT SWbemLocator_create(LPVOID *);
-+HRESULT SWbemNamedValueSet_create(void **);
-diff --git a/dlls/tdh/tests/Makefile.in b/dlls/tdh/tests/Makefile.in
-index 4e0c6aeddb1..42385579581 100644
---- a/dlls/tdh/tests/Makefile.in
-+++ b/dlls/tdh/tests/Makefile.in
-@@ -1,5 +1,5 @@
--TESTDLL   = tdh.dll
--IMPORTS   = tdh
-+TESTDLL   = wbemdisp.dll
-+IMPORTS   = oleaut32 ole32
- 
- SOURCES = \
- 	tdh.c
++
++
++
++
++
++
++//////////////////////////////
++
++
++
++
++typedef HRESULT (*ClassFactoryCreateInstanceFunc)(IUnknown **);
++HRESULT ITraceRelogger_CreateInstance(IUnknown **ppUnk);
++
++typedef struct tdhcf
++{
++    IClassFactory    IClassFactory_iface;
++    ClassFactoryCreateInstanceFunc fnCreateInstance;
++} tdhcf;
++
++static inline tdhcf *impl_from_IClassFactory( IClassFactory *iface )
++{
++    return CONTAINING_RECORD(iface, tdhcf, IClassFactory_iface);
++}
++
++static HRESULT WINAPI tdhcf_QueryInterface(IClassFactory *iface, REFIID riid, LPVOID *ppobj )
++{
++    TRACE("%s %p\n", debugstr_guid(riid), ppobj);
++
++    if (IsEqualGUID(riid, &IID_IUnknown) ||
++        IsEqualGUID(riid, &IID_IClassFactory))
++    {
++        IClassFactory_AddRef( iface );
++        *ppobj = iface;
++        return S_OK;
++    }
++
++    ERR("interface %s not implemented\n", debugstr_guid(riid));
++    return E_NOINTERFACE;
++}
++
++static ULONG WINAPI tdhcf_AddRef(IClassFactory *iface )
++{
++    TRACE("%p\n", iface);
++
++    return 2;
++}
++
++static ULONG WINAPI tdhcf_Release(IClassFactory *iface )
++{
++    TRACE("%p\n", iface);
++
++    return 1;
++}
++
++static HRESULT WINAPI tdhcf_CreateInstance(IClassFactory *iface,LPUNKNOWN pOuter,
++                            REFIID riid, LPVOID *ppobj )
++{
++    tdhcf *This = impl_from_IClassFactory( iface );
++    HRESULT hr;
++    IUnknown *punk;
++
++    TRACE("%p %s %p\n", pOuter, debugstr_guid(riid), ppobj );
++
++    *ppobj = NULL;
++
++    if (pOuter)
++        return CLASS_E_NOAGGREGATION;
++
++    hr = This->fnCreateInstance( &punk );
++    if (SUCCEEDED(hr))
++    {
++        hr = IUnknown_QueryInterface( punk, riid, ppobj );
++
++        IUnknown_Release( punk );
++    }
++    else
++    {
++        WARN("Cannot create an instance object. 0x%08lx\n", hr);
++    }
++    return hr;
++}
++
++static HRESULT WINAPI tdhcf_LockServer(IClassFactory *iface, BOOL dolock)
++{
++    FIXME("(%p)->(%d),stub!\n",iface,dolock);
++    return S_OK;
++}
++
++static const struct IClassFactoryVtbl tdhcf_vtbl =
++{
++    tdhcf_QueryInterface,
++    tdhcf_AddRef,
++    tdhcf_Release,
++    tdhcf_CreateInstance,
++    tdhcf_LockServer
++};
++
++static tdhcf tracereloggercf = { {&tdhcf_vtbl}, ITraceRelogger_CreateInstance };
++
++
++
++
++HRESULT WINAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID* ppv)
++{
++    IClassFactory *cf = NULL;
++
++    TRACE("(%s, %s, %p)\n", debugstr_guid(rclsid), debugstr_guid(riid), ppv);
++
++    if(IsEqualCLSID(rclsid, &CLSID_CTraceRelogger))
++    {
++        cf = &tracereloggercf.IClassFactory_iface;
++    }
++
++    if(!cf)
++        return CLASS_E_CLASSNOTAVAILABLE;
++
++    return IClassFactory_QueryInterface(cf, riid, ppv);
++}
++
++
++
++typedef struct TraceRelogger
++{
++    ITraceRelogger ITraceRelogger_iface;
++    ITraceEvent ITraceEvent_iface;
++
++    LONG ref;
++} TraceRelogger;
++
++static inline TraceRelogger *impl_from_ITraceRelogger(ITraceRelogger *iface)
++{
++    return CONTAINING_RECORD(iface, TraceRelogger, ITraceRelogger_iface);
++}
++
++static inline TraceRelogger *impl_from_ITraceEvent(ITraceEvent *iface)
++{
++    return CONTAINING_RECORD(iface, TraceRelogger, ITraceEvent_iface);
++}
++
++static HRESULT WINAPI tracerelogger_QueryInterface(ITraceRelogger *iface, REFIID riid, void **ppvObject)
++{
++    TraceRelogger *This = impl_from_ITraceRelogger(iface);
++    TRACE("%p %s %p\n", This, debugstr_guid(riid), ppvObject);
++
++    if (IsEqualGUID(riid, &IID_ITraceRelogger) ||
++        IsEqualGUID(riid, &IID_IUnknown))
++    {
++        *ppvObject = &This->ITraceRelogger_iface;
++    }
++    else if(IsEqualGUID(riid, &IID_ITraceEvent))
++    {
++        *ppvObject = &This->ITraceEvent_iface;
++    }
++    else
++    {
++        FIXME("Unsupported interface %s\n", debugstr_guid(riid));
++        return E_NOINTERFACE;
++    }
++
++    IUnknown_AddRef((IUnknown*)*ppvObject);
++
++    return S_OK;
++}
++
++static ULONG WINAPI tracerelogger_AddRef(ITraceRelogger *iface)
++{
++    TraceRelogger *This = impl_from_ITraceRelogger(iface);
++    ULONG ref = InterlockedIncrement(&This->ref);
++
++    TRACE("%p ref=%lu\n", This, ref);
++
++    return ref;
++}
++
++static ULONG WINAPI tracerelogger_Release(ITraceRelogger *iface)
++{
++    TraceRelogger *This = impl_from_ITraceRelogger(iface);
++    ULONG ref = InterlockedDecrement(&This->ref);
++
++    TRACE("%p ref=%lu\n", This, ref);
++
++    if (ref == 0)
++    {
++        HeapFree(GetProcessHeap(), 0, This);
++    }
++
++    return ref;
++}
++
++static HRESULT WINAPI tracerelogger_AddLogfileTraceStream(ITraceRelogger* iface,BSTR LogfileName,void *UserContext,TRACEHANDLE *TraceHandle) {
++     TraceRelogger *This = impl_from_ITraceRelogger(iface);     FIXME( "stub\n" );   return 0;
++}
++
++static HRESULT WINAPI tracerelogger_AddRealtimeTraceStream(ITraceRelogger* iface,BSTR LoggerName,void *UserContext,TRACEHANDLE *TraceHandle) {
++   FIXME( "stub\n" ); if(TraceHandle) *TraceHandle = (TRACEHANDLE)0xdadadada;  return 0;
++}
++static HRESULT WINAPI tracerelogger_RegisterCallback(ITraceRelogger* iface,ITraceEventCallback *Callback) {
++   FIXME( "stub\n" );   return 0;
++}
++static HRESULT WINAPI tracerelogger_Inject(ITraceRelogger* iface,ITraceEvent *Event) {
++    FIXME( "stub\n" );  return 0;
++}
++static HRESULT WINAPI tracerelogger_CreateEventInstance(ITraceRelogger* iface,TRACEHANDLE TraceHandle,ULONG Flags,ITraceEvent **Event) {
++	HRESULT h;
++	//h = EVENT_create( (void **)Event);
++	
++	tracerelogger_QueryInterface(iface, &IID_ITraceEvent, (void **)Event);
++	
++   //FIXME( "stub, hresult is %lu\n" , h);  
++   FIXME( "stub\n" );  
++   
++    return 0;
++}
++static HRESULT WINAPI tracerelogger_ProcessTrace(ITraceRelogger* This) {
++   FIXME( "stub\n" );   return 0;
++}
++static HRESULT WINAPI tracerelogger_SetOutputFilename(ITraceRelogger* iface,BSTR LogfileName) {
++  FIXME( "stub\n" );    return 0;
++}
++static HRESULT WINAPI tracerelogger_SetCompressionMode(ITraceRelogger* iface,BOOLEAN CompressionMode) {
++   FIXME( "stub\n" );  
++   
++    return 0;
++}
++static HRESULT WINAPI tracerelogger_Cancel(ITraceRelogger* This) {
++   FIXME( "stub\n" );   return 0;
++}
++//ETC
++
++static const struct ITraceReloggerVtbl NetCfgVtbl =
++{
++    tracerelogger_QueryInterface,
++    tracerelogger_AddRef,
++    tracerelogger_Release,
++    tracerelogger_AddLogfileTraceStream,
++       tracerelogger_AddRealtimeTraceStream,
++ tracerelogger_RegisterCallback,
++  tracerelogger_Inject,
++   tracerelogger_CreateEventInstance,
++   tracerelogger_ProcessTrace,
++     tracerelogger_SetOutputFilename,
++     tracerelogger_SetCompressionMode,
++      tracerelogger_Cancel  
++};
++
++
++////////////////////////////////////////////////////////////////////////
++
++
++
++static HRESULT WINAPI traceevent_QueryInterface(ITraceEvent *iface, REFIID riid,void **ppvObject)
++{
++    TraceRelogger *This = impl_from_ITraceEvent(iface);
++
++    return tracerelogger_QueryInterface(&This->ITraceRelogger_iface, riid, ppvObject);
++}
++
++static ULONG WINAPI traceevent_AddRef(ITraceEvent *iface)
++{
++    TraceRelogger *This = impl_from_ITraceEvent(iface);
++
++    return tracerelogger_AddRef(&This->ITraceRelogger_iface);
++}
++
++static ULONG WINAPI traceevent_Release(ITraceEvent *iface)
++{
++    TraceRelogger *This = impl_from_ITraceEvent(iface);
++    return tracerelogger_Release(&This->ITraceRelogger_iface);
++}
++
++static HRESULT WINAPI traceevent_Clone(ITraceEvent* iface, ITraceEvent **NewEvent){TraceRelogger *This = impl_from_ITraceEvent(iface); FIXME("\n"); return 0;}
++
++    static HRESULT WINAPI traceevent_GetUserContext(ITraceEvent* This, void **UserContext){FIXME("\n"); return 0;}
++
++    static HRESULT WINAPI traceevent_GetEventRecord(ITraceEvent* This, PEVENT_RECORD *EventRecord){FIXME("\n"); return 0;}
++
++    static HRESULT WINAPI traceevent_SetPayload(ITraceEvent* This, BYTE *Payload,
++                       ULONG PayloadSize){FIXME("\n"); return 0;}
++
++    static HRESULT WINAPI traceevent_SetEventDescriptor(ITraceEvent* This, PCEVENT_DESCRIPTOR EventDescriptor){FIXME("\n"); return 0;}
++
++    static HRESULT WINAPI traceevent_SetProcessId(ITraceEvent* This, ULONG ProcessId){FIXME("\n"); return 0;}
++
++    static HRESULT WINAPI traceevent_SetProcessorIndex(ITraceEvent* This, ULONG ProcessorIndex){FIXME("\n"); return 0;}
++
++    static HRESULT WINAPI traceevent_SetThreadId(ITraceEvent* This, ULONG ThreadId){FIXME("\n"); return 0;}
++
++    static HRESULT WINAPI traceevent_SetThreadTimes(ITraceEvent* This, ULONG KernelTime,
++                           ULONG UserTime){FIXME("\n"); return 0;}
++
++    static HRESULT WINAPI traceevent_SetActivityId(ITraceEvent* This, LPCGUID ActivityId){FIXME("\n"); return 0;}
++
++    static HRESULT WINAPI traceevent_SetTimeStamp(ITraceEvent* This, LARGE_INTEGER *TimeStamp){FIXME("\n"); return 0;}
++
++    static HRESULT WINAPI traceevent_SetProviderId(ITraceEvent* This, LPCGUID ProviderId){FIXME("\n"); return 0;}
++
++static const struct ITraceEventVtbl NetCfgLockVtbl =
++{
++    traceevent_QueryInterface,
++    traceevent_AddRef,
++    traceevent_Release,
++    traceevent_Clone,
++        traceevent_GetUserContext,
++traceevent_GetEventRecord,
++
++  traceevent_SetPayload,
++
++   traceevent_SetEventDescriptor,
++
++  traceevent_SetProcessId,
++
++traceevent_SetProcessorIndex,
++
++    traceevent_SetThreadId,
++
++  traceevent_SetThreadTimes,
++
++ traceevent_SetActivityId,
++
++     traceevent_SetTimeStamp,
++
++ traceevent_SetProviderId
++};
++
++HRESULT ITraceRelogger_CreateInstance(IUnknown **ppUnk)
++{
++    TraceRelogger *This;
++
++    This = HeapAlloc(GetProcessHeap(), 0, sizeof(TraceRelogger));
++    if (!This)
++        return E_OUTOFMEMORY;
++
++    This->ITraceRelogger_iface.lpVtbl = &NetCfgVtbl;
++    This->ITraceEvent_iface.lpVtbl = &NetCfgLockVtbl;
++    This->ref = 1;
++
++    *ppUnk = (IUnknown*)&This->ITraceRelogger_iface;
++
++    return S_OK;
++}
++/////////////////////////////////END_NETCFG
