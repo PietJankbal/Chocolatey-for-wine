@@ -1,67 +1,58 @@
-
-From 54ddd94b75963a81f82fae54afd1e80930541dbc Mon Sep 17 00:00:00 2001
-From: Hans Chen <hxchennz@gmail.com>
-Date: Sun, 30 Nov 2025 22:39:56 +1300
-Subject: [PATCH] sxs: check len_name is set
-
----
- dlls/sxs/sxs.c | 30 +++++++++++++++++++-----------
- 1 file changed, 19 insertions(+), 11 deletions(-)
-
 diff --git a/dlls/sxs/sxs.c b/dlls/sxs/sxs.c
-index 150a49a322f..2b89bf369f0 100644
+index 150a49a322f..a7aa4f630a7 100644
 --- a/dlls/sxs/sxs.c
 +++ b/dlls/sxs/sxs.c
-@@ -97,7 +97,7 @@ BOOL WINAPI SxsLookupClrGuid(DWORD flags, GUID *clsid, HANDLE actctx, void *buff
-     ACTCTX_SECTION_KEYED_DATA guid_info = { sizeof(ACTCTX_SECTION_KEYED_DATA) };
-     ACTIVATION_CONTEXT_ASSEMBLY_DETAILED_INFORMATION *assembly_info = NULL;
-     SIZE_T bytes_assembly_info;
--    unsigned int len_version = 0, len_name, len_identity;
-+    unsigned int len_version = 0, len_name = 0, len_identity = 0;
-     const void *ptr_name, *ptr_version, *ptr_identity;
-     SXS_GUID_INFORMATION_CLR *ret = buffer;
-     BOOL retval = FALSE;
-@@ -160,12 +160,15 @@ BOOL WINAPI SxsLookupClrGuid(DWORD flags, GUID *clsid, HANDLE actctx, void *buff
-         const struct comclassredirect_data *redirect_data = guid_info.lpData;
-         const struct clrclass_data *class_data;
+@@ -24,6 +24,8 @@
+ #include "windef.h"
+ #include "winbase.h"
  
--        class_data = (void *)((char *)redirect_data + redirect_data->clrdata_offset);
--        ptr_name = (char *)class_data + class_data->name_offset;
--        ptr_version = (char *)class_data + class_data->version_offset;
--        len_name = class_data->name_len + sizeof(WCHAR);
--        if (class_data->version_len)
--            len_version = class_data->version_len + sizeof(WCHAR);
-+        if(redirect_data->clrdata_len)
-+        {
-+            class_data = (void *)((char *)redirect_data + redirect_data->clrdata_offset);
-+            ptr_name = (char *)class_data + class_data->name_offset;
-+            ptr_version = (char *)class_data + class_data->version_offset;
-+            len_name = class_data->name_len + sizeof(WCHAR);
-+            if (class_data->version_len)
-+                len_version = class_data->version_len + sizeof(WCHAR);
-+        }
-     }
-     else
-     {
-@@ -199,10 +202,15 @@ BOOL WINAPI SxsLookupClrGuid(DWORD flags, GUID *clsid, HANDLE actctx, void *buff
++#include "wine/exception.h"
++
+ #include "wine/debug.h"
+ 
+ WINE_DEFAULT_DEBUG_CHANNEL(sxs);
+@@ -199,21 +201,42 @@ BOOL WINAPI SxsLookupClrGuid(DWORD flags, GUID *clsid, HANDLE actctx, void *buff
      ret->pcwszAssemblyIdentity = (WCHAR *)ret_strings;
      ret_strings += len_identity;
  
--    memcpy(ret_strings, ptr_name, len_name);
--    ret->pcwszTypeName = (WCHAR *)ret_strings;
--    ret_strings += len_name;
--
-+    if(len_name > 0)
++    /* FIXME the offsets like in ptr_name = (char *)surrogate + surrogate->name_offset; (line 175) seem to contain bogus values ???? */
++    __TRY 
 +    {
-+        memcpy(ret_strings, ptr_name, len_name);
-+        ret->pcwszTypeName = (WCHAR *)ret_strings;
-+        ret_strings += len_name;
+     memcpy(ret_strings, ptr_name, len_name);
+     ret->pcwszTypeName = (WCHAR *)ret_strings;
+     ret_strings += len_name;
 +    }
-+    else
-+        ret->pcwszTypeName = NULL;
-+        
++    __EXCEPT_PAGE_FAULT
++    {
++	ret->pcwszTypeName=0;	
++	}
++    __ENDTRY
++
++
++
+ 
      if (len_version > 0)
-     {
+-    {
++    {   __TRY 
++		{
          memcpy(ret_strings, ptr_version, len_version);
--- 
-GitLab
+         ret->pcwszRuntimeVersion = (WCHAR *)ret_strings;
++	    }
++	    __EXCEPT_PAGE_FAULT
++	    {
++	    ret->pcwszRuntimeVersion = NULL;
++	    }
++	    __ENDTRY
+     }
+     else
+         ret->pcwszRuntimeVersion = NULL;
+ 
++
++
+     SetLastError(0);
+ 
+-out:
++out: if(retval) FIXME("version /identity /name = %s, %s, %s\n", wine_dbgstr_w(ret->pcwszRuntimeVersion), wine_dbgstr_w(ret->pcwszAssemblyIdentity), wine_dbgstr_w(ret->pcwszTypeName));
+     ReleaseActCtx(guid_info.hActCtx);
+ 
+     if (flags & SXS_LOOKUP_CLR_GUID_USE_ACTCTX)
