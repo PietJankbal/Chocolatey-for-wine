@@ -177,11 +177,15 @@ REGEDIT4
 "Arial (TrueType)"="arial.ttf"
 
 [HKEY_CURRENT_USER\Software\Wine\Debug]
-"RelayExclude"="user32.CharNextA;KERNEL32.GetProcessHeap;KERNEL32.GetCurrentThreadId;KERNEL32.TlsGetValue;KERNEL32.GetCurrentThreadId;KERNEL32.TlsSetValue;ntdll.RtlEncodePointer;ntdll.RtlDecodePointer;ntdll.RtlEnterCriticalSection;ntdll.RtlLeaveCriticalSection;kernel32.94;kernel32.95;kernel32.96;kernel32.97;kernel32.98;KERNEL32.TlsGetValue;KERNEL32.FlsGetValue;ntdll.RtlFreeHeap;ntdll.RtlAllocateHeap;KERNEL32.InterlockedDecrement;KERNEL32.InterlockedCompareExchange;ntdll.RtlTryEnterCriticalSection;KERNEL32.InitializeCriticalSection;ntdll.RtlDeleteCriticalSection;KERNEL32.InterlockedExchange;KERNEL32.InterlockedIncrement;KERNEL32.LocalFree;Kernel32.LocalAlloc;ntdll.RtlReAllocateHeap;KERNEL32.VirtualAlloc;Kernel32.VirtualFree;Kernel32.HeapFree;KERNEL32.QueryPerformanceCounter;KERNEL32.QueryThreadCycleTime;ntdll.RtlFreeHeap;ntdll.memmove;ntdll.memcmp;KERNEL32.GetTickCount;kernelbase.InitializeCriticalSectionEx;ntdll.RtlInitializeCriticalSectionEx;ntdll.RtlInitializeCriticalSection;kernelbase.FlsGetValue;ntdll.RtlTryAcquireSRWLockExclusive;ntdll.RtlReleaseSRWLockExclusive;ntdll.RtlNtStatusToDosError;ntdll.RtlInterlockedPushEntrySList"
+"RelayExclude"="user32.CharNextA;KERNEL32.GetProcessHeap;KERNEL32.GetCurrentThreadId;KERNEL32.TlsGetValue;KERNEL32.GetCurrentThreadId;KERNEL32.TlsSetValue;KERNEL32.TlsGetValue;KERNEL32.FlsGetValue;KERNEL32.InterlockedDecrement;KERNEL32.InterlockedCompareExchange;KERNEL32.InitializeCriticalSection;KERNEL32.InterlockedExchange;KERNEL32.InterlockedIncrement;KERNEL32.LocalFree;Kernel32.LocalAlloc;KERNEL32.VirtualAlloc;Kernel32.VirtualFree;Kernel32.HeapFree;KERNEL32.QueryPerformanceCounter;KERNEL32.QueryThreadCycleTime;KERNEL32.GetTickCount;ntdll.*;kernelbase.*"
 "RelayFromExclude"="winex11.drv;user32;gdi32;advapi32;kernel32"
 
 [HKEY_LOCAL_MACHINE\Software\Classes\CLSID\{937C1A34-151D-4610-9CA6-A8CC9BDB5D83}\TypeLib]
 @="{7D868ACD-1A5D-4a47-A247-F39741353012}"
+
+[HKEY_LOCAL_MACHINE\Software\Classes\CLSID\{7B40792D-05FF-44C4-9058-F440C71F17D4}\InprocServer32]
+@="C:\\windows\\system32\\tdh.dll"
+"ThreadingModel"="Both"
 '@ | Out-File $env:TEMP\\misc.reg
 <# FIXME these keys are different from regular winetricks dotnet48 install????
 [HKEY_CLASSES_ROOT\CLSID\{E5CB7A31-7512-11D2-89CE-0080C792E5D8}]
@@ -514,6 +518,8 @@ Remove-Variable ntdll_so,MethodDefinition2,MethodDefinition,ntdll,kernel32,info,
         Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework64\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework64\\v2.0.50727\\$i
     }
 
+    [System.IO.Directory]::CreateDirectory("$env:systemroot\assembly\")
+
     if (([System.IO.File]::Exists("$cachedir\\sevenzipextractor.1.0.19.nupkg"))) {
         $cab_path = "$cachedir" }
     else {
@@ -798,6 +804,34 @@ function QPR_wmic { <# wmic replacement #>
         ([wmisearcher]$("SELECT " +  ($property -join ",") + " FROM " + $class + $where + $filter)).get() |ft ($property |sort) -autosize |Out-string -Stream | Select -skipindex (2)| ?{$_.trim() -ne ""}}
 }
 '@ | Out-File ( New-Item -Path $env:ProgramFiles\Powershell\7\Modules\QPR.wmic\QPR.wmic.psm1 -Force )
+
+# Add certificate to fix dotnet build errors; https://digicert.tbs-certificates.co.uk/vsign-universal-root.crt
+# openssl x509 -in vsign-universal-root.crt -outform PEM -out verisign.crt
+@'
+-----BEGIN CERTIFICATE-----
+MIIEuTCCA6GgAwIBAgIQQBrEZCGzEyEDDrvkEhrFHTANBgkqhkiG9w0BAQsFADCBvTELMAkGA1UEBhMCVVMxFzAVBgNVBAoTDlZlcmlTaWduLCBJbmMuMR8wHQYDVQQL
+ExZWZXJpU2lnbiBUcnVzdCBOZXR3b3JrMTowOAYDVQQLEzEoYykgMjAwOCBWZXJpU2lnbiwgSW5jLiAtIEZvciBhdXRob3JpemVkIHVzZSBvbmx5MTgwNgYDVQQDEy9W
+ZXJpU2lnbiBVbml2ZXJzYWwgUm9vdCBDZXJ0aWZpY2F0aW9uIEF1dGhvcml0eTAeFw0wODA0MDIwMDAwMDBaFw0zNzEyMDEyMzU5NTlaMIG9MQswCQYDVQQGEwJVUzEX
+MBUGA1UEChMOVmVyaVNpZ24sIEluYy4xHzAdBgNVBAsTFlZlcmlTaWduIFRydXN0IE5ldHdvcmsxOjA4BgNVBAsTMShjKSAyMDA4IFZlcmlTaWduLCBJbmMuIC0gRm9y
+IGF1dGhvcml6ZWQgdXNlIG9ubHkxODA2BgNVBAMTL1ZlcmlTaWduIFVuaXZlcnNhbCBSb290IENlcnRpZmljYXRpb24gQXV0aG9yaXR5MIIBIjANBgkqhkiG9w0BAQEF
+AAOCAQ8AMIIBCgKCAQEAx2E3XrEBNNti1xWb/1hajCMj1mCOkdeQmIN65lgZOIzF9uVkhbSicfvtvbnazU0AtMgtc6XHaXGVHzk8skQHnOgO+k1KxCHfKWGPMiJhgsWH
+H26MfF8WIFFE0XBPV+rjHOPMee5Y2A7Cs0WTwCznmhcrewA3ekEzeOEz4vMQGn+HLL729fdC4uW/h2KJXwBL38Xd5HVEMkE6HnFuacsLdUYI0crSK5XQz/u5QGtkjFdN
+/BMReYTtXlT2NJ8IAfMQJQYXStrxHXpma5hgZqTZ79IugvHw7wnqRMkVauIDbjPTrJ9VAMf2CGqUuV/c4DPxhGD5WycRtPwW8rtWaoAljQIDAQABo4GyMIGvMA8GA1Ud
+EwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMG0GCCsGAQUFBwEMBGEwX6FdoFswWTBXMFUWCWltYWdlL2dpZjAhMB8wBwYFKw4DAhoEFI/l0xqGrI2Oa8PPgGrUSBgs
+exkuMCUWI2h0dHA6Ly9sb2dvLnZlcmlzaWduLmNvbS92c2xvZ28uZ2lmMB0GA1UdDgQWBBS2d/ppSEefUxLVwuoHMnYH0ZcHGTANBgkqhkiG9w0BAQsFAAOCAQEASvj4
+sAPmLGd75JR3Y8xuTPl9Dg3cyLk1uXBPY/ok+myDjEedO2Pzmvl2MpWRsXe8rJq+seQxIcaBlVZaDrHC1LGmWazxY8u4TB1ZkErvkBYoH1quEPuBUDgMbMzxPcP1Y+Oz
+4yHJJDnp/RVmRvQbEdBNc6N9Rvk97ahfYtTxP/jgdFcrGJ2BtMQo2pSXpXDrrB2+BxHw1dvd5Yzw1TKwg+ZX4o+/vqGqvz0dtdQ46tewXDpPaj+PwGZsY6rp2aQW9IHR
+lRQOfc2VNNnSj3BzgXucfr2YYdhFh5iQxeuGMMY1v/D/w1WIg0vvBZIGcfK4mJO37M2CYfE45k+XmCpajQ==
+-----END CERTIFICATE-----
+'@ | Out-File "$env:ProgramData\Chocolatey-for-wine\verisign.crt"
+
+    $C = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new("$env:ProgramData\Chocolatey-for-wine\verisign.crt"); $C
+
+    $store=[System.Security.Cryptography.X509Certificates.X509Store]::new('Root', 'LocalMachine'); $store
+
+    $store.Open('ReadWrite')
+    $store.Add($C)
+    $store.Close()
 
 #    Start-Process $env:systemroot\Microsoft.NET\Framework64\v4.0.30319\ngen.exe -NoNewWindow -Wait -ArgumentList  "eqi"
 #    Start-Process $env:systemroot\Microsoft.NET\Framework\v4.0.30319\ngen.exe -NoNewWindow -Wait -ArgumentList "eqi"
