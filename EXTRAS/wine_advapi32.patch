@@ -199,7 +199,7 @@ index 2284e92b263..c137bc54725 100644
 +    return ERROR_SUCCESS;
 +}
 diff --git a/dlls/advapi32/advapi32.spec b/dlls/advapi32/advapi32.spec
-index 4a9db829f67..94d4e132b9f 100644
+index 273f382c5e6..475ad61fcb3 100644
 --- a/dlls/advapi32/advapi32.spec
 +++ b/dlls/advapi32/advapi32.spec
 @@ -8,13 +8,13 @@
@@ -223,12 +223,9 @@ index 4a9db829f67..94d4e132b9f 100644
  @ stdcall -import AddAccessAllowedAce (ptr long long ptr)
  @ stdcall -import AddAccessAllowedAceEx (ptr long long long ptr)
  @ stdcall -import AddAccessAllowedObjectAce(ptr long long long ptr ptr ptr)
-@@ -25,59 +25,59 @@
- @ stdcall -import AddAuditAccessAce(ptr long long ptr long long)
- @ stdcall -import AddAuditAccessAceEx(ptr long long long ptr long long)
+@@ -27,57 +27,57 @@
  @ stdcall -import AddAuditAccessObjectAce(ptr long long long ptr ptr ptr long long)
--# @ stub AddConditionalAce
-+@ stub AddConditionalAce
+ @ stdcall AddConditionalAce(ptr long long long long ptr wstr ptr)
  @ stdcall -import AddMandatoryAce(ptr long long long ptr)
 -# @ stub AddUsersToEncryptedFile
 -# @ stub AddUsersToEncryptedFileEx
@@ -1021,16 +1018,15 @@ index 4a9db829f67..94d4e132b9f 100644
 -# @ stub SaferiChangeRegistryScope
 -# @ stub SaferiCompareTokenLevels
 -# @ stub SaferiIsDllAllowed
--# @ stub SaferiIsExecutableFileType
--# @ stub SaferiPopulateDefaultsInRegistry
--# @ stub SaferiRecordEventLogEntry
--# @ stub SaferiReplaceProcessThreadTokens
--# @ stub SaferiSearchMatchingHashRules
 +@ stub SaferSetPolicyInformation
 +@ stub SaferiChangeRegistryScope
 +@ stub SaferiCompareTokenLevels
 +@ stub SaferiIsDllAllowed
-+@ stub SaferiIsExecutableFileType
+ @ stdcall SaferiIsExecutableFileType(wstr long)
+-# @ stub SaferiPopulateDefaultsInRegistry
+-# @ stub SaferiRecordEventLogEntry
+-# @ stub SaferiReplaceProcessThreadTokens
+-# @ stub SaferiSearchMatchingHashRules
 +@ stub SaferiPopulateDefaultsInRegistry
 +@ stub SaferiRecordEventLogEntry
 +@ stub SaferiReplaceProcessThreadTokens
