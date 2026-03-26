@@ -3513,7 +3513,7 @@ func_riched20
 func_wine_sppc
 func_wine_d2d1
 #func_msxml6
-func wine_msxml3
+func_wine_msxml3
 
 #restart_if_needed
 
