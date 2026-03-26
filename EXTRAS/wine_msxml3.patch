@@ -1,0 +1,55 @@
+(Applied on top of wine-staging patches for msxml3)
+
+From 4795df032e455fae2be1f9e964555ff5c8efac81 Mon Sep 17 00:00:00 2001
+From: Hieu Le Minh <leminhhieu.opensource@gmail.com>
+Date: Sun, 15 Mar 2026 08:18:03 +0700
+Subject: [PATCH] msxml: Add support for Unicode escape ranges.
+
+---
+ libs/xml2/xmlregexp.c | 16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/libs/xml2/xmlregexp.c b/libs/xml2/xmlregexp.c
+index f434a0cf986..a98209c19b9 100644
+--- a/libs/xml2/xmlregexp.c
++++ b/libs/xml2/xmlregexp.c
+@@ -4924,6 +4924,13 @@ xmlFAParseCharRange(xmlRegParserCtxtPtr ctxt) {
+ 	    case 'n': start = 0xA; break;
+ 	    case 'r': start = 0xD; break;
+ 	    case 't': start = 0x9; break;
++	    case 'u':
++		start = parse_escaped_codepoint(ctxt);
++		if (start < 0) {
++		    ERROR("Invalid codepoint");
++		    return;
++		}
++		break;
+ 	    case '\\': case '|': case '.': case '-': case '^': case '?':
+ 	    case '*': case '+': case '{': case '}': case '(': case ')':
+ 	    case '[': case ']':
+@@ -4969,6 +4976,13 @@ xmlFAParseCharRange(xmlRegParserCtxtPtr ctxt) {
+ 	    case 'n': end = 0xA; break;
+ 	    case 'r': end = 0xD; break;
+ 	    case 't': end = 0x9; break;
++	    case 'u':
++		end = parse_escaped_codepoint(ctxt);
++		if (end < 0) {
++		    ERROR("Invalid codepoint");
++		    return;
++		}
++		break;
+ 	    case '\\': case '|': case '.': case '-': case '^': case '?':
+ 	    case '*': case '+': case '{': case '}': case '(': case ')':
+ 	    case '[': case ']':
+@@ -5010,7 +5024,7 @@ xmlFAParseCharRange(xmlRegParserCtxtPtr ctxt) {
+ static void
+ xmlFAParsePosCharGroup(xmlRegParserCtxtPtr ctxt) {
+     do {
+-	if (CUR == '\\') {
++	if (CUR == '\\' && NXT(1) != 'u') {
+ 	    xmlFAParseCharClassEsc(ctxt);
+ 	} else {
+ 	    xmlFAParseCharRange(ctxt);
+-- 
+GitLab
+
