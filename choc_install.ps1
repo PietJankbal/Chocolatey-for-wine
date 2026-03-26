@@ -12,7 +12,7 @@ REGEDIT4
 "d3dcompiler_43"="native"
 ;"wusa.exe"="native"
 "mscorsvw.exe"=""
-"schtasks.exe"="native"
+;"schtasks.exe"="native"
 "setx.exe"="native"
 "taskschd"="native"
 "robocopy.exe"="native"
