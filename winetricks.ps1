@@ -5,13 +5,11 @@ else                 {$cachedir = [System.IO.Path]::Combine( "$([Environment]::G
 
 <#  marker line: do not change this marker line!!!
     "apps","git.portable","Access to several unix-commands like tar, file, sed etc. etc.",
+    "apps","creative_cloud","Adobe Creative Cloud",    
 #   "apps","itunes","itunes, with fixed black GUI",
 #   "apps","mspaint","mspaint, inserting text does not work :(",
-#   "apps","nodejs","install node.js (a workaround for failing installer)",
     "apps","office365","Microsoft Office365HomePremium (registering does not work, many glitches...)",
     "apps","use_chromium_as_browser", "replace winebrowser with chrome to open webpages",
-#   "apps","vs19", "Visual Studio 2019",
-#   "apps","vs22", "Visual Studio 2022",
     "apps","vs19_interactive_installer", "Visual Studio 2019 interactive installer",
     "apps","vs22_interactive_installer", "Visual Studio 2022 interactive installer",
     "apps","vs26_interactive_installer", "Visual Studio 2026 interactive installer",
@@ -101,15 +99,15 @@ else                 {$cachedir = [System.IO.Path]::Combine( "$([Environment]::G
     "wine","wine_advapi32", "wine advapi32 with a few hacks",
     "wine","wine_combase", "wine combase with a few hacks",
     "wine","wine_d2d1", "wine d2d1 with a few hacks",
+    "wine","wine_dcomp", "wine dcomp with a few hacks",
+    "wine","wine_enable_all_hacks", "enable all wine hacks",
     "wine","wine_hnetcfg", "wine hnetcfg.dll with fix for https://bugs.winehq.org/show_bug.cgi?id=45432",
-    "wine","wine_kernel32","rudimentary mui resource support (makes windows 7 games work)",
-#   "wine","wine_msi", "if an msi installer fails, might wanna try this wine msi, just faking success for a few actions... Might also result in broken installation ;)",
+    "wine","wine_kernel32","kernel32 with SetThreadPoolTimerEx",
+    "wine","wine_mshtml", "wine mshtml with a few hacks",
     "wine","wine_msxml3", "wine msxml3 with a few hacks",
-    "wine","wine_ole32", "wine ole32 with hack for https://bugs.winehq.org/show_bug.cgi?id=59040",
     "wine","wine_wbemprox","hacky wmispoofer, spoof wmi values/add new classes, see c:\ProgramData\Chocolatey-for-wine\wmispoofer.ini for details",
     "wine","wine_shell32", "wine shell32 with a few hacks",
     "wine","wine_wintrust", "wine wintrust faking success for WinVerifyTrust"
-#   "wine","wine_wintypes", "wine wintypes.dll for for example Affinity"
     marker line!!!: do not change this marker line #>
 
 $expand_exe = "$env:systemroot\system32\expnd\expand.exe"
@@ -293,7 +291,6 @@ function system_install
        if( ( ($out[$i]).Substring(2,2) -eq 'am') -or ( ($out[$i]).Substring(2,2) -eq '64')  ) {
            [string[]]$dlls += $out[$i].split('\')[-1] }
    }
-
 $dlls
 
     foreach($j in 'system32','syswow64') {
@@ -301,7 +298,6 @@ $dlls
             #Remove-Item  $env:systemroot\$j\$("__" + "$i") -Force -Verbose -erroraction silentlycontinue
             
             
-
             
             
             [System.IO.File]::Delete("$env:systemroot\$j\$('__' + $i)")
@@ -326,8 +322,7 @@ $dlls
 #            Move-Item    "$env:systemroot\$j\WindowsPowerShell\$i" "$env:systemroot\$j\$i" -Force -Verbose #-erroraction silentlycontinue
             
             [System.IO.File]::Move( "$env:systemroot\$j\WindowsPowerShell\$i", "$env:systemroot\$j\$i")
-            
-                    
+                        
 
             
             
@@ -1809,7 +1804,7 @@ if ((Get-process -Name powershell_ise -erroraction silentlycontinue)) {
     $profile51 | Out-File $env:SystemRoot\\system32\\WindowsPowerShell\v1.0\\profile.ps1
     $profile51 | Out-File $env:SystemRoot\\syswow64\\WindowsPowerShell\v1.0\\profile.ps1
 
-        
+       
 
 
 } <# end ps51 #>
@@ -2532,11 +2527,13 @@ function func_wine_d2d1     { system_install wine_d2d1     'd93559790176ca68b8c5
 
 function func_wine_msxml3   { system_install wine_msxml3   '4a96a865a47d090eab3c1485fa923ca639b5d38fcff03c1b7b62785aa5921151' $false}
 
-function func_wine_cfgmgr32 { system_install wine_cfgmgr32 'f1975926672e216206a16fca848a647ea86d1367867426accffa4ef4039c61bc' $false}
+function func_wine_mshtml   { system_install wine_mshtml   '4a96a865a47d090eab3c1485fa923ca639b5d38fcff03c1b7b62785aa5921151' $false}
 
 function func_wine_sxs      { system_install wine_sxs      '9ac670ae3105611a5211649aab25973b327dcd8ea932f1a8569e78adca6fedcb' $false}
 
 function func_wine_kernel32 { system_install wine_kernel32 'adc588a5fb250009858fceadf78cd715725d4b322ab0373d624330b4247a1b7c' $true}
+
+function func_wine_dcomp    { system_install wine_dcomp    'adc588a5fb250009858fceadf78cd715725d4b322ab0373d624330b4247a1b7c' $true}
 
 function func_wine_sppc     { system_install wine_sppc     'fc2e00c3265c2cc98b81fc0aa582bb9e4c1543a21c97ed6dd8e7e323a5e6ed27' $false}
 
@@ -2545,6 +2542,23 @@ function func_wine_hnetcfg  { system_install wine_hnetcfg  'fc2e00c3265c2cc98b81
 function func_wine_ole32    { system_install wine_ole32    'fc2e00c3265c2cc98b81fc0aa582bb9e4c1543a21c97ed6dd8e7e323a5e6ed27' $true}
 
 function func_wine_wintrust { system_install wine_wintrust 'fc2e00c3265c2cc98b81fc0aa582bb9e4c1543a21c97ed6dd8e7e323a5e6ed27' $false}
+
+function func_wine_enable_all_hacks {
+
+func_wine_advapi32 
+func_wine_shell32
+func_wine_combase
+func_wine_d2d1
+func_wine_dcomp
+func_wine_msxml3
+func_wine_mshtml
+func_wine_kernel32
+func_wine_hnetcfg  
+func_wine_wintrust
+
+}
+
+function func_wine_tdh      { system_install wine_tdh 'fc2e00c3265c2cc98b81fc0aa582bb9e4c1543a21c97ed6dd8e7e323a5e6ed27' $false}
 
 function func_wine_api-ms-win-appmodel-state-l1-2-0 <# wine api-ms-win-appmodel-state-l1-2-0 #>
 {
@@ -3036,8 +3050,7 @@ function QPR_ping { <# ping.exe replacement #>
                     start-sleep -m ($Intervale - $ms)
                 }
             }    
-            
-            
+                       
            Write-Host ""
            Write-Host  "Ping statistics for ${IP}:"
            Write-Host "	Packets: Sent = $count, Received = $count, Lost = 0 <0% loss>,"
@@ -3208,7 +3221,7 @@ function func_vs22
     func_wine_shell32
     func_wine_wintypes
     func_winmetadata
-    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 10.4 ) { func_wine_cfgmgr32 }
+    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 10.4 ) { Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show("!!!Upgrade to a more recent wine version!!!`r`n The wine version you use is too old.",'Message','ok','exclamation');}
 
     winecfg /v win10
 
@@ -3303,9 +3316,10 @@ function func_vs22_interactive_installer
     func_wine_advapi32
     func_wine_combase
     func_wine_shell32
+    func_wine_tdh
     #func_wine_wintypes
     #func_winmetadata
-    if( wine_version_less_than('10.4') ) { func_wine_cfgmgr32 }
+    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 10.4 ) { Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show("!!!Upgrade to a more recent wine version!!!`r`n The wine version you use is too old.",'Message','ok','exclamation');}
     
     restart_if_needed
 
@@ -3371,10 +3385,12 @@ function func_vs26_interactive_installer
     func_wine_advapi32
     func_wine_combase
     func_wine_shell32
+    func_wine_tdh
     #func_wine_wintypes
-    if( wine_version_less_than('10.4') ) { func_wine_cfgmgr32 }
+    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 10.4 ) { Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show("!!!Upgrade to a more recent wine version!!!`r`n The wine version you use is too old.",'Message','ok','exclamation');}
 
     restart_if_needed
+    func_nocrashdialog
 
     winecfg /v win10
     
@@ -3386,8 +3402,9 @@ function func_vs26_interactive_installer
     New-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Avalon.Graphics' -Name 'DisableHWAcceleration' -Value 1 -PropertyType 'Dword' -force
 
     <# FIXME: some of these too crash in win10 mode, too lazy to figure out which one's. And why they crash... Set version to win7 for now#>
-    foreach($i in
-	'DevHub.exe',
+        foreach($i in
+ 	'DevHub.exe',
+ 	'PerfWatson2.exe',
 	'Microsoft.ServiceHub.Controller.exe',
 	'ServiceHub.Host.Node.x86.exe',
 	'ServiceHub.Host.dotnet.x64.exe',
@@ -3416,7 +3433,7 @@ function func_vs26_interactive_installer
 	'ServiceHub.SettingsHost.exe') {
     if(!(Test-Path "HKCU:\\Software\\Wine\\AppDefaults\\$i")) {New-Item  -Path "HKCU:\\Software\\Wine\\AppDefaults\\$i"}
     New-ItemProperty -Path "HKCU:\\Software\\Wine\\AppDefaults\\$i" -Name 'Version' -Value 'win7' -PropertyType 'String' -force
- }
+ } 
  
     if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe'}
     if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe\\DllOverrides'}
@@ -3463,17 +3480,42 @@ function func_vs19_interactive_installer
     quit?('vs_Community')
 }
 
+function func_creative_cloud
+{
+    func_wine_msxml3
+    func_wine_kernel32
+    func_wine_mshtml
+
+    foreach($i in 'msxml3, mshtml, kernel32') { dlloverride 'native,builtin' $i }
+    
+    restart_if_needed
+    winecfg /v win10
+    
+    func_webview2
+    
+    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\Set-up.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\Set-up.exe'}
+    if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\Set-up.exe\\X11 Driver')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\Set-up.exe\\X11 Driver'}
+    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\Set-up.exe\\X11 Driver' -Name 'Decorated' -Value 'N' -PropertyType 'String' -force #    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe' -Name 'Version' -Value 'win7' -PropertyType 'String' -force
+
+   (New-Object System.Net.WebClient).DownloadFile('https://ccmdls.adobe.com/AdobeProducts/StandaloneBuilds/ACCC/ESD/6.8.1/865/win64/ACCCx6_8_1_865.zip', "$env:TMP\\ACCCx6_8_1_865.zip") 
+
+    7z x "$env:TMP\\ACCCx6_8_1_865.zip" "-o$env:TMP" -y ; quit?('7z')
+
+    & "$env:TMP\\Set-up.exe"  
+}
+
 function func_office365
 {
 
 winecfg /v win10
 
-func_msxml6
 func_riched20
 func_wine_sppc
 func_wine_d2d1
+#func_msxml6
+func wine_msxml3
 
-restart_if_needed
+#restart_if_needed
 
 foreach($i in 'sppc') { dlloverride 'native' $i }
         

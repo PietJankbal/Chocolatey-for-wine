@@ -15,7 +15,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Compile: // For fun I changed code from standard main(argc,*argv[]) to something like https://nullprogram.com/blog/2016/01/31/)
- * x86_64-w64-mingw32-gcc -Oz -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x200000,0x200000\
+ * x86_64-w64-mingw32-gcc -O2 -fno-ident -fno-stack-protector -fomit-frame-pointer -fno-unwind-tables -fno-asynchronous-unwind-tables -mconsole -municode -mno-stack-arg-probe -Xlinker --stack=0x200000,0x200000\
   -nostdlib  -Wall -Wextra  -finline-limit=64 -Wl,-gc-sections  installer.c -lurlmon -lkernel32 -lucrtbase -luser32 -nostdlib -ladvapi32 -lntdll -lshell32 -lole32 -luuid -s -o ChoCinstaller_0.5a.753.exe && strip -R .reloc ChoCinstaller_0.5a.753.exe
  */
  
@@ -34,7 +34,7 @@ struct paths {
     wchar_t argv[MAX_PATH];
 };
 
-     __attribute__((section(".text")))   __attribute__((aligned(8))) static const WCHAR url[6][165] = {L"http://download.windowsupdate.com/msdownload/update/software/crup/2010/06/windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu",
+    /* __attribute__((section(".text")))   __attribute__((aligned(8))) */ static const WCHAR url[6][165] = {L"http://download.windowsupdate.com/msdownload/update/software/crup/2010/06/windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu",
              L"https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47.dll",
              L"https://github.com/mozilla/fxc2/raw/master/dll/d3dcompiler_47_32.dll",
              L"https://github.com/Maximus5/ConEmu/releases/download/v23.07.24/ConEmuPack.230724.7z",
@@ -118,7 +118,6 @@ DWORD WINAPI pscore_install(void *ptr){
     
     CreateProcessW(0, wcscat(  wcscat( wcscat(bufW, L"msiexec.exe /i "), bufW1), L" DISABLE_TELEMETRY=1 ENABLE_PSREMOTING=1 REGISTER_MANIFEST=1 MSIFASTINSTALL=2 DISABLEROLLBACK=1 MSIDISABLEEEUI=1 /QN"), 0, 0, 0, REALTIME_PRIORITY_CLASS, 0, 0, &si, &pi);
 
-
     for(i=0 ; i<6; i++) {
 		bufW[0]=0;
         if(GetFileAttributesW( wcscat(wcscat(bufW, p->cache_dir), wcsrchr(url[i], L'/') + 1)) == INVALID_FILE_ATTRIBUTES) {
@@ -126,10 +125,13 @@ DWORD WINAPI pscore_install(void *ptr){
             URLDownloadToFileW(NULL, url[i], wcscat(wcscat(bufW,p->setupcache),  wcsrchr(url[i],L'/') + 1) , 0, NULL);
         }
     }
-           
+    
+    WCHAR webview[] = L"--disable-dwm-composition --disable-gpu-sandbox --disable-d3d11  --disable-sandbox --use-angle=d3d9 --disable-gpu";
     RegCreateKeyExW(HKEY_CURRENT_USER, L"Environment", 0, NULL, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hKey, NULL);
     RegSetValueExW(hKey, L"PS7\0", 0, REG_SZ, (BYTE*) pwsh_pathW, sizeof(WCHAR)*wcslen(pwsh_pathW)+1); RegCloseKey(hKey);
-    
+    RegCreateKeyExW(HKEY_CURRENT_USER, L"Environment", 0, NULL, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hKey, NULL);
+    RegSetValueExW(hKey, L"WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS\0", 0, REG_SZ, (BYTE*) webview, sizeof(WCHAR)*wcslen(webview)+1); RegCloseKey(hKey);
+
     WaitForSingleObject(pi.hProcess, INFINITE); CloseHandle(pi.hProcess); CloseHandle(pi.hThread);
     
     wcscat(wcscat(wcscat(wcscat( wcscat( wcscat(cmdlineW, L" -f ") , p->pathW ), L"\\"), L"choc_install.ps1 "), p->pathW), p->argv);
@@ -154,7 +156,7 @@ DWORD WINAPI cdrive_install(void *ptr){
     return 0;
 }
 
-__attribute__((externally_visible)) /* for -fwhole-program */
+//__attribute__((externally_visible)) /* for -fwhole-program */
 int mainCRTStartup(void) {
     wchar_t bufW[MAX_PATH] = L"",bufW1[MAX_PATH] = L"",   pwsh_pathW[MAX_PATH], **argv, *ptr , subdir[] = L"Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache\\", *token = wcstok_s( subdir, L"\\", &ptr), rootdir[MAX_PATH];
     int i = 0, argc;
