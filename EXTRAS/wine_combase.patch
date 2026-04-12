@@ -1,8 +1,8 @@
 diff --git a/dlls/combase/combase.c b/dlls/combase/combase.c
-index 34a9a42dc2a..db0ec8745b9 100644
+index a627d4779ec..23c572ce188 100644
 --- a/dlls/combase/combase.c
 +++ b/dlls/combase/combase.c
-@@ -1028,7 +1028,7 @@ HRESULT WINAPI CoQueryProxyBlanket(IUnknown *proxy, DWORD *authn_service,
+@@ -1027,7 +1027,7 @@ HRESULT WINAPI CoQueryProxyBlanket(IUnknown *proxy, DWORD *authn_service,
          IClientSecurity_Release(client_security);
      }
  
@@ -11,7 +11,7 @@ index 34a9a42dc2a..db0ec8745b9 100644
      return hr;
  }
  
-@@ -2591,7 +2591,7 @@ static ULONG WINAPI thread_context_callback_Release(IContextCallback *iface)
+@@ -2590,7 +2590,7 @@ static ULONG WINAPI thread_context_callback_Release(IContextCallback *iface)
  static HRESULT WINAPI thread_context_callback_ContextCallback(IContextCallback *iface,
          PFNCONTEXTCALL callback, ComCallData *param, REFIID riid, int method, IUnknown *punk)
  {
@@ -20,7 +20,7 @@ index 34a9a42dc2a..db0ec8745b9 100644
  
      return E_NOTIMPL;
  }
-@@ -3363,7 +3363,7 @@ HRESULT WINAPI CoEnableCallCancellation(void *reserved)
+@@ -3362,7 +3362,7 @@ HRESULT WINAPI CoEnableCallCancellation(void *reserved)
   */
  HRESULT WINAPI CoGetCallerTID(DWORD *tid)
  {
@@ -29,6 +29,15 @@ index 34a9a42dc2a..db0ec8745b9 100644
      return E_NOTIMPL;
  }
  
+@@ -3432,7 +3432,7 @@ HRESULT WINAPI CoRegisterActivationFilter(IActivationFilter *filter)
+ {
+     FIXME("%p stub\n", filter);
+ 
+-    return E_NOTIMPL;
++    return 0;
+ }
+ 
+ /***********************************************************************
 diff --git a/dlls/combase/marshal.c b/dlls/combase/marshal.c
 index f638604f5a3..f49325297f0 100644
 --- a/dlls/combase/marshal.c
@@ -52,7 +61,7 @@ index f638604f5a3..f49325297f0 100644
  
  static HRESULT WINAPI ProxyCliSec_CopyProxy(IClientSecurity *iface,
 diff --git a/dlls/combase/roapi.c b/dlls/combase/roapi.c
-index a88181ada9b..d05926dadc5 100644
+index f4f7c0aac26..672fda1bf41 100644
 --- a/dlls/combase/roapi.c
 +++ b/dlls/combase/roapi.c
 @@ -163,8 +163,52 @@ HRESULT WINAPI DECLSPEC_HOTPATCH RoGetActivationFactory(HSTRING classid, REFIID
