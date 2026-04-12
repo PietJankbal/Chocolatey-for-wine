@@ -393,16 +393,6 @@ function func_uxtheme
     foreach($i in 'uxtheme') { dlloverride 'native' $i }
 }  <# end uxtheme #>
 
-function func_dbghelp
-{
-    $dlls = @('dbghelp.dll'); check_aik_sanity;
-
-    foreach ($i in $dlls) {
-        7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
-        7z e "$cachedir\aik70\F1_WINPE.WIM" "-o$env:systemroot\syswow64" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z') 
-    foreach($i in 'dbghelp') { dlloverride 'native' $i }
-}  <# end dbghelp #>
-
 function func_sspicli
 {
     $dlls = @('sspicli.dll'); check_aik_sanity;
@@ -1577,7 +1567,6 @@ function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
                     'wow64_microsoft.packagema..ement.coreproviders_31bf3856ad364e35_7.3.7601.16384_none_f05cb06fdbbd6e3c.manifest',
 'amd64_microsoft.packagema..ement.coreproviders_31bf3856ad364e35_7.3.7601.16384_none_e608061da75cac41.manifest',
 
-
 'amd64_microsoft.packagema..t.archiverproviders_31bf3856ad364e35_7.3.7601.16384_none_a98e3ebb18648eb6.manifest',
 
 'wow64_microsoft.packagema..t.archiverproviders_31bf3856ad364e35_7.3.7601.16384_none_b3e2e90d4cc550b1.manifest',
@@ -2012,6 +2001,29 @@ function func_uianimation <# experimental... #>
 
     foreach($i in 'uianimation') { dlloverride 'native' $i }
 } <# end uianimation #>
+
+function func_dbghelp <# experimental... #>
+{
+    $url = "http://download.windowsupdate.com/c/msdownload/update/software/updt/2016/11/windows10.0-kb3205436-x64_45c915e7a85a7cc7fc211022ecd38255297049c3.msu"
+    $cab = "Windows10.0-KB3205436-x64.cab"
+    $sourcefile = @('dbghelp.dll')
+
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
+        check_msu_sanity $url $cab;
+        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\amd64*" "$cachedir\$(verb)\wow*" ; quit?('7z')
+
+        foreach($i in 'amd64', 'x86', 'wow64') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" }
+    }
+
+    Remove-Item -Force "$cachedir\$(verb)\$cab" -ErrorAction SilentlyContinue
+
+    7z e "$cachedir\$(verb)\$(verb).7z" "amd64*\*" -o"$env:systemroot\\system32" -aoa
+    7z e "$cachedir\$(verb)\$(verb).7z" "wow64*\*" -o"$env:systemroot\\syswow64" -aoa
+
+    foreach($i in 'dbghelp') { dlloverride 'native' $i }
+} <# end dbghelp #>
+
 
 function func_dcomp <# experimental... #>
 {
@@ -2820,7 +2832,6 @@ Function Set-WmiInstance( [string]$class, [hashtable]$arguments, [string]$comput
 }
 #>
 
-
 }
 
 function func_ping <# fake ping for when wine's ping fails due to permission issues  #>
@@ -3149,7 +3160,7 @@ function func_vs19
   #  7z x $env:TMP\\installer "-o$env:TMP\\opc" -y ;quit?('7z')
 
     <# hack to workaround hanging sh.exe (when cloning repository) , fixed in wine-9.21#>
-    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 9.21 ) {
+    if( [System.Convert]::ToDecimal( ($wine_version.Split("`0")[0] -replace '-rc','' ) ) -lt 9.21 ) {
 
         choco install busybox
     
@@ -3202,7 +3213,7 @@ function func_vs19
     New-Item  -Path "HKLM:\\Software\\Classes\\CLSID\\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}\\InprocServer32"
     New-ItemProperty -Path "HKLM:\\Software\\Classes\\CLSID\\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}\\InprocServer32" -Name "(Default)" -Value 'c:\windows\system32\es.dll' -PropertyType 'String' -force
 
-#    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 8.13 ) {
+#    if( [System.Convert]::ToDecimal( ($wine_version.Split("`0")[0] -replace '-rc','' ) ) -lt 8.13 ) {
 #        New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\DllOverrides' -Name 'combase' -Value 'native' -PropertyType 'String' -force }
 
     <# FIXME: frequently mpc are not written to registry (wine bug?), do it manually #>
@@ -3221,7 +3232,7 @@ function func_vs22
     func_wine_shell32
     func_wine_wintypes
     func_winmetadata
-    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 10.4 ) { Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show("!!!Upgrade to a more recent wine version!!!`r`n The wine version you use is too old.",'Message','ok','exclamation');}
+    if( [System.Convert]::ToDecimal( ($wine_version.Split("`0")[0] -replace '-rc','' ) ) -lt 10.4 ) { Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show("!!!Upgrade to a more recent wine version!!!`r`n The wine version you use is too old.",'Message','ok','exclamation');}
 
     winecfg /v win10
 
@@ -3233,7 +3244,7 @@ function func_vs22
 
   #  7z x $env:TMP\\installer "-o$env:TMP\\opc" -y ;quit?('7z')
 
-    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 9.21 ) {
+    if( [System.Convert]::ToDecimal( ($wine_version.Split("`0")[0] -replace '-rc','' ) ) -lt 9.21 ) {
     <# hack to workaround hanging sh.exe (when cloning repository) , fixed in wine-9.21#>
         choco install busybox
     
@@ -3319,7 +3330,7 @@ function func_vs22_interactive_installer
     func_wine_tdh
     #func_wine_wintypes
     #func_winmetadata
-    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 10.4 ) { Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show("!!!Upgrade to a more recent wine version!!!`r`n The wine version you use is too old.",'Message','ok','exclamation');}
+    if( [System.Convert]::ToDecimal( ($wine_version.Split("`0")[0] -replace '-rc','' ) ) -lt 10.4 ) { Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show("!!!Upgrade to a more recent wine version!!!`r`n The wine version you use is too old.",'Message','ok','exclamation');}
     
     restart_if_needed
 
@@ -3387,7 +3398,7 @@ function func_vs26_interactive_installer
     func_wine_shell32
     func_wine_tdh
     #func_wine_wintypes
-    if( [System.Convert]::ToDecimal( ($ntdll::wine_get_version() -replace '-rc','' ) ) -lt 10.4 ) { Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show("!!!Upgrade to a more recent wine version!!!`r`n The wine version you use is too old.",'Message','ok','exclamation');}
+    if( [System.Convert]::ToDecimal( ($wine_version.Split("`0")[0] -replace '-rc','' ) ) -lt 10.4 ) { Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show("!!!Upgrade to a more recent wine version!!!`r`n The wine version you use is too old.",'Message','ok','exclamation');}
 
     restart_if_needed
     func_nocrashdialog
@@ -3509,6 +3520,7 @@ function func_office365
 
 winecfg /v win10
 
+func_wine_combase
 func_riched20
 func_wine_sppc
 func_wine_d2d1
