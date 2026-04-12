@@ -301,22 +301,20 @@ if( !( (Get-FileHash C:\windows\system32\user32.dll).Hash -eq (Get-FileHash C:\C
      Copy-item $env:SystemDrive\windows\system32\user32.dll $env:SystemDrive\ConEmu\user32dummy.dll -force -erroraction silentlycontinue
 }
 
-<# get the wine-version from ntdll_unix_so so Staging's 'Hide wine version' won't interfere#>
-if ("$env:WINEBUILDDIR") {$ntdll_so =  $("$env:WINEBUILDDIR\\dlls\ntdll\ntdll.so").Substring(4)}
-else {$ntdll_so = ("$env:WINEDLLDIR0").Substring(4) + '\\x86_64-unix\\ntdll.so'}
+<# get the wine-version string (https://github.com/FuzzySecurity/PowerShell-Suite/blob/master/Get-SystemProcessInformation.ps1) #>
+$MethodDefinition0 = @"
+[DllImport("ntdll.dll")] public static extern int NtQuerySystemInformation(	int SystemInformationClass,	IntPtr SystemInformation, int SystemInformationLength, ref int ReturnLength);
+"@
+			
+$ntdll0 = Add-Type -MemberDefinition $MethodDefinition0 -Namespace '' -name 'ntdll0' -PassThru
 
-if (!([System.IO.File]::Exists("$env:SystemRoot\\system32\\ntdll_unix_so")) -or !( (Get-FileHash "$env:SystemRoot\\system32\\ntdll_unix_so").Hash -eq (Get-FileHash $ntdll_so).Hash) ) {
-    [System.IO.File]::Copy($ntdll_so, "$env:SystemRoot\\system32\\ntdll_unix_so", $true);
-    $null = iex  "& ""$env:ProgramFiles\\7-zip\\7z.exe"" x $ntdll_so "".rodata"" -o""$env:systemroot\\system32\\"" -y"
-    
-    $c = gc -AsByteStream "C:\windows\system32\.rodata" -Tail 200
-    $version = [System.Text.Encoding]::ASCII.GetString($c)
-    $substring = $version.Substring($version.IndexOf('ine-'))
-    [int]$i=0
-    while($substring[$i]) {$i++} 
-    'w' + $substring.SubString(0,$i) |Out-file "$env:systemroot\\system32\\wine_version.txt"
-    Remove-Variable c,i,version,substring -erroraction silentlycontinue
-} <# end get wine-version #>
+[int]$BuffPtr_Size = 256
+[IntPtr]$BuffPtr = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($BuffPtr_Size)
+$SystemInformationLength = New-Object Int
+$null = [ntdll0]::NtQuerySystemInformation(1000, $BuffPtr, $BuffPtr_Size, [ref]$SystemInformationLength)
+$wine_version = [System.Runtime.InteropServices.Marshal]::PtrToStringAnsi($BuffPtr,256)
+[System.Runtime.InteropServices.Marshal]::FreeHGlobal($BuffPtr)
+<# end get wine-version #>
 
 <# if powershell is started without args let's start conemu, but not if redirected or from pipe ( like 'powershell < a.ps1'  or '"echo hello" | powershell') #>
 $MethodDefinition = @"
@@ -375,7 +373,7 @@ if(($parent.processname -eq 'powershell') -and  ( $kernel32::GetCommandLineW() -
     Stop-process -id  ([System.Diagnostics.Process]::GetCurrentProcess()).Id
 }  <# end start ConEmu #>
 
-if($([System.Diagnostics.Process]::GetCurrentProcess().Parent.processname) -eq 'ConEmuC64' ) {Write-Host "";Write-Host -Foregroundcolor yellow Running Power Shell Core $PSVersionTable.PSVersion.ToString() on (gc -Encoding ascii C:\windows\system32\wine_version.txt); Write-Host "";[system.console]::ForegroundColor='white'}
+if($([System.Diagnostics.Process]::GetCurrentProcess().Parent.processname) -eq 'ConEmuC64' ) {Write-Host "";Write-Host -Foregroundcolor yellow Running Power Shell Core $PSVersionTable.PSVersion.ToString() on $wine_version.Split("`0",5)[1]"`nHost:" $wine_version.Split("`0",5)[2] $wine_version.Split("`0",5)[3]; Write-Host "";[system.console]::ForegroundColor='white'}
 
 #Easy access to the C# compiler
 Set-Alias csc c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
@@ -421,7 +419,7 @@ function winetricks {
 $path = $env:PSModulePath -split ';'
 $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -join ';'
 
-Remove-Variable ntdll_so,MethodDefinition2,MethodDefinition,ntdll,kernel32,info,io,j -erroraction silentlycontinue
+Remove-Variable ntdll_so,MethodDefinition2,MethodDefinition,MethodDefinition0,ntdll,ntdll0,kernel32,BuffPtr, BuffPtr_size,info,io,j -erroraction silentlycontinue
 
 '@ | Out-File ( New-Item -Path $env:ProgramData\\Chocolatey-for-wine\\profile_essentials.ps1 -Force)
 ################################################################################################################################ 
