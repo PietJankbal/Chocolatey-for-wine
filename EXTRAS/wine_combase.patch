@@ -1,5 +1,5 @@
 diff --git a/dlls/combase/combase.c b/dlls/combase/combase.c
-index 157528a90cf..2b8cdc2fca7 100644
+index 94e256f7cc1..2b8cdc2fca7 100644
 --- a/dlls/combase/combase.c
 +++ b/dlls/combase/combase.c
 @@ -1021,7 +1021,7 @@ HRESULT WINAPI CoSetProxyBlanket(IUnknown *proxy, DWORD authn_service, DWORD aut
@@ -11,7 +11,7 @@ index 157528a90cf..2b8cdc2fca7 100644
      return hr;
  }
  
-@@ -3487,12 +3490,41 @@ HRESULT WINAPI CoEnableCallCancellation(void *reserved)
+@@ -3490,12 +3490,41 @@ HRESULT WINAPI CoEnableCallCancellation(void *reserved)
  }
  
  /***********************************************************************
@@ -79,8 +79,11 @@ index 6e3d35ce580..371b5c2da70 100644
  }
  
  static HRESULT WINAPI ProxyCliSec_CopyProxy(IClientSecurity *iface,
-
-@@ -212,10 +256,15 @@ HRESULT WINAPI RoGetParameterizedTypeInstanceIID(UINT32 name_element_count, cons
+diff --git a/dlls/combase/roapi.c b/dlls/combase/roapi.c
+index f4f7c0aac26..c0335c51292 100644
+--- a/dlls/combase/roapi.c
++++ b/dlls/combase/roapi.c
+@@ -212,10 +212,15 @@ HRESULT WINAPI RoGetParameterizedTypeInstanceIID(UINT32 name_element_count, cons
                                                   const IRoMetaDataLocator *meta_data_locator, GUID *iid,
                                                   ROPARAMIIDHANDLE *hiid)
  {
