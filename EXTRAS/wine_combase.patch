@@ -1,8 +1,8 @@
 diff --git a/dlls/combase/combase.c b/dlls/combase/combase.c
-index a627d4779ec..23c572ce188 100644
+index 157528a90cf..2b8cdc2fca7 100644
 --- a/dlls/combase/combase.c
 +++ b/dlls/combase/combase.c
-@@ -1027,7 +1027,7 @@ HRESULT WINAPI CoQueryProxyBlanket(IUnknown *proxy, DWORD *authn_service,
+@@ -1021,7 +1021,7 @@ HRESULT WINAPI CoSetProxyBlanket(IUnknown *proxy, DWORD authn_service, DWORD aut
          IClientSecurity_Release(client_security);
      }
  
@@ -11,38 +11,57 @@ index a627d4779ec..23c572ce188 100644
      return hr;
  }
  
-@@ -2590,7 +2590,7 @@ static ULONG WINAPI thread_context_callback_Release(IContextCallback *iface)
- static HRESULT WINAPI thread_context_callback_ContextCallback(IContextCallback *iface,
-         PFNCONTEXTCALL callback, ComCallData *param, REFIID riid, int method, IUnknown *punk)
- {
--    FIXME("%p, %p, %p, %s, %d, %p\n", iface, callback, param, debugstr_guid(riid), method, punk);
-+    TRACE("%p, %p, %p, %s, %d, %p\n", iface, callback, param, debugstr_guid(riid), method, punk);
- 
-     return E_NOTIMPL;
+@@ -3487,12 +3490,41 @@ HRESULT WINAPI CoEnableCallCancellation(void *reserved)
  }
-@@ -3362,7 +3362,7 @@ HRESULT WINAPI CoEnableCallCancellation(void *reserved)
+ 
+ /***********************************************************************
+- *           CoGetCallerTID    (combase.@)
++ *              CoGetCallerTID        [OLE32.@]
   */
- HRESULT WINAPI CoGetCallerTID(DWORD *tid)
+-HRESULT WINAPI CoGetCallerTID(DWORD *tid)
++HRESULT WINAPI CoGetCallerTID(DWORD *threadid)
  {
 -    FIXME("stub!\n");
-+    TRACE("stub!\n");
-     return E_NOTIMPL;
- }
- 
-@@ -3432,7 +3432,7 @@ HRESULT WINAPI CoRegisterActivationFilter(IActivationFilter *filter)
- {
-     FIXME("%p stub\n", filter);
- 
 -    return E_NOTIMPL;
-+    return 0;
++  /*
++  Receives the apartment ID of the caller's thread.
++
++  For a single threaded apartment (STA), this is the current thread ID.
++  For a multithreaded apartment (MTA), the value is 0.
++  For a neutral apartment (NA), the value is -1.
++
++S_TRUE   - The caller's thread ID is set and the caller is in the same process.
++
++S_FALSE  -  The caller's thread ID is set and the caller is in a different process.
++
++   */
++    struct apartment *apt;
++
++    TRACE("%p\n", threadid);
++
++    apt = apartment_get_current_or_mta();
++    if (!apt)
++    {
++        *threadid = -1;
++    }
++    else
++    {
++        if(!apt->multi_threaded)
++            *threadid = apt->tid;
++        else
++            *threadid = 0;
++    }
++
++
++  return TRUE;
  }
  
  /***********************************************************************
 diff --git a/dlls/combase/marshal.c b/dlls/combase/marshal.c
-index f638604f5a3..f49325297f0 100644
+index 6e3d35ce580..371b5c2da70 100644
 --- a/dlls/combase/marshal.c
 +++ b/dlls/combase/marshal.c
-@@ -1388,7 +1388,7 @@ static HRESULT WINAPI ProxyCliSec_QueryBlanket(IClientSecurity *iface,
+@@ -1380,7 +1380,7 @@ static HRESULT WINAPI ProxyCliSec_QueryBlanket(IClientSecurity *iface,
      if (pCapabilities)
          *pCapabilities = EOAC_NONE;
  
@@ -51,7 +70,7 @@ index f638604f5a3..f49325297f0 100644
  }
  
  static HRESULT WINAPI ProxyCliSec_SetBlanket(IClientSecurity *iface,
-@@ -1402,7 +1402,7 @@ static HRESULT WINAPI ProxyCliSec_SetBlanket(IClientSecurity *iface,
+@@ -1394,7 +1394,7 @@ static HRESULT WINAPI ProxyCliSec_SetBlanket(IClientSecurity *iface,
      FIXME("%p, %ld, %ld, %s, %ld, %ld, %p, %#lx: stub\n", pProxy, AuthnSvc, AuthzSvc,
            pServerPrincName == COLE_DEFAULT_PRINCIPAL ? "<default principal>" : debugstr_w(pServerPrincName),
            AuthnLevel, ImpLevel, pAuthInfo, Capabilities);
@@ -60,65 +79,7 @@ index f638604f5a3..f49325297f0 100644
  }
  
  static HRESULT WINAPI ProxyCliSec_CopyProxy(IClientSecurity *iface,
-diff --git a/dlls/combase/roapi.c b/dlls/combase/roapi.c
-index f4f7c0aac26..672fda1bf41 100644
---- a/dlls/combase/roapi.c
-+++ b/dlls/combase/roapi.c
-@@ -163,8 +163,52 @@ HRESULT WINAPI DECLSPEC_HOTPATCH RoGetActivationFactory(HSTRING classid, REFIID
-     hr = get_library_for_classid(WindowsGetStringRawBuffer(classid, NULL), &library);
-     if (FAILED(hr))
-     {
--        ERR("Failed to find library for %s\n", debugstr_hstring(classid));
--        return hr;
-+        ERR("Failed to find library for %s,trying again with some dummy dll;\n", debugstr_hstring(classid));
-+        
-+        static const struct
-+        {
-+            const WCHAR *reg_entry;
-+            const WCHAR *dll;
-+        }
-+        a[] =
-+        {
-+            {L"Windows.Foundation.Diagnostics.AsyncCausalityTracer", L"c:\\windows\\system32\\combase.dll"},
-+            {L"Windows.UI.Xaml.Application", L"c:\\windows\\system32\\Windows.UI.Xaml.dll"},
-+            {L"Windows.UI.Xaml.Hosting.WindowsXamlManager", L"c:\\windows\\system32\\Windows.UI.Xaml.dll"},
-+            {L"Windows.Storage.Streams.DataWriter", L"c:\\windows\\system32\\wintypes.dll"},
-+        };
-+        
-+        int i;
-+        HKEY hkey_main=0;
-+        WCHAR buf[MAX_PATH] = L"";
-+        BOOL found = FALSE;
-+        
-+       for(i=0; i<ARRAY_SIZE(a);i++) {
-+           if(!wcsicmp(a[i].reg_entry, WindowsGetStringRawBuffer(classid, NULL)) ) {
-+			   
-+			   found = TRUE;
-+			   FIXME("Trying to load a dummy dll for %ls, expect problems; Consider copying a native %ls to sysdirs, maybe you're lucky...\n", a[i].dll, a[i].dll);
-+			   
-+               buf[0] = 0;
-+               RegCreateKeyExW( HKEY_LOCAL_MACHINE, wcscat(wcscat(buf, L"Software\\Microsoft\\WindowsRuntime\\ActivatableClassId\\"), WindowsGetStringRawBuffer(classid, NULL) ), 0, 0, 0, KEY_READ|KEY_WRITE|KEY_WOW64_64KEY, 0, &hkey_main,0 );
-+               RegSetValueExW(hkey_main, L"DllPath", 0, REG_SZ, (BYTE *)a[i].dll, (lstrlenW(a[i].dll) + 1) * sizeof(WCHAR));
-+               RegCloseKey(hkey_main);
-+               
-+               buf[0] = 0; hkey_main=0;
-+               RegCreateKeyExW( HKEY_LOCAL_MACHINE, wcscat(wcscat(buf, L"Software\\Microsoft\\WindowsRuntime\\ActivatableClassId\\"), WindowsGetStringRawBuffer(classid, NULL) ), 0, 0, 0, KEY_READ|KEY_WRITE|KEY_WOW64_32KEY, 0, &hkey_main,0 );
-+               RegSetValueExW(hkey_main, L"DllPath", 0, REG_SZ, (BYTE *)a[i].dll, (lstrlenW(a[i].dll) + 1) * sizeof(WCHAR));
-+               RegCloseKey(hkey_main);    
-+               
-+               buf[0] = 0;
-+               CopyFileW(L"c:\\windows\\system32\\windows.ui.dll", a[i].dll, TRUE);
-+               CopyFileW(L"c:\\windows\\syswow64\\windows.ui.dll",wcscat( wcscat(buf, L"c:\\windows\\syswow64"), wcsrchr(a[i].dll,L'\\') ), TRUE);
-+
-+               // try again
-+               hr = get_library_for_classid(WindowsGetStringRawBuffer(classid, NULL), &library);
-+           }
-+        }
-+    if(!found) ERR("No idea what dll to load for classid %ls; patch me with correct entries  \n", WindowsGetStringRawBuffer(classid, NULL));
-+    if (FAILED(hr)) {ERR("Failed to find library for %ls\n", WindowsGetStringRawBuffer(classid, NULL)); return hr;}
-     }
- 
-     if (!(module = LoadLibraryW(library)))
+
 @@ -212,10 +256,15 @@ HRESULT WINAPI RoGetParameterizedTypeInstanceIID(UINT32 name_element_count, cons
                                                   const IRoMetaDataLocator *meta_data_locator, GUID *iid,
                                                   ROPARAMIIDHANDLE *hiid)
