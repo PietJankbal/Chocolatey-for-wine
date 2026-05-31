@@ -1,0 +1,1065 @@
+diff --git a/dlls/es/Makefile.in b/dlls/es/Makefile.in
+new file mode 100644
+index 00000000000..c4f389c8147
+--- /dev/null
++++ b/dlls/es/Makefile.in
+@@ -0,0 +1,8 @@
++MODULE    = es.dll
++IMPORTS   = uuid ole32 advapi32
++
++SOURCES = \
++	main.c \
++	subscription \
++	system \
++	es_tlb.idl
+diff --git a/dlls/es/es.spec b/dlls/es/es.spec
+new file mode 100644
+index 00000000000..b9f752bcca8
+--- /dev/null
++++ b/dlls/es/es.spec
+@@ -0,0 +1,7 @@
++@ stub SvchostPushServiceGlobals
++@ stdcall -private DllCanUnloadNow()
++@ stdcall -private DllGetClassObject(ptr ptr ptr)
++@ stub LCEControlServer
++@ stub NotifyLogoffUser
++@ stub NotifyLogonUser
++@ stub ServiceMain
+diff --git a/dlls/es/es_private.h b/dlls/es/es_private.h
+new file mode 100644
+index 00000000000..c00e03f8eb9
+--- /dev/null
++++ b/dlls/es/es_private.h
+@@ -0,0 +1,20 @@
++/*
++ * Copyright 2008 Hans Leidekker for CodeWeavers
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
++ */
++
++extern HRESULT EventSubscription_create( LPVOID *ppObj );
++extern HRESULT EventSystem_create( LPVOID *ppObj );
+diff --git a/dlls/es/es_tlb.idl b/dlls/es/es_tlb.idl
+new file mode 100644
+index 00000000000..e98b1a35b16
+--- /dev/null
++++ b/dlls/es/es_tlb.idl
+@@ -0,0 +1,23 @@
++/*
++ * Typelib for wuapi
++ *
++ * Copyright 2010 Alexandre Julliard
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
++ */
++
++#pragma makedep regtypelib
++
++#include "eventsys.idl"
+diff --git a/dlls/es/main.c b/dlls/es/main.c
+new file mode 100644
+index 00000000000..bb5ba000328
+--- /dev/null
++++ b/dlls/es/main.c
+@@ -0,0 +1,135 @@
++/*
++ * WUAPI implementation
++ *
++ * Copyright 2008 Hans Leidekker
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
++ */
++
++
++#include "initguid.h"
++
++#define COBJMACROS
++
++#include <stdarg.h>
++
++#include "windef.h"
++#include "winbase.h"
++#include "winuser.h"
++#include "ole2.h"
++#include "rpcproxy.h"
++#include "eventsys.h"
++
++#include "wine/debug.h"
++#include "es_private.h"
++
++
++
++WINE_DEFAULT_DEBUG_CHANNEL(es);
++
++typedef HRESULT (*fnCreateInstance)( LPVOID *ppObj );
++
++typedef struct _escf
++{
++    IClassFactory IClassFactory_iface;
++    fnCreateInstance pfnCreateInstance;
++} escf;
++
++static inline escf *impl_from_IClassFactory( IClassFactory *iface )
++{
++    return CONTAINING_RECORD(iface, escf, IClassFactory_iface);
++}
++
++static HRESULT WINAPI escf_QueryInterface( IClassFactory *iface, REFIID riid, LPVOID *ppobj )
++{
++    if (IsEqualGUID(riid, &IID_IUnknown) ||
++        IsEqualGUID(riid, &IID_IClassFactory))
++    {
++        IClassFactory_AddRef( iface );
++        *ppobj = iface;
++        return S_OK;
++    }
++    FIXME("interface %s not implemented\n", debugstr_guid(riid));
++    return E_NOINTERFACE;
++}
++
++static ULONG WINAPI escf_AddRef( IClassFactory *iface )
++{
++    return 2;
++}
++
++static ULONG WINAPI escf_Release( IClassFactory *iface )
++{
++    return 1;
++}
++
++static HRESULT WINAPI escf_CreateInstance( IClassFactory *iface, LPUNKNOWN pOuter,
++                                           REFIID riid, LPVOID *ppobj )
++{
++    escf *This = impl_from_IClassFactory( iface );
++    HRESULT r;
++    IUnknown *punk;
++
++    TRACE("%p %s %p\n", pOuter, debugstr_guid(riid), ppobj);
++
++    *ppobj = NULL;
++
++    if (pOuter)
++        return CLASS_E_NOAGGREGATION;
++
++    r = This->pfnCreateInstance( (LPVOID *)&punk );
++    if (FAILED(r))
++        return r;
++
++    r = IUnknown_QueryInterface( punk, riid, ppobj );
++    IUnknown_Release( punk );
++    return r;
++}
++
++static HRESULT WINAPI escf_LockServer( IClassFactory *iface, BOOL dolock )
++{
++    FIXME("(%p)->(%d)\n", iface, dolock);
++    return S_OK;
++}
++
++static const struct IClassFactoryVtbl escf_vtbl =
++{
++    escf_QueryInterface,
++    escf_AddRef,
++    escf_Release,
++    escf_CreateInstance,
++    escf_LockServer
++};
++
++static escf subscriptioncf = { { &escf_vtbl }, EventSubscription_create };
++static escf systemcf = { { &escf_vtbl }, EventSystem_create };
++
++HRESULT WINAPI DllGetClassObject( REFCLSID rclsid, REFIID iid, LPVOID *ppv )
++{
++    IClassFactory *cf = NULL;
++
++    TRACE("%s %s %p\n", debugstr_guid(rclsid), debugstr_guid(iid), ppv);
++
++    if (IsEqualGUID( rclsid, &CLSID_CEventSubscription ))
++    {
++       cf = &subscriptioncf.IClassFactory_iface;
++    }
++    else if (IsEqualGUID( rclsid, &CLSID_CEventSystem ))
++    {
++       cf = &systemcf.IClassFactory_iface;
++    }
++    if (!cf) return CLASS_E_CLASSNOTAVAILABLE;
++    return IClassFactory_QueryInterface( cf, iid, ppv );
++}
+diff --git a/dlls/es/subscription.c b/dlls/es/subscription.c
+new file mode 100644
+index 00000000000..99aca6e5329
+--- /dev/null
++++ b/dlls/es/subscription.c
+@@ -0,0 +1,341 @@
++/*
++ * IEventSubscription implementation
++ *
++ * Copyright 2008 Hans Leidekker
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
++ */
++
++
++
++#define COBJMACROS
++
++#include <stdarg.h>
++
++#include "windef.h"
++#include "winbase.h"
++#include "winuser.h"
++#include "ole2.h"
++#include "eventsys.h"
++#include "es_private.h"
++
++#include "wine/debug.h"
++
++WINE_DEFAULT_DEBUG_CHANNEL(es);
++
++typedef struct _event_subscription
++{
++    IEventSubscription IEventSubscription_iface;
++    LONG refs;
++} event_subscription;
++
++static inline event_subscription *impl_from_IEventSubscription( IEventSubscription *iface )
++{
++    return CONTAINING_RECORD(iface, event_subscription, IEventSubscription_iface);
++}
++
++static ULONG WINAPI event_subscription_AddRef(
++    IEventSubscription *iface )
++{
++    event_subscription *event_subscription = impl_from_IEventSubscription( iface );
++    return InterlockedIncrement( &event_subscription->refs );
++}
++
++static ULONG WINAPI event_subscription_Release(
++    IEventSubscription *iface )
++{
++    event_subscription *event_subscription = impl_from_IEventSubscription( iface );
++    LONG refs = InterlockedDecrement( &event_subscription->refs );
++    if (!refs)
++    {
++        TRACE("destroying %p\n", event_subscription);
++        HeapFree( GetProcessHeap(), 0, event_subscription );
++    }
++    return refs;
++}
++
++static HRESULT WINAPI event_subscription_QueryInterface(
++    IEventSubscription *iface,
++    REFIID riid,
++    void **ppvObject )
++{
++    event_subscription *This = impl_from_IEventSubscription( iface );
++
++    TRACE("%p %s %p\n", This, debugstr_guid( riid ), ppvObject );
++
++    if ( IsEqualGUID( riid, &IID_IEventSubscription ) ||
++         IsEqualGUID( riid, &IID_IDispatch ) ||
++         IsEqualGUID( riid, &IID_IUnknown ) )
++    {
++        *ppvObject = iface;
++    }
++    else
++    {
++        FIXME("interface %s not implemented\n", debugstr_guid(riid));
++        return E_NOINTERFACE;
++    }
++    IEventSubscription_AddRef( iface );
++    return S_OK;
++}
++
++static HRESULT WINAPI event_subscription_GetTypeInfoCount(
++    IEventSubscription *iface,
++    UINT *pctinfo )
++{
++    FIXME("\n");
++    return E_NOTIMPL;
++}
++
++static HRESULT WINAPI event_subscription_GetTypeInfo(
++    IEventSubscription *iface,
++    UINT iTInfo,
++    LCID lcid,
++    ITypeInfo **ppTInfo )
++{
++    FIXME("\n");
++    return E_NOTIMPL;
++}
++
++static HRESULT WINAPI event_subscription_GetIDsOfNames(
++    IEventSubscription *iface,
++    REFIID riid,
++    LPOLESTR *rgszNames,
++    UINT cNames,
++    LCID lcid,
++    DISPID *rgDispId )
++{
++    FIXME("\n");
++    return E_NOTIMPL;
++}
++
++static HRESULT WINAPI event_subscription_Invoke(
++    IEventSubscription *iface,
++    DISPID dispIdMember,
++    REFIID riid,
++    LCID lcid,
++    WORD wFlags,
++    DISPPARAMS *pDispParams,
++    VARIANT *pVarResult,
++    EXCEPINFO *pExcepInfo,
++    UINT *puArgErr )
++{
++    FIXME("\n");
++    return E_NOTIMPL;
++}
++
++   /*** IEventSubscription methods ***/
++    static HRESULT WINAPI event_subscription_get_SubscriptionID(
++        IEventSubscription *This,
++        BSTR *pbstrSubscriptionID){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_put_SubscriptionID(
++        IEventSubscription *This,
++        BSTR bstrSubscriptionID){FIXME("\n");return 0;}
++
++    static HRESULT WINAPI event_subscription_get_SubscriptionName(
++        IEventSubscription *This,
++        BSTR *pbstrSubscriptionName){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_put_SubscriptionName(
++        IEventSubscription *This,
++        BSTR bstrSubscriptionName){FIXME("\n");return 0;}
++
++    static HRESULT WINAPI event_subscription_get_PublisherID(
++        IEventSubscription *This,
++        BSTR *pbstrPublisherID){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_put_PublisherID(
++        IEventSubscription *This,
++        BSTR bstrPublisherID){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_get_EventClassID(
++        IEventSubscription *This,
++        BSTR *pbstrEventClassID){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_put_EventClassID(
++        IEventSubscription *This,
++        BSTR bstrEventClassID){FIXME("\n");return 0;}
++
++    static HRESULT WINAPI event_subscription_get_MethodName(
++        IEventSubscription *This,
++        BSTR *pbstrMethodName){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_put_MethodName(
++        IEventSubscription *This,
++        BSTR bstrMethodName){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_get_SubscriberCLSID(
++        IEventSubscription *This,
++        BSTR *pbstrSubscriberCLSID){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_put_SubscriberCLSID(
++        IEventSubscription *This,
++        BSTR bstrSubscriberCLSID){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_get_SubscriberInterface(
++        IEventSubscription *This,
++        IUnknown **ppSubscriberInterface){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_put_SubscriberInterface(
++        IEventSubscription *This,
++        IUnknown *pSubscriberInterface){FIXME("\n");return 0;}
++
++    static HRESULT WINAPI event_subscription_get_PerUser(
++        IEventSubscription *This,
++        BOOL *pfPerUser){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_put_PerUser(
++        IEventSubscription *This,
++        BOOL fPerUser){FIXME("\n");return 0;}
++
++    static HRESULT WINAPI event_subscription_get_OwnerSID(
++        IEventSubscription *This,
++        BSTR *pbstrOwnerSID){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_put_OwnerSID(
++        IEventSubscription *This,
++        BSTR bstrOwnerSID){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_get_Enabled(
++        IEventSubscription *This,
++        BOOL *pfEnabled){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_put_Enabled(
++        IEventSubscription *This,
++        BOOL fEnabled){FIXME("\n");return 0;}
++
++    static HRESULT WINAPI event_subscription_get_Description(
++        IEventSubscription *This,
++        BSTR *pbstrDescription){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_put_Description(
++        IEventSubscription *This,
++        BSTR bstrDescription){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_get_MachineName(
++        IEventSubscription *This,
++        BSTR *pbstrMachineName){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_put_MachineName(
++        IEventSubscription *This,
++        BSTR bstrMachineName){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_GetPublisherProperty(
++        IEventSubscription *This,
++        BSTR bstrPropertyName,
++        VARIANT *propertyValue){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_PutPublisherProperty(
++        IEventSubscription *This,
++        BSTR bstrPropertyName,
++        VARIANT *propertyValue){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_RemovePublisherProperty(
++        IEventSubscription *This,
++        BSTR bstrPropertyName){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_GetPublisherPropertyCollection(
++        IEventSubscription *This,
++        IEventObjectCollection **collection){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_GetSubscriberProperty(
++        IEventSubscription *This,
++        BSTR bstrPropertyName,
++        VARIANT *propertyValue){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_PutSubscriberProperty(
++        IEventSubscription *This,
++        BSTR bstrPropertyName,
++        VARIANT *propertyValue){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_RemoveSubscriberProperty(
++        IEventSubscription *This,
++        BSTR bstrPropertyName){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_GetSubscriberPropertyCollection(
++        IEventSubscription *This,
++        IEventObjectCollection **collection){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_get_InterfaceID(
++        IEventSubscription *This,
++        BSTR *pbstrInterfaceID){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_subscription_put_InterfaceID(
++        IEventSubscription *This,
++        BSTR bstrInterfaceID){FIXME("\n");return 0;}
++
++static const struct IEventSubscriptionVtbl event_subscription_vtbl =
++{
++    event_subscription_QueryInterface,
++    event_subscription_AddRef,
++    event_subscription_Release,
++    event_subscription_GetTypeInfoCount,
++    event_subscription_GetTypeInfo,
++    event_subscription_GetIDsOfNames,
++    event_subscription_Invoke,
++    /*** IEventSubscription methods ***/
++    event_subscription_get_SubscriptionID,
++    event_subscription_put_SubscriptionID,
++    event_subscription_get_SubscriptionName,
++    event_subscription_put_SubscriptionName,
++    event_subscription_get_PublisherID,
++    event_subscription_put_PublisherID,
++    event_subscription_get_EventClassID,
++    event_subscription_put_EventClassID,
++    event_subscription_get_MethodName,
++    event_subscription_put_MethodName,
++    event_subscription_get_SubscriberCLSID,
++    event_subscription_put_SubscriberCLSID,
++    event_subscription_get_SubscriberInterface,
++    event_subscription_put_SubscriberInterface,
++    event_subscription_get_PerUser,
++    event_subscription_put_PerUser,
++    event_subscription_get_OwnerSID,
++    event_subscription_put_OwnerSID,
++    event_subscription_get_Enabled,
++    event_subscription_put_Enabled,
++    event_subscription_get_Description,
++    event_subscription_put_Description,
++    event_subscription_get_MachineName,
++    event_subscription_put_MachineName,
++    event_subscription_GetPublisherProperty,
++    event_subscription_PutPublisherProperty,
++    event_subscription_RemovePublisherProperty,
++    event_subscription_GetPublisherPropertyCollection,
++    event_subscription_GetSubscriberProperty,
++    event_subscription_PutSubscriberProperty,
++    event_subscription_RemoveSubscriberProperty,
++    event_subscription_GetSubscriberPropertyCollection,
++    event_subscription_get_InterfaceID,
++    event_subscription_put_InterfaceID
++};
++
++HRESULT EventSubscription_create( LPVOID *ppObj )
++{
++    event_subscription *subscription;
++
++    TRACE("(%p)\n", ppObj);
++
++    subscription = HeapAlloc( GetProcessHeap(), 0, sizeof(*subscription) );
++    if (!subscription) return E_OUTOFMEMORY;
++
++    subscription->IEventSubscription_iface.lpVtbl = &event_subscription_vtbl;
++    subscription->refs = 1;
++
++    *ppObj = &subscription->IEventSubscription_iface;
++
++    TRACE("returning iface %p\n", *ppObj);
++    return S_OK;
++}
+diff --git a/dlls/es/system.c b/dlls/es/system.c
+new file mode 100644
+index 00000000000..8b509b47c47
+--- /dev/null
++++ b/dlls/es/system.c
+@@ -0,0 +1,204 @@
++/*
++ * IEventSystem implementation
++ *
++ * Copyright 2008 Hans Leidekker
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
++ */
++
++#define COBJMACROS
++
++#include <stdarg.h>
++
++#include "windef.h"
++#include "winbase.h"
++#include "winuser.h"
++#include "ole2.h"
++#include "eventsys.h"
++#include "es_private.h"
++
++#include "wine/debug.h"
++
++WINE_DEFAULT_DEBUG_CHANNEL(es);
++
++typedef struct _event_system
++{
++    IEventSystem IEventSystem_iface;
++    LONG refs;
++} event_system;
++
++static inline event_system *impl_from_IEventSystem( IEventSystem *iface )
++{
++    return CONTAINING_RECORD(iface, event_system, IEventSystem_iface);
++}
++
++static ULONG WINAPI event_system_AddRef(
++    IEventSystem *iface )
++{
++    event_system *event_system = impl_from_IEventSystem( iface );
++    return InterlockedIncrement( &event_system->refs );
++}
++
++static ULONG WINAPI event_system_Release(
++    IEventSystem *iface )
++{
++    event_system *event_system = impl_from_IEventSystem( iface );
++    LONG refs = InterlockedDecrement( &event_system->refs );
++    if (!refs)
++    {
++        TRACE("destroying %p\n", event_system);
++        HeapFree( GetProcessHeap(), 0, event_system );
++    }
++    return refs;
++}
++
++static HRESULT WINAPI event_system_QueryInterface(
++    IEventSystem *iface,
++    REFIID riid,
++    void **ppvObject )
++{
++    event_system *This = impl_from_IEventSystem( iface );
++
++    TRACE("%p %s %p\n", This, debugstr_guid( riid ), ppvObject );
++
++    if ( IsEqualGUID( riid, &IID_IEventSystem ) ||
++         IsEqualGUID( riid, &IID_IDispatch ) ||
++         IsEqualGUID( riid, &IID_IUnknown ) )
++    {
++        *ppvObject = iface;
++    }
++    else
++    {
++        FIXME("interface %s not implemented\n", debugstr_guid(riid));
++        return E_NOINTERFACE;
++    }
++    IEventSystem_AddRef( iface );
++    return S_OK;
++}
++
++static HRESULT WINAPI event_system_GetTypeInfoCount(
++    IEventSystem *iface,
++    UINT *pctinfo )
++{
++    FIXME("\n");
++    return E_NOTIMPL;
++}
++
++static HRESULT WINAPI event_system_GetTypeInfo(
++    IEventSystem *iface,
++    UINT iTInfo,
++    LCID lcid,
++    ITypeInfo **ppTInfo )
++{
++    FIXME("\n");
++    return E_NOTIMPL;
++}
++
++static HRESULT WINAPI event_system_GetIDsOfNames(
++    IEventSystem *iface,
++    REFIID riid,
++    LPOLESTR *rgszNames,
++    UINT cNames,
++    LCID lcid,
++    DISPID *rgDispId )
++{
++    FIXME("\n");
++    return E_NOTIMPL;
++}
++
++static HRESULT WINAPI event_system_Invoke(
++    IEventSystem *iface,
++    DISPID dispIdMember,
++    REFIID riid,
++    LCID lcid,
++    WORD wFlags,
++    DISPPARAMS *pDispParams,
++    VARIANT *pVarResult,
++    EXCEPINFO *pExcepInfo,
++    UINT *puArgErr )
++{
++    FIXME("\n");
++    return E_NOTIMPL;
++}
++
++    /*** IEventSystem methods ***/
++    static HRESULT WINAPI event_system_Query(
++        IEventSystem *This,
++        BSTR progID,
++        BSTR queryCriteria,
++        int *errorIndex,
++        IUnknown **ppInterface){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_system_Store(
++        IEventSystem *This,
++        BSTR ProgID,
++        IUnknown *pInterface){FIXME("\n");return 0;}
++
++    static HRESULT WINAPI event_system_Remove(
++        IEventSystem *This,
++        BSTR progID,
++        BSTR queryCriteria,
++        int *errorIndex){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_system_get_EventObjectChangeEventClassID(
++        IEventSystem *This,
++        BSTR *pbstrEventClassID){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_system_QueryS(
++        IEventSystem *This,
++        BSTR progID,
++        BSTR queryCriteria,
++        IUnknown **ppInterface){FIXME("\n");return E_NOTIMPL;}
++
++    static HRESULT WINAPI event_system_RemoveS(
++        IEventSystem *This,
++        BSTR progID,
++        BSTR queryCriteria){FIXME("\n");return E_NOTIMPL;}
++
++static const struct IEventSystemVtbl event_system_vtbl =
++{
++    event_system_QueryInterface,
++    event_system_AddRef,
++    event_system_Release,
++    event_system_GetTypeInfoCount,
++    event_system_GetTypeInfo,
++    event_system_GetIDsOfNames,
++    event_system_Invoke,
++    /*** IEventSystem methods ***/
++    event_system_Query,
++    event_system_Store,
++    event_system_Remove,
++    event_system_get_EventObjectChangeEventClassID,
++    event_system_QueryS,
++    event_system_RemoveS
++};
++
++HRESULT EventSystem_create( LPVOID *ppObj )
++{
++    event_system *system;
++
++    TRACE("(%p)\n", ppObj);
++
++    system = HeapAlloc( GetProcessHeap(), 0, sizeof(*system) );
++    if (!system) return E_OUTOFMEMORY;
++
++    system->IEventSystem_iface.lpVtbl = &event_system_vtbl;
++    system->refs = 1;
++
++    *ppObj = &system->IEventSystem_iface;
++
++    TRACE("returning iface %p\n", *ppObj);
++    return S_OK;
++}
+diff --git a/include/eventsys.idl b/include/eventsys.idl
+new file mode 100644
+index 00000000000..8c83c8aa384
+--- /dev/null
++++ b/include/eventsys.idl
+@@ -0,0 +1,279 @@
++/*
++ * Copyright 2008 Hans Leidekker for CodeWeavers
++ *
++ * This library is free software; you can redistribute it and/or
++ * modify it under the terms of the GNU Lesser General Public
++ * License as published by the Free Software Foundation; either
++ * version 2.1 of the License, or (at your option) any later version.
++ *
++ * This library is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * Lesser General Public License for more details.
++ *
++ * You should have received a copy of the GNU Lesser General Public
++ * License along with this library; if not, write to the Free Software
++ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
++ */
++
++import "oaidl.idl";
++
++[
++    object,
++    uuid(F4A07D63-2E25-11D1-9964-00C04FBBB345),
++    helpstring("IEnumEventObject Interface"),
++    pointer_default(unique)
++]
++interface IEnumEventObject : IUnknown
++{
++    [id(1), helpstring("method Clone")]
++    HRESULT Clone([out] IEnumEventObject **ppInterface);
++
++    [id(3), helpstring("method Next")]
++    HRESULT Next(
++        [in] ULONG cReqElem,
++        [out, size_is(cReqElem), length_is(*cRetElem)] IUnknown **ppInterface,
++        [out] ULONG *cRetElem
++    );
++
++    [id(4), helpstring("method Reset")]
++    HRESULT Reset();
++
++    [id(5), helpstring("method Skip")]
++    HRESULT Skip([in] ULONG cSkipElem);
++};
++
++[
++    object,
++    uuid(f89ac270-d4eb-11d1-b682-00805fc79216),
++    dual,
++    proxy,
++    helpstring("IEventObjectCollection Interface"),
++    pointer_default(unique)
++]
++interface IEventObjectCollection : IDispatch
++{
++    [id(DISPID_NEWENUM), propget, restricted, helpstring("Create new IEnumVARIANT")]
++    HRESULT _NewEnum([out, retval] IUnknown **ppUnkEnum);
++
++    [id(DISPID_VALUE), propget]
++    HRESULT Item([in] BSTR objectID, [out, retval] VARIANT *pItem);
++
++    [id(1), propget, helpstring("Create new IEnumEventObject")]
++    HRESULT NewEnum([out, retval] IEnumEventObject **ppEnum);
++
++    [id(2), propget, helpstring("Number of items in the collection")]
++    HRESULT Count([out, retval] long *pCount);
++
++    [id(3), helpstring("Add an item to the collection")]
++    HRESULT Add([in] VARIANT *item, [in] BSTR objectID);
++
++    [id(4), helpstring("Remove an item from the collection")]
++    HRESULT Remove([in] BSTR objectID);
++};
++
++[
++    object,
++    uuid(4A6B0E15-2E38-11D1-9965-00C04FBBB345),
++    dual,
++    proxy,
++    helpstring("IEventSubscription Interface"),
++    pointer_default(unique)
++]
++interface IEventSubscription : IDispatch
++{
++    [propget, id(1), helpstring("property SubscriptionID")]
++    HRESULT SubscriptionID([out, retval] BSTR *pbstrSubscriptionID);
++
++    [propput, id(1), helpstring("property SubscriptionID")]
++    HRESULT SubscriptionID([in] BSTR bstrSubscriptionID);
++
++    [propget, id(2), helpstring("property SubscriptionName")]
++    HRESULT SubscriptionName([out, retval] BSTR *pbstrSubscriptionName);
++
++    [propput, id(2), helpstring("property SubscriptionName")]
++    HRESULT SubscriptionName([in] BSTR bstrSubscriptionName);
++
++    [propget, id(3), helpstring("property PublisherID")]
++    HRESULT PublisherID([out, retval] BSTR *pbstrPublisherID);
++
++    [propput, id(3), helpstring("property PublisherID")]
++    HRESULT PublisherID([in] BSTR bstrPublisherID);
++
++    [propget, id(4), helpstring("property EventClassID")]
++    HRESULT EventClassID([out, retval] BSTR *pbstrEventClassID);
++
++    [propput, id(4), helpstring("property EventClassID")]
++    HRESULT EventClassID([in] BSTR bstrEventClassID);
++
++    [propget, id(5), helpstring("property MethodName")]
++    HRESULT MethodName([out, retval] BSTR *pbstrMethodName);
++
++    [propput, id(5), helpstring("property MethodName")]
++    HRESULT MethodName([in] BSTR bstrMethodName);
++
++    [propget, id(6), helpstring("property SubscriberCLSID")]
++    HRESULT SubscriberCLSID([out, retval] BSTR *pbstrSubscriberCLSID);
++
++    [propput, id(6), helpstring("property SubscriberCLSID")]
++    HRESULT SubscriberCLSID([in] BSTR bstrSubscriberCLSID);
++
++    [propget, id(7), helpstring("property SubscriberInterface")]
++    HRESULT SubscriberInterface([out, retval] IUnknown **ppSubscriberInterface);
++
++    [propput, id(7), helpstring("property SubscriberInterface")]
++    HRESULT SubscriberInterface([in] IUnknown *pSubscriberInterface);
++
++    [propget, id(8), helpstring("property PerUser")]
++    HRESULT PerUser([out, retval] BOOL *pfPerUser);
++
++    [propput, id(8), helpstring("property PerUser")]
++    HRESULT PerUser([in] BOOL fPerUser);
++
++    [propget, id(9), helpstring("property OwnerSID")]
++    HRESULT OwnerSID([out, retval] BSTR *pbstrOwnerSID);
++
++    [propput, id(9), helpstring("property OwnerSID")]
++    HRESULT OwnerSID([in] BSTR bstrOwnerSID);
++
++    [propget, id(10), helpstring("property Enabled")]
++    HRESULT Enabled([out, retval] BOOL *pfEnabled);
++
++    [propput, id(10), helpstring("property Enabled")]
++    HRESULT Enabled([in] BOOL fEnabled);
++
++    [propget, id(11), helpstring("property Description")]
++    HRESULT Description([out, retval] BSTR *pbstrDescription);
++
++    [propput, id(11), helpstring("property Description")]
++    HRESULT Description([in] BSTR bstrDescription);
++
++    [propget, id(12), helpstring("property MachineName")]
++    HRESULT MachineName([out, retval] BSTR *pbstrMachineName);
++
++    [propput, id(12), helpstring("property MachineName")]
++    HRESULT MachineName([in] BSTR bstrMachineName);
++
++    [id(13), helpstring("method GetPublisherProperty")]
++    HRESULT GetPublisherProperty(
++        [in] BSTR bstrPropertyName,
++        [out, retval] VARIANT *propertyValue
++    );
++
++    [id(14), helpstring("method PutPublisherProperty")]
++    HRESULT PutPublisherProperty(
++        [in] BSTR bstrPropertyName,
++        [in] VARIANT *propertyValue
++    );
++
++    [id(15), helpstring("method RemovePublisherProperty")]
++    HRESULT RemovePublisherProperty([in] BSTR bstrPropertyName);
++
++    [id(16), helpstring("method GetPublisherPropertyCollection")]
++    HRESULT GetPublisherPropertyCollection([out, retval] IEventObjectCollection **collection);
++
++    [id(17), helpstring("method GetSubscriberProperty")]
++    HRESULT GetSubscriberProperty(
++        [in] BSTR bstrPropertyName,
++        [out, retval] VARIANT *propertyValue
++    );
++
++    [id(18), helpstring("method PutSubscriberProperty")]
++    HRESULT PutSubscriberProperty(
++        [in] BSTR bstrPropertyName,
++        [in] VARIANT *propertyValue
++    );
++
++    [id(19), helpstring("method RemoveSubscriberProperty")]
++    HRESULT RemoveSubscriberProperty([in] BSTR bstrPropertyName);
++
++    [id(20), helpstring("method GetSubscriberPropertyCollection")]
++    HRESULT GetSubscriberPropertyCollection([out, retval] IEventObjectCollection **collection);
++
++    [id(21), propget, helpstring("property InterfaceID")]
++    HRESULT InterfaceID([out, retval] BSTR *pbstrInterfaceID);
++
++    [id(21), propput, helpstring("property InterfaceID")]
++    HRESULT InterfaceID([in] BSTR bstrInterfaceID);
++};
++
++[
++    object,
++    uuid(4E14FB9F-2E22-11D1-9964-00C04FBBB345),
++    dual,
++    proxy,
++    helpstring("IEventSystem Interface"),
++    pointer_default(unique)
++]
++interface IEventSystem : IDispatch
++{
++    [id(1), helpstring("method Query")]
++    HRESULT Query(
++        [in] BSTR progID,
++        [in] BSTR queryCriteria,
++        [out] int *errorIndex,
++        [out, retval] IUnknown **ppInterface
++    );
++
++    [id(2), helpstring("method Store")]
++    HRESULT Store([in] BSTR ProgID, [in] IUnknown *pInterface);
++
++    [id(3), helpstring("method Remove")]
++    HRESULT Remove(
++        [in] BSTR progID,
++        [in] BSTR queryCriteria,
++        [out] int *errorIndex
++    );
++
++    [id(4), propget, helpstring("method get_EventObjectChangeEventClassID")]
++    HRESULT EventObjectChangeEventClassID([out, retval] BSTR *pbstrEventClassID);
++
++    [id(5), helpstring("method QueryS")]
++    HRESULT QueryS(
++        [in] BSTR progID,
++        [in] BSTR queryCriteria,
++        [out, retval] IUnknown **ppInterface
++    );
++
++    [id(6), helpstring("method RemoveS")]
++    HRESULT RemoveS([in] BSTR progID, [in] BSTR queryCriteria);
++};
++
++[
++    uuid(e81221dc-c4d8-11d1-b653-00805fc79216),
++    version(1.0),
++    helpstring("EventSystem 1.0 Type Library")
++]
++library DummyEventSystemLib
++{
++    importlib("stdole2.tlb");
++
++    [
++        helpstring("EventSystem Class"),
++        threading(both),
++        progid("Microsoft.Update.Installer.1"),
++        vi_progid("Microsoft.Update.Installer"),
++        uuid(4E14FBA2-2E22-11D1-9964-00C04FBBB345),
++        helpstring("CEventSystem Class")
++    ]
++    // coclass EventSystem { interface IEventSystem; }
++    coclass CEventSystem
++    {
++        [default] interface IEventSystem;
++    };
++
++    [
++        helpstring("EventSystem Class"),
++        threading(both),
++        progid("Microsoft.Update.Installer.1"),
++        vi_progid("Microsoft.Update.Installer"),
++        uuid(7542e960-79c7-11d1-88f9-0080c7d771bf),
++        version(1.0)
++    ]
++    // coclass EventSubscription { interface IEventSubscription; }
++
++    coclass CEventSubscription
++    {
++        [default] interface IEventSubscription;
++    };
++}
