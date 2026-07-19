@@ -126,7 +126,6 @@ Notes:
   - Updating from a previous version is for now not (yet) supported, maybe later
 
 Compile:
-  - If you want to compile yourself instead of downloading binaries: see compilation instructions in mainv1.c and installer.c 
+  - If you want to compile yourself instead of downloading binaries: see compilation instructions in mainv1.c and installer.c (or see [the ci](./.github/workflows) )
   - Then copy choc_install.ps1 into the same directory
   - Then do 'wine ChoCinstaller_0.5a.735.exe'
-  

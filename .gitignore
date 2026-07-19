@@ -1,0 +1,8 @@
+*.exe
+*.o
+c_drive.7z
+Chocolatey-for-wine.7z
+7z_installer.exe
+7z-pkg/
+build_c_drive/
+release/

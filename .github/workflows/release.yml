@@ -1,0 +1,126 @@
+name: Build Release
+
+# The default is explicitly set to 0.5c.755 due to char limit
+# See installer.c line 191ish
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (e.g. 0.5c.755)'
+        required: false
+        default: '0.5c.755'
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mingw-w64 p7zip-full wget upx-ucl
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            ver="${{ github.event.inputs.version }}"
+          else
+            ver="${GITHUB_REF_NAME#v}"
+          fi
+          ver="${ver#v}"
+          echo "version=${ver}" >> $GITHUB_OUTPUT
+
+      - name: Compile installer
+        run: |
+          x86_64-w64-mingw32-gcc -O2 -fno-ident -fno-stack-protector -fomit-frame-pointer \
+            -fno-unwind-tables -fno-asynchronous-unwind-tables -mconsole -municode \
+            -mno-stack-arg-probe -Xlinker --stack=0x200000,0x200000 -nostdlib -Wall -Wextra \
+            -finline-limit=64 -Wl,-gc-sections installer.c -lurlmon -lkernel32 -lucrtbase \
+            -luser32 -nostdlib -ladvapi32 -lntdll -lshell32 -lole32 -luuid -s \
+            -Wl,--major-subsystem-version,6,--minor-subsystem-version,0 \
+            -o "ChoCinstaller_${{ steps.version.outputs.version }}.exe"
+          strip -R .reloc "ChoCinstaller_${{ steps.version.outputs.version }}.exe"
+          upx --best -q "ChoCinstaller_${{ steps.version.outputs.version }}.exe"
+
+      - name: Compile powershell wrappers
+        run: |
+          x86_64-w64-mingw32-gcc -Oz -fno-asynchronous-unwind-tables -municode -Wall -Wextra \
+            -mno-stack-arg-probe -nostartfiles -Wl,-gc-sections -Xlinker --stack=0x100000,0x100000 \
+            mainv1.c -nostdlib -lucrtbase -lkernel32 -lntdll -s -o powershell64.exe \
+            -Wl,--section-alignment,512,--file-alignment,512,-T,linker.ld
+          strip -R .reloc powershell64.exe
+          i686-w64-mingw32-gcc -Oz -fno-asynchronous-unwind-tables -mno-stack-arg-probe -municode \
+            -Wall -Wextra -nostartfiles -Wl,-gc-sections -Xlinker --stack=0x100000,0x100000 \
+            mainv1.c -nostdlib -lucrtbase -lkernel32 -lntdll -s -o powershell32.exe \
+            -Wl,--section-alignment,512,--file-alignment,512,-T,linker.ld
+          strip -R .reloc powershell32.exe
+
+      - name: Download 7-Zip installer and extract 7z.exe/7z.dll
+        run: |
+          URL="https://www.7-zip.org/a/7z2600-x64.exe"
+          echo "Downloading 7-Zip from: $URL"
+          wget "$URL" -O 7z_installer.exe || { echo "Failed to download 7-Zip installer"; exit 1; }
+          7z x 7z_installer.exe -o7z-pkg -y 7z.exe 7z.dll License.txt
+
+
+      - name: Build c_drive.7z
+        run: |
+          mkdir -p build_c_drive/c:/ConEmu
+          mkdir -p build_c_drive/c:/ProgramData/Chocolatey-for-wine
+          mkdir -p build_c_drive/c:/windows/Fonts
+          mkdir -p build_c_drive/c:/windows/system32/WindowsPowerShell/v1.0
+          mkdir -p build_c_drive/c:/windows/syswow64/WindowsPowerShell/v1.0
+
+          cp winetricks.ps1 build_c_drive/c:/ProgramData/Chocolatey-for-wine/
+          cp EXTRAS/powershell_collected_codesnippets_examples/powershell_collected_codesnippets_examples.ps1 \
+             build_c_drive/c:/ProgramData/Chocolatey-for-wine/
+          cp EXTRAS/wine_staging_arial.ttf build_c_drive/c:/windows/Fonts/arial.ttf
+          7z e EXTRAS/wine_user32_sad_hack_for_ConEmu.7z -obuild_c_drive/c:/ConEmu user32.dll -y
+          cp powershell64.exe build_c_drive/c:/windows/system32/WindowsPowerShell/v1.0/powershell.exe
+          cp powershell32.exe build_c_drive/c:/windows/syswow64/WindowsPowerShell/v1.0/powershell.exe
+
+          7z e EXTRAS/wine_msi.7z -obuild_c_drive/c:/windows/system32 -y 64/msi.dll
+          7z e EXTRAS/wine_robocopy.7z -obuild_c_drive/c:/windows/system32 -y robocopy64.exe
+          mv build_c_drive/c:/windows/system32/robocopy64.exe build_c_drive/c:/windows/system32/robocopy.exe
+          7z e EXTRAS/wine_taskschd.7z -obuild_c_drive/c:/windows/system32 -y 64/taskschd.dll
+          7z e EXTRAS/wine_wintypes.7z -obuild_c_drive/c:/windows/system32 -y 64/wintypes.dll
+
+          7z e EXTRAS/wine_msi.7z -obuild_c_drive/c:/windows/syswow64 -y 32/msi.dll
+          7z e EXTRAS/wine_robocopy.7z -obuild_c_drive/c:/windows/syswow64 -y robocopy32.exe
+          mv build_c_drive/c:/windows/syswow64/robocopy32.exe build_c_drive/c:/windows/syswow64/robocopy.exe
+          7z e EXTRAS/wine_taskschd.7z -obuild_c_drive/c:/windows/syswow64 -y 32/taskschd.dll
+          7z e EXTRAS/wine_wintypes.7z -obuild_c_drive/c:/windows/syswow64 -y 32/wintypes.dll
+
+          cd build_c_drive
+          7z a -m0=BCJ -m1=LZMA2:d=21 -ms=on -spf ../c_drive.7z "c:*"
+
+      - name: Package release
+        run: |
+          mkdir -p release/Chocolatey-for-wine
+          cp "ChoCinstaller_${{ steps.version.outputs.version }}.exe" release/Chocolatey-for-wine/
+          cp choc_install.ps1 release/Chocolatey-for-wine/
+          cp c_drive.7z release/Chocolatey-for-wine/
+          cp 7z-pkg/7z.exe release/Chocolatey-for-wine/
+          cp 7z-pkg/7z.dll release/Chocolatey-for-wine/
+          cp 7z-pkg/License.txt release/Chocolatey-for-wine/7-zip-License-.txt
+
+          cd release
+          7z a -m0=BCJ -m1=LZMA2:d=21 -ms=on ../Chocolatey-for-wine.7z Chocolatey-for-wine
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: Chocolatey-for-wine-${{ steps.version.outputs.version }}.7z
+          path: Chocolatey-for-wine.7z
+          archive: false
