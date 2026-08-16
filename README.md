@@ -58,8 +58,6 @@ Optional:
 Optional:
 - Run the installer like 'wine ChoCinstaller_0.5a.751.exe /q' to prevent the automatic launch of the powershell window (so install only). 
 
-Optional:
-- Check if things went well: "choco install chromium" and  "start chrome.exe (--no-sandbox not needed anymore as of wine-8,4)" 
 
 ![Screenshot from 2022-08-26 12-31-18](https://user-images.githubusercontent.com/26839562/186885380-d5a617c4-9cf4-4831-a475-2bd85a3b5784.png)
 About PowerShell:
@@ -85,10 +83,8 @@ ConEmu console suffers from a few wine-bugs:
 About winetricks(.ps1):
 
 - If you don't call it ('winetricks' in powershell-console) , nothing gets downloaded so no overhead there. 
-- A lot of verbs (like powershell 5.1) need a few essential files to extract stuff from msu packages. Installing these essential files requires first huge downloads , and  takes lots of time during 1st time usage. But after things are cached it goes quickly . For example if you might wanna try 'winetricks ps51' first, it will take about  approx. 15 minutes. Some other verbs might take 5 minutes on first time usage. But after you called a verb once this nuisance is gone.
-- Files are cached in directory MyDocuments. If you call all verbs it'll take about 800 MB there.
+- Files are cached in directory MyDocuments. 
 - Hopefully some better 64-bit support for various verbs.
-- Possibility to extract a file and (try) install from an msu file. Do 'winetricks install_dll_from_msu' to see how.
 - A rudimentary Powershell 5.1.
 - experimental dotnet481 installation, and dotnet35 (might be needed by apps not satisfied with current dotnet48 installation).
 - Autotab-completion. Note: while using multiple verbs from command line they have to be seperated by a comma
