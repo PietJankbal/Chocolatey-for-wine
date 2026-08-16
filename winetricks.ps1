@@ -29,7 +29,7 @@ else                 {$cachedir = [System.IO.Path]::Combine( "$([Environment]::G
     "dlls","dotnet481", "experimental dotnet481 install (includes System.Runtime.WindowsRuntime.dll)",
     "dlls","dshow", "directshow dlls: amstream.dll,qasf.dll,qcap.dll,qdvd.dll,qedit.dll,quartz.dll",
     "dlls","dxvk1103", "dxvk 1.10.3, latest compatible with Kepler (Nvidia GT 470) ??? )",
-    "dlls","dxvk20", "dxvk 2.0",
+    "dlls","dxvk271", "dxvk 2.7.1",
     "dlls","expand", "native expand.exe, it's renamed to expnd_.exe to not interfere with wine's expand",
     "dlls","findstr", "findstr.exe",
     "dlls","gdiplus","GDI+ (gdiplus.dll)",
@@ -74,7 +74,7 @@ else                 {$cachedir = [System.IO.Path]::Combine( "$([Environment]::G
     "font","vista_fonts","Arial,Calibri,Cambria,Comic Sans,Consolas,Courier,Georgia,Impact,Lucida Sans Unicode,Symbol,Times New Roman,Trebuchet ,Verdana ,Webdings,Wingdings font",
     "misc","access_winrt_from_powershell", "codesnippets from around the internet: howto use Windows Runtime classes in powershell; requires powershell 5.1, so 1st time usage may take very long time!!!",
     "misc","cef", "codesnippets from around the internet: how to use cef / test cef",
-    "misc","chocolatey_upgrade","upgrade chocolatey to the latest (>v2.2), requires Powershell 5.1 so on first usage might take >15 minutes!",
+#   "misc","chocolatey_upgrade","upgrade chocolatey to the latest (>v2.2), requires Powershell 5.1 so on first usage might take >15 minutes!",
     "misc","embed-exe-in-psscript", "codesnippets from around the internet: samplescript howto embed and run an exe into a powershell-scripts (vkcube.exe); might trigger a viruswarning (!) but is really harmless",
 #   "misc","GE-Proton","Install bunch of dlls from GE-Proton",
     "misc","Get-PEHeader", "codesnippets from around the internet: add Get-PEHeader to cmdlets, handy to explore dlls imports/exports",
@@ -105,6 +105,7 @@ else                 {$cachedir = [System.IO.Path]::Combine( "$([Environment]::G
     "wine","wine_kernel32","kernel32 with SetThreadPoolTimerEx",
     "wine","wine_mshtml", "wine mshtml with a few hacks",
     "wine","wine_msxml3", "wine msxml3 with a few hacks",
+    "wine","wine_stubdll","A stub dll that is registered with the guid you provide (like symptoned by ''err:ole:CoGetClassObject class {77a1c827-fcd2-4689-8915-9d613cc5fa3e}''",
     "wine","wine_wbemprox","hacky wmispoofer, spoof wmi values/add new classes, see c:\ProgramData\Chocolatey-for-wine\wmispoofer.ini for details",
     "wine","wine_shell32", "wine shell32 with a few hacks",
     "wine","wine_wintrust", "wine wintrust faking success for WinVerifyTrust"
@@ -118,7 +119,7 @@ function quit?([string] $process)  <# wait for a process to quit #>
 }
 
 if (![System.IO.File]::Exists("$env:ProgramData\chocolatey\bin\wget2.exe")){
-    (New-Object System.Net.WebClient).DownloadFile("https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/refs/heads/main/EXTRAS/wget2/wget2.exe", "$env:ProgramData\chocolatey\bin\wget2.exe")
+    [System.Net.WebClient]::new().DownloadFile("https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/refs/heads/main/EXTRAS/wget2/wget2.exe", "$env:ProgramData\chocolatey\bin\wget2.exe")
     #iex "$env:ProgramData\\chocolatey\\tools\\shimgen.exe --output=`"$env:ProgramData`"\\chocolatey\\bin\\wget2.exe --path=`"$env:ProgramData`"\Chocolatey-for-wine\wget2.exe"
 }
 
@@ -141,6 +142,25 @@ function w_download_to
         }
 }
 
+function w_download_to2
+{
+    Param ($dldir, $w_url, $w_file, $range)
+
+    if (![System.IO.Directory]::Exists("$env:Temp\\$dldir")){ [System.IO.Directory]::CreateDirectory("$env:Temp\\$dldir")}
+
+    if (![System.IO.File]::Exists("$env:Temp\\$dldir\\$w_file")){
+        Write-Host -foregroundcolor yellow "**********************************************************"
+        Write-Host -foregroundcolor yellow "*                                                        *"
+        Write-Host -foregroundcolor yellow "*        Downloading file(s) and extracting might        *"
+        Write-Host -foregroundcolor yellow "*        take several minutes!                           *"
+        Write-Host -foregroundcolor yellow "*        Patience please!                                *"
+        Write-Host -foregroundcolor yellow "*                                                        *"
+        Write-Host -foregroundcolor yellow "**********************************************************"
+        
+         wget2 --restrict-file-names=nocontrol <# do not escape any character #> --header "Range: bytes=0-$range" "$w_url" -P "$env:Temp\\$dldir"; quit?('wget2')
+        }
+}
+
 function check_msu_sanity <# some sanity checks before extracting from msu, like if dlls needed for expansion and the msu are present etc. #>
 {
     Param ($url, $cab)
@@ -156,6 +176,23 @@ function check_msu_sanity <# some sanity checks before extracting from msu, like
     }
     7z e "$cachedir\$dldir\$msu" "-o$cachedir\$dldir" "$cab" -y; 
     Remove-Item "$cachedir\$dldir\$msu" 
+}
+
+function check_msu_sanity2 <# some sanity checks before extracting from msu, like if dlls needed for expansion and the msu are present etc. #>
+{
+    Param ($url, $cab, $range)
+
+    $msu = $url.split('/')[-1]; <# -1 is last array element... #> $dldir = $((Get-PSCallStack)[1].Command).replace('func_', '')
+    <# fragile test #>
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($env:systemroot, "system32", "dpx.dll")  ))
+       {Write-Host 'Downloading and extracting some files needed for expansion' ; func_expand;
+    }
+
+    if (![System.IO.File]::Exists( [IO.Path]::Combine("$env:Temp",  $dldir,  $msu) ) ) {
+        w_download_to2 $dldir $url $msu $range; quit?('7z');
+    }
+    7z e "$env:Temp\$dldir\$msu" "-o$env:Temp\$dldir" "$cab" -y; 
+    Remove-Item "$env:Temp\$dldir\$msu" 
 }
 
 function check_aik_sanity <# some sanity checks to see if cached files from windows kits 7 are present #>
@@ -191,6 +228,70 @@ function check_aik_sanity <# some sanity checks to see if cached files from wind
             break;
         }
     }
+}
+
+function check_aik_sanity2 <# some sanity checks to see if cached files from windows kits 7 are present #>
+{
+    $url = "https://download.microsoft.com/download/8/E/9/8E9BBC64-E6F8-457C-9B8D-F6C9A16E6D6A/KB3AIK_EN.iso"
+
+    foreach($i in 'F1_WINPE.WIM', 'F3_WINPE.WIM' ) {
+        if(![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  "aik70",  $i) ) ) { #assuming all cached files are gone, re-extract everything
+            #w_download_to "aik70" "$url" "KB3AIK_EN.iso"
+            if (![System.IO.Directory]::Exists("$cachedir\\aik70")){ [System.IO.Directory]::CreateDirectory("$cachedir\\aik70")}
+
+        if (![System.IO.File]::Exists("$cachedir\\aik70\\KB3AIK_EN.iso")){
+            Write-Host -foregroundcolor yellow "**********************************************************"
+            Write-Host -foregroundcolor yellow "*                                                        *"
+            Write-Host -foregroundcolor yellow "*        Downloading file(s) and extracting might        *"
+            Write-Host -foregroundcolor yellow "*        take several minutes!                           *"
+            Write-Host -foregroundcolor yellow "*        Patience please!                                *"
+            Write-Host -foregroundcolor yellow "*                                                        *"
+            Write-Host -foregroundcolor yellow "**********************************************************"
+        
+ $url         = "https://download.microsoft.com/download/8/E/9/8E9BBC64-E6F8-457C-9B8D-F6C9A16E6D6A/KB3AIK_EN.iso"
+$header_end  = 7764000
+$tail_begin  = 600560000
+$tail_end    = 1099999999
+
+# Download header chunk (bytes 0 to header_end)
+$client = [System.Net.Http.HttpClient]::new()
+$request = [System.Net.Http.HttpRequestMessage]::new([System.Net.Http.HttpMethod]::Get, $url)
+$request.Headers.Range = [System.Net.Http.Headers.RangeHeaderValue]::new(0, $header_end)
+$response = $client.SendAsync($request).GetAwaiter().GetResult()
+$headStream = [System.IO.MemoryStream]::new($response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult())
+$client.Dispose()
+
+# Download tail chunk (bytes tail_begin to tail_end)
+$client = [System.Net.Http.HttpClient]::new()
+$request = [System.Net.Http.HttpRequestMessage]::new([System.Net.Http.HttpMethod]::Get, $url)
+$request.Headers.Range = [System.Net.Http.Headers.RangeHeaderValue]::new($tail_begin, $tail_end)
+$response = $client.SendAsync($request).GetAwaiter().GetResult()
+$tailStream = [System.IO.MemoryStream]::new($response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult())
+$client.Dispose()
+
+# Merge: header + zero-filled gap + tail
+$emptyGap = [System.IO.MemoryStream]::new([byte[]]::new($tail_begin - $header_end - 1))
+$merged = [System.IO.MemoryStream]::new()
+$headStream.CopyTo($merged)
+$emptyGap.CopyTo($merged)
+$tailStream.CopyTo($merged)
+
+# Write result to disk
+[System.IO.File]::WriteAllBytes("$env:TMP\KB3AIK_EN.iso", $merged.ToArray())  
+        }
+                     
+                     
+            7z x "$env:TMP\KB3AIK_EN.iso" "WinPE.cab" "-o$env:TMP\aik70" -y; quit?('7z')
+            Remove-Item -Force "$env:TMP\KB3AIK_EN.iso" 
+            7z x "$env:TMP\aik70\WinPE.cab" "F1_WINPE.WIM" "F3_WINPE.WIM" "-o$env:TMP\aik70" -y; quit?('7z')
+            Remove-Item -Force "$env:TMP\aik70\WinPE.cab" 
+            [System.IO.File]::Move( "$env:TMP\aik70\F3_WINPE.WIM", "$cachedir\aik70\F3_WINPE.WIM")
+            [System.IO.File]::Move( "$env:TMP\aik70\F1_WINPE.WIM", "$cachedir\aik70\F1_WINPE.WIM")
+
+            break;
+        }
+    }
+    
 }
 
 function dlloverride
@@ -266,6 +367,24 @@ function wine_version_less_than([string] $version)
     
     if( $curminorversion -lt [System.Convert]::ToDecimal($version.split('.')[1]) ) {return $true}
     else {return $false}
+}
+
+function gacinstall([string[]] $file)
+{
+    $bytes = [System.IO.File]::ReadAllBytes($file)
+    $assembly=[System.Reflection.Assembly]::Load($bytes)
+
+    $dest = "$env:systemroot\Microsoft.NET\assembly\GAC_MSIL\" + $assembly.FullName.Split(', ').split('=')[0] +  "\v4.0_" + $assembly.FullName.Split(', ').split('=')[2] + '__' + $assembly.FullName.Split(', ').split('=')[6] +'\' + $assembly.ManifestModule.ScopeName
+
+    $dest
+    
+    #$Error.Clear()
+    #if{ ($Error[-1] -match 'Bad IL format') }
+    
+    if (-not (Test-Path -Path $([System.IO.FileInfo]$dest).DirectoryName )) { New-Item -Path $([System.IO.FileInfo]$dest).DirectoryName -ItemType directory -Force }
+    
+    Copy-Item -Path $file -Destination $([System.IO.FileInfo]$dest).DirectoryName -Force -verbose #-ErrorAction SilentlyContinue  
+
 }
 
 <#
@@ -346,7 +465,7 @@ $ntdll = Add-Type -MemberDefinition $MethodDefinition -Name 'ntdll' -PassThru
 
 function func_msxml3
 {
-    $dlls = @('msxml3.dll','msxml3r.dll'); check_aik_sanity;
+    $dlls = @('msxml3.dll','msxml3r.dll'); check_aik_sanity2;
 
     foreach ($i in $dlls) {
         7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
@@ -356,7 +475,7 @@ function func_msxml3
 
 function func_mfc42
 {
-    $dlls = @('mfc42.dll', 'mfc42u.dll'); check_aik_sanity;
+    $dlls = @('mfc42.dll', 'mfc42u.dll'); check_aik_sanity2;
 
     foreach ($i in $dlls) {
         7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
@@ -365,7 +484,7 @@ function func_mfc42
 
 function func_riched20
 {
-    $dlls = @('riched20.dll','msls31.dll','msftedit.dll'); check_aik_sanity;
+    $dlls = @('riched20.dll','msls31.dll','msftedit.dll'); check_aik_sanity2;
 
     foreach ($i in $dlls) {
         7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
@@ -375,7 +494,7 @@ function func_riched20
 
 function func_windowscodecs
 {
-    $dlls = @('windowscodecs.dll'); check_aik_sanity;
+    $dlls = @('windowscodecs.dll'); check_aik_sanity2;
 
     foreach ($i in $dlls) {
         7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
@@ -385,7 +504,7 @@ function func_windowscodecs
 
 function func_uxtheme
 {
-    $dlls = @('uxtheme.dll'); check_aik_sanity;
+    $dlls = @('uxtheme.dll'); check_aik_sanity2;
 
     foreach ($i in $dlls) {
         7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
@@ -395,7 +514,7 @@ function func_uxtheme
 
 function func_sspicli
 {
-    $dlls = @('sspicli.dll'); check_aik_sanity;
+    $dlls = @('sspicli.dll'); check_aik_sanity2;
 
     foreach ($i in $dlls) {
         7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
@@ -405,7 +524,7 @@ function func_sspicli
 
 function func_uiautomationcore
 {
-    $dlls = @('uiautomationcore.dll'); check_aik_sanity;
+    $dlls = @('uiautomationcore.dll'); check_aik_sanity2;
 
     foreach ($i in $dlls) {
         7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
@@ -415,7 +534,7 @@ function func_uiautomationcore
 
 function func_mspatcha
 {
-    $dlls = @('mspatcha.dll'); check_aik_sanity;
+    $dlls = @('mspatcha.dll'); check_aik_sanity2;
 
     foreach ($i in $dlls) {
         7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
@@ -425,7 +544,7 @@ function func_mspatcha
 
 function func_urlmon
 {
-    $dlls = @('urlmon.dll'); check_aik_sanity;
+    $dlls = @('urlmon.dll'); check_aik_sanity2;
 
     foreach ($i in $dlls) {
         7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
@@ -433,9 +552,18 @@ function func_urlmon
     foreach($i in 'urlmon') { dlloverride 'native' $i }
 }  <# end urlmon #>
 
+function func_msxml6r
+{
+    $dlls = @('msxml6r.dll'); check_aik_sanity2;
+
+    foreach ($i in $dlls) {
+        7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
+        7z e "$cachedir\aik70\F1_WINPE.WIM" "-o$env:systemroot\syswow64" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z')
+} <# end msxml6r #>
+
 function func_xmllite
 {
-    check_aik_sanity; $dldir = "aik70"
+    check_aik_sanity2; $dldir = "aik70"
     $expdlls = @( 'amd64_microsoft-windows-servicingstack_31bf3856ad364e35_6.1.7600.16385_none_655452efe0fb810b/xmllite.dll', `
                   'x86_microsoft-windows-servicingstack_31bf3856ad364e35_6.1.7600.16385_none_0935b76c289e0fd5/xmllite.dll' )
 		  
@@ -448,7 +576,7 @@ function func_xmllite
 
 function func_iertutil
 {
-    check_aik_sanity; $dldir = "aik70"
+    check_aik_sanity2; $dldir = "aik70"
     $expdlls = @( 'amd64_microsoft-windows-ie-runtimeutilities_31bf3856ad364e35_8.0.7600.16385_none_be52e3381d372f67/iertutil.dll', `
                   'x86_microsoft-windows-ie-runtimeutilities_31bf3856ad364e35_8.0.7600.16385_none_623447b464d9be31/iertutil.dll' )
 		  
@@ -518,7 +646,7 @@ function func_oleaut32 <# oleaut32  #>
     elseif ( $(7z l $filepath | findstr 'CPU' |select-string x86) )   {$arch = 'F1' }
     else {Write-Host 'Something went wrong...'; exit}
     
-    $dlls = @("$(verb).dll"); check_aik_sanity;
+    $dlls = @("$(verb).dll"); check_aik_sanity2;
     
     foreach ($i in $dlls ) {
         7z e "$cachedir\aik70\$($arch)_WINPE.WIM" "-o$destdir" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z') 
@@ -530,22 +658,24 @@ function func_oleaut32 <# oleaut32  #>
 
 function func_msxml6 <# experimental... #>
 {
-    $url = "https://catalog.s.download.windowsupdate.com/c/msdownload/update/software/updt/2018/08/windows10.0-kb4343893-x64_bdae9c9c28d4102a673a24d37c371ed73d053338.msu"
-    $cab = "Windows10.0-KB4343893-x64.cab"
-    $sourcefile = @('msxml6.dll', 'msxml6r.dll')
+    $url = "https://catalog.s.download.windowsupdate.com/c/msdownload/update/software/secu/2014/04/windows8.1-kb2934018-x64_234a5fc4955f81541f5bfc0d447e4fc4934efc38.msu"
+    $cab = "Windows8.1-KB2934018-x64.cab"
+    $range = '71000000'
+    $sourcefile = @('msxml6.dll')
 
     if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
-        check_msu_sanity $url $cab;
-        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
-        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\amd64*" "$cachedir\$(verb)\wow*" ; quit?('7z')
+        check_msu_sanity2 $url $cab $range;
+        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine("$env:Temp",  $(verb),  $cab)) -f:$i $([IO.Path]::Combine("$env:Temp",  $(verb) ) ) }
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$env:Temp\$(verb)\amd64*" "$env:Temp\$(verb)\wow*" ; quit?('7z')
 
-        foreach($i in 'amd64', 'x86', 'wow64') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" }
+        foreach($i in 'amd64', 'x86', 'wow64') { Remove-Item -Force -Recurse "$env:Temp\$(verb)\$i*" }
         
-        Remove-Item -Force "$cachedir\$(verb)\$cab" -ErrorAction SilentlyContinue
+        Remove-Item -Force "$env:Temp\$(verb)\$cab" -ErrorAction SilentlyContinue
     }
 
     system_install wine_rpcrt4 'c82422a0bf6cc4045c142a91f250e557f841755aa1f8b169e1765a9ed3b6258c' $true
     system_install $(verb) $null $false
+    func_msxml6r
       
     [system.console]::ForegroundColor='white'
     
@@ -772,7 +902,7 @@ REGEDIT4
 
 function func_expand
 {
-    check_aik_sanity;
+    check_aik_sanity2;
                   
     $dlls =    @( 'amd64_microsoft-windows-deltapackageexpander_31bf3856ad364e35_6.1.7600.16385_none_c5d387d64eb8e1f2/dpx.dll',
                   'amd64_microsoft-windows-cabinet_31bf3856ad364e35_6.1.7600.16385_none_933442c3fb9cbaed/cabinet.dll',
@@ -1286,7 +1416,7 @@ REGEDIT4
 
 } <# end wmf #>
 
-function func_msdelta <#  msdelta and dpx from windows 10 #>
+function deprecated_func_msdelta <#  msdelta and dpx from windows 10 #>
 {
     $url = "https://catalog.s.download.windowsupdate.com/c/msdownload/update/software/updt/2018/08/windows10.0-kb4343893-x64_bdae9c9c28d4102a673a24d37c371ed73d053338.msu"
     $cab = "Windows10.0-KB4343893-x64.cab"
@@ -1310,28 +1440,54 @@ function func_msdelta <#  msdelta and dpx from windows 10 #>
     }
 } <# end msdelta #>
 
+function func_msdelta <#  msdelta and dpx from windows 10 #>
+{
+    $url = "https://catalog.s.download.windowsupdate.com/c/msdownload/update/software/secu/2020/06/windows10.0-kb4562250-x64_1bd7a4adc1c6a3a54ca512626874cbce6b5c7146.msu"
+    $cab = "Windows10.0-KB4562250-x64.cab"
+    $sourcefile = @('msdelta.dll','dpx.dll')
+ 
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z" ) ) ){
+        check_msu_sanity $url $cab;
+        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\amd64_microsoft-windows-servicingstack_31bf3856ad364e35_10.0.15063.2403_none_b93672b86f7ff595"  ; quit?('7z')
+
+        foreach($i in 'amd64', 'x86', 'wow64') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" }
+    }
+
+    Remove-Item -Force "$cachedir\$(verb)\$cab" -Erroraction SilentlyContinue
+    
+    if ((Get-PSCallStack)[1].Command -eq 'func_expand') {
+        7z e "$cachedir\$(verb)\$(verb).7z" amd64_microsoft-windows-servicingstack_31bf3856ad364e35_10.0.15063.2403_none_b93672b86f7ff595\* -o"$env:systemroot\\system32\\expnd" -aoa ; quit?('7z')
+    }
+    else {
+        7z e "$cachedir\$(verb)\$(verb).7z" amd64_microsoft-windows-servicingstack_31bf3856ad364e35_10.0.15063.2403_none_b93672b86f7ff595\* -o"$env:systemroot\\system32" -aoa ; quit?('7z')
+    }
+} <# end msdelta #>
+
 function func_sapi <# Speech api #>
 {   
     $url = "http://download.windowsupdate.com/c/msdownload/update/software/updt/2016/11/windows10.0-kb3205436-x64_45c915e7a85a7cc7fc211022ecd38255297049c3.msu"
     $cab = "Windows10.0-KB3205436-x64.cab"
     $sourcefile = @( 'sapi.dll' )
+    $range = '49000000'
 
-    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb), "$(verb).7z") ) ) {
-        check_msu_sanity $url $cab;
-        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
-        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\amd64*" "$cachedir\$(verb)\x86*" ; quit?('7z')
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
+        check_msu_sanity2 $url $cab $range;
+        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine("$env:Temp",  $(verb),  $cab)) -f:$i $([IO.Path]::Combine("$env:Temp",  $(verb) ) ) }
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$env:Temp\$(verb)\amd64*" "$env:Temp\$(verb)\x86*" ; quit?('7z')
 
-        foreach($i in 'amd64', 'x86', 'wow64') { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*)" }
+        foreach($i in 'amd64', 'x86', 'wow64') { Remove-Item -Force -Recurse "$env:Temp\$(verb)\$i*" }
+        
+        Remove-Item -Force "$env:Temp\$(verb)\$cab" -ErrorAction SilentlyContinue
     }
 
-    Remove-Item -Force "$cachedir\$(verb)\$cab" -ErrorAction SilentlyContinue
 
     7z e "$cachedir\$(verb)\$(verb).7z" "amd64*\*" -o"$env:systemroot\\system32\\Speech\\Common" -aoa
     7z e "$cachedir\$(verb)\$(verb).7z" "x86*\*" -o"$env:systemroot\\syswow64\\Speech\\Common" -aoa; quit?('7z')
 
     reg.exe DELETE "HKLM\SOFTWARE\Microsoft\Speech\Voices\Tokens\Wine Default Voice" /f /reg:64
     reg.exe DELETE "HKLM\SOFTWARE\Microsoft\Speech\Voices\Tokens\Wine Default Voice" /f /reg:32
-
+    
     $dldir = "SpeechRuntime"
     w_download_to "$dldir\\32" "https://download.microsoft.com/download/A/6/4/A64012D6-D56F-4E58-85E3-531E56ABC0E6/x86_SpeechPlatformRuntime/SpeechPlatformRuntime.msi" "SpeechPlatformRuntime.msi"
     w_download_to "$dldir\\64" "https://download.microsoft.com/download/A/6/4/A64012D6-D56F-4E58-85E3-531E56ABC0E6/x64_SpeechPlatformRuntime/SpeechPlatformRuntime.msi" "SpeechPlatformRuntime.msi"
@@ -1341,10 +1497,6 @@ function func_sapi <# Speech api #>
 
     foreach ($i in 'sapi', 'msttsengine') { dlloverride 'native' $i } 
 
-    foreach($i in 'sapi.dll') {
-        & "$env:systemroot\\syswow64\\regsvr32" /s "$env:systemroot\\syswow64\\Speech\\Common\\$i"
-        & "$env:systemroot\\system32\\regsvr32" /s "$env:systemroot\\system32\\Speech\\Common\\$i" }
-
     w_download_to "$dldir" "https://download.microsoft.com/download/4/0/D/40D6347A-AFA5-417D-A9BB-173D937BEED4/MSSpeech_TTS_en-US_ZiraPro.msi" "MSSpeech_TTS_en-US_ZiraPro.msi"
 
     iex "msiexec /i $cachedir\\$dldir\\MSSpeech_TTS_en-US_ZiraPro.msi <# INSTALLDIR='$env:SystemRoot\\Speech\\Engines\\TTS\\en-US' #> "
@@ -1353,6 +1505,10 @@ function func_sapi <# Speech api #>
 
     reg.exe COPY "HKLM\Software\MicroSoft\Speech Server\v11.0" "HKLM\Software\MicroSoft\Speech" /s /f /reg:64
     reg.exe COPY "HKLM\Software\MicroSoft\Speech Server\v11.0" "HKLM\Software\MicroSoft\Speech" /s /f /reg:32
+
+        foreach($i in 'sapi.dll') {
+        & "$env:systemroot\\syswow64\\regsvr32" /s "$env:systemroot\\syswow64\\Speech\\Common\\$i"
+        & "$env:systemroot\\system32\\regsvr32" /s "$env:systemroot\\system32\\Speech\\Common\\$i" }
 
     pwsh -c {
         $voice = new-object -com SAPI.SpVoice
@@ -1578,11 +1734,10 @@ function func_ps51 <# powershell 5.1; do 'ps51 -h' for help #>
 
 
     
-
  
     
      #Temporary workaround: In staging running ps51.exe frequently hangs in recent versions (e.g. 8.15)
-    if($(cat "$env:systemroot\system32\wine_version.txt").Contains('(Staging)')) { 
+    if(0) { 
         func_wine_shell32
         if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe'}
         if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\ps51.exe\\DllOverrides'}
@@ -2529,6 +2684,197 @@ function func_directmusic <# native dmusic #>
     }
 } <# end directmusic #>
 
+function func_wine_stubdll <# native stubdll #>
+{
+
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+$picture = '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
+'
+if (-not $picture) { Write-Error 'Variable $picture is empty or not defined.'; return }
+
+try {
+    $bytes = [Convert]::FromBase64String($picture)
+} catch {
+    Write-Error 'Invalid base64 in $picture.'; return
+}
+
+$ms = New-Object System.IO.MemoryStream(,$bytes)
+try {
+    $img = [System.Drawing.Image]::FromStream($ms)
+} catch {
+    $ms.Dispose()
+    Write-Error 'Failed to create image from stream.'; return
+}
+
+$form = New-Object System.Windows.Forms.Form
+$form.Text = 'Data Entry Form'
+$form.Size = New-Object System.Drawing.Size(420,390)
+$form.StartPosition = 'CenterScreen'
+$form.Topmost = $true
+
+
+$form.BackgroundImage = $img
+$form.BackgroundImageLayout = 'Stretch'  # Tile, Center, Stretch, Zoom, None
+
+
+$okButton = New-Object System.Windows.Forms.Button
+$okButton.Location = New-Object System.Drawing.Point(120,290)
+$okButton.Size = New-Object System.Drawing.Size(75,26)
+$okButton.Text = 'OK'
+$okButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+$form.AcceptButton = $okButton
+$form.Controls.Add($okButton)
+
+$cancelButton = New-Object System.Windows.Forms.Button
+$cancelButton.Location = New-Object System.Drawing.Point(210,290)
+$cancelButton.Size = New-Object System.Drawing.Size(75,26)
+$cancelButton.Text = 'Cancel'
+$cancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+$form.CancelButton = $cancelButton
+$form.Controls.Add($cancelButton)
+
+
+$label = New-Object System.Windows.Forms.Label
+$label.Location = New-Object System.Drawing.Point(12,20)
+$label.Size = New-Object System.Drawing.Size(380,30)
+$label.Text = 'Please paste the GUID (with braces) like for example {7988B571-EC89-11CF-9C00-00AA00A14F56}'
+$label.BackColor = [System.Drawing.Color]::Transparent
+$label.ForeColor = [System.Drawing.Color]::White
+$form.Controls.Add($label)
+
+
+$textBox = New-Object System.Windows.Forms.TextBox
+$textBox.Location = New-Object System.Drawing.Point(12,60)
+$textBox.Size = New-Object System.Drawing.Size(360,24)
+$textBox.BackColor = [System.Drawing.Color]::White
+$form.Controls.Add($textBox)
+
+$form.Add_Shown({ $textBox.Select() })
+$result = $form.ShowDialog()
+
+$img.Dispose()
+$ms.Dispose()
+
+if ($result -eq [System.Windows.Forms.DialogResult]::OK)
+{
+    $x = $textBox.Text
+    
+}
+else {return}
+
+    if($x.Trim().TrimEnd().Length -ne 38) {Write-Host "Wrong length, try again..."; return}
+    else {$x = $x.Trim().TrimEnd()}
+    $x
+
+    system_install wine_stubdll '27b8ffd4abec1aa26936d769f0c6bcc74f5bfb2c6526acdd37223f2f199ccdfd' $true
+
+    #Start-Process "c:\ProgramData/chocolatey/lib/sed/tools/sed.exe" -ArgumentList ' -i ''s/e26b3/vvvvv/g'' "c:\windows\system32\stubdll.dll" '
+    #c:\ProgramData/chocolatey/lib/sed/tools/sed.exe -i '''s/{e26b366d-f998-43ce-836f-cb6d904432b0}/$x/g''' "c:\windows\syswow64\stubdll.dll"
+    
+    foreach($dir in 'system32', 'syswow64') {
+        #https://stackoverflow.com/questions/73790902/replace-string-in-a-binary-clipboard-dump-from-onenote
+        # Read the file *as a byte array*.
+        $data = Get-Content -AsByteStream -ReadCount 0  "$env:SystemRoot\$dir\stubdll.dll"
+        # Convert the array to a "hex string" in the form "nn-nn-nn-...",  where nn represents a two-digit hex representation of each byte,
+        # e.g. '41-42' for 0x41, 0x42, which, if interpreted as a single-byte encoding (ASCII), is 'AB'.
+        $dataAsHexString = [BitConverter]::ToString($data)
+        # Define the search and replace strings, and convert them into "hex strings" too, using their UTF-8 byte representation.
+        $search =      "{e26b366d-f998-43ce-836f-cb6d904432b0}"
+        $replacement = $x
+
+        $searchAsHexString = [BitConverter]::ToString([Text.Encoding]::UTF8.GetBytes($search))
+        $replaceAsHexString = [BitConverter]::ToString([Text.Encoding]::UTF8.GetBytes($replacement))
+        # Perform the replacement.
+        $dataAsHexString = $dataAsHexString.Replace( "$searchAsHexString", $replaceAsHexString)
+        # Convert he modified "hex string" back to a byte[] array.
+        $modifiedData = [byte[]] ($dataAsHexString -split '-' -replace '^', '0x')
+        # Save the byte array back to the file.
+        Set-Content -AsByteStream "$env:SystemRoot\$dir\stubdll.dll" -Value $modifiedData -verbose
+    }
+    
+    foreach($i in 'stubdll') {
+        & "$env:systemroot\\syswow64\\regsvr32" /s "$env:systemroot\\syswow64\\$i"
+        & "$env:systemroot\\system32\\regsvr32" /s "$env:systemroot\\system32\\$i"
+    }
+
+
+
+#  {00000000-aaaa-aaaa-9C00-00AA00A14F56} // {2a811bb2-303b-48b8-82c2-e029a22c3ef2}
+
+
+}
+
 function func_wine_advapi32 { system_install wine_advapi32 '27b8ffd4abec1aa26936d769f0c6bcc74f5bfb2c6526acdd37223f2f199ccdfd' $true}
 
 function func_wine_shell32  { system_install wine_shell32  '21ed91f32180b4927239a5e02d557b9aa00731b8bf1af185a21a53c87f2a235c' $true}
@@ -2554,6 +2900,8 @@ function func_wine_hnetcfg  { system_install wine_hnetcfg  'fc2e00c3265c2cc98b81
 function func_wine_ole32    { system_install wine_ole32    'fc2e00c3265c2cc98b81fc0aa582bb9e4c1543a21c97ed6dd8e7e323a5e6ed27' $true}
 
 function func_wine_wintrust { system_install wine_wintrust 'fc2e00c3265c2cc98b81fc0aa582bb9e4c1543a21c97ed6dd8e7e323a5e6ed27' $false}
+
+function func_wine_es       { system_install wine_es       'fc2e00c3265c2cc98b81fc0aa582bb9e4c1543a21c97ed6dd8e7e323a5e6ed27' $false}
 
 function func_wine_enable_all_hacks {
 
@@ -2734,14 +3082,14 @@ function func_dxvk1103
     foreach($i in 'dxgi', 'd3d9', 'd3d10_1', 'd3d10core', 'd3d10', 'd3d11') { dlloverride 'native' $i }
 } <# end dxvk1101 #>
 
-function func_dxvk20
+function func_dxvk271
 {
-    $dldir = "dxvk20"
-    w_download_to "dxvk20" "https://github.com/doitsujin/dxvk/releases/download/v2.0/dxvk-2.0.tar.gz" "dxvk-2.0.tar.gz"
+    $dldir = "dxvk271"
+    w_download_to "dxvk271" "https://github.com/doitsujin/dxvk/releases/download/v2.7.1/dxvk-2.7.1.tar.gz" "dxvk-2.7.1.tar.gz"
 
-    7z x -y $cachedir\\$dldir\\dxvk-2.0.tar.gz "-o$env:TEMP";quit?('7z') 
-    7z e $env:TEMP\\dxvk-2.0.tar "-o$env:systemroot\\system32" dxvk-2.0/x64 -y;
-    7z e $env:TEMP\\dxvk-2.0.tar "-o$env:systemroot\\syswow64" dxvk-2.0/x32 -y;
+    7z x -y $cachedir\\$dldir\\dxvk-2.7.1.tar.gz "-o$env:TEMP";quit?('7z') 
+    7z e $env:TEMP\\dxvk-2.7.1.tar "-o$env:systemroot\\system32" dxvk-2.7.1/x64 -y;
+    7z e $env:TEMP\\dxvk-2.7.1.tar "-o$env:systemroot\\syswow64" dxvk-2.7.1/x32 -y;
     foreach($i in 'dxgi', 'd3d9', 'd3d10_1', 'd3d10core', 'd3d10', 'd3d11') { dlloverride 'native' $i }
 } <# end dxvk20 #>
 
@@ -3155,7 +3503,7 @@ function func_vs19
     
     winecfg /v win7
 
-    (New-Object System.Net.WebClient).DownloadFile('https://aka.ms/vs/16/release/vs_community.exe', "$env:TMP\\vs_Community.exe") <#  https://download.visualstudio.microsoft.com/download/pr/1d66edfe-3c83-476b-bf05-e8901c62ba7f/ef3e389f222335676581eddbe7ddec01147969c1d42e19b9dade815c3c0f04b1/vs_Community.exe #>
+    [System.Net.WebClient]::new().DownloadFile('https://aka.ms/vs/16/release/vs_community.exe', "$env:TMP\\vs_Community.exe") <#  https://download.visualstudio.microsoft.com/download/pr/1d66edfe-3c83-476b-bf05-e8901c62ba7f/ef3e389f222335676581eddbe7ddec01147969c1d42e19b9dade815c3c0f04b1/vs_Community.exe #>
 
   #  7z x $env:TMP\\installer "-o$env:TMP\\opc" -y ;quit?('7z')
 
@@ -3240,7 +3588,7 @@ function func_vs22
     # "c:\windows\syswow64\\windowspowershell\v1.0\powershell.exe" -NoLogo -NoProfile -Noninteractive -ExecutionPolicy Unrestricted -InputFormat None -Command "& """C:\ProgramData\Microsoft\VisualStudio\Packages\Microsoft.VisualCpp.Redist.14,version=14.40.33810,chip=x64\VCRedistInstall.ps1""" -PayloadDirectory """C:\ProgramData\Microsoft\VisualStudio\Packages\Microsoft.VisualCpp.Redist.14,version=14.40.33810,chip=x64""" -Architecture x64 -Logfile """C:\users\MYNAME\AppData\Local\Temp\dd_setup_20240728084731_003_Microsoft.VisualCpp.Redist.14.log"""; exit $LastExitCode"
 #   foreach($i in 'powershell.exe') { dlloverride 'builtin' $i }
     
-    (New-Object System.Net.WebClient).DownloadFile('https://aka.ms/vs/17/release/vs_community.exe', "$env:TMP\\vs_Community.exe") 
+    [System.Net.WebClient]::new().DownloadFile('https://aka.ms/vs/17/release/vs_community.exe', "$env:TMP\\vs_Community.exe") 
 
   #  7z x $env:TMP\\installer "-o$env:TMP\\opc" -y ;quit?('7z')
 
@@ -3328,11 +3676,57 @@ function func_vs22_interactive_installer
     func_wine_combase
     func_wine_shell32
     func_wine_tdh
+    func_wine_es
     #func_wine_wintypes
     #func_winmetadata
     if( [System.Convert]::ToDecimal( ($wine_version.Split("`0")[0] -replace '-rc','' ) ) -lt 10.4 ) { Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show("!!!Upgrade to a more recent wine version!!!`r`n The wine version you use is too old.",'Message','ok','exclamation');}
     
     restart_if_needed
+
+@"
+REGEDIT4
+
+[HKEY_CLASSES_ROOT\CLSID\{7542E960-79C7-11D1-88F9-0080C7D771BF}]
+@="EventSystem Class"
+
+[HKEY_CLASSES_ROOT\CLSID\{7542E960-79C7-11D1-88F9-0080C7D771BF}\InprocServer32]
+@="C:\\windows\\system32\\es.dll"
+"ThreadingModel"="Both"
+
+[HKEY_CLASSES_ROOT\CLSID\{7542E960-79C7-11D1-88F9-0080C7D771BF}\ProgId]
+@="Microsoft.Update.Installer.1"
+
+[HKEY_CLASSES_ROOT\CLSID\{7542E960-79C7-11D1-88F9-0080C7D771BF}\TypeLib]
+@="{E81221DC-C4D8-11D1-B653-00805FC79216}"
+
+[HKEY_CLASSES_ROOT\CLSID\{7542E960-79C7-11D1-88F9-0080C7D771BF}\Version]
+@="1.0"
+
+[HKEY_CLASSES_ROOT\CLSID\{7542E960-79C7-11D1-88F9-0080C7D771BF}\VersionIndependentProgId]
+@="Microsoft.Update.Installer"
+
+[HKEY_CLASSES_ROOT\CLSID\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}]
+@="CEventSystem Class"
+
+[HKEY_CLASSES_ROOT\CLSID\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}\InprocServer32]
+@="C:\\windows\\system32\\es.dll"
+"ThreadingModel"="Both"
+
+[HKEY_CLASSES_ROOT\CLSID\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}\ProgId]
+@="Microsoft.Update.Installer.1"
+
+[HKEY_CLASSES_ROOT\CLSID\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}\TypeLib]
+@="{E81221DC-C4D8-11D1-B653-00805FC79216}"
+
+[HKEY_CLASSES_ROOT\CLSID\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}\Version]
+@="1.0"
+
+[HKEY_CLASSES_ROOT\CLSID\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}\VersionIndependentProgId]
+@="Microsoft.Update.Installer"
+"@ | Out-File -FilePath $env:TEMP\\es.reg
+    reg.exe  IMPORT  $env:TEMP\\es.reg /reg:64;
+    reg.exe  IMPORT  $env:TEMP\\es.reg /reg:32;
+
 
     winecfg /v win10
     
@@ -3378,11 +3772,7 @@ function func_vs22_interactive_installer
     if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe\\DllOverrides'}
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe\\DllOverrides' -Name 'kernel32' -Value '' -PropertyType 'String' -force
 
-    (New-Object System.Net.WebClient).DownloadFile('https://aka.ms/vs/17/release/vs_community.exe', "$env:TMP\\vs_Community.exe") 
-
-    New-Item  -Path "HKLM:\\Software\\Classes\\CLSID\\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}"
-    New-Item  -Path "HKLM:\\Software\\Classes\\CLSID\\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}\\InprocServer32"
-    New-ItemProperty -Path "HKLM:\\Software\\Classes\\CLSID\\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}\\InprocServer32" -Name "(Default)" -Value 'c:\windows\system32\es.dll' -PropertyType 'String' -force
+    [System.Net.WebClient]::new().DownloadFile('https://aka.ms/vs/17/release/vs_community.exe', "$env:TMP\\vs_Community.exe") 
 
     & "$env:TMP\\vs_Community.exe" --wait
     
@@ -3401,9 +3791,55 @@ function func_vs26_interactive_installer
     if( [System.Convert]::ToDecimal( ($wine_version.Split("`0")[0] -replace '-rc','' ) ) -lt 10.4 ) { Add-Type -AssemblyName PresentationCore,PresentationFramework; [System.Windows.MessageBox]::Show("!!!Upgrade to a more recent wine version!!!`r`n The wine version you use is too old.",'Message','ok','exclamation');}
 
     restart_if_needed
+    
     func_nocrashdialog
 
     winecfg /v win10
+    
+    @"
+REGEDIT4
+
+[HKEY_CLASSES_ROOT\CLSID\{7542E960-79C7-11D1-88F9-0080C7D771BF}]
+@="EventSystem Class"
+
+[HKEY_CLASSES_ROOT\CLSID\{7542E960-79C7-11D1-88F9-0080C7D771BF}\InprocServer32]
+@="C:\\windows\\system32\\es.dll"
+"ThreadingModel"="Both"
+
+[HKEY_CLASSES_ROOT\CLSID\{7542E960-79C7-11D1-88F9-0080C7D771BF}\ProgId]
+@="Microsoft.Update.Installer.1"
+
+[HKEY_CLASSES_ROOT\CLSID\{7542E960-79C7-11D1-88F9-0080C7D771BF}\TypeLib]
+@="{E81221DC-C4D8-11D1-B653-00805FC79216}"
+
+[HKEY_CLASSES_ROOT\CLSID\{7542E960-79C7-11D1-88F9-0080C7D771BF}\Version]
+@="1.0"
+
+[HKEY_CLASSES_ROOT\CLSID\{7542E960-79C7-11D1-88F9-0080C7D771BF}\VersionIndependentProgId]
+@="Microsoft.Update.Installer"
+
+[HKEY_CLASSES_ROOT\CLSID\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}]
+@="CEventSystem Class"
+
+[HKEY_CLASSES_ROOT\CLSID\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}\InprocServer32]
+@="C:\\windows\\system32\\es.dll"
+"ThreadingModel"="Both"
+
+[HKEY_CLASSES_ROOT\CLSID\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}\ProgId]
+@="Microsoft.Update.Installer.1"
+
+[HKEY_CLASSES_ROOT\CLSID\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}\TypeLib]
+@="{E81221DC-C4D8-11D1-B653-00805FC79216}"
+
+[HKEY_CLASSES_ROOT\CLSID\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}\Version]
+@="1.0"
+
+[HKEY_CLASSES_ROOT\CLSID\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}\VersionIndependentProgId]
+@="Microsoft.Update.Installer"
+"@ | Out-File -FilePath $env:TEMP\\es.reg
+    reg.exe  IMPORT  $env:TEMP\\es.reg /reg:64;
+    reg.exe  IMPORT  $env:TEMP\\es.reg /reg:32;
+
     
     if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe'}
     if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\X11 Driver')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe\\X11 Driver'}
@@ -3450,11 +3886,7 @@ function func_vs26_interactive_installer
     if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe\\DllOverrides')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe\\DllOverrides'}
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\DesignToolsServer.exe\\DllOverrides' -Name 'kernel32' -Value '' -PropertyType 'String' -force
 
-    (New-Object System.Net.WebClient).DownloadFile('https://aka.ms/vs/18/Stable/vs_community.exe', "$env:TMP\\vs_Community.exe") 
-
-    New-Item  -Path "HKLM:\\Software\\Classes\\CLSID\\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}"
-    New-Item  -Path "HKLM:\\Software\\Classes\\CLSID\\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}\\InprocServer32"
-    New-ItemProperty -Path "HKLM:\\Software\\Classes\\CLSID\\{4E14FBA2-2E22-11D1-9964-00C04FBBB345}\\InprocServer32" -Name "(Default)" -Value 'c:\windows\system32\es.dll' -PropertyType 'String' -force
+    [System.Net.WebClient]::new().DownloadFile('https://aka.ms/vs/18/Stable/vs_community.exe', "$env:TMP\\vs_Community.exe") 
 
     & "$env:TMP\\vs_Community.exe" --wait
     
@@ -3484,7 +3916,7 @@ function func_vs19_interactive_installer
 
     #foreach($i in 'concrt140') { dlloverride 'native,builtin' $i }
 
-   (New-Object System.Net.WebClient).DownloadFile('https://aka.ms/vs/16/release/vs_community.exe', "$env:TMP\\vs_Community.exe") 
+   [System.Net.WebClient]::new().DownloadFile('https://aka.ms/vs/16/release/vs_community.exe', "$env:TMP\\vs_Community.exe") 
 
     & "$env:TMP\\vs_Community.exe" --wait
     
@@ -3508,7 +3940,7 @@ function func_creative_cloud
     if(!(Test-Path 'HKCU:\\Software\\Wine\\AppDefaults\\Set-up.exe\\X11 Driver')) {New-Item  -Path 'HKCU:\\Software\\Wine\\AppDefaults\\Set-up.exe\\X11 Driver'}
     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\Set-up.exe\\X11 Driver' -Name 'Decorated' -Value 'N' -PropertyType 'String' -force #    New-ItemProperty -Path 'HKCU:\\Software\\Wine\\AppDefaults\\devenv.exe' -Name 'Version' -Value 'win7' -PropertyType 'String' -force
 
-   (New-Object System.Net.WebClient).DownloadFile('https://ccmdls.adobe.com/AdobeProducts/StandaloneBuilds/ACCC/ESD/6.8.1/865/win64/ACCCx6_8_1_865.zip', "$env:TMP\\ACCCx6_8_1_865.zip") 
+   [System.Net.WebClient]::new().DownloadFile('https://ccmdls.adobe.com/AdobeProducts/StandaloneBuilds/ACCC/ESD/6.8.1/865/win64/ACCCx6_8_1_865.zip', "$env:TMP\\ACCCx6_8_1_865.zip") 
 
     7z x "$env:TMP\\ACCCx6_8_1_865.zip" "-o$env:TMP" -y ; quit?('7z')
 
@@ -3523,9 +3955,9 @@ winecfg /v win10
 func_wine_combase
 func_riched20
 func_wine_sppc
-func_wine_d2d1
-#func_msxml6
-func_wine_msxml3
+#func_wine_d2d1
+func_msxml6
+#func_wine_msxml3
 
 #restart_if_needed
 
@@ -3632,7 +4064,7 @@ function func_embed-exe-in-psscript
         Add-Type -AssemblyName System.Windows.Forms
         $result = [System.Windows.Forms.MessageBox]::Show("Using this verb might likely trigger a viruswarning, but this script is actually really harmless. Download the script now? " , "Info" , 4)
         if ($result -eq 'Yes') {
-            (New-Object System.Net.WebClient).DownloadFile('https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/powershell_collected_codesnippets_examples/embed-exe-in-psscript.ps1', "$env:ProgramData\Chocolatey-for-wine\embed-exe-in-psscript.ps1" )
+            [System.Net.WebClient]::new().DownloadFile('https://raw.githubusercontent.com/PietJankbal/Chocolatey-for-wine/main/EXTRAS/powershell_collected_codesnippets_examples/embed-exe-in-psscript.ps1', "$env:ProgramData\Chocolatey-for-wine\embed-exe-in-psscript.ps1" )
         . "$env:ProgramData\Chocolatey-for-wine\embed-exe-in-psscript.ps1"
         func_embed-exe-in-psscript2
         }
