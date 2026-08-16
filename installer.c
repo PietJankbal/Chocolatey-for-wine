@@ -53,7 +53,7 @@ DWORD WINAPI net48_install(void *ptr){
     else {
         wcscat(wcscat(wcscat(wcscat(wcscat(wcscat(bufW,p->sevenzippath) ,L" x -x!\"*.cab\" -x!\"netfx_c*\" -x!\"netfx_e*\" -x!\"NetFx4*\" -ms190M "), p->setupcache),L"\\ndp48-x86-x64-allos-enu.exe -o"), p->setupcache), L"\\v4.8.03761" );
  
-        CreateProcessW(0, bufW, 0, 0, 0, 0, 0, 0, &si, &pi);
+        CreateProcessW(0, bufW, 0, 0, 0, 0x00000100, 0, 0, &si, &pi);
         WaitForSingleObject(pi.hProcess, INFINITE); /*GetExitCodeProcess(pi.hProcess, &exitcode);*/ CloseHandle(pi.hProcess); CloseHandle(pi.hThread);
 
         bufW[0]=0;
@@ -126,7 +126,7 @@ DWORD WINAPI pscore_install(void *ptr){
         }
     }
     
-    WCHAR webview[] = L"--disable-dwm-composition --disable-gpu-sandbox --disable-d3d11  --disable-sandbox --use-angle=d3d9 --disable-gpu";
+    WCHAR webview[] = L"--disable-dwm-composition --disable_direct_composition=1 --disable-gpu-sandbox --disable-d3d11  --disable-sandbox --use-angle=d3d9 --disable-gpu";
     RegCreateKeyExW(HKEY_CURRENT_USER, L"Environment", 0, NULL, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hKey, NULL);
     RegSetValueExW(hKey, L"PS7\0", 0, REG_SZ, (BYTE*) pwsh_pathW, sizeof(WCHAR)*wcslen(pwsh_pathW)+1); RegCloseKey(hKey);
     RegCreateKeyExW(HKEY_CURRENT_USER, L"Environment", 0, NULL, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hKey, NULL);
@@ -197,11 +197,11 @@ int mainCRTStartup(void) {
     if(GetFileAttributesW( wcscat(wcscat(bufW1, p.cache_dir), L"\\v4.8.03761\\netfx_Full_x64.msi")) == INVALID_FILE_ATTRIBUTES)
        URLDownloadToFileW(NULL, url, wcscat(wcscat(bufW, p.setupcache), wcsrchr(url, L'/') + 1), 0, NULL);
     /* https://aljensencprogramming.wordpress.com/tag/createthread/ */
-    hThread[3] = CreateThread(NULL, 0, cdrive_install, &p, 0, 0);   
     hThread[0] = CreateThread(NULL, 0, net48_install, &p, 0, 0);   
+    SetThreadPriority(hThread[0], 15);
+    hThread[3] = CreateThread(NULL, 0, cdrive_install, &p, 0, 0);   
     hThread[2] = CreateThread(NULL, 0, pscore_install, &p, 0, 0);  
     hThread[1] = CreateThread(NULL, 0, chocolatey_install, &p, 0, 0);
-    SetThreadPriority(hThread[0], 15);
     WaitForMultipleObjects(4, hThread, TRUE, INFINITE);
     for (int i = 0; i < 4; i++)  CloseHandle(hThread[i]); 
     
