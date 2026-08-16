@@ -12,9 +12,9 @@ REGEDIT4
 "d3dcompiler_43"="native"
 ;"wusa.exe"="native"
 "mscorsvw.exe"=""
-;"schtasks.exe"="native"
+"schtasks.exe"="native"
 "setx.exe"="native"
-"taskschd"="native"
+;"taskschd"="native"
 "robocopy.exe"="native"
 "wmic.exe"="native"
 "ngen.exe"="builtin"
@@ -37,6 +37,7 @@ REGEDIT4
 "msvcp140_codecvt_ids"="native,builtin"
 "msvcr140"="native,builtin"
 "ucrtbase"="native,builtin"
+"vcomp"="native,builtin"
 "vcomp140"="native,builtin"
 "vcruntime140"="native,builtin"
 "vcruntime140_1"="native,builtin"
@@ -47,6 +48,7 @@ REGEDIT4
 "msvcp110"="native,builtin"
 "msvcr120"="native,builtin"
 "msvcp120"="native,builtin"
+
 
 [HKEY_CURRENT_USER\Software\Wine]
 "HideWineExports"="Y"
@@ -133,8 +135,8 @@ REGEDIT4
 "Publisher"="ConEmu-Maximus5"
 
 [HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Uninstall\7-Zip]
-"DisplayName"="7-Zip (console only) 25.01 (x64)"
-"DisplayVersion"="25.01"
+"DisplayName"="7-Zip (console only) 26.00 (x64)"
+"DisplayVersion"="26.00"
 "Publisher"="Igor Pavlov"
 
 [HKEY_LOCAL_MACHINE\Software\Microsoft\.NETFramework]
@@ -286,12 +288,16 @@ $profile = "$env:ProgramFiles\PowerShell\7\profile.ps1"
 ################################################################################################################################   
 @'
 <# This contains essential functions/settings for Chocolatey-for-wine to work properly, do not remove or change #>
+
 cd c:\; 
 
 $env:DXVK_CONFIG_FILE=("$env:WINECONFIGDIR" + "\" + "drive_c" + "\" + ($env:ProgramData |split-path -leaf) + "\" + "dxvk.conf").substring(6) -replace "\\","/"
 
 # Enable Chocolatey profile
-$ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+#$ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
+$ChocolateyProfile = "$env:ProgramData\\Chocolatey\helpers\chocolateyProfile.psm1"
+
+
 if (Test-Path($ChocolateyProfile)) {
     Import-Module "$ChocolateyProfile"
 }
@@ -301,30 +307,11 @@ if( !( (Get-FileHash C:\windows\system32\user32.dll).Hash -eq (Get-FileHash C:\C
      Copy-item $env:SystemDrive\windows\system32\user32.dll $env:SystemDrive\ConEmu\user32dummy.dll -force -erroraction silentlycontinue
 }
 
-<# get the wine-version string (https://github.com/FuzzySecurity/PowerShell-Suite/blob/master/Get-SystemProcessInformation.ps1) #>
-$MethodDefinition0 = @"
-[DllImport("ntdll.dll")] public static extern int NtQuerySystemInformation(	int SystemInformationClass,	IntPtr SystemInformation, int SystemInformationLength, ref int ReturnLength);
-"@
-			
-$ntdll0 = Add-Type -MemberDefinition $MethodDefinition0 -Namespace '' -name 'ntdll0' -PassThru
-
-[int]$BuffPtr_Size = 256
-[IntPtr]$BuffPtr = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($BuffPtr_Size)
-$SystemInformationLength = New-Object Int
-$null = [ntdll0]::NtQuerySystemInformation(1000, $BuffPtr, $BuffPtr_Size, [ref]$SystemInformationLength)
-$wine_version = [System.Runtime.InteropServices.Marshal]::PtrToStringAnsi($BuffPtr,256)
-[System.Runtime.InteropServices.Marshal]::FreeHGlobal($BuffPtr)
-<# end get wine-version #>
-
 <# if powershell is started without args let's start conemu, but not if redirected or from pipe ( like 'powershell < a.ps1'  or '"echo hello" | powershell') #>
 $MethodDefinition = @"
-    public enum  FSINFOCLASS
-        {
-            FileFsDeviceInformation = 4,
-        }
+    public enum  FSINFOCLASS { FileFsDeviceInformation = 4, }
 
-    //https://stackoverflow.com/questions/69192954/how-to-add-and-use-a-c-sharp-struct-in-powershell
-    [StructLayout(LayoutKind.Sequential, Pack = 0)]
+    [StructLayout(LayoutKind.Sequential, Pack = 0)]     //https://stackoverflow.com/questions/69192954/how-to-add-and-use-a-c-sharp-struct-in-powershell
      public struct FILE_FS_DEVICE_INFORMATION {
          public uint DeviceType;
          public ulong Characteristics;
@@ -347,6 +334,7 @@ $MethodDefinition = @"
      }
 
     [DllImport("ntdll.dll",  SetLastError=true)] public static extern long NtQueryVolumeInformationFile(IntPtr FileHandle,  ref IO_STATUS_BLOCK IoStatusBlock,ref FILE_FS_DEVICE_INFORMATION FsInformation, UInt32 Length, FSINFOCLASS FsInformationClass);
+    [DllImport("ntdll.dll")] public static extern int NtQuerySystemInformation(	int SystemInformationClass,	IntPtr SystemInformation, int SystemInformationLength, ref int ReturnLength);
 "@
 
 $ntdll = Add-Type -MemberDefinition $MethodDefinition -Namespace '' -name 'ntdll' -PassThru
@@ -372,6 +360,13 @@ if(($parent.processname -eq 'powershell') -and  ( $kernel32::GetCommandLineW() -
     #Stop-process -id $parent.Id
     Stop-process -id  ([System.Diagnostics.Process]::GetCurrentProcess()).Id
 }  <# end start ConEmu #>
+
+<# get the wine-version string (https://github.com/FuzzySecurity/PowerShell-Suite/blob/master/Get-SystemProcessInformation.ps1) #>
+[IntPtr]$BuffPtr = [System.Runtime.InteropServices.Marshal]::AllocHGlobal(256)
+$null = [ntdll]::NtQuerySystemInformation(1000, $BuffPtr, 256, [ref][Int]$SystemInformationLength)
+$wine_version = [System.Runtime.InteropServices.Marshal]::PtrToStringAnsi($BuffPtr,256)
+[System.Runtime.InteropServices.Marshal]::FreeHGlobal($BuffPtr)
+<# end get wine-version #>
 
 if($([System.Diagnostics.Process]::GetCurrentProcess().Parent.processname) -eq 'ConEmuC64' ) {Write-Host "";Write-Host -Foregroundcolor yellow Running Power Shell Core $PSVersionTable.PSVersion.ToString() on $wine_version.Split("`0",5)[1]"`nHost:" $wine_version.Split("`0",5)[2] $wine_version.Split("`0",5)[3]; Write-Host "";[system.console]::ForegroundColor='white'}
 
@@ -419,8 +414,7 @@ function winetricks {
 $path = $env:PSModulePath -split ';'
 $env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -join ';'
 
-Remove-Variable ntdll_so,MethodDefinition2,MethodDefinition,MethodDefinition0,ntdll,ntdll0,kernel32,BuffPtr, BuffPtr_size,info,io,j -erroraction silentlycontinue
-
+Remove-Variable MethodDefinition2,MethodDefinition,BuffPtr, info,io,j -erroraction silentlycontinue
 '@ | Out-File ( New-Item -Path $env:ProgramData\\Chocolatey-for-wine\\profile_essentials.ps1 -Force)
 ################################################################################################################################ 
 #                                                                                                                              #
@@ -443,14 +437,6 @@ Remove-Variable ntdll_so,MethodDefinition2,MethodDefinition,MethodDefinition0,nt
     else { $cachedir =  [System.IO.Path]::Combine( "$([Environment]::GetFolderPath('mydocuments'))", "Chocolatey-for-wine", "choc_install_files" );}
     $setupcache = "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache"
 
-    <# setup chocolatey #>
-    Move-Item "$env:ProgramData\\tools\\ChocolateyInstall" "$env:ProgramData\\chocolatey"
-    mkdir "$env:ProgramData\\chocolatey\\bin"
-    Copy-Item "$env:ProgramData\\chocolatey\\redirects\\choco.exe" "$env:ProgramData\\chocolatey\\bin\\choco.exe"
-    Import-Module "$env:ProgramData\chocolatey\helpers\chocolateyProfile.psm1"
-    [Environment]::SetEnvironmentVariable('PATH',[Environment]::GetEnvironmentVariable('PATH', 'Machine') + ";$env:ProgramData\chocolatey\bin\", 'Machine')
-    [Environment]::SetEnvironmentVariable('ChocolateyInstall',"$env:ProgramData\chocolatey", 'Machine')
-    iex 'refreshenv'
 
     if (([System.IO.File]::Exists("$cachedir\\windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu"))) { 
         $cab_path = "$cachedir" }
@@ -462,13 +448,9 @@ Remove-Variable ntdll_so,MethodDefinition2,MethodDefinition,MethodDefinition0,nt
     else {
         $cab_path = "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache" }
     iex "& ""$(Join-Path $args[0] '7z.exe')"" x  ""$cab_path\ConEmuPack.230724.7z"" ""-o$env:SystemDrive\ConEmu""";
-    if (([System.IO.File]::Exists("$cachedir\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe"))) {
-        $cab_path = "$cachedir" }
-    else {
-        $cab_path = "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache" }
-    iex  "& ""$(Join-Path $args[0] '7z.exe')"" x  -x!""*resources.dll"" ""$cab_path\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe""  ""Microsoft.Powershell*.dll""   ""Microsoft.WSman*.dll"" ""system.management.automation.dll"" ""-o$env:ProgramData\chocolatey"""
 
     New-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{DE293FDE-C181-46C0-8DCC-1F75EA35833D}" -Name "InstallDate" -Value "$(Get-Date -Format FileDate)" -PropertyType 'String' -force
+    New-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\7-zip" -Name "InstallDate" -Value "$(Get-Date -Format FileDate)" -PropertyType 'String' -force
     New-ItemProperty -Path "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\7-zip" -Name "InstallDate" -Value "$(Get-Date -Format FileDate)" -PropertyType 'String' -force
 
     [System.IO.File]::Copy("$env:SystemDrive\windows\system32\user32.dll","$env:SystemDrive\ConEmu\user32dummy.dll",$true)
@@ -480,28 +462,54 @@ Remove-Variable ntdll_so,MethodDefinition2,MethodDefinition,MethodDefinition0,nt
     $bytes = [System.IO.File]::ReadAllBytes("$env:systemdrive\Conemu\conemu64.exe")
     $bytes[1968524]='0x5f' <# rename 'USER32.dll to allow loading it from non-system directory (find exact position with 'grep -oba "USER32.dll")' #>
     [System.IO.File]::WriteAllBytes("$env:systemdrive\Conemu\conemu64.exe",$bytes)
-        
-    Get-Process '7z' -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit()}
-    while (![Microsoft.Win32.RegistryKey]::OpenBaseKey('LocalMachine',0).OpenSubKey('Software\Microsoft\Windows\CurrentVersion\Uninstall\{16735AF7-1D8D-3681-94A5-C578A61EC832}')) {Sleep 0.25}
-    Remove-Item "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{92FB6C44-E685-45AD-9B20-CADF4CABA132} - 1033" -recurse -force
+
+
+    <# setup chocolatey #>
+    Move-Item "$env:ProgramData\\tools\\ChocolateyInstall" "$env:ProgramData\\chocolatey"
+    mkdir "$env:ProgramData\\chocolatey\\bin"
+    Copy-Item "$env:ProgramData\\chocolatey\\redirects\\choco.exe" "$env:ProgramData\\chocolatey\\bin\\choco.exe"
+
+    if (([System.IO.File]::Exists("$cachedir\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe"))) {
+        $cab_path = "$cachedir" }
+    else {
+        $cab_path = "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache" }
+    iex  "& ""$(Join-Path $args[0] '7z.exe')"" x  -x!""*resources.dll"" ""$cab_path\\windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe""  ""Microsoft.Powershell*.dll""   ""Microsoft.WSman*.dll"" ""system.management.automation.dll"" ""-o$env:ProgramData\chocolatey"""
+
+    Import-Module "$env:ProgramData\chocolatey\helpers\chocolateyProfile.psm1"
+    [Environment]::SetEnvironmentVariable('PATH',[Environment]::GetEnvironmentVariable('PATH', 'Machine') + ";$env:ProgramData\chocolatey\bin\", 'Machine')
+    [Environment]::SetEnvironmentVariable('ChocolateyInstall',"$env:ProgramData\chocolatey", 'Machine')
+    iex 'refreshenv'
+#    Get-Process '7z' -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit()}
     Move-Item -Path "$env:systemdrive\Conemu\user32.dll" -Destination "$env:systemdrive\Conemu\_ser32.dll"
 
     if(!($args[1] -eq '/q') -and !($args[2] -eq '/q')) {
-        Start-Process "c:\conemu\conemu64" -ArgumentList " -NoUpdate -LoadRegistry -run %ProgramFiles%\\Powershell\\7\\pwsh.exe -noe -c Write-Host Installed Software: ; Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* |? DisplayName| Select-Object DisplayName, DisplayVersion, Publisher, InstallDate | Format-Table ;"}
+    Start-Process "c:\conemu\conemu64" -ArgumentList " -NoUpdate -LoadRegistry -run %ProgramFiles%\\Powershell\\7\\pwsh.exe -noe -c Write-Host Installed Software: ;
+    `$ps = (gci `$env:ProgramFiles\PowerShell\7\pwsh.exe)
+    `$7z = (gci `$env:ProgramFiles\7-zip\7z.exe)
+    `$choco = (gci `$env:ProgramData\chocolatey\choco.exe)
+    `$inf = @(); 
+    `$inf += [PSCustomObject]@{DisplayName='7-Zip (Console only)';DisplayVersion=`$7z.VersionInfo.ProductVersionRaw;Publisher='Igor Pavlov';InstallDate=`$(Get-Date -Format FileDate)};
+    `$inf += [PSCustomObject]@{DisplayName='Microsoft .NET Framework 4.8';DisplayVersion='4.8.03761';Publisher='Microsoft Corporation';InstallDate=`$(Get-Date -Format FileDate)};
+    `$inf += [PSCustomObject]@{DisplayName='PowerShell 7-x64';DisplayVersion=`$ps.VersionInfo.ProductVersionRaw;Publisher='Microsoft Corporation';InstallDate=`$(Get-Date -Format FileDate)};
+    `$inf += [PSCustomObject]@{DisplayName='Chocolatey';DisplayVersion=`$choco.VersionInfo.ProductVersionRaw;Publisher='Chocolatey Software, Inc.';InstallDate=`$(Get-Date -Format FileDate)};
+    `$inf += [PSCustomObject]@{DisplayName='ConEmu 230724.x64';DisplayVersion='11.230.7240';Publisher='ConEmu-Maximus5';InstallDate=`$(Get-Date -Format FileDate)};`$inf"}
+#        Start-Process "c:\conemu\conemu64" -ArgumentList " -NoUpdate -LoadRegistry -run %ProgramFiles%\\Powershell\\7\\pwsh.exe -noe -c iex -command ""$inf = @(); $inf += [PSCustomObject]@{DisplayName='7-Zip (console only) 26.00 (x64)';DisplayVersion='26.00';Publisher='Igor Pavlov';InstallDate='$(Get-Date -Format FileDate)'}; $inf += [PSCustomObject]@{DisplayName='Microsoft .NET Framework 4.8';DisplayVersion='4.8.03761';Publisher='Microsoft Corporation';InstallDate='$(Get-Date -Format FileDate)'};
+#    $inf += [PSCustomObject]@{DisplayName='PowerShell 7-x64';DisplayVersion='7.6.3.0';Publisher='Microsoft Corporation';InstallDate='$(Get-Date -Format FileDate)'}; $inf += [PSCustomObject]@{DisplayName='ConEmu 230724.x64';DisplayVersion='11.230.7240';Publisher='ConEmu-Maximus5';InstallDate='$(Get-Date -Format FileDate)'};Write-Host Installed Software: '$inf';"""}
+
 ################################################################################################################### 
 #                                                                                                                 #
 #  Finish installation and some app specific tweaks                                                               #
 #                                                                                                                 #
 ###################################################################################################################
+#    while (![Microsoft.Win32.RegistryKey]::OpenBaseKey('LocalMachine',0).OpenSubKey('Software\Microsoft\Windows\CurrentVersion\Uninstall\{16735AF7-1D8D-3681-94A5-C578A61EC832}')) {Sleep 0.25}
+
     <# do not use chocolatey's builtin powershell host #>
-    while(!(Test-path "$env:systemroot\\system32\\ucrtbase_clr0400.dll") ) {start-Sleep 0.25}
-    cd c:\; c:\\ProgramData\\chocolatey\\choco.exe feature disable --name=powershellHost; winecfg /v win10
-    c:\\ProgramData\\chocolatey\\choco.exe feature enable -n allowGlobalConfirmation <# to confirm automatically (no -y needed) #>
+#    while(!(Test-path "$env:systemroot\\system32\\ucrtbase_clr0400.dll") ) {start-Sleep 0.25}
+#    cd c:\; c:\\ProgramData\\chocolatey\\choco.exe feature disable --name=powershellHost; winecfg /v win10
+#    c:\\ProgramData\\chocolatey\\choco.exe feature enable -n allowGlobalConfirmation <# to confirm automatically (no -y needed) #>
 #    mkdir "$env:ProgramFiles\7-zip"
 #    Copy-Item  $(Join-Path $args[0] '7z.*') "$env:ProgramFiles\7-zip\"
-    <# easy access to 7z #>
-    iex "$env:ProgramData\\chocolatey\\tools\\shimgen.exe --output=`"$env:ProgramData`"\\chocolatey\\bin\\7z.exe --path=`"$env:ProgramW6432`"\\7-zip\\7z.exe"
-    #Remove-Item -force -recurse "$env:systemroot\mono";
+   #Remove-Item -force -recurse "$env:systemroot\mono";
     if( [System.IO.Directory]::Exists("$env:systemroot\mono") ) { [System.IO.Directory]::Delete("$env:systemroot\mono",'true') }
     else {
         reg.exe  IMPORT  $env:TMP\\mono.reg /reg:64
@@ -516,11 +524,7 @@ Remove-Variable ntdll_so,MethodDefinition2,MethodDefinition,MethodDefinition0,nt
 				[System.IO.File]::Copy("$env:systemroot\Microsoft.NET\$i\v4.0.30319\installutil.exe", "$env:systemroot\Microsoft.NET\$i\v2.0.50727\installutil.exe", $true);
         }
     }  
-    <# This makes Astro Photography Tool happy #>
-    foreach($i in 'regasm.exe') { 
-        Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\$i
-        Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework64\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework64\\v2.0.50727\\$i
-    }
+
 
     [System.IO.Directory]::CreateDirectory("$env:systemroot\assembly\")
 
@@ -544,10 +548,8 @@ Remove-Variable ntdll_so,MethodDefinition2,MethodDefinition,MethodDefinition0,nt
     <# Backup files if wanted #>
     if(($args[1] -eq '/s') -or ($args[2] -eq '/s')) {
         [System.IO.Directory]::CreateDirectory("$cachedir")
-       # New-Item -Path "$cachedir\" -Name "choc_install_files" -ItemType "directory" -ErrorAction SilentlyContinue
-        foreach($i in 'PowerShell-7.5.5-win-x64.msi', 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', '7z2409-x64.exe', 'sevenzipextractor.1.0.19.nupkg', 'ConEmuPack.230724.7z', 'windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe', 'chocolatey.2.6.0.nupkg') {
+        foreach($i in ((gci $setupcache\\PowerShell-*-win-x64.msi)).name, 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', 'sevenzipextractor.1.0.19.nupkg', 'ConEmuPack.230724.7z', 'windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe', ((gci $setupcache\\chocolatey.*.nupkg)).name) {
             Move-Item -Path "$setupcache\\$i" -Destination "$cachedir" -force -ErrorAction SilentlyContinue}
-        #Copy-Item -Path "$env:TEMP\choc_inst_files\v4.8.03761" -Destination "$cachedir\choc_install_files\".substring(4) -recurse -force
         Move-Item -path  "$setupcache\\v4.8.03761" -destination "$cachedir" -ErrorAction SilentlyContinue;
     }
     <# Replace some system programs by functions; This also makes wusa a dummy program: we don`t want windows updates and it doesn`t work anyway #>
@@ -561,7 +563,24 @@ Remove-Variable ntdll_so,MethodDefinition2,MethodDefinition,MethodDefinition0,nt
     <# make wusa noop #>
     New-ItemProperty -Path "HKCU:\Software\Wine\DllOverrides" -Name "wusa.exe" -Value "native" -PropertyType 'String' -force
     <# clean up #>
-    [System.IO.Directory]::Delete($setupcache,'true')
+    Get-Process 'msiexec' -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit()}; [System.IO.Directory]::Delete($setupcache,'true')
+	New-ItemProperty -Path  HKLM:\Software\Microsoft\.NETFramework -Name ETWEnabled -Value 0 -PropertyType "DWord" -force
+    while (![Microsoft.Win32.RegistryKey]::OpenBaseKey('LocalMachine',0).OpenSubKey('Software\Microsoft\Windows\CurrentVersion\Uninstall\{16735AF7-1D8D-3681-94A5-C578A61EC832}')) {Sleep 0.25}
+    Remove-Item "HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{92FB6C44-E685-45AD-9B20-CADF4CABA132} - 1033" -recurse -force
+
+        while (![Microsoft.Win32.RegistryKey]::OpenBaseKey('LocalMachine',0).OpenSubKey('Software\Microsoft\Windows\CurrentVersion\Uninstall\{16735AF7-1D8D-3681-94A5-C578A61EC832}')) {Sleep 0.25}
+
+    <# do not use chocolatey's builtin powershell host #>
+#    while(!(Test-path "$env:systemroot\\system32\\ucrtbase_clr0400.dll") ) {start-Sleep 0.25}
+    cd c:\; c:\\ProgramData\\chocolatey\\choco.exe feature disable --name=powershellHost; winecfg /v win10
+    c:\\ProgramData\\chocolatey\\choco.exe feature enable -n allowGlobalConfirmation <# to confirm automatically (no -y needed) #>
+        <# easy access to 7z #>
+    iex "$env:ProgramData\\chocolatey\\tools\\shimgen.exe --output=`"$env:ProgramData`"\\chocolatey\\bin\\7z.exe --path=`"$env:ProgramW6432`"\\7-zip\\7z.exe"
+     <# This makes Astro Photography Tool happy #>
+    foreach($i in 'regasm.exe') { 
+        Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework\\v2.0.50727\\$i
+        Copy-Item -Path $env:systemroot\\Microsoft.NET\\Framework64\\v4.0.30319\\$i -Destination $env:systemroot\\Microsoft.NET\\Framework64\\v2.0.50727\\$i
+    }
     <# dxvk (if installed) doesn't work well with WPF, add workaround from dxvk site  #>
 #####################################################################################################
 @"
@@ -571,6 +590,7 @@ d3d9.shaderModel = 1
 [ps51.exe]
 d3d9.shaderModel = 1
 "@ | Out-File -FilePath $env:ProgramData\\dxvk.conf
+
 
 @'
 Function Get-WmiObject([parameter(mandatory=$true, position = 0, parametersetname = 'class')] [string]$class, `
