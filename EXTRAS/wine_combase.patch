@@ -1,8 +1,46 @@
 diff --git a/dlls/combase/combase.c b/dlls/combase/combase.c
-index 94e256f7cc1..2b8cdc2fca7 100644
+index 94e256f7cc1..774b1f006de 100644
 --- a/dlls/combase/combase.c
 +++ b/dlls/combase/combase.c
-@@ -1021,7 +1021,7 @@ HRESULT WINAPI CoSetProxyBlanket(IUnknown *proxy, DWORD authn_service, DWORD aut
+@@ -129,6 +129,7 @@ struct registered_class
+ };
+ 
+ static struct list registered_classes = LIST_INIT(registered_classes);
++static IActivationFilter *registered_activation_filter;
+ 
+ static CRITICAL_SECTION registered_classes_cs;
+ static CRITICAL_SECTION_DEBUG registered_classes_cs_debug =
+@@ -452,19 +453,27 @@ static ULONG WINAPI global_options_Release(IGlobalOptions *iface)
+ 
+ static HRESULT WINAPI global_options_Set(IGlobalOptions *iface, GLOBALOPT_PROPERTIES property, ULONG_PTR value)
+ {
+-    FIXME("%p, %u, %Ix.\n", iface, property, value);
++    WARN("GLOBALOPTIONS Set property %u value %Ix\n", property, value);
++    TRACE("%p, %u, %Ix.\n", iface, property, value);
++
++    if (property < COMGLB_EXCEPTION_HANDLING || property > COMGLB_PROPERTIES_RESERVED3)
++        return E_INVALIDARG;
++
++    InterlockedExchangePointer((void *volatile *)&global_options[property], (void *)value);
+ 
+     return S_OK;
+ }
+ 
+ static HRESULT WINAPI global_options_Query(IGlobalOptions *iface, GLOBALOPT_PROPERTIES property, ULONG_PTR *value)
+ {
++    WARN("GLOBALOPTIONS Query property %u output %p\n", property, value);
+     TRACE("%p, %u, %p.\n", iface, property, value);
+ 
+     if (property < COMGLB_EXCEPTION_HANDLING || property > COMGLB_PROPERTIES_RESERVED3)
+         return E_INVALIDARG;
+ 
+-    *value = global_options[property];
++    *value = (ULONG_PTR)InterlockedCompareExchangePointer(
++            (void *volatile *)&global_options[property], NULL, NULL);
+ 
+     return S_OK;
+ }
+@@ -1021,7 +1030,7 @@ HRESULT WINAPI CoSetProxyBlanket(IUnknown *proxy, DWORD authn_service, DWORD aut
          IClientSecurity_Release(client_security);
      }
  
@@ -11,7 +49,153 @@ index 94e256f7cc1..2b8cdc2fca7 100644
      return hr;
  }
  
-@@ -3490,12 +3490,41 @@ HRESULT WINAPI CoEnableCallCancellation(void *reserved)
+@@ -1696,10 +1705,22 @@ HRESULT WINAPI DECLSPEC_HOTPATCH CoCreateInstance(REFCLSID rclsid, IUnknown *out
+         REFIID riid, void **obj)
+ {
+     MULTI_QI multi_qi = { .pIID = riid };
++    WCHAR clsid_string[40], iid_string[40];
++    char marker[256];
+     HRESULT hr;
+ 
++    StringFromGUID2(rclsid, clsid_string, ARRAY_SIZE(clsid_string));
++    StringFromGUID2(riid, iid_string, ARRAY_SIZE(iid_string));
++    snprintf(marker, sizeof(marker), "GLOBALOPTIONS ENTRY CoCreateInstance clsid %ls context %#lx iid %ls\n",
++            clsid_string, cls_context, iid_string);
++    OutputDebugStringA(marker);
++
+     TRACE("%s, %p, %#lx, %s, %p.\n", debugstr_guid(rclsid), outer, cls_context, debugstr_guid(riid), obj);
+ 
++    if (IsEqualCLSID(rclsid, &CLSID_GlobalOptions))
++        WARN("GLOBALOPTIONS CoCreateInstance clsid %s context %#lx iid %s\n",
++                debugstr_guid(rclsid), cls_context, debugstr_guid(riid));
++
+     if (!obj)
+         return E_POINTER;
+ 
+@@ -1721,10 +1742,11 @@ HRESULT WINAPI CoCreateInstanceFromApp(REFCLSID rclsid, IUnknown *outer, DWORD c
+             count, results);
+ }
+ 
+-static HRESULT com_get_class_object(REFCLSID rclsid, DWORD clscontext,
++static HRESULT com_get_class_object(const CLSID *rclsid, DWORD clscontext,
+         COSERVERINFO *server_info, REFIID riid, void **obj)
+ {
+     struct class_reg_data clsreg = { 0 };
++    CLSID filtered_clsid;
+     HRESULT hr = E_UNEXPECTED;
+     IUnknown *registered_obj;
+     struct apartment *apt;
+@@ -1734,6 +1756,38 @@ static HRESULT com_get_class_object(REFCLSID rclsid, DWORD clscontext,
+ 
+     *obj = NULL;
+ 
++    if (registered_activation_filter)
++    {
++        filtered_clsid = *rclsid;
++        hr = IActivationFilter_HandleActivation(registered_activation_filter,
++                ACTIVATIONTYPE_UNCATEGORIZED, rclsid, &filtered_clsid);
++        if (IsEqualCLSID(rclsid, &CLSID_GlobalOptions))
++        {
++            WCHAR filtered_string[40];
++            char marker[160];
++
++            StringFromGUID2(&filtered_clsid, filtered_string, ARRAY_SIZE(filtered_string));
++            snprintf(marker, sizeof(marker), "GLOBALOPTIONS activation filter hr %#lx result %ls\n", hr,
++                    filtered_string);
++            OutputDebugStringA(marker);
++        }
++        if (FAILED(hr))
++            return hr;
++        /* App-V's activation filter often returns S_OK with CLSID_NULL for system
++         * classes it does not virtualize (GlobalOptions, CMultiLanguage, ...).
++         * CLSID_NULL can never activate; treating it as a successful replacement
++         * yields REGDB_E_CLASSNOTREG / GUID_NULL CoCreate noise and Office
++         * fail-fasts (e.g. open-path 0x003d430a after MultiLanguage CoCreate).
++         * Preserve the original CLSID whenever the filter "replaces" with NULL.
++         * Non-NULL replacements remain honored for all classes.
++         */
++        if (hr == S_OK && !IsEqualCLSID(&filtered_clsid, &CLSID_NULL))
++            rclsid = &filtered_clsid;
++    }
++
++    if (IsEqualCLSID(rclsid, &CLSID_GlobalOptions))
++        OutputDebugStringA("GLOBALOPTIONS com_get_class_object builtin candidate\n");
++
+     if (!(apt = apartment_get_current_or_mta()))
+     {
+         ERR("apartment not initialised\n");
+@@ -1892,13 +1946,27 @@ static HRESULT com_get_class_object(REFCLSID rclsid, DWORD clscontext,
+ HRESULT WINAPI DECLSPEC_HOTPATCH CoCreateInstanceEx(REFCLSID rclsid, IUnknown *outer, DWORD cls_context,
+         COSERVERINFO *server_info, ULONG count, MULTI_QI *results)
+ {
++    WCHAR clsid_string[40], iid_string[40];
++    char marker[256];
+     IClassFactory *factory;
+     IUnknown *unk = NULL;
+     CLSID clsid;
+     HRESULT hr;
+ 
++    StringFromGUID2(rclsid, clsid_string, ARRAY_SIZE(clsid_string));
++    if (count && results) StringFromGUID2(results[0].pIID, iid_string, ARRAY_SIZE(iid_string));
++    else lstrcpyW(iid_string, L"(none)");
++    snprintf(marker, sizeof(marker), "GLOBALOPTIONS ENTRY CoCreateInstanceEx clsid %ls context %#lx iid %ls\n",
++            clsid_string, cls_context, iid_string);
++    OutputDebugStringA(marker);
++
+     TRACE("%s, %p, %#lx, %p, %lu, %p\n", debugstr_guid(rclsid), outer, cls_context, server_info, count, results);
+ 
++    if (IsEqualCLSID(rclsid, &CLSID_GlobalOptions))
++        WARN("GLOBALOPTIONS CoCreateInstanceEx clsid %s context %#lx count %lu iid %s\n",
++                debugstr_guid(rclsid), cls_context, count,
++                count && results ? debugstr_guid(results[0].pIID) : "(none)");
++
+     if (!count || !results)
+         return E_INVALIDARG;
+ 
+@@ -1909,7 +1977,15 @@ HRESULT WINAPI DECLSPEC_HOTPATCH CoCreateInstanceEx(REFCLSID rclsid, IUnknown *o
+ 
+     clsid = *rclsid;
+     if (!(cls_context & CLSCTX_APPCONTAINER))
+-        CoGetTreatAsClass(rclsid, &clsid);
++    {
++        hr = CoGetTreatAsClass(rclsid, &clsid);
++        if (IsEqualCLSID(rclsid, &CLSID_GlobalOptions))
++        {
++            StringFromGUID2(&clsid, clsid_string, ARRAY_SIZE(clsid_string));
++            snprintf(marker, sizeof(marker), "GLOBALOPTIONS TreatAs hr %#lx result %ls\n", hr, clsid_string);
++            OutputDebugStringA(marker);
++        }
++    }
+ 
+     if (FAILED(hr = com_get_class_object(&clsid, cls_context, NULL, &IID_IClassFactory, (void **)&factory)))
+         return hr;
+@@ -3450,6 +3526,25 @@ HRESULT WINAPI CoRegisterChannelHook(REFGUID guidExtension, IChannelHook *channe
+     return rpc_register_channel_hook(guidExtension, channel_hook);
+ }
+ 
++/***********************************************************************
++ *           CoCancelCall    (combase.@)
++ */
++HRESULT WINAPI CoCancelCall(DWORD thread_id, ULONG timeout)
++{
++    RPC_STATUS status;
++    HANDLE thread;
++
++    TRACE("%lu, %lu\n", thread_id, timeout);
++
++    if (!thread_id) thread_id = GetCurrentThreadId();
++    if (!(thread = OpenThread(THREAD_QUERY_INFORMATION, FALSE, thread_id)))
++        return HRESULT_FROM_WIN32(GetLastError());
++
++    status = RpcCancelThreadEx(thread, timeout);
++    CloseHandle(thread);
++    return HRESULT_FROM_WIN32(status);
++}
++
+ /***********************************************************************
+  *           CoDisableCallCancellation    (combase.@)
+  */
+@@ -3490,12 +3585,41 @@ HRESULT WINAPI CoEnableCallCancellation(void *reserved)
  }
  
  /***********************************************************************
@@ -57,33 +241,256 @@ index 94e256f7cc1..2b8cdc2fca7 100644
  }
  
  /***********************************************************************
-diff --git a/dlls/combase/marshal.c b/dlls/combase/marshal.c
-index 6e3d35ce580..371b5c2da70 100644
---- a/dlls/combase/marshal.c
-+++ b/dlls/combase/marshal.c
-@@ -1380,7 +1380,7 @@ static HRESULT WINAPI ProxyCliSec_QueryBlanket(IClientSecurity *iface,
-     if (pCapabilities)
-         *pCapabilities = EOAC_NONE;
+@@ -3562,9 +3686,17 @@ BOOL WINAPI CoIsOle1Class(REFCLSID clsid)
+  */
+ HRESULT WINAPI CoRegisterActivationFilter(IActivationFilter *filter)
+ {
+-    FIXME("%p stub\n", filter);
++    FIXME("%p semi-stub\n", filter);
  
 -    return E_NOTIMPL;
++    if (!filter)
++        return E_INVALIDARG;
++
++    if (InterlockedCompareExchangePointer((void **)&registered_activation_filter, filter, NULL))
++        return E_ACCESSDENIED;
++
++    IActivationFilter_AddRef(filter);
++
 +    return S_OK;
+ }
+ 
+ static void com_cleanup_tlsdata(void)
+diff --git a/dlls/combase/combase.spec b/dlls/combase/combase.spec
+index 19249e17f87..59e5db2aca8 100644
+--- a/dlls/combase/combase.spec
++++ b/dlls/combase/combase.spec
+@@ -75,7 +75,7 @@
+ @ stub ClearCleanupFlag
+ @ stdcall CoAddRefServerProcess()
+ @ stub CoAllowUnmarshalerCLSID
+-@ stub CoCancelCall
++@ stdcall CoCancelCall(long long)
+ @ stdcall CoCopyProxy(ptr ptr)
+ @ stdcall CoCreateErrorInfo(ptr) CreateErrorInfo
+ @ stdcall CoCreateFreeThreadedMarshaler(ptr ptr)
+diff --git a/dlls/combase/marshal.c b/dlls/combase/marshal.c
+index 6e3d35ce580..50d2b9cb03f 100644
+--- a/dlls/combase/marshal.c
++++ b/dlls/combase/marshal.c
+@@ -53,6 +53,12 @@ struct ifproxy
+     IRpcProxyBuffer *proxy;  /* interface proxy (RO) */
+     ULONG refs;              /* imported (public) references (LOCK) */
+     IRpcChannelBuffer *chan; /* channel to object (CS parent->cs) */
++    DWORD authn_service;     /* authentication service (CS parent->cs) */
++    DWORD authz_service;     /* authorization service (CS parent->cs) */
++    WCHAR *server_principal; /* server principal name (CS parent->cs) */
++    DWORD authn_level;       /* authentication level (CS parent->cs) */
++    DWORD imp_level;         /* impersonation level (CS parent->cs) */
++    DWORD capabilities;      /* proxy security capabilities (CS parent->cs) */
+ };
+ 
+ /* imported object / proxy manager */
+@@ -1351,50 +1357,108 @@ static ULONG WINAPI ProxyCliSec_Release(IClientSecurity *iface)
+     return IMultiQI_Release(&This->IMultiQI_iface);
+ }
+ 
++/* Called with manager->cs held. */
++static struct ifproxy *proxy_manager_find_ifproxy_by_iface(struct proxy_manager *manager, IUnknown *proxy)
++{
++    struct ifproxy *ifproxy;
++
++    LIST_FOR_EACH_ENTRY(ifproxy, &manager->interfaces, struct ifproxy, entry)
++        if (ifproxy->iface == proxy || proxy == (IUnknown *)&manager->IMultiQI_iface) return ifproxy;
++    return NULL;
++}
++
+ static HRESULT WINAPI ProxyCliSec_QueryBlanket(IClientSecurity *iface,
+-                                               IUnknown *pProxy,
+-                                               DWORD *pAuthnSvc,
+-                                               DWORD *pAuthzSvc,
+-                                               OLECHAR **ppServerPrincName,
+-                                               DWORD *pAuthnLevel,
+-                                               DWORD *pImpLevel,
+-                                               void **pAuthInfo,
+-                                               DWORD *pCapabilities)
+-{
+-    FIXME("(%p, %p, %p, %p, %p, %p, %p, %p): stub\n", pProxy, pAuthnSvc,
+-          pAuthzSvc, ppServerPrincName, pAuthnLevel, pImpLevel, pAuthInfo,
+-          pCapabilities);
+-
+-    if (pAuthnSvc)
+-        *pAuthnSvc = 0;
+-    if (pAuthzSvc)
+-        *pAuthzSvc = 0;
+-    if (ppServerPrincName)
+-        *ppServerPrincName = NULL;
+-    if (pAuthnLevel)
+-        *pAuthnLevel = RPC_C_AUTHN_LEVEL_DEFAULT;
+-    if (pImpLevel)
+-        *pImpLevel = RPC_C_IMP_LEVEL_DEFAULT;
+-    if (pAuthInfo)
+-        *pAuthInfo = NULL;
+-    if (pCapabilities)
+-        *pCapabilities = EOAC_NONE;
++                                               IUnknown *proxy,
++                                               DWORD *authn_service,
++                                               DWORD *authz_service,
++                                               OLECHAR **server_principal,
++                                               DWORD *authn_level,
++                                               DWORD *imp_level,
++                                               void **auth_info,
++                                               DWORD *capabilities)
++{
++    struct proxy_manager *manager = impl_from_IClientSecurity(iface);
++    struct ifproxy *ifproxy;
++    WCHAR *principal = NULL;
++    HRESULT hr = S_OK;
+ 
+-    return E_NOTIMPL;
++    TRACE("%p, %p, %p, %p, %p, %p, %p, %p.\n", proxy, authn_service, authz_service,
++          server_principal, authn_level, imp_level, auth_info, capabilities);
++
++    if (!proxy) return E_INVALIDARG;
++
++    EnterCriticalSection(&manager->cs);
++    if (!(ifproxy = proxy_manager_find_ifproxy_by_iface(manager, proxy)))
++        hr = E_NOINTERFACE;
++    else if (server_principal && ifproxy->server_principal)
++    {
++        SIZE_T size = (wcslen(ifproxy->server_principal) + 1) * sizeof(WCHAR);
++        if ((principal = CoTaskMemAlloc(size))) memcpy(principal, ifproxy->server_principal, size);
++        else hr = E_OUTOFMEMORY;
++    }
++
++    if (SUCCEEDED(hr))
++    {
++        if (authn_service) *authn_service = ifproxy->authn_service;
++        if (authz_service) *authz_service = ifproxy->authz_service;
++        if (server_principal) *server_principal = principal;
++        if (authn_level) *authn_level = ifproxy->authn_level;
++        if (imp_level) *imp_level = ifproxy->imp_level;
++        if (auth_info) *auth_info = NULL;
++        if (capabilities) *capabilities = ifproxy->capabilities;
++    }
++    LeaveCriticalSection(&manager->cs);
++    return hr;
  }
  
  static HRESULT WINAPI ProxyCliSec_SetBlanket(IClientSecurity *iface,
-@@ -1394,7 +1394,7 @@ static HRESULT WINAPI ProxyCliSec_SetBlanket(IClientSecurity *iface,
-     FIXME("%p, %ld, %ld, %s, %ld, %ld, %p, %#lx: stub\n", pProxy, AuthnSvc, AuthzSvc,
-           pServerPrincName == COLE_DEFAULT_PRINCIPAL ? "<default principal>" : debugstr_w(pServerPrincName),
-           AuthnLevel, ImpLevel, pAuthInfo, Capabilities);
+-                                             IUnknown *pProxy, DWORD AuthnSvc,
+-                                             DWORD AuthzSvc,
+-                                             OLECHAR *pServerPrincName,
+-                                             DWORD AuthnLevel, DWORD ImpLevel,
+-                                             void *pAuthInfo,
+-                                             DWORD Capabilities)
+-{
+-    FIXME("%p, %ld, %ld, %s, %ld, %ld, %p, %#lx: stub\n", pProxy, AuthnSvc, AuthzSvc,
+-          pServerPrincName == COLE_DEFAULT_PRINCIPAL ? "<default principal>" : debugstr_w(pServerPrincName),
+-          AuthnLevel, ImpLevel, pAuthInfo, Capabilities);
 -    return E_NOTIMPL;
-+    return S_OK;
++                                             IUnknown *proxy, DWORD authn_service,
++                                             DWORD authz_service,
++                                             OLECHAR *server_principal,
++                                             DWORD authn_level, DWORD imp_level,
++                                             void *auth_info,
++                                             DWORD capabilities)
++{
++    struct proxy_manager *manager = impl_from_IClientSecurity(iface);
++    struct ifproxy *ifproxy;
++    WCHAR *principal = NULL;
++    HRESULT hr = S_OK;
++
++    TRACE("%p, %lu, %lu, %s, %lu, %lu, %p, %#lx.\n", proxy, authn_service, authz_service,
++          server_principal == COLE_DEFAULT_PRINCIPAL ? "<default principal>" : debugstr_w(server_principal),
++          authn_level, imp_level, auth_info, capabilities);
++
++    if (!proxy) return E_INVALIDARG;
++    if ((authn_service != RPC_C_AUTHN_DEFAULT && authn_service > 0xffff) ||
++        (authz_service != RPC_C_AUTHZ_DEFAULT && authz_service > RPC_C_AUTHZ_DCE) ||
++        (authn_level != RPC_C_AUTHN_LEVEL_DEFAULT && authn_level > RPC_C_AUTHN_LEVEL_PKT_PRIVACY) ||
++        (imp_level != RPC_C_IMP_LEVEL_DEFAULT &&
++         (imp_level < RPC_C_IMP_LEVEL_ANONYMOUS || imp_level > RPC_C_IMP_LEVEL_DELEGATE)))
++        return E_INVALIDARG;
++
++    if (server_principal && server_principal != COLE_DEFAULT_PRINCIPAL &&
++        !(principal = wcsdup(server_principal)))
++        return E_OUTOFMEMORY;
++
++    EnterCriticalSection(&manager->cs);
++    if (!(ifproxy = proxy_manager_find_ifproxy_by_iface(manager, proxy)))
++    {
++        hr = E_NOINTERFACE;
++    }
++    else
++    {
++        ifproxy->authn_service = authn_service;
++        ifproxy->authz_service = authz_service;
++        free(ifproxy->server_principal);
++        ifproxy->server_principal = principal;
++        principal = NULL;
++        ifproxy->authn_level = authn_level;
++        ifproxy->imp_level = imp_level;
++        ifproxy->capabilities = capabilities;
++    }
++    LeaveCriticalSection(&manager->cs);
++    free(principal);
++    return hr;
  }
  
  static HRESULT WINAPI ProxyCliSec_CopyProxy(IClientSecurity *iface,
+@@ -1524,6 +1588,7 @@ static void ifproxy_destroy(struct ifproxy * This)
+ 
+     if (This->proxy) IRpcProxyBuffer_Release(This->proxy);
+ 
++    free(This->server_principal);
+     free(This);
+ }
+ 
+@@ -1721,6 +1786,13 @@ static HRESULT proxy_manager_create_ifproxy(
+     ifproxy->iid = *riid;
+     ifproxy->refs = 0;
+     ifproxy->proxy = NULL;
++    ifproxy->authn_service = RPC_C_AUTHN_NONE;
++    ifproxy->authz_service = RPC_C_AUTHZ_NONE;
++    ifproxy->server_principal = NULL;
++    ifproxy->authn_level = This->oxid_info.dwAuthnHint <= RPC_C_AUTHN_LEVEL_PKT_PRIVACY ?
++                           This->oxid_info.dwAuthnHint : RPC_C_AUTHN_LEVEL_NONE;
++    ifproxy->imp_level = RPC_C_IMP_LEVEL_IDENTIFY;
++    ifproxy->capabilities = EOAC_NONE;
+ 
+     assert(channel);
+     ifproxy->chan = channel; /* FIXME: we should take the binding strings and construct the channel in this function */
 diff --git a/dlls/combase/roapi.c b/dlls/combase/roapi.c
-index f4f7c0aac26..c0335c51292 100644
+index 6085b4897a1..f4951a80b65 100644
 --- a/dlls/combase/roapi.c
 +++ b/dlls/combase/roapi.c
-@@ -212,10 +212,15 @@ HRESULT WINAPI RoGetParameterizedTypeInstanceIID(UINT32 name_element_count, cons
+@@ -33,6 +33,9 @@
+ 
+ WINE_DEFAULT_DEBUG_CHANNEL(combase);
+ 
++
++
++
+ struct activatable_class_data
+ {
+     ULONG size;
+@@ -158,10 +161,14 @@ HRESULT WINAPI DECLSPEC_HOTPATCH RoGetActivationFactory(HSTRING classid, REFIID
+ 
+     if (!iid || !class_factory)
+         return E_INVALIDARG;
++    *class_factory = NULL;
++    if (!classid)
++        return E_INVALIDARG;
+ 
+     if (FAILED(hr = ensure_mta()))
+         return hr;
+ 
++
+     hr = get_library_for_classid(WindowsGetStringRawBuffer(classid, NULL), &library);
+     if (FAILED(hr))
+     {
+@@ -214,10 +221,15 @@ HRESULT WINAPI RoGetParameterizedTypeInstanceIID(UINT32 name_element_count, cons
                                                   const IRoMetaDataLocator *meta_data_locator, GUID *iid,
                                                   ROPARAMIIDHANDLE *hiid)
  {
@@ -103,3 +510,18 @@ index f4f7c0aac26..c0335c51292 100644
  }
  
  /***********************************************************************
+diff --git a/dlls/combase/stubmanager.c b/dlls/combase/stubmanager.c
+index 4756e334f9f..da1661d0d57 100644
+--- a/dlls/combase/stubmanager.c
++++ b/dlls/combase/stubmanager.c
+@@ -128,7 +128,9 @@ static void stub_manager_delete_ifstub(struct stub_manager *m, struct ifstub *if
+     list_remove(&ifstub->entry);
+ 
+     if (!m->disconnected)
+-        rpc_unregister_interface(&ifstub->iid, TRUE);
++        /* This can run while returning from an RPC call on the interface being
++         * released, so waiting for active calls here would deadlock. */
++        rpc_unregister_interface(&ifstub->iid, FALSE);
+ 
+     if (ifstub->stubbuffer) IRpcStubBuffer_Release(ifstub->stubbuffer);
+     IUnknown_Release(ifstub->iface);
