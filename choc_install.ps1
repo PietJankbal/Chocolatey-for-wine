@@ -527,12 +527,8 @@ Remove-Variable MethodDefinition2,MethodDefinition,BuffPtr, info,io,j -erroracti
 
 
     [System.IO.Directory]::CreateDirectory("$env:systemroot\assembly\")
+    
 
-    if (([System.IO.File]::Exists("$cachedir\\sevenzipextractor.1.0.19.nupkg"))) {
-        $cab_path = "$cachedir" }
-    else {
-        $cab_path = "$env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache" }
-    Start-Process $(Join-Path $args[0] '7z.exe') -NoNewWindow -Wait -ArgumentList "e $cab_path\\sevenzipextractor.1.0.19.nupkg -o$env:systemroot\\system32\\WindowsPowerShell\\v1.0  lib/netstandard2.0/SevenZipExtractor.dll -aoa"
     if (([System.IO.File]::Exists("$cachedir\\d3dcompiler_47_32.dll"))) {
         $cab_path = "$cachedir" }
     else {
@@ -548,7 +544,7 @@ Remove-Variable MethodDefinition2,MethodDefinition,BuffPtr, info,io,j -erroracti
     <# Backup files if wanted #>
     if(($args[1] -eq '/s') -or ($args[2] -eq '/s')) {
         [System.IO.Directory]::CreateDirectory("$cachedir")
-        foreach($i in ((gci $setupcache\\PowerShell-*-win-x64.msi)).name, 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', 'sevenzipextractor.1.0.19.nupkg', 'ConEmuPack.230724.7z', 'windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe', ((gci $setupcache\\chocolatey.*.nupkg)).name) {
+        foreach($i in ((gci $setupcache\\PowerShell-*-win-x64.msi)).name, 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', 'ConEmuPack.230724.7z', 'windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe', ((gci $setupcache\\chocolatey.*.nupkg)).name) {
             Move-Item -Path "$setupcache\\$i" -Destination "$cachedir" -force -ErrorAction SilentlyContinue}
         Move-Item -path  "$setupcache\\v4.8.03761" -destination "$cachedir" -ErrorAction SilentlyContinue;
     }
