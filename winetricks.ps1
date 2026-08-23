@@ -74,7 +74,7 @@ else                 {$cachedir = [System.IO.Path]::Combine( "$([Environment]::G
     "font","vista_fonts","Arial,Calibri,Cambria,Comic Sans,Consolas,Courier,Georgia,Impact,Lucida Sans Unicode,Symbol,Times New Roman,Trebuchet ,Verdana ,Webdings,Wingdings font",
     "misc","access_winrt_from_powershell", "codesnippets from around the internet: howto use Windows Runtime classes in powershell; requires powershell 5.1, so 1st time usage may take very long time!!!",
     "misc","cef", "codesnippets from around the internet: how to use cef / test cef",
-#   "misc","chocolatey_upgrade","upgrade chocolatey to the latest (>v2.2), requires Powershell 5.1 so on first usage might take >15 minutes!",
+    "misc","d3d11_silk_cube","spinning cube in d3d11 using Silk",
     "misc","embed-exe-in-psscript", "codesnippets from around the internet: samplescript howto embed and run an exe into a powershell-scripts (vkcube.exe); might trigger a viruswarning (!) but is really harmless",
 #   "misc","GE-Proton","Install bunch of dlls from GE-Proton",
     "misc","Get-PEHeader", "codesnippets from around the internet: add Get-PEHeader to cmdlets, handy to explore dlls imports/exports",
@@ -123,13 +123,8 @@ if (![System.IO.File]::Exists("$env:ProgramData\chocolatey\bin\wget2.exe")){
     #iex "$env:ProgramData\\chocolatey\\tools\\shimgen.exe --output=`"$env:ProgramData`"\\chocolatey\\bin\\wget2.exe --path=`"$env:ProgramData`"\Chocolatey-for-wine\wget2.exe"
 }
 
-function w_download_to
+function print_info
 {
-    Param ($dldir, $w_url, $w_file)
-
-    if (![System.IO.Directory]::Exists("$cachedir\\$dldir")){ [System.IO.Directory]::CreateDirectory("$cachedir\\$dldir")}
-
-    if (![System.IO.File]::Exists("$cachedir\\$dldir\\$w_file")){
         Write-Host -foregroundcolor yellow "**********************************************************"
         Write-Host -foregroundcolor yellow "*                                                        *"
         Write-Host -foregroundcolor yellow "*        Downloading file(s) and extracting might        *"
@@ -137,7 +132,17 @@ function w_download_to
         Write-Host -foregroundcolor yellow "*        Patience please!                                *"
         Write-Host -foregroundcolor yellow "*                                                        *"
         Write-Host -foregroundcolor yellow "**********************************************************"
-        
+}
+
+
+function w_download_to
+{
+    Param ($dldir, $w_url, $w_file)
+
+    if (![System.IO.Directory]::Exists("$cachedir\\$dldir")){ [System.IO.Directory]::CreateDirectory("$cachedir\\$dldir")}
+
+    if (![System.IO.File]::Exists("$cachedir\\$dldir\\$w_file")){
+         print_info
          wget2 --restrict-file-names=nocontrol <# do not escape any character #> "$w_url" -P "$cachedir\\$dldir"; quit?('wget2')
         }
 }
@@ -149,14 +154,7 @@ function w_download_to2
     if (![System.IO.Directory]::Exists("$env:Temp\\$dldir")){ [System.IO.Directory]::CreateDirectory("$env:Temp\\$dldir")}
 
     if (![System.IO.File]::Exists("$env:Temp\\$dldir\\$w_file")){
-        Write-Host -foregroundcolor yellow "**********************************************************"
-        Write-Host -foregroundcolor yellow "*                                                        *"
-        Write-Host -foregroundcolor yellow "*        Downloading file(s) and extracting might        *"
-        Write-Host -foregroundcolor yellow "*        take several minutes!                           *"
-        Write-Host -foregroundcolor yellow "*        Patience please!                                *"
-        Write-Host -foregroundcolor yellow "*                                                        *"
-        Write-Host -foregroundcolor yellow "**********************************************************"
-        
+         print_info
          wget2 --restrict-file-names=nocontrol <# do not escape any character #> --header "Range: bytes=0-$range" "$w_url" -P "$env:Temp\\$dldir"; quit?('wget2')
         }
 }
@@ -180,7 +178,7 @@ function check_msu_sanity <# some sanity checks before extracting from msu, like
 
 function check_msu_sanity2 <# some sanity checks before extracting from msu, like if dlls needed for expansion and the msu are present etc. #>
 {
-    Param ($url, $cab, $range)
+    Param ($url, $range)
 
     $msu = $url.split('/')[-1]; <# -1 is last array element... #> $dldir = $((Get-PSCallStack)[1].Command).replace('func_', '')
     <# fragile test #>
@@ -188,11 +186,20 @@ function check_msu_sanity2 <# some sanity checks before extracting from msu, lik
        {Write-Host 'Downloading and extracting some files needed for expansion' ; func_expand;
     }
 
-    if (![System.IO.File]::Exists( [IO.Path]::Combine("$env:Temp",  $dldir,  $msu) ) ) {
-        w_download_to2 $dldir $url $msu $range; quit?('7z');
-    }
-    7z e "$env:Temp\$dldir\$msu" "-o$env:Temp\$dldir" "$cab" -y; 
-    Remove-Item "$env:Temp\$dldir\$msu" 
+    print_info
+    # Download header chunk (bytes 0 to header_end)
+    $client = [System.Net.Http.HttpClient]::new()
+    $request = [System.Net.Http.HttpRequestMessage]::new([System.Net.Http.HttpMethod]::Get, $url)
+    $request.Headers.Range = [System.Net.Http.Headers.RangeHeaderValue]::new(0, $range)
+    $headStream=$client.SendAsync($request).Result.Content.ReadAsStreamAsync().GetAwaiter().GetResult()
+    $request.Dispose();
+
+    $null = [System.Reflection.Assembly]::LoadFrom( [System.IO.Path]::Combine( $env:SystemRoot, 'System32\WindowsPowerShell\v1.0\SevenZipExtractor.dll' ) )
+
+    $headStream.position = 0
+    $szExtractor = [SevenZipExtractor.ArchiveFile]::new($headStream, 'cab')
+    $szExtractor.Entries[1].Extract("$env:Temp\$dldir\$($szExtractor.Entries[1].FileName)")
+    $headStream.Dispose();$szExtractor.Dispose()
 }
 
 function check_aik_sanity <# some sanity checks to see if cached files from windows kits 7 are present #>
@@ -206,14 +213,7 @@ function check_aik_sanity <# some sanity checks to see if cached files from wind
             if (![System.IO.Directory]::Exists("$cachedir\\aik70")){ [System.IO.Directory]::CreateDirectory("$cachedir\\aik70")}
 
         if (![System.IO.File]::Exists("$cachedir\\aik70\\KB3AIK_EN.iso")){
-            Write-Host -foregroundcolor yellow "**********************************************************"
-            Write-Host -foregroundcolor yellow "*                                                        *"
-            Write-Host -foregroundcolor yellow "*        Downloading file(s) and extracting might        *"
-            Write-Host -foregroundcolor yellow "*        take several minutes!                           *"
-            Write-Host -foregroundcolor yellow "*        Patience please!                                *"
-            Write-Host -foregroundcolor yellow "*                                                        *"
-            Write-Host -foregroundcolor yellow "**********************************************************"
-        
+            print_info        
             wget2 --restrict-file-names=nocontrol <# do not escape any character #> --header "Range: bytes=0-1099999999"  "$url" -P "$cachedir\\aik70";
         }
                      
@@ -230,74 +230,61 @@ function check_aik_sanity <# some sanity checks to see if cached files from wind
     }
 }
 
-function check_aik_sanity2 <# some sanity checks to see if cached files from windows kits 7 are present #>
+function check_aik_sanity3 <# some sanity checks to see if cached files from windows kits 7 are present #>
 {
-    $url = "https://download.microsoft.com/download/8/E/9/8E9BBC64-E6F8-457C-9B8D-F6C9A16E6D6A/KB3AIK_EN.iso"
-
     foreach($i in 'F1_WINPE.WIM', 'F3_WINPE.WIM' ) {
         if(![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  "aik70",  $i) ) ) { #assuming all cached files are gone, re-extract everything
-            #w_download_to "aik70" "$url" "KB3AIK_EN.iso"
-            if (![System.IO.Directory]::Exists("$cachedir\\aik70")){ [System.IO.Directory]::CreateDirectory("$cachedir\\aik70")}
 
-        if (![System.IO.File]::Exists("$cachedir\\aik70\\KB3AIK_EN.iso")){
-            Write-Host -foregroundcolor yellow "**********************************************************"
-            Write-Host -foregroundcolor yellow "*                                                        *"
-            Write-Host -foregroundcolor yellow "*        Downloading file(s) and extracting might        *"
-            Write-Host -foregroundcolor yellow "*        take several minutes!                           *"
-            Write-Host -foregroundcolor yellow "*        Patience please!                                *"
-            Write-Host -foregroundcolor yellow "*                                                        *"
-            Write-Host -foregroundcolor yellow "**********************************************************"
-        
- $url         = "https://download.microsoft.com/download/8/E/9/8E9BBC64-E6F8-457C-9B8D-F6C9A16E6D6A/KB3AIK_EN.iso"
-$header_end  = 7764000
-$tail_begin  = 600560000
-$tail_end    = 1099999999
+            $url         = "https://download.microsoft.com/download/8/E/9/8E9BBC64-E6F8-457C-9B8D-F6C9A16E6D6A/KB3AIK_EN.iso"
+            $header_end  = 7764000
+            $tail_begin  = 630560000
+            $tail_end    = 1089999999
 
-# Download header chunk (bytes 0 to header_end)
-$client = [System.Net.Http.HttpClient]::new()
-$request = [System.Net.Http.HttpRequestMessage]::new([System.Net.Http.HttpMethod]::Get, $url)
-$request.Headers.Range = [System.Net.Http.Headers.RangeHeaderValue]::new(0, $header_end)
-$response = $client.SendAsync($request).GetAwaiter().GetResult()
-$headStream = [System.IO.MemoryStream]::new($response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult())
-$client.Dispose()
+            print_info
+            # Download header chunk (bytes 0 to header_end)
+            $client = [System.Net.Http.HttpClient]::new()
+            $request = [System.Net.Http.HttpRequestMessage]::new([System.Net.Http.HttpMethod]::Get, $url)
+            $request.Headers.Range = [System.Net.Http.Headers.RangeHeaderValue]::new(0, $header_end)
+            $headStream=$client.SendAsync($request).Result.Content.ReadAsStreamAsync().GetAwaiter().GetResult()
+            $request.Dispose();
 
-# Download tail chunk (bytes tail_begin to tail_end)
-$client = [System.Net.Http.HttpClient]::new()
-$request = [System.Net.Http.HttpRequestMessage]::new([System.Net.Http.HttpMethod]::Get, $url)
-$request.Headers.Range = [System.Net.Http.Headers.RangeHeaderValue]::new($tail_begin, $tail_end)
-$response = $client.SendAsync($request).GetAwaiter().GetResult()
-$tailStream = [System.IO.MemoryStream]::new($response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult())
-$client.Dispose()
+            # Download tail chunk (bytes tail_begin to tail_end)
+            $request = [System.Net.Http.HttpRequestMessage]::new([System.Net.Http.HttpMethod]::Get, $url)
+            $request.Headers.Range = [System.Net.Http.Headers.RangeHeaderValue]::new($tail_begin, $tail_end)
+            $tailStream=$client.SendAsync($request).Result.Content.ReadAsStreamAsync().GetAwaiter().GetResult()
+            $client.Dispose();$request.Dispose();
 
-# Merge: header + zero-filled gap + tail
-$emptyGap = [System.IO.MemoryStream]::new([byte[]]::new($tail_begin - $header_end - 1))
-$merged = [System.IO.MemoryStream]::new()
-$headStream.CopyTo($merged)
-$emptyGap.CopyTo($merged)
-$tailStream.CopyTo($merged)
+            # Merge: header + gap + tail
+            $merged = [System.IO.MemoryStream]::new()
+            $headStream.CopyTo($merged)
+            $merged.Position=$tail_begin
+            $tailStream.CopyTo($merged)
+            $headStream.Dispose();$tailStream.Dispose();
 
-# Write result to disk
-[System.IO.File]::WriteAllBytes("$env:TMP\KB3AIK_EN.iso", $merged.ToArray())  
-        }
-                     
-                     
-            7z x "$env:TMP\KB3AIK_EN.iso" "WinPE.cab" "-o$env:TMP\aik70" -y; quit?('7z')
-            Remove-Item -Force "$env:TMP\KB3AIK_EN.iso" 
-            7z x "$env:TMP\aik70\WinPE.cab" "F1_WINPE.WIM" "F3_WINPE.WIM" "-o$env:TMP\aik70" -y; quit?('7z')
-            Remove-Item -Force "$env:TMP\aik70\WinPE.cab" 
-            [System.IO.File]::Move( "$env:TMP\aik70\F3_WINPE.WIM", "$cachedir\aik70\F3_WINPE.WIM")
-            [System.IO.File]::Move( "$env:TMP\aik70\F1_WINPE.WIM", "$cachedir\aik70\F1_WINPE.WIM")
+            $null = [System.Reflection.Assembly]::LoadFrom( [System.IO.Path]::Combine( $env:SystemRoot, 'System32\WindowsPowerShell\v1.0\SevenZipExtractor.dll' ) )
 
+            $szExtractor = [SevenZipExtractor.ArchiveFile]::new($merged, 'udf')
+            $memStream = [System.IO.MemoryStream]::new()
+            $szExtractor.Entries[70].Extract($memStream)
+            $memStream.Position=0
+            $newExtractor = [SevenZipExtractor.ArchiveFile]::new( $memStream,'cab' )
+            $newExtractor.Entries[0].Extract("$cachedir\aik70\F1_WINPE.WIM")
+            $newExtractor.Entries[2].Extract("$cachedir\aik70\F3_WINPE.WIM")
+            $memStream.Dispose();$merged.Dispose();$szExtractor.Dispose();$newExtractor.Dispose();
+            
             break;
         }
-    }
-    
+    }  
 }
 
 function dlloverride
 {
-     Param ($value, $dll)
-     New-ItemProperty -Path 'HKCU:\\Software\\Wine\\DllOverrides' -force -Name $dll -Value $value -PropertyType 'String' | Select $dll
+    Param ($value, $dll)
+
+    $key = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey( 'Software\Wine\DllOverrides' )
+
+    try { $key.SetValue( $dll, $value, [Microsoft.Win32.RegistryValueKind]::String ) }
+    finally { $key.Dispose()}
 }
 
 function reg_edit
@@ -355,18 +342,6 @@ function restart_if_needed
         wineboot.exe -e   #   Get-Process -name "pwsh" | Stop-Process
     }
     else { [System.IO.File]::Delete( "$env:SystemRoot\\system32\\restart_needed" ) }
-}
-
-function wine_version_less_than([string] $version)
-{
-    $curmajorversion = [System.Convert]::ToDecimal((gc C:\windows\system32\wine_version.txt).split('-').Split('.').Split(' ')[1])
-    $curminorversion = [System.Convert]::ToDecimal((gc C:\windows\system32\wine_version.txt).split('-').Split('.').Split(' ')[2])
-    
-    if( $curmajorversion -lt [System.Convert]::ToDecimal($version.split('.')[0]) ) {return $true}
-    if( $curmajorversion -gt [System.Convert]::ToDecimal($version.split('.')[0]) ) {return $false}
-    
-    if( $curminorversion -lt [System.Convert]::ToDecimal($version.split('.')[1]) ) {return $true}
-    else {return $false}
 }
 
 function gacinstall([string[]] $file)
@@ -465,7 +440,7 @@ $ntdll = Add-Type -MemberDefinition $MethodDefinition -Name 'ntdll' -PassThru
 
 function func_msxml3
 {
-    $dlls = @('msxml3.dll','msxml3r.dll'); check_aik_sanity2;
+    $dlls = @('msxml3.dll','msxml3r.dll'); check_aik_sanity3;
 
     foreach ($i in $dlls) {
         7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
@@ -475,7 +450,7 @@ function func_msxml3
 
 function func_mfc42
 {
-    $dlls = @('mfc42.dll', 'mfc42u.dll'); check_aik_sanity2;
+    $dlls = @('mfc42.dll', 'mfc42u.dll'); check_aik_sanity3;
 
     foreach ($i in $dlls) {
         7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
@@ -484,7 +459,7 @@ function func_mfc42
 
 function func_riched20
 {
-    $dlls = @('riched20.dll','msls31.dll','msftedit.dll'); check_aik_sanity2;
+    $dlls = @('riched20.dll','msls31.dll','msftedit.dll'); check_aik_sanity3;
 
     foreach ($i in $dlls) {
         7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
@@ -494,7 +469,7 @@ function func_riched20
 
 function func_windowscodecs
 {
-    $dlls = @('windowscodecs.dll'); check_aik_sanity2;
+    $dlls = @('windowscodecs.dll'); check_aik_sanity3;
 
     foreach ($i in $dlls) {
         7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
@@ -504,7 +479,7 @@ function func_windowscodecs
 
 function func_uxtheme
 {
-    $dlls = @('uxtheme.dll'); check_aik_sanity2;
+    $dlls = @('uxtheme.dll'); check_aik_sanity3;
 
     foreach ($i in $dlls) {
         7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
@@ -514,7 +489,7 @@ function func_uxtheme
 
 function func_sspicli
 {
-    $dlls = @('sspicli.dll'); check_aik_sanity2;
+    $dlls = @('sspicli.dll'); check_aik_sanity3;
 
     foreach ($i in $dlls) {
         7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
@@ -524,7 +499,7 @@ function func_sspicli
 
 function func_uiautomationcore
 {
-    $dlls = @('uiautomationcore.dll'); check_aik_sanity2;
+    $dlls = @('uiautomationcore.dll'); check_aik_sanity3;
 
     foreach ($i in $dlls) {
         7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
@@ -534,7 +509,7 @@ function func_uiautomationcore
 
 function func_mspatcha
 {
-    $dlls = @('mspatcha.dll'); check_aik_sanity2;
+    $dlls = @('mspatcha.dll'); check_aik_sanity3;
 
     foreach ($i in $dlls) {
         7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
@@ -544,7 +519,7 @@ function func_mspatcha
 
 function func_urlmon
 {
-    $dlls = @('urlmon.dll'); check_aik_sanity2;
+    $dlls = @('urlmon.dll'); check_aik_sanity3;
 
     foreach ($i in $dlls) {
         7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
@@ -554,7 +529,7 @@ function func_urlmon
 
 function func_msxml6r
 {
-    $dlls = @('msxml6r.dll'); check_aik_sanity2;
+    $dlls = @('msxml6r.dll'); check_aik_sanity3;
 
     foreach ($i in $dlls) {
         7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
@@ -563,7 +538,7 @@ function func_msxml6r
 
 function func_xmllite
 {
-    check_aik_sanity2; $dldir = "aik70"
+    check_aik_sanity3; $dldir = "aik70"
     $expdlls = @( 'amd64_microsoft-windows-servicingstack_31bf3856ad364e35_6.1.7600.16385_none_655452efe0fb810b/xmllite.dll', `
                   'x86_microsoft-windows-servicingstack_31bf3856ad364e35_6.1.7600.16385_none_0935b76c289e0fd5/xmllite.dll' )
 		  
@@ -576,7 +551,7 @@ function func_xmllite
 
 function func_iertutil
 {
-    check_aik_sanity2; $dldir = "aik70"
+    check_aik_sanity3; $dldir = "aik70"
     $expdlls = @( 'amd64_microsoft-windows-ie-runtimeutilities_31bf3856ad364e35_8.0.7600.16385_none_be52e3381d372f67/iertutil.dll', `
                   'x86_microsoft-windows-ie-runtimeutilities_31bf3856ad364e35_8.0.7600.16385_none_623447b464d9be31/iertutil.dll' )
 		  
@@ -646,7 +621,7 @@ function func_oleaut32 <# oleaut32  #>
     elseif ( $(7z l $filepath | findstr 'CPU' |select-string x86) )   {$arch = 'F1' }
     else {Write-Host 'Something went wrong...'; exit}
     
-    $dlls = @("$(verb).dll"); check_aik_sanity2;
+    $dlls = @("$(verb).dll"); check_aik_sanity3;
     
     foreach ($i in $dlls ) {
         7z e "$cachedir\aik70\$($arch)_WINPE.WIM" "-o$destdir" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z') 
@@ -659,18 +634,14 @@ function func_oleaut32 <# oleaut32  #>
 function func_msxml6 <# experimental... #>
 {
     $url = "https://catalog.s.download.windowsupdate.com/c/msdownload/update/software/secu/2014/04/windows8.1-kb2934018-x64_234a5fc4955f81541f5bfc0d447e4fc4934efc38.msu"
-    $cab = "Windows8.1-KB2934018-x64.cab"
     $range = '71000000'
     $sourcefile = @('msxml6.dll')
 
     if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
-        check_msu_sanity2 $url $cab $range;
-        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine("$env:Temp",  $(verb),  $cab)) -f:$i $([IO.Path]::Combine("$env:Temp",  $(verb) ) ) }
-        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$env:Temp\$(verb)\amd64*" "$env:Temp\$(verb)\wow*" ; quit?('7z')
-
-        foreach($i in 'amd64', 'x86', 'wow64') { Remove-Item -Force -Recurse "$env:Temp\$(verb)\$i*" }
-        
-        Remove-Item -Force "$env:Temp\$(verb)\$cab" -ErrorAction SilentlyContinue
+        check_msu_sanity2 $url $range;
+        foreach ($i in $sourcefile) { & $expand_exe $([System.IO.Directory]::GetFiles($([IO.Path]::Combine("$env:Temp",  $(verb),  $cab))) )-f:$i $([IO.Path]::Combine("$env:Temp",  $(verb) ) ) }
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$env:Temp\$(verb)\amd64*" "$env:Temp\$(verb)\wow*" "$env:Temp\$(verb)\x86*" quit?('7z')
+        [System.IO.Directory]::Delete($([IO.Path]::Combine("$env:Temp",  $(verb))), $true)
     }
 
     system_install wine_rpcrt4 'c82422a0bf6cc4045c142a91f250e557f841755aa1f8b169e1765a9ed3b6258c' $true
@@ -902,7 +873,7 @@ REGEDIT4
 
 function func_expand
 {
-    check_aik_sanity2;
+    check_aik_sanity3;
                   
     $dlls =    @( 'amd64_microsoft-windows-deltapackageexpander_31bf3856ad364e35_6.1.7600.16385_none_c5d387d64eb8e1f2/dpx.dll',
                   'amd64_microsoft-windows-cabinet_31bf3856ad364e35_6.1.7600.16385_none_933442c3fb9cbaed/cabinet.dll',
@@ -1467,20 +1438,15 @@ function func_msdelta <#  msdelta and dpx from windows 10 #>
 function func_sapi <# Speech api #>
 {   
     $url = "http://download.windowsupdate.com/c/msdownload/update/software/updt/2016/11/windows10.0-kb3205436-x64_45c915e7a85a7cc7fc211022ecd38255297049c3.msu"
-    $cab = "Windows10.0-KB3205436-x64.cab"
-    $sourcefile = @( 'sapi.dll' )
     $range = '49000000'
+    $sourcefile = @( 'sapi.dll' )
 
     if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
-        check_msu_sanity2 $url $cab $range;
-        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine("$env:Temp",  $(verb),  $cab)) -f:$i $([IO.Path]::Combine("$env:Temp",  $(verb) ) ) }
-        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$env:Temp\$(verb)\amd64*" "$env:Temp\$(verb)\x86*" ; quit?('7z')
-
-        foreach($i in 'amd64', 'x86', 'wow64') { Remove-Item -Force -Recurse "$env:Temp\$(verb)\$i*" }
-        
-        Remove-Item -Force "$env:Temp\$(verb)\$cab" -ErrorAction SilentlyContinue
+        check_msu_sanity2 $url $range;
+        foreach ($i in $sourcefile) { & $expand_exe $([System.IO.Directory]::GetFiles($([IO.Path]::Combine("$env:Temp",  $(verb),  $cab))) )-f:$i $([IO.Path]::Combine("$env:Temp",  $(verb) ) ) }
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$env:Temp\$(verb)\amd64*" "$env:Temp\$(verb)\wow*" "$env:Temp\$(verb)\x86*" quit?('7z')
+        [System.IO.Directory]::Delete($([IO.Path]::Combine("$env:Temp",  $(verb))), $true)
     }
-
 
     7z e "$cachedir\$(verb)\$(verb).7z" "amd64*\*" -o"$env:systemroot\\system32\\Speech\\Common" -aoa
     7z e "$cachedir\$(verb)\$(verb).7z" "x86*\*" -o"$env:systemroot\\syswow64\\Speech\\Common" -aoa; quit?('7z')
@@ -2868,11 +2834,7 @@ else {return}
         & "$env:systemroot\\system32\\regsvr32" /s "$env:systemroot\\system32\\$i"
     }
 
-
-
 #  {00000000-aaaa-aaaa-9C00-00AA00A14F56} // {2a811bb2-303b-48b8-82c2-e029a22c3ef2}
-
-
 }
 
 function func_wine_advapi32 { system_install wine_advapi32 '27b8ffd4abec1aa26936d769f0c6bcc74f5bfb2c6526acdd37223f2f199ccdfd' $true}
@@ -4038,6 +4000,12 @@ function func_glxgears
 {
     . "$env:ProgramData\Chocolatey-for-wine\powershell_collected_codesnippets_examples.ps1"
     func_glxgears2
+}
+
+function func_d3d11_silk_cube
+{
+    . "$env:ProgramData\Chocolatey-for-wine\powershell_collected_codesnippets_examples.ps1"
+    func_d3d11_silk_cube2
 }
 
 function func_wpf_xaml
