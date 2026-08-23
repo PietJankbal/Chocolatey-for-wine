@@ -178,7 +178,7 @@ index d8aa8b62a34..46f718193ba 100644
 +     */
 +    const WCHAR *path = L"C:\\windows\\system32\\WinMetadata\\Windows.winmd";
 +    
-+    const WCHAR *url = L"https://raw.githubusercontent.com/microsoft/windows-rs/master/crates/libs/bindgen/default/Windows.winmd";
++    const WCHAR *url = L"https://raw.githubusercontent.com/microsoft/windows-rs/refs/heads/copilot/refactor-windows-rdl-crate/crates/libs/bindgen/default/Windows.winmd";
 +    
 +    if(GetFileAttributesW( path ) == INVALID_FILE_ATTRIBUTES)
 +    {
