@@ -1,3 +1,2415 @@
+function func_d3d11_silk_cube2
+{
+
+#requires -Version 7.0
+
+# ============================================================
+# Silk.NET 2.22.0 - Direct3D 11 spinning cube
+#
+# PowerShell 7+
+# Windows
+#
+# No PowerShell cmdlets are used for the implementation.
+#
+# .NET:
+#   - HttpClient
+#   - ZIP extraction
+#   - Assembly loading
+#   - Reflection
+#   - Roslyn compilation
+#   - WinForms
+#   - Stopwatch
+#
+# Silk.NET:
+#   - Direct3D 11
+#   - DXGI
+#
+# ============================================================
+
+$ErrorActionPreference = 'Stop'
+
+
+# ============================================================
+# Configuration
+# ============================================================
+
+$SilkVersion = '2.22.0'
+$RoslynVersion = '4.8.0'
+
+$BaseDirectory =
+    [System.IO.Path]::Combine(
+        [System.Environment]::GetFolderPath(
+            [System.Environment+SpecialFolder]::LocalApplicationData
+        ),
+        'SilkNetD3D11Cube'
+    )
+
+$PackageDirectory =
+    [System.IO.Path]::Combine(
+        $BaseDirectory,
+        'packages'
+    )
+
+[System.IO.Directory]::CreateDirectory(
+    $PackageDirectory
+) | Out-Null
+
+
+# ============================================================
+# HTTP client
+# ============================================================
+
+$http =
+    [System.Net.Http.HttpClient]::new()
+
+$http.DefaultRequestHeaders.UserAgent.ParseAdd(
+    'Silk.NET-2.22-D3D11-PowerShell'
+)
+
+
+# ============================================================
+# Download helper
+# ============================================================
+
+function Download-Bytes
+{
+    param(
+        [string]$Url
+    )
+
+    $task =
+        $http.GetByteArrayAsync(
+            $Url
+        )
+
+    return $task.GetAwaiter().GetResult()
+}
+
+
+# ============================================================
+# NuGet package downloader
+# ============================================================
+
+function Install-Package
+{
+    param(
+        [string]$Id,
+
+        [string]$Version
+    )
+
+    $idLower =
+        $Id.ToLowerInvariant()
+
+    $versionLower =
+        $Version.ToLowerInvariant()
+
+    $packageRoot =
+        [System.IO.Path]::Combine(
+            $PackageDirectory,
+            "$idLower.$versionLower"
+        )
+
+    $nupkg =
+        [System.IO.Path]::Combine(
+            $packageRoot,
+            "$idLower.$versionLower.nupkg"
+        )
+
+    $content =
+        [System.IO.Path]::Combine(
+            $packageRoot,
+            'content'
+        )
+
+    [System.IO.Directory]::CreateDirectory(
+        $packageRoot
+    ) | Out-Null
+
+
+    if (
+        -not
+        [System.IO.File]::Exists(
+            $nupkg
+        )
+    )
+    {
+        [System.Console]::WriteLine(
+            "Downloading $Id $Version ..."
+        )
+
+        $url =
+            "https://api.nuget.org/v3-flatcontainer/" +
+            "$idLower/$versionLower/" +
+            "$idLower.$versionLower.nupkg"
+
+        $bytes =
+            Download-Bytes $url
+
+        [System.IO.File]::WriteAllBytes(
+            $nupkg,
+            $bytes
+        )
+    }
+
+
+    if (
+        -not
+        [System.IO.Directory]::Exists(
+            $content
+        )
+    )
+    {
+        [System.Console]::WriteLine(
+            "Extracting $Id $Version ..."
+        )
+
+        [System.IO.Compression.ZipFile]::ExtractToDirectory(
+            $nupkg,
+            $content
+        )
+    }
+
+
+    return $content
+}
+
+
+# ============================================================
+# Download required packages
+# ============================================================
+
+Install-Package `
+    'Silk.NET.Direct3D11' `
+    $SilkVersion | Out-Null
+
+Install-Package `
+    'Silk.NET.Core' `
+    $SilkVersion | Out-Null
+
+Install-Package `
+    'Silk.NET.DXGI' `
+    $SilkVersion | Out-Null
+
+Install-Package `
+    'Microsoft.CodeAnalysis.CSharp' `
+    $RoslynVersion | Out-Null
+
+
+
+$http.Dispose()
+
+
+# ============================================================
+# Locate assemblies
+# ============================================================
+
+$allDlls =
+    [System.IO.Directory]::GetFiles(
+        $PackageDirectory,
+        '*.dll',
+        [System.IO.SearchOption]::AllDirectories
+    )
+
+
+$SilkCore = $null
+$SilkD3D11 = $null
+$SilkDXGI = $null
+
+$Roslyn = $null
+$RoslynCSharp = $null
+
+
+foreach (
+    $dll in $allDlls
+)
+{
+    $name =
+        [System.IO.Path]::GetFileName(
+            $dll
+        )
+
+
+    if (
+        $name -eq 'Silk.NET.Core.dll' -and
+        $dll -match '\\lib\\'
+    )
+    {
+        $SilkCore = $dll
+    }
+
+
+    if (
+        $name -eq 'Silk.NET.Direct3D11.dll' -and
+        $dll -match '\\lib\\'
+    )
+    {
+        $SilkD3D11 = $dll
+    }
+
+
+    if (
+        $name -eq 'Silk.NET.DXGI.dll' -and
+        $dll -match '\\lib\\'
+    )
+    {
+        $SilkDXGI = $dll
+    }
+
+
+    if (
+        $name -eq 'Microsoft.CodeAnalysis.dll' -and
+        $dll -match '\\lib\\'
+    )
+    {
+        $Roslyn = $dll
+    }
+
+
+    if (
+        $name -eq 'Microsoft.CodeAnalysis.CSharp.dll' -and
+        $dll -match '\\lib\\'
+    )
+    {
+        $RoslynCSharp = $dll
+    }
+}
+
+
+if ($null -eq $SilkCore)
+{
+    throw 'Silk.NET.Core.dll was not found.'
+}
+
+if ($null -eq $SilkD3D11)
+{
+    throw 'Silk.NET.Direct3D11.dll was not found.'
+}
+
+if ($null -eq $SilkDXGI)
+{
+    throw 'Silk.NET.DXGI.dll was not found.'
+}
+
+
+
+if ($null -eq $RoslynCSharp)
+{
+    throw 'Microsoft.CodeAnalysis.CSharp.dll was not found.'
+}
+
+
+# ============================================================
+# Load assemblies
+# ============================================================
+
+[System.Reflection.Assembly]::LoadFrom(
+    $SilkCore
+) | Out-Null
+
+[System.Reflection.Assembly]::LoadFrom(
+    $SilkD3D11
+) | Out-Null
+
+[System.Reflection.Assembly]::LoadFrom(
+    $SilkDXGI
+) | Out-Null
+
+
+
+[System.Reflection.Assembly]::LoadFrom(
+    $RoslynCSharp
+) | Out-Null
+
+
+# ============================================================
+# API diagnostic
+#
+# This is intentionally performed before bridge compilation.
+# ============================================================
+
+[System.Console]::WriteLine('')
+[System.Console]::WriteLine(
+    '============================================================'
+)
+[System.Console]::WriteLine(
+    'Silk.NET API diagnostic'
+)
+[System.Console]::WriteLine(
+    '============================================================'
+)
+
+
+$d3dAssembly =
+    [System.Reflection.Assembly]::LoadFrom(
+        $SilkD3D11
+    )
+
+$dxgiAssembly =
+    [System.Reflection.Assembly]::LoadFrom(
+        $SilkDXGI
+    )
+
+$coreAssembly =
+    [System.Reflection.Assembly]::LoadFrom(
+        $SilkCore
+    )
+
+
+[System.Console]::WriteLine(
+    'Silk.NET.Direct3D11: {0}',
+    $d3dAssembly.GetName().Version
+)
+
+[System.Console]::WriteLine(
+    'Silk.NET.DXGI:       {0}',
+    $dxgiAssembly.GetName().Version
+)
+
+[System.Console]::WriteLine(
+    'Silk.NET.Core:       {0}',
+    $coreAssembly.GetName().Version
+)
+
+
+function Show-TypeMethods
+{
+    param(
+        [System.Reflection.Assembly]$Assembly,
+
+        [string]$TypeName,
+
+        [string[]]$MethodNames
+    )
+
+
+    $type =
+        $Assembly.GetType(
+            $TypeName
+        )
+
+
+    if ($null -eq $type)
+    {
+        [System.Console]::WriteLine(
+            "TYPE NOT FOUND: $TypeName"
+        )
+
+        return
+    }
+
+
+    [System.Console]::WriteLine('')
+    [System.Console]::WriteLine(
+        "TYPE: $TypeName"
+    )
+
+
+    $methods =
+        $type.GetMethods(
+            [System.Reflection.BindingFlags]::Public -
+            [System.Reflection.BindingFlags]::Instance -
+            [System.Reflection.BindingFlags]::Static
+        )
+
+
+    foreach (
+        $methodName in $MethodNames
+    )
+    {
+        foreach (
+            $method in $methods
+        )
+        {
+            if (
+                $method.Name -eq $methodName
+            )
+            {
+                [System.Console]::WriteLine(
+                    '  {0}',
+                    $method.ToString()
+                )
+            }
+        }
+    }
+}
+
+
+Show-TypeMethods `
+    $d3dAssembly `
+    'Silk.NET.Direct3D11.D3D11' `
+    @(
+        'CreateDevice',
+        'CreateDeviceAndSwapChain'
+    )
+
+
+Show-TypeMethods `
+    $d3dAssembly `
+    'Silk.NET.Direct3D11.ID3D11Device' `
+    @(
+        'CreateVertexShader',
+        'CreatePixelShader',
+        'CreateInputLayout',
+        'CreateBuffer',
+        'CreateTexture2D',
+        'CreateRenderTargetView',
+        'CreateDepthStencilView'
+    )
+
+
+Show-TypeMethods `
+    $d3dAssembly `
+    'Silk.NET.Direct3D11.ID3D11DeviceContext' `
+    @(
+        'Map',
+        'Unmap',
+        'IASetPrimitiveTopology',
+        'IASetVertexBuffers',
+        'IASetIndexBuffer',
+        'VSSetShader',
+        'PSSetShader',
+        'VSSetConstantBuffers',
+        'DrawIndexed',
+        'ClearRenderTargetView',
+        'ClearDepthStencilView',
+        'OMSetRenderTargets',
+        'RSSetViewports'
+    )
+
+
+[System.Console]::WriteLine('')
+[System.Console]::WriteLine(
+    '============================================================'
+)
+[System.Console]::WriteLine(
+    'End Silk.NET API diagnostic'
+)
+[System.Console]::WriteLine(
+    '============================================================'
+)
+[System.Console]::WriteLine('')
+
+
+# ============================================================
+# Roslyn references
+# ============================================================
+
+$references =
+    [System.Collections.Generic.List[
+        Microsoft.CodeAnalysis.MetadataReference
+    ]]::new()
+
+
+$tpa =
+    [System.AppContext]::GetData(
+        'TRUSTED_PLATFORM_ASSEMBLIES'
+    )
+
+
+if ($null -eq $tpa)
+{
+    throw 'TRUSTED_PLATFORM_ASSEMBLIES is unavailable.'
+}
+
+
+$runtimeAssemblies =
+    $tpa -split
+        [System.IO.Path]::PathSeparator
+
+
+foreach (
+    $runtimeAssembly in $runtimeAssemblies
+)
+{
+    if (
+        [string]::IsNullOrWhiteSpace(
+            $runtimeAssembly
+        )
+    )
+    {
+        continue
+    }
+
+
+    try
+    {
+        $references.Add(
+            [Microsoft.CodeAnalysis.MetadataReference]::CreateFromFile(
+                $runtimeAssembly
+            )
+        )
+    }
+    catch
+    {
+    }
+}
+
+
+$references.Add(
+    [Microsoft.CodeAnalysis.MetadataReference]::CreateFromFile(
+        $SilkCore
+    )
+)
+
+$references.Add(
+    [Microsoft.CodeAnalysis.MetadataReference]::CreateFromFile(
+        $SilkD3D11
+    )
+)
+
+$references.Add(
+    [Microsoft.CodeAnalysis.MetadataReference]::CreateFromFile(
+        $SilkDXGI
+    )
+)
+
+
+# ============================================================
+# C# Direct3D 11 bridge
+#
+# IMPORTANT:
+#
+# This version uses raw Silk.NET pointers instead of the
+# ComPtr convenience overloads.
+#
+# This avoids the overload/ref/out problems encountered
+# with the previous bridge.
+# ============================================================
+
+$bridgeSource = @'
+using System;
+using System.Numerics;
+using System.Runtime.InteropServices;
+
+using Silk.NET.Core.Native;
+using Silk.NET.Direct3D11;
+using Silk.NET.DXGI;
+
+
+public unsafe sealed class CubeRenderer : IDisposable
+{
+    private D3D11 d3d11;
+
+    private ID3D11Device* device;
+    private ID3D11DeviceContext* context;
+    private IDXGISwapChain* swapChain;
+
+    private ID3D11RenderTargetView* renderTarget;
+    private ID3D11DepthStencilView* depthView;
+
+    private ID3D11Buffer* vertexBuffer;
+    private ID3D11Buffer* indexBuffer;
+    private ID3D11Buffer* constantBuffer;
+
+    private ID3D11VertexShader* vertexShader;
+    private ID3D11PixelShader* pixelShader;
+    private ID3D11InputLayout* inputLayout;
+
+    private int width;
+    private int height;
+
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Vertex
+    {
+        public Vector3 Position;
+        public Vector4 Color;
+
+        public Vertex(
+            float x,
+            float y,
+            float z,
+            float r,
+            float g,
+            float b)
+        {
+            Position = new Vector3(x, y, z);
+            Color = new Vector4(r, g, b, 1.0f);
+        }
+    }
+
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct Constants
+    {
+        public Matrix4x4 Wvp;
+    }
+
+
+    public void Initialize(
+        IntPtr hwnd,
+        int w,
+        int h)
+    {
+        width = w;
+        height = h;
+
+        d3d11 = D3D11.GetApi();
+
+
+        var swapDesc =
+            new SwapChainDesc
+            {
+                BufferCount = 1,
+
+                BufferDesc =
+                    new ModeDesc
+                    {
+                        Width = (uint)w,
+                        Height = (uint)h,
+
+                        Format =
+                            Format.FormatR8G8B8A8Unorm,
+
+                        RefreshRate =
+                            new Rational(60, 1)
+                    },
+
+                BufferUsage =
+                    DXGI.UsageRenderTargetOutput,
+
+                OutputWindow = hwnd,
+
+                SampleDesc =
+                    new SampleDesc
+                    {
+                        Count = 1,
+                        Quality = 0
+                    },
+
+                Windowed = true,
+
+                SwapEffect =
+                    SwapEffect.Discard
+            };
+
+
+        D3DFeatureLevel[] levels =
+        {
+            D3DFeatureLevel.Level111,
+            D3DFeatureLevel.Level110
+        };
+
+
+        D3DFeatureLevel selected =
+            D3DFeatureLevel.Level110;
+
+
+        fixed (
+            D3DFeatureLevel* pLevels =
+                levels)
+        {
+            ID3D11Device* newDevice = null;
+            ID3D11DeviceContext* newContext = null;
+            IDXGISwapChain* newSwapChain = null;
+
+
+            int hr =
+                d3d11.CreateDeviceAndSwapChain(
+                    default,
+                    D3DDriverType.Hardware,
+                    default,
+                    0,
+                    pLevels,
+                    (uint)levels.Length,
+                    D3D11.SdkVersion,
+                    ref swapDesc,
+                    &newSwapChain,
+                    &newDevice,
+                    ref selected,
+                    &newContext
+                );
+
+
+            if (hr < 0)
+                Marshal.ThrowExceptionForHR(hr);
+
+
+            device = newDevice;
+            context = newContext;
+            swapChain = newSwapChain;
+        }
+
+
+        CreateRenderTargets();
+
+        CreateGeometry();
+    }
+
+
+    private void CreateRenderTargets()
+{
+ID3D11Texture2D* backBuffer = null;
+
+Guid iid =
+    SilkMarshal.GuidOf<ID3D11Texture2D>();
+
+int hr =
+    swapChain->GetBuffer(
+        0,
+        &iid,
+        (void**)&backBuffer
+    );
+
+
+    if (hr < 0)
+        Marshal.ThrowExceptionForHR(hr);
+
+
+    try
+    {
+        ID3D11RenderTargetView* newRenderTarget =
+            null;
+
+        hr =
+            device->CreateRenderTargetView(
+                (ID3D11Resource*)backBuffer,
+                null,
+                &newRenderTarget
+            );
+
+        if (hr < 0)
+            Marshal.ThrowExceptionForHR(hr);
+
+        renderTarget =
+            newRenderTarget;
+    }
+    finally
+    {
+        if (backBuffer != null)
+            backBuffer->Release();
+    }
+
+
+    var depthDesc =
+        new Texture2DDesc
+        {
+            Width = (uint)width,
+            Height = (uint)height,
+
+            MipLevels = 1,
+            ArraySize = 1,
+
+            Format =
+                Format.FormatD24UnormS8Uint,
+
+            SampleDesc =
+                new SampleDesc
+                {
+                    Count = 1,
+                    Quality = 0
+                },
+
+            Usage = Usage.Default,
+
+            BindFlags =
+                (uint)BindFlag.DepthStencil
+        };
+
+
+    ID3D11Texture2D* depthTexture = null;
+
+
+    hr =
+        device->CreateTexture2D(
+            &depthDesc,
+            null,
+            &depthTexture
+        );
+
+
+    if (hr < 0)
+        Marshal.ThrowExceptionForHR(hr);
+
+
+    try
+    {
+        ID3D11DepthStencilView* newDepthView =
+            null;
+
+
+        hr =
+            device->CreateDepthStencilView(
+                (ID3D11Resource*)depthTexture,
+                null,
+                &newDepthView
+            );
+
+
+        if (hr < 0)
+            Marshal.ThrowExceptionForHR(hr);
+
+
+        depthView =
+            newDepthView;
+    }
+    finally
+    {
+        if (depthTexture != null)
+            depthTexture->Release();
+    }
+
+
+    // IMPORTANT:
+    // renderTarget is a class field, so don't use
+    // &renderTarget directly.
+
+    ID3D11RenderTargetView* rtv =
+        renderTarget;
+
+
+    context->OMSetRenderTargets(
+        1,
+        &rtv,
+        depthView
+    );
+
+
+    var viewport =
+        new Viewport
+        {
+            TopLeftX = 0,
+            TopLeftY = 0,
+
+            Width = width,
+            Height = height,
+
+            MinDepth = 0,
+            MaxDepth = 1
+        };
+
+
+    context->RSSetViewports(
+        1,
+        &viewport
+    );
+}
+
+    private void CreateGeometry()
+    {
+        // Each face gets its own 4 vertices (24 total instead
+        // of 8) so that no two faces share a vertex. If faces
+        // shared corner vertices, the GPU would interpolate
+        // between each corner's color across the face, causing
+        // adjacent faces to blend into each other. Giving every
+        // face its own 4 same-colored vertices means each face
+        // renders as one solid, distinct color.
+        Vertex[] vertices =
+        {
+            // Front face (z = -1) - Yellow
+            new Vertex(-1, -1, -1,  1, 1, 0),
+            new Vertex(-1,  1, -1,  1, 1, 0),
+            new Vertex( 1,  1, -1,  1, 1, 0),
+            new Vertex( 1, -1, -1,  1, 1, 0),
+
+            // Back face (z = 1) - Blue
+            new Vertex(-1, -1,  1,  0, 0, 1),
+            new Vertex( 1,  1,  1,  0, 0, 1),
+            new Vertex(-1,  1,  1,  0, 0, 1),
+            new Vertex( 1, -1,  1,  0, 0, 1),
+
+            // Left face (x = -1) - Cyan
+            new Vertex(-1, -1,  1,  0, 1, 1),
+            new Vertex(-1,  1,  1,  0, 1, 1),
+            new Vertex(-1,  1, -1,  0, 1, 1),
+            new Vertex(-1, -1, -1,  0, 1, 1),
+
+            // Right face (x = 1) - Red
+            new Vertex( 1, -1, -1,  1, 0, 0),
+            new Vertex( 1,  1, -1,  1, 0, 0),
+            new Vertex( 1,  1,  1,  1, 0, 0),
+            new Vertex( 1, -1,  1,  1, 0, 0),
+
+            // Top face (y = 1) - Green
+            new Vertex(-1,  1, -1,  0, 1, 0),
+            new Vertex(-1,  1,  1,  0, 1, 0),
+            new Vertex( 1,  1,  1,  0, 1, 0),
+            new Vertex( 1,  1, -1,  0, 1, 0),
+
+            // Bottom face (y = -1) - Magenta
+            new Vertex(-1, -1,  1,  1, 0, 1),
+            new Vertex(-1, -1, -1,  1, 0, 1),
+            new Vertex( 1, -1, -1,  1, 0, 1),
+            new Vertex( 1, -1,  1,  1, 0, 1)
+        };
+
+
+        // Same two triangles per face as before, just
+        // reindexed against each face's own 4 vertices
+        // (0-3, 4-7, 8-11, ...) instead of the shared 8.
+        uint[] indices =
+        {
+             0,  1,  2,
+             0,  2,  3,
+
+             4,  5,  6,
+             4,  7,  5,
+
+             8,  9, 10,
+             8, 10, 11,
+
+            12, 13, 14,
+            12, 14, 15,
+
+            16, 17, 18,
+            16, 18, 19,
+
+            20, 21, 22,
+            20, 22, 23
+        };
+
+
+        fixed (
+            Vertex* pVertices =
+                vertices)
+        {
+            var desc =
+                new BufferDesc
+                {
+                    ByteWidth =
+                        (uint)(
+                            sizeof(Vertex) *
+                            vertices.Length),
+
+                    Usage =
+                        Usage.Default,
+
+                    BindFlags =
+                        (uint)BindFlag.VertexBuffer
+                };
+
+
+            var data =
+                new SubresourceData
+                {
+                    PSysMem = pVertices
+                };
+
+
+            ID3D11Buffer* newVertexBuffer =
+                null;
+
+
+            int hr =
+                device->CreateBuffer(
+                    &desc,
+                    &data,
+                    &newVertexBuffer
+                );
+
+
+            if (hr < 0)
+                Marshal.ThrowExceptionForHR(hr);
+
+
+            vertexBuffer =
+                newVertexBuffer;
+        }
+
+
+        fixed (
+            uint* pIndices =
+                indices)
+        {
+            var desc =
+                new BufferDesc
+                {
+                    ByteWidth =
+                        (uint)(
+                            sizeof(uint) *
+                            indices.Length),
+
+                    Usage =
+                        Usage.Default,
+
+                    BindFlags =
+                        (uint)BindFlag.IndexBuffer
+                };
+
+
+            var data =
+                new SubresourceData
+                {
+                    PSysMem = pIndices
+                };
+
+
+            ID3D11Buffer* newIndexBuffer =
+                null;
+
+
+            int hr =
+                device->CreateBuffer(
+                    &desc,
+                    &data,
+                    &newIndexBuffer
+                );
+
+
+            if (hr < 0)
+                Marshal.ThrowExceptionForHR(hr);
+
+
+            indexBuffer =
+                newIndexBuffer;
+        }
+
+
+        var constantDesc =
+            new BufferDesc
+            {
+                ByteWidth =
+                    (uint)sizeof(Constants),
+
+                Usage =
+                    Usage.Dynamic,
+
+                BindFlags =
+                    (uint)BindFlag.ConstantBuffer,
+
+                CPUAccessFlags =
+                    (uint)CpuAccessFlag.Write
+            };
+
+
+        ID3D11Buffer* newConstantBuffer =
+            null;
+
+
+        int result =
+            device->CreateBuffer(
+                &constantDesc,
+                null,
+                &newConstantBuffer
+            );
+
+
+        if (result < 0)
+            Marshal.ThrowExceptionForHR(result);
+
+
+        constantBuffer =
+            newConstantBuffer;
+    }
+
+
+    public void SetShaders(
+        byte[] vsBytecode,
+        byte[] psBytecode)
+    {
+        fixed (
+            byte* pVS =
+                vsBytecode)
+        {
+            ID3D11VertexShader* newVertexShader =
+                null;
+
+
+            int hr =
+                device->CreateVertexShader(
+                    pVS,
+                    (nuint)vsBytecode.Length,
+                    null,
+                    &newVertexShader
+                );
+
+
+            if (hr < 0)
+                Marshal.ThrowExceptionForHR(hr);
+
+
+            vertexShader =
+                newVertexShader;
+
+
+            IntPtr positionName =
+                Marshal.StringToCoTaskMemAnsi(
+                    "POSITION");
+
+
+            IntPtr colorName =
+                Marshal.StringToCoTaskMemAnsi(
+                    "COLOR");
+
+
+            try
+            {
+                InputElementDesc[] elements =
+                {
+                    new InputElementDesc
+                    {
+                        SemanticName =
+                            (byte*)positionName,
+
+                        SemanticIndex = 0,
+
+                        Format =
+                            Format.FormatR32G32B32Float,
+
+                        InputSlot = 0,
+
+                        AlignedByteOffset = 0,
+
+                        InputSlotClass =
+                            InputClassification.PerVertexData,
+
+                        InstanceDataStepRate = 0
+                    },
+
+                    new InputElementDesc
+                    {
+                        SemanticName =
+                            (byte*)colorName,
+
+                        SemanticIndex = 0,
+
+                        Format =
+                            Format.FormatR32G32B32A32Float,
+
+                        InputSlot = 0,
+
+                        AlignedByteOffset = 12,
+
+                        InputSlotClass =
+                            InputClassification.PerVertexData,
+
+                        InstanceDataStepRate = 0
+                    }
+                };
+
+
+                fixed (
+                    InputElementDesc* pElements =
+                        elements)
+                {
+                    ID3D11InputLayout* newInputLayout =
+                        null;
+
+
+                    int hr2 =
+                        device->CreateInputLayout(
+                            pElements,
+                            2,
+                            pVS,
+                            (nuint)vsBytecode.Length,
+                            &newInputLayout
+                        );
+
+
+                    if (hr2 < 0)
+                        Marshal.ThrowExceptionForHR(hr2);
+
+
+                    inputLayout =
+                        newInputLayout;
+                }
+            }
+            finally
+            {
+                Marshal.FreeCoTaskMem(
+                    positionName);
+
+                Marshal.FreeCoTaskMem(
+                    colorName);
+            }
+        }
+
+
+        fixed (
+            byte* pPS =
+                psBytecode)
+        {
+            ID3D11PixelShader* newPixelShader =
+                null;
+
+
+            int hr =
+                device->CreatePixelShader(
+                    pPS,
+                    (nuint)psBytecode.Length,
+                    null,
+                    &newPixelShader
+                );
+
+
+            if (hr < 0)
+                Marshal.ThrowExceptionForHR(hr);
+
+
+            pixelShader =
+                newPixelShader;
+        }
+    }
+
+
+    public void Render(
+        float time)
+    {
+        float* clear =
+            stackalloc float[4];
+
+
+        clear[0] = 0.02f;
+        clear[1] = 0.04f;
+        clear[2] = 0.08f;
+        clear[3] = 1.0f;
+
+
+        context->ClearRenderTargetView(
+            renderTarget,
+            clear
+        );
+
+
+        context->ClearDepthStencilView(
+            depthView,
+            (uint)ClearFlag.Depth |
+            (uint)ClearFlag.Stencil,
+            1.0f,
+            0
+        );
+
+
+        Matrix4x4 world =
+            Matrix4x4.CreateRotationY(time) *
+            Matrix4x4.CreateRotationX(time * 0.7f);
+
+
+        Matrix4x4 view =
+            Matrix4x4.CreateLookAt(
+                new Vector3(
+                    0,
+                    0,
+                    -9),
+
+                Vector3.Zero,
+
+                Vector3.UnitY
+            );
+
+
+        // A middle-ground FOV/distance: strong enough
+        // perspective that the near face reliably reads as
+        // bigger than the far face (rather than that cue
+        // being swamped by per-face foreshortening from the
+        // rotation), but not as wide/close as the original
+        // setup, which produced excessive keystone distortion.
+        // Orthographic projection: parallel lines stay
+        // parallel, and there is no near/far size difference
+        // (the far face is drawn the same size as the near
+        // face). The only remaining size variation is per-face
+        // foreshortening from actual 3D rotation, which is an
+        // inherent part of anything reading as a cube rather
+        // than a flat shape.
+        //
+        // orthoHeight is the world-space height of the view
+        // volume; orthoWidth is scaled by the window's aspect
+        // ratio so the cube isn't stretched.
+        //
+        // The cube's corners are up to sqrt(3) (~1.73) units
+        // from its center (the space diagonal), so as it
+        // rotates, a corner can swing that far from center in
+        // any direction. orthoHeight needs to be at least
+        // 2 * 1.73 (~3.46) to keep every corner on screen at
+        // every angle. 4.0 keeps that margin while making the
+        // cube appear 1.5x bigger than the previous 6.0.
+        float orthoHeight = 4.0f;
+
+        float orthoWidth =
+            orthoHeight *
+            (float)width /
+            (float)height;
+
+        Matrix4x4 projection =
+            Matrix4x4.CreateOrthographic(
+                orthoWidth,
+                orthoHeight,
+
+                0.1f,
+
+                200.0f
+            );
+
+
+        Constants constants =
+            new Constants
+            {
+                Wvp =
+                    Matrix4x4.Transpose(
+                        world *
+                        view *
+                        projection)
+            };
+
+
+        MappedSubresource mapped =
+            default;
+
+
+        int hr =
+            context->Map(
+                (ID3D11Resource*)constantBuffer,
+                0,
+                Map.WriteDiscard,
+                0,
+                &mapped
+            );
+
+
+        if (hr < 0)
+            Marshal.ThrowExceptionForHR(hr);
+
+
+        *(Constants*)mapped.PData =
+            constants;
+
+
+        context->Unmap(
+            (ID3D11Resource*)constantBuffer,
+            0
+        );
+
+
+        uint stride =
+            (uint)sizeof(Vertex);
+
+        uint offset = 0;
+
+
+        ID3D11Buffer* vb =
+            vertexBuffer;
+
+
+        context->IASetVertexBuffers(
+            0,
+            1,
+            &vb,
+            &stride,
+            &offset
+        );
+
+
+        context->IASetIndexBuffer(
+            indexBuffer,
+            Format.FormatR32Uint,
+            0
+        );
+
+
+context->IASetPrimitiveTopology(
+    (D3DPrimitiveTopology)4
+);
+
+
+        context->IASetInputLayout(
+            inputLayout
+        );
+
+
+        context->VSSetShader(
+            vertexShader,
+            null,
+            0
+        );
+
+
+        ID3D11Buffer* cb =
+            constantBuffer;
+
+
+        context->VSSetConstantBuffers(
+            0,
+            1,
+            &cb
+        );
+
+
+        context->PSSetShader(
+            pixelShader,
+            null,
+            0
+        );
+
+
+        context->DrawIndexed(
+            36,
+            0,
+            0
+        );
+
+
+        // SyncInterval = 0 disables the vsync wait, so the
+        // swap chain presents as fast as it can instead of
+        // being capped to the monitor's refresh rate.
+        swapChain->Present(
+            0,
+            0
+        );
+    }
+
+
+    public void Dispose()
+    {
+        if (inputLayout != null)
+        {
+            inputLayout->Release();
+            inputLayout = null;
+        }
+
+
+        if (pixelShader != null)
+        {
+            pixelShader->Release();
+            pixelShader = null;
+        }
+
+
+        if (vertexShader != null)
+        {
+            vertexShader->Release();
+            vertexShader = null;
+        }
+
+
+        if (constantBuffer != null)
+        {
+            constantBuffer->Release();
+            constantBuffer = null;
+        }
+
+
+        if (indexBuffer != null)
+        {
+            indexBuffer->Release();
+            indexBuffer = null;
+        }
+
+
+        if (vertexBuffer != null)
+        {
+            vertexBuffer->Release();
+            vertexBuffer = null;
+        }
+
+
+        if (depthView != null)
+        {
+            depthView->Release();
+            depthView = null;
+        }
+
+
+        if (renderTarget != null)
+        {
+            renderTarget->Release();
+            renderTarget = null;
+        }
+
+
+        if (swapChain != null)
+        {
+            swapChain->Release();
+            swapChain = null;
+        }
+
+
+        if (context != null)
+        {
+            context->Release();
+            context = null;
+        }
+
+
+        if (device != null)
+        {
+            device->Release();
+            device = null;
+        }
+
+
+        d3d11.Dispose();
+    }
+}
+'@
+
+
+# ============================================================
+# Compile C# bridge
+# ============================================================
+
+$tree =
+    [Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree]::ParseText(
+        $bridgeSource
+    )
+
+
+$options =
+    [Microsoft.CodeAnalysis.CSharp.CSharpCompilationOptions]::new(
+        [Microsoft.CodeAnalysis.OutputKind]::DynamicallyLinkedLibrary
+    )
+
+
+$options =
+    $options.WithAllowUnsafe(
+        $true
+    )
+
+
+$compilation =
+    [Microsoft.CodeAnalysis.CSharp.CSharpCompilation]::Create(
+        'SilkD3D11CubeBridge',
+        [Microsoft.CodeAnalysis.SyntaxTree[]]@(
+            $tree
+        ),
+        $references,
+        $options
+    )
+
+
+$stream =
+    [System.IO.MemoryStream]::new()
+
+
+$result =
+    $compilation.Emit(
+        $stream
+    )
+
+
+if (
+    -not $result.Success
+)
+{
+    $builder =
+        [System.Text.StringBuilder]::new()
+
+
+    foreach (
+        $diagnostic in
+        $result.Diagnostics
+    )
+    {
+        if (
+            $diagnostic.Severity -eq
+            [Microsoft.CodeAnalysis.DiagnosticSeverity]::Error
+        )
+        {
+            $builder.AppendLine(
+                $diagnostic.ToString()
+            ) | Out-Null
+        }
+    }
+
+
+    throw (
+        "C# bridge compilation failed:`n" +
+        $builder.ToString()
+    )
+}
+
+
+$stream.Position = 0
+
+
+$bridgeAssembly =
+    [System.Runtime.Loader.AssemblyLoadContext]::Default.LoadFromStream(
+        $stream
+    )
+
+
+$rendererType =
+    $bridgeAssembly.GetType(
+        'CubeRenderer'
+    )
+
+
+if ($null -eq $rendererType)
+{
+    throw 'CubeRenderer was not found.'
+}
+
+
+# ============================================================
+# Shader compiler bridge
+# ============================================================
+
+$shaderSource = @'
+using System;
+using System.Runtime.InteropServices;
+
+
+public static class ShaderCompiler
+{
+    [DllImport(
+        "d3dcompiler_47.dll",
+        CallingConvention =
+            CallingConvention.StdCall
+    )]
+    private static extern int D3DCompile(
+        string source,
+
+        UIntPtr sourceLength,
+
+        string sourceName,
+
+        IntPtr defines,
+
+        IntPtr include,
+
+        string entryPoint,
+
+        string target,
+
+        uint flags1,
+
+        uint flags2,
+
+        out IntPtr code,
+
+        out IntPtr error
+    );
+
+
+    public static byte[] Compile(
+        string source,
+
+        string entry,
+
+        string target
+    )
+    {
+        IntPtr code;
+        IntPtr error;
+
+
+        int hr =
+            D3DCompile(
+                source,
+
+                (UIntPtr)
+                    System.Text.Encoding.UTF8.GetByteCount(
+                        source
+                    ),
+
+                "cube.hlsl",
+
+                IntPtr.Zero,
+
+                IntPtr.Zero,
+
+                entry,
+
+                target,
+
+                0,
+
+                0,
+
+                out code,
+
+                out error
+            );
+
+
+        if (hr < 0)
+        {
+            string message =
+                "D3DCompile failed: 0x" +
+                hr.ToString("X8");
+
+
+            if (
+                error != IntPtr.Zero
+            )
+            {
+                IntPtr vtable =
+                    Marshal.ReadIntPtr(
+                        error
+                    );
+
+
+                IntPtr getPointer =
+                    Marshal.ReadIntPtr(
+                        vtable,
+                        IntPtr.Size * 3
+                    );
+
+
+                IntPtr getSize =
+                    Marshal.ReadIntPtr(
+                        vtable,
+                        IntPtr.Size * 4
+                    );
+
+
+                var pointerDelegate =
+                    Marshal.GetDelegateForFunctionPointer<
+                        GetPointerDelegate>(
+                            getPointer
+                        );
+
+
+                var sizeDelegate =
+                    Marshal.GetDelegateForFunctionPointer<
+                        GetSizeDelegate>(
+                            getSize
+                        );
+
+
+                IntPtr pointer =
+                    pointerDelegate(
+                        error
+                    );
+
+
+                UIntPtr size =
+                    sizeDelegate(
+                        error
+                    );
+
+
+                if (
+                    pointer != IntPtr.Zero
+                )
+                {
+                    message +=
+                        Environment.NewLine +
+                        Marshal.PtrToStringAnsi(
+                            pointer,
+                            checked(
+                                (int)size
+                            )
+                        );
+                }
+            }
+
+
+            throw new InvalidOperationException(
+                message
+            );
+        }
+
+
+        try
+        {
+            IntPtr vtable =
+                Marshal.ReadIntPtr(
+                    code
+                );
+
+
+            IntPtr getPointer =
+                Marshal.ReadIntPtr(
+                    vtable,
+                    IntPtr.Size * 3
+                );
+
+
+            IntPtr getSize =
+                Marshal.ReadIntPtr(
+                    vtable,
+                    IntPtr.Size * 4
+                );
+
+
+            var pointerDelegate =
+                Marshal.GetDelegateForFunctionPointer<
+                    GetPointerDelegate>(
+                        getPointer
+                    );
+
+
+            var sizeDelegate =
+                Marshal.GetDelegateForFunctionPointer<
+                    GetSizeDelegate>(
+                        getSize
+                    );
+
+
+            IntPtr pointer =
+                pointerDelegate(
+                    code
+                );
+
+
+            UIntPtr size =
+                sizeDelegate(
+                    code
+                );
+
+
+            byte[] bytes =
+                new byte[
+                    checked(
+                        (int)size
+                    )
+                ];
+
+
+            Marshal.Copy(
+                pointer,
+                bytes,
+                0,
+                bytes.Length
+            );
+
+
+            return bytes;
+        }
+        finally
+        {
+            if (code != IntPtr.Zero)
+            {
+                Marshal.Release(
+                    code
+                );
+            }
+
+
+            if (error != IntPtr.Zero)
+            {
+                Marshal.Release(
+                    error
+                );
+            }
+        }
+    }
+
+
+    [UnmanagedFunctionPointer(
+        CallingConvention.StdCall
+    )]
+    private delegate IntPtr GetPointerDelegate(
+        IntPtr self
+    );
+
+
+    [UnmanagedFunctionPointer(
+        CallingConvention.StdCall
+    )]
+    private delegate UIntPtr GetSizeDelegate(
+        IntPtr self
+    );
+}
+
+
+// ============================================================
+// IdlePump
+//
+// Classic WinForms "game loop" helper. PeekMessage (with
+// PM_NOREMOVE, i.e. flags = 0) reports whether any message is
+// currently waiting in this thread's queue without consuming
+// it. Hooking Application.Idle and rendering in a loop for as
+// long as IsIdle() is true lets the cube render as fast as the
+// CPU/GPU allow, instead of being throttled to a fixed Timer
+// interval.
+// ============================================================
+
+[StructLayout(LayoutKind.Sequential)]
+public struct NativeMessage
+{
+    public IntPtr Handle;
+    public uint Message;
+    public IntPtr WParam;
+    public IntPtr LParam;
+    public uint Time;
+    public int X;
+    public int Y;
+}
+
+
+public static class IdlePump
+{
+    [DllImport(
+        "user32.dll",
+        CharSet = CharSet.Auto
+    )]
+    private static extern bool PeekMessage(
+        out NativeMessage message,
+        IntPtr hWnd,
+        uint messageFilterMin,
+        uint messageFilterMax,
+        uint flags
+    );
+
+
+    public static bool IsIdle()
+    {
+        NativeMessage message;
+
+        return !PeekMessage(
+            out message,
+            IntPtr.Zero,
+            0,
+            0,
+            0
+        );
+    }
+}
+'@
+
+
+$shaderTree =
+    [Microsoft.CodeAnalysis.CSharp.CSharpSyntaxTree]::ParseText(
+        $shaderSource
+    )
+
+
+$shaderCompilation =
+    [Microsoft.CodeAnalysis.CSharp.CSharpCompilation]::Create(
+        'ShaderCompiler',
+        [Microsoft.CodeAnalysis.SyntaxTree[]]@(
+            $shaderTree
+        ),
+        $references,
+        $options
+    )
+
+
+$shaderStream =
+    [System.IO.MemoryStream]::new()
+
+
+$shaderResult =
+    $shaderCompilation.Emit(
+        $shaderStream
+    )
+
+
+if (
+    -not $shaderResult.Success
+)
+{
+    $builder =
+        [System.Text.StringBuilder]::new()
+
+
+    foreach (
+        $diagnostic in
+        $shaderResult.Diagnostics
+    )
+    {
+        if (
+            $diagnostic.Severity -eq
+            [Microsoft.CodeAnalysis.DiagnosticSeverity]::Error
+        )
+        {
+            $builder.AppendLine(
+                $diagnostic.ToString()
+            ) | Out-Null
+        }
+    }
+
+
+    throw (
+        "Shader compiler compilation failed:`n" +
+        $builder.ToString()
+    )
+}
+
+
+$shaderStream.Position = 0
+
+
+$shaderAssembly =
+    [System.Runtime.Loader.AssemblyLoadContext]::Default.LoadFromStream(
+        $shaderStream
+    )
+
+
+$shaderCompilerType =
+    $shaderAssembly.GetType(
+        'ShaderCompiler'
+    )
+
+
+$compileMethod =
+    $shaderCompilerType.GetMethod(
+        'Compile'
+    )
+
+
+$idlePumpType =
+    $shaderAssembly.GetType(
+        'IdlePump'
+    )
+
+
+if ($null -eq $idlePumpType)
+{
+    throw 'IdlePump was not found.'
+}
+
+
+$isIdleMethod =
+    $idlePumpType.GetMethod(
+        'IsIdle'
+    )
+
+
+# ============================================================
+# HLSL
+# ============================================================
+
+$vertexShader =
+@'
+cbuffer MatrixBuffer : register(b0)
+{
+    matrix WorldViewProjection;
+};
+
+
+struct VSInput
+{
+    float3 Position : POSITION;
+
+    float4 Color : COLOR;
+};
+
+
+struct VSOutput
+{
+    float4 Position : SV_POSITION;
+
+    float4 Color : COLOR;
+};
+
+
+VSOutput main(
+    VSInput input
+)
+{
+    VSOutput output;
+
+
+    output.Position =
+        mul(
+            float4(
+                input.Position,
+                1.0
+            ),
+            WorldViewProjection
+        );
+
+
+    output.Color =
+        input.Color;
+
+
+    return output;
+}
+'@
+
+
+$pixelShader =
+@'
+struct PSInput
+{
+    float4 Position : SV_POSITION;
+
+    float4 Color : COLOR;
+};
+
+
+float4 main(
+    PSInput input
+)
+    : SV_TARGET
+{
+    return input.Color;
+}
+'@
+
+
+# ============================================================
+# Compile shaders
+# ============================================================
+
+$vs =
+    $compileMethod.Invoke(
+        $null,
+        @(
+            $vertexShader,
+            'main',
+            'vs_5_0'
+        )
+    )
+
+
+$ps =
+    $compileMethod.Invoke(
+        $null,
+        @(
+            $pixelShader,
+            'main',
+            'ps_5_0'
+        )
+    )
+
+
+# ============================================================
+# WinForms
+# ============================================================
+
+[System.Reflection.Assembly]::Load(
+    'System.Windows.Forms'
+) | Out-Null
+
+[System.Reflection.Assembly]::Load(
+    'System.Drawing'
+) | Out-Null
+
+
+$form =
+    [System.Windows.Forms.Form]::new()
+
+
+$BaseTitle =
+    'Silk.NET 2.22.0 - Direct3D 11 spinning cube'
+
+
+$form.Text =
+    $BaseTitle
+
+
+$form.ClientSize =
+    [System.Drawing.Size]::new(
+        640,
+        480
+    )
+
+
+$form.StartPosition =
+    [System.Windows.Forms.FormStartPosition]::CenterScreen
+
+
+$form.FormBorderStyle =
+    [System.Windows.Forms.FormBorderStyle]::Sizable
+
+
+$renderer =
+    [System.Activator]::CreateInstance(
+        $rendererType
+    )
+
+
+# ============================================================
+# Stopwatch
+# ============================================================
+
+$stopwatch =
+    [System.Diagnostics.Stopwatch]::StartNew()
+
+
+# ============================================================
+# FPS tracking
+#
+# A hashtable is used instead of plain script-scope variables
+# because it is a reference type: mutating its entries from
+# inside the Timer.Tick scriptblock works reliably without
+# needing $script: scope qualifiers on every access.
+# ============================================================
+
+$FpsState =
+    @{
+        FrameCount   = 0
+        Stopwatch    = [System.Diagnostics.Stopwatch]::StartNew()
+        CurrentFps   = 0.0
+    }
+
+
+# ============================================================
+# FPS overlay label
+#
+# A child control drawn directly over the render area (the
+# D3D11 swap chain writes to this same form's client area, and
+# Windows composites the label on top of it). Using a label
+# instead of the window title means the FPS shows up right
+# over the cube instead of in the caption bar.
+# ============================================================
+
+$fpsLabel =
+    [System.Windows.Forms.Label]::new()
+
+
+$fpsLabel.AutoSize =
+    $true
+
+$fpsLabel.BackColor =
+    [System.Drawing.Color]::Black
+
+$fpsLabel.ForeColor =
+    [System.Drawing.Color]::Lime
+
+$fpsLabel.Font =
+    [System.Drawing.Font]::new(
+        'Consolas',
+        12,
+        [System.Drawing.FontStyle]::Bold
+    )
+
+$fpsLabel.Location =
+    [System.Drawing.Point]::new(
+        10,
+        10
+    )
+
+$fpsLabel.Text =
+    'FPS: --'
+
+
+$form.Controls.Add(
+    $fpsLabel
+)
+
+$fpsLabel.BringToFront()
+
+
+# ============================================================
+# Form shown
+# ============================================================
+
+$form.Add_Shown(
+    [System.EventHandler]{
+
+        param(
+            $sender,
+            $args
+        )
+
+
+        $renderer.Initialize(
+            $form.Handle,
+            $form.ClientSize.Width,
+            $form.ClientSize.Height
+        )
+
+
+        $renderer.SetShaders(
+            [byte[]]$vs,
+            [byte[]]$ps
+        )
+    }
+)
+
+
+# ============================================================
+# Render loop
+#
+# Instead of a fixed-interval Timer (which caps the frame
+# rate to roughly the timer resolution, ~60 fps), this hooks
+# Application.Idle and renders in a tight loop for as long as
+# the message queue is empty (IdlePump.IsIdle). Combined with
+# Present(0, 0) in the renderer (no vsync wait), this lets the
+# cube render as fast as the CPU/GPU allow, so the FPS counter
+# shows the real, uncapped frame rate rather than one clamped
+# by the timer or by vsync.
+# ============================================================
+
+$idleHandler =
+    [System.EventHandler]{
+
+        param(
+            $sender,
+            $args
+        )
+
+
+        while (
+            (-not $form.IsDisposed) -and
+            [bool]$isIdleMethod.Invoke(
+                $null,
+                $null
+            )
+        )
+        {
+            $renderer.Render(
+                [float]$stopwatch.Elapsed.TotalSeconds
+            )
+
+
+            # ------------------------------------------------
+            # FPS calculation
+            #
+            # Frames are counted every iteration of the loop,
+            # and the label is refreshed roughly twice a
+            # second so the displayed number doesn't flicker
+            # on every single frame.
+            # ------------------------------------------------
+
+            $FpsState.FrameCount++
+
+
+            $elapsed =
+                $FpsState.Stopwatch.Elapsed.TotalSeconds
+
+
+            if (
+                $elapsed -ge 0.5
+            )
+            {
+                $FpsState.CurrentFps =
+                    $FpsState.FrameCount /
+                    $elapsed
+
+
+                $fpsLabel.Text =
+                    'FPS: {0:0.0}' -f
+                    $FpsState.CurrentFps
+
+
+                $FpsState.FrameCount = 0
+
+                $FpsState.Stopwatch.Restart()
+            }
+        }
+    }
+
+
+[System.Windows.Forms.Application]::add_Idle(
+    $idleHandler
+)
+
+
+# ============================================================
+# Cleanup
+# ============================================================
+
+$form.Add_FormClosed(
+    [System.Windows.Forms.FormClosedEventHandler]{
+
+        param(
+            $sender,
+            $args
+        )
+
+
+        [System.Windows.Forms.Application]::remove_Idle(
+            $idleHandler
+        )
+
+
+        if (
+            $null -ne $renderer
+        )
+        {
+            $renderer.Dispose()
+        }
+    }
+)
+
+
+# ============================================================
+# Start
+# ============================================================
+
+[System.Windows.Forms.Application]::Run(
+    $form
+)
+
+
+}
 
 function func_wpf_xaml2
 {
