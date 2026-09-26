@@ -288,23 +288,35 @@ $profile = "$env:ProgramFiles\PowerShell\7\profile.ps1"
 ################################################################################################################################   
 @'
 <# This contains essential functions/settings for Chocolatey-for-wine to work properly, do not remove or change #>
+[System.IO.Directory]::SetCurrentDirectory("C:\")
+[Environment]::CurrentDirectory = "C:\"   # keeps PowerShell's own location provider in sync with the process CWD above
 
-cd c:\; 
-
-$env:DXVK_CONFIG_FILE=("$env:WINECONFIGDIR" + "\" + "drive_c" + "\" + ($env:ProgramData |split-path -leaf) + "\" + "dxvk.conf").substring(6) -replace "\\","/"
+$env:DXVK_CONFIG_FILE = ($env:WINECONFIGDIR + "\" + "drive_c" + "\" + [System.IO.Path]::GetFileName($env:ProgramData) + "\" + "dxvk.conf").Substring(6).Replace("\", "/")
 
 # Enable Chocolatey profile
 #$ChocolateyProfile = "$env:ChocolateyInstall\helpers\chocolateyProfile.psm1"
 $ChocolateyProfile = "$env:ProgramData\\Chocolatey\helpers\chocolateyProfile.psm1"
-
 
 if (Test-Path($ChocolateyProfile)) {
     Import-Module "$ChocolateyProfile"
 }
 
 <# if wineprefix is updated by running another wine version we have to update the hack for ConEmu bug https://bugs.winehq.org/show_bug.cgi?id=48761 #>
-if( !( (Get-FileHash C:\windows\system32\user32.dll).Hash -eq (Get-FileHash C:\ConEmu\user32dummy.dll).Hash) ) {
-     Copy-item $env:SystemDrive\windows\system32\user32.dll $env:SystemDrive\ConEmu\user32dummy.dll -force -erroraction silentlycontinue
+
+$user32Path = [System.IO.Path]::Combine($env:SystemDrive, "windows\system32\user32.dll")
+$dummyPath  = [System.IO.Path]::Combine($env:SystemDrive, "ConEmu\user32dummy.dll")
+
+$needsCopy = $true
+if ([System.IO.File]::Exists($dummyPath)) {
+    $needsCopy = ([System.IO.File]::GetLastWriteTimeUtc($user32Path) -ne [System.IO.File]::GetLastWriteTimeUtc($dummyPath))
+}
+
+if ($needsCopy) {
+    try {
+        [System.IO.File]::Copy($user32Path, $dummyPath, $true)
+    } catch {
+        # equivalent of -erroraction silentlycontinue
+    }
 }
 
 <# if powershell is started without args let's start conemu, but not if redirected or from pipe ( like 'powershell < a.ps1'  or '"echo hello" | powershell') #>
@@ -346,41 +358,51 @@ $MethodDefinition2 = @"
 
 $kernel32 = Add-Type -MemberDefinition $MethodDefinition2 -Namespace '' -Name 'kernel32' -PassThru    
 
-$h=[kernel32]::GetStdHandle(-10) <# (DWORD)-10 is STD_INPUT_HANDLE #>
+$h = [kernel32]::GetStdHandle(-10) <# (DWORD)-10 is STD_INPUT_HANDLE #>
 
-$io = [ntdll+IO_STATUS_BLOCK]::new(0,0)
-$info =[ntdll+FILE_FS_DEVICE_INFORMATION]::new(0,0)
+$io   = [ntdll+IO_STATUS_BLOCK]::new(0, 0)
+$info = [ntdll+FILE_FS_DEVICE_INFORMATION]::new(0, 0)
 
-$null=[ntdll]::NtQueryVolumeInformationFile($h,[ref]$io,[ref]$info,[System.Runtime.InteropServices.Marshal]::SizeOf($info),[ntdll+FSINFOCLASS]::FileFsDeviceInformation.value__ )
+$null = [ntdll]::NtQueryVolumeInformationFile($h, [ref]$io, [ref]$info, [System.Runtime.InteropServices.Marshal]::SizeOf($info), [ntdll+FSINFOCLASS]::FileFsDeviceInformation.value__)
 
 $parent = [System.Diagnostics.Process]::GetCurrentProcess().Parent
 
-if(($parent.processname -eq 'powershell') -and  ( $kernel32::GetCommandLineW() -eq 'pwsh') -and  ($info.DeviceType -eq 80) ) {
-    Start-Process c:\\ConEmu\\conemu64 |Out-Null
-    #Stop-process -id $parent.Id
-    Stop-process -id  ([System.Diagnostics.Process]::GetCurrentProcess()).Id
+if (($parent.ProcessName -eq 'powershell') -and ($kernel32::GetCommandLineW() -eq 'pwsh') -and ($info.DeviceType -eq 80)) {
+    [System.Diagnostics.Process]::Start("c:\ConEmu\conemu64") | Out-Null
+    #[System.Diagnostics.Process]::GetProcessById($parent.Id).Kill()
+    [System.Diagnostics.Process]::GetCurrentProcess().Kill()
 }  <# end start ConEmu #>
 
 <# get the wine-version string (https://github.com/FuzzySecurity/PowerShell-Suite/blob/master/Get-SystemProcessInformation.ps1) #>
 [IntPtr]$BuffPtr = [System.Runtime.InteropServices.Marshal]::AllocHGlobal(256)
 $null = [ntdll]::NtQuerySystemInformation(1000, $BuffPtr, 256, [ref][Int]$SystemInformationLength)
-$wine_version = [System.Runtime.InteropServices.Marshal]::PtrToStringAnsi($BuffPtr,256)
+$wine_version = [System.Runtime.InteropServices.Marshal]::PtrToStringAnsi($BuffPtr, 256)
 [System.Runtime.InteropServices.Marshal]::FreeHGlobal($BuffPtr)
 <# end get wine-version #>
 
-if($([System.Diagnostics.Process]::GetCurrentProcess().Parent.processname) -eq 'ConEmuC64' ) {Write-Host "";Write-Host -Foregroundcolor yellow Running Power Shell Core $PSVersionTable.PSVersion.ToString() on $wine_version.Split("`0",5)[1]"`nHost:" $wine_version.Split("`0",5)[2] $wine_version.Split("`0",5)[3]; Write-Host "";[system.console]::ForegroundColor='white'}
+if ([System.Diagnostics.Process]::GetCurrentProcess().Parent.ProcessName -eq 'ConEmuC64') {
+    [System.Console]::WriteLine("")
+    [System.Console]::ForegroundColor = [System.ConsoleColor]::Yellow
+    [System.Console]::WriteLine("Running Power Shell Core $($PSVersionTable.PSVersion.ToString()) on $($wine_version.Split([char]0,5)[1])`nHost:" + " " + $wine_version.Split([char]0,5)[2] + " " + $wine_version.Split([char]0,5)[3])
+    [System.Console]::WriteLine("")
+    [System.Console]::ForegroundColor = [System.ConsoleColor]::White
+}
 
-#Easy access to the C# compiler
-Set-Alias csc c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe
+function csc {
+    [System.Diagnostics.Process]::Start("c:\windows\Microsoft.NET\Framework\v4.0.30319\csc.exe", ($args -join ' ')) | Out-Null
+}
 
 Set-Alias gwmi Get-WmiObject
 Set-Alias Get-CIMInstance Get-CIMInstance_replacement
 
 <# winetricks: to support auto-tabcompletion only a comma seperated is supported when calling winetricks with multiple arguments, e.g. 'winetricks gdiplus,riched20' #>
-[array]$Qenu = iex "$([IO.File]::Readalltext("$env:ProgramData\\Chocolatey-for-wine\\winetricks.ps1").Split('marker line!!!',3)[1])"
-               
+$winetricksScriptPath = [System.IO.Path]::Combine($env:ProgramData, "Chocolatey-for-wine", "winetricks.ps1")
+$winetricksSource = [System.IO.File]::ReadAllText($winetricksScriptPath).Split('marker line!!!', 3)[1]
+
+[array]$Qenu = [System.Management.Automation.ScriptBlock]::Create($winetricksSource).Invoke()
+
 <# https://stackoverflow.com/questions/67356762/couldnt-use-predefined-array-inside-validateset-powershell #>
-for ( $j = 0; $j -lt $Qenu.count; $j+=3) { [string[]]$verblist += $Qenu[$j+1] }
+for ($j = 0; $j -lt $Qenu.Count; $j += 3) { [string[]]$verblist += $Qenu[$j + 1] }
 
 function winetricks {
   [CmdletBinding()]
@@ -402,19 +424,23 @@ function winetricks {
     $Arg
   )
 
-  if (!([System.IO.File]::Exists("$env:ProgramData\\Chocolatey-for-wine\\winetricks.ps1"))){
-      Add-Type -AssemblyName PresentationCore,PresentationFramework;
-      [System.Windows.MessageBox]::Show("winetricks script is missing`nplease reinstall it in c:\\ProgramData\\Chocolatey-for-wine",'Congrats','ok','exclamation')
+  if (![System.IO.File]::Exists($winetricksScriptPath)) {
+      Add-Type -AssemblyName PresentationCore, PresentationFramework
+      [System.Windows.MessageBox]::Show("winetricks script is missing`nplease reinstall it in c:\ProgramData\Chocolatey-for-wine", 'Congrats', 'ok', 'exclamation')
   }
-  
-  .   $([System.IO.Path]::Combine("$env:ProgramData","Chocolatey-for-wine", "winetricks.ps1")) $($arg -join ',')
+
+  . $winetricksScriptPath $($Arg -join ',')
 }
 
-#Remove ~/Documents/Powershell/Modules from modulepath; it becomes a mess because it`s not removed when one deletes the wineprefix... 
-$path = $env:PSModulePath -split ';'
-$env:PSModulePath  = ( $path | Select-Object -Skip 1 | Sort-Object -Unique) -join ';'
+#  the closest true API-level equivalent of Remove-Variable :
+foreach ($varName in @('MethodDefinition2', 'MethodDefinition', 'BuffPtr', 'info', 'io', 'j')) {
+    try {
+        $ExecutionContext.SessionState.PSVariable.Remove($varName)
+    } catch {
+        # equivalent of -erroraction silentlycontinue
+    }
+}
 
-Remove-Variable MethodDefinition2,MethodDefinition,BuffPtr, info,io,j -erroraction silentlycontinue
 '@ | Out-File ( New-Item -Path $env:ProgramData\\Chocolatey-for-wine\\profile_essentials.ps1 -Force)
 ################################################################################################################################ 
 #                                                                                                                              #
@@ -829,19 +855,17 @@ function QPR_wmic { <# wmic replacement #>
 # openssl x509 -in vsign-universal-root.crt -outform PEM -out verisign.crt
 @'
 -----BEGIN CERTIFICATE-----
-MIIEuTCCA6GgAwIBAgIQQBrEZCGzEyEDDrvkEhrFHTANBgkqhkiG9w0BAQsFADCBvTELMAkGA1UEBhMCVVMxFzAVBgNVBAoTDlZlcmlTaWduLCBJbmMuMR8wHQYDVQQL
-ExZWZXJpU2lnbiBUcnVzdCBOZXR3b3JrMTowOAYDVQQLEzEoYykgMjAwOCBWZXJpU2lnbiwgSW5jLiAtIEZvciBhdXRob3JpemVkIHVzZSBvbmx5MTgwNgYDVQQDEy9W
-ZXJpU2lnbiBVbml2ZXJzYWwgUm9vdCBDZXJ0aWZpY2F0aW9uIEF1dGhvcml0eTAeFw0wODA0MDIwMDAwMDBaFw0zNzEyMDEyMzU5NTlaMIG9MQswCQYDVQQGEwJVUzEX
-MBUGA1UEChMOVmVyaVNpZ24sIEluYy4xHzAdBgNVBAsTFlZlcmlTaWduIFRydXN0IE5ldHdvcmsxOjA4BgNVBAsTMShjKSAyMDA4IFZlcmlTaWduLCBJbmMuIC0gRm9y
-IGF1dGhvcml6ZWQgdXNlIG9ubHkxODA2BgNVBAMTL1ZlcmlTaWduIFVuaXZlcnNhbCBSb290IENlcnRpZmljYXRpb24gQXV0aG9yaXR5MIIBIjANBgkqhkiG9w0BAQEF
-AAOCAQ8AMIIBCgKCAQEAx2E3XrEBNNti1xWb/1hajCMj1mCOkdeQmIN65lgZOIzF9uVkhbSicfvtvbnazU0AtMgtc6XHaXGVHzk8skQHnOgO+k1KxCHfKWGPMiJhgsWH
-H26MfF8WIFFE0XBPV+rjHOPMee5Y2A7Cs0WTwCznmhcrewA3ekEzeOEz4vMQGn+HLL729fdC4uW/h2KJXwBL38Xd5HVEMkE6HnFuacsLdUYI0crSK5XQz/u5QGtkjFdN
-/BMReYTtXlT2NJ8IAfMQJQYXStrxHXpma5hgZqTZ79IugvHw7wnqRMkVauIDbjPTrJ9VAMf2CGqUuV/c4DPxhGD5WycRtPwW8rtWaoAljQIDAQABo4GyMIGvMA8GA1Ud
-EwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMG0GCCsGAQUFBwEMBGEwX6FdoFswWTBXMFUWCWltYWdlL2dpZjAhMB8wBwYFKw4DAhoEFI/l0xqGrI2Oa8PPgGrUSBgs
-exkuMCUWI2h0dHA6Ly9sb2dvLnZlcmlzaWduLmNvbS92c2xvZ28uZ2lmMB0GA1UdDgQWBBS2d/ppSEefUxLVwuoHMnYH0ZcHGTANBgkqhkiG9w0BAQsFAAOCAQEASvj4
-sAPmLGd75JR3Y8xuTPl9Dg3cyLk1uXBPY/ok+myDjEedO2Pzmvl2MpWRsXe8rJq+seQxIcaBlVZaDrHC1LGmWazxY8u4TB1ZkErvkBYoH1quEPuBUDgMbMzxPcP1Y+Oz
-4yHJJDnp/RVmRvQbEdBNc6N9Rvk97ahfYtTxP/jgdFcrGJ2BtMQo2pSXpXDrrB2+BxHw1dvd5Yzw1TKwg+ZX4o+/vqGqvz0dtdQ46tewXDpPaj+PwGZsY6rp2aQW9IHR
-lRQOfc2VNNnSj3BzgXucfr2YYdhFh5iQxeuGMMY1v/D/w1WIg0vvBZIGcfK4mJO37M2CYfE45k+XmCpajQ==
+MIIEuTCCA6GgAwIBAgIQQBrEZCGzEyEDDrvkEhrFHTANBgkqhkiG9w0BAQsFADCBvTELMAkGA1UEBhMCVVMxFzAVBgNVBAoTDlZlcmlTaWduLCBJbmMuMR8wHQYDVQQLExZWZXJpU2lnbiBUcnVzdCBOZXR3b3Jr
+MTowOAYDVQQLEzEoYykgMjAwOCBWZXJpU2lnbiwgSW5jLiAtIEZvciBhdXRob3JpemVkIHVzZSBvbmx5MTgwNgYDVQQDEy9WZXJpU2lnbiBVbml2ZXJzYWwgUm9vdCBDZXJ0aWZpY2F0aW9uIEF1dGhvcml0eTAe
+Fw0wODA0MDIwMDAwMDBaFw0zNzEyMDEyMzU5NTlaMIG9MQswCQYDVQQGEwJVUzEXMBUGA1UEChMOVmVyaVNpZ24sIEluYy4xHzAdBgNVBAsTFlZlcmlTaWduIFRydXN0IE5ldHdvcmsxOjA4BgNVBAsTMShjKSAy
+MDA4IFZlcmlTaWduLCBJbmMuIC0gRm9yIGF1dGhvcml6ZWQgdXNlIG9ubHkxODA2BgNVBAMTL1ZlcmlTaWduIFVuaXZlcnNhbCBSb290IENlcnRpZmljYXRpb24gQXV0aG9yaXR5MIIBIjANBgkqhkiG9w0BAQEF
+AAOCAQ8AMIIBCgKCAQEAx2E3XrEBNNti1xWb/1hajCMj1mCOkdeQmIN65lgZOIzF9uVkhbSicfvtvbnazU0AtMgtc6XHaXGVHzk8skQHnOgO+k1KxCHfKWGPMiJhgsWHH26MfF8WIFFE0XBPV+rjHOPMee5Y2A7C
+s0WTwCznmhcrewA3ekEzeOEz4vMQGn+HLL729fdC4uW/h2KJXwBL38Xd5HVEMkE6HnFuacsLdUYI0crSK5XQz/u5QGtkjFdN/BMReYTtXlT2NJ8IAfMQJQYXStrxHXpma5hgZqTZ79IugvHw7wnqRMkVauIDbjPT
+rJ9VAMf2CGqUuV/c4DPxhGD5WycRtPwW8rtWaoAljQIDAQABo4GyMIGvMA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMG0GCCsGAQUFBwEMBGEwX6FdoFswWTBXMFUWCWltYWdlL2dpZjAhMB8wBwYF
+Kw4DAhoEFI/l0xqGrI2Oa8PPgGrUSBgsexkuMCUWI2h0dHA6Ly9sb2dvLnZlcmlzaWduLmNvbS92c2xvZ28uZ2lmMB0GA1UdDgQWBBS2d/ppSEefUxLVwuoHMnYH0ZcHGTANBgkqhkiG9w0BAQsFAAOCAQEASvj4
+sAPmLGd75JR3Y8xuTPl9Dg3cyLk1uXBPY/ok+myDjEedO2Pzmvl2MpWRsXe8rJq+seQxIcaBlVZaDrHC1LGmWazxY8u4TB1ZkErvkBYoH1quEPuBUDgMbMzxPcP1Y+Oz4yHJJDnp/RVmRvQbEdBNc6N9Rvk97ahf
+YtTxP/jgdFcrGJ2BtMQo2pSXpXDrrB2+BxHw1dvd5Yzw1TKwg+ZX4o+/vqGqvz0dtdQ46tewXDpPaj+PwGZsY6rp2aQW9IHRlRQOfc2VNNnSj3BzgXucfr2YYdhFh5iQxeuGMMY1v/D/w1WIg0vvBZIGcfK4mJO3
+7M2CYfE45k+XmCpajQ==
 -----END CERTIFICATE-----
 '@ | Out-File "$env:ProgramData\Chocolatey-for-wine\verisign.crt"
 
@@ -849,9 +873,29 @@ lRQOfc2VNNnSj3BzgXucfr2YYdhFh5iQxeuGMMY1v/D/w1WIg0vvBZIGcfK4mJO37M2CYfE45k+XmCpa
 
     $store=[System.Security.Cryptography.X509Certificates.X509Store]::new('Root', 'LocalMachine'); $store
 
-    $store.Open('ReadWrite')
-    $store.Add($C)
-    $store.Close()
+    $store.Open('ReadWrite');     $store.Add($C);     $store.Close()
+
+# find which certificate: dotnet nuget verify microsoft.maui.controls.xaml.8.0.40.nupkg --verbosity detailed
+#Due to how X.509 PKI works, the root certificate (the last one in the certificate chain, which verify will output as the most deeply nested certificate at detailed verbosity) needs to be trusted
+#https://cacerts.digicert.com/DigiCertAssuredIDRootCA.crt
+@'
+-----BEGIN CERTIFICATE-----
+MIIDtzCCAp+gAwIBAgIQDOfg5RfYRv6P5WD8G/AwOTANBgkqhkiG9w0BAQUFADBlMQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3d3cuZGlnaWNlcnQuY29tMSQwIgYDVQQD
+ExtEaWdpQ2VydCBBc3N1cmVkIElEIFJvb3QgQ0EwHhcNMDYxMTEwMDAwMDAwWhcNMzExMTEwMDAwMDAwWjBlMQswCQYDVQQGEwJVUzEVMBMGA1UEChMMRGlnaUNlcnQgSW5jMRkwFwYDVQQLExB3d3cuZGlnaWNl
+cnQuY29tMSQwIgYDVQQDExtEaWdpQ2VydCBBc3N1cmVkIElEIFJvb3QgQ0EwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCtDhXO5EOAXLGH87dg+XESpa7cJpSIqvTO9SA5KFhgDPiA2qkVlTJhPLWx
+KISKityfCgyDF3qPkKyK53lTXDGEKvYPmDI2dsze3Tyoou9q+yHyUmHfnyDXH+Kx2f4YZNISW1/5WBg1vEfNoTb5a3/UsDg+wRvDjDPZ2C8Y/igPs6eD1sNuRMBhNZYW/lmci3Zt1/GiSw0r/wty2p5g0I6QNcZ4
+VYcgoc/lbQrISXwxmDNsIumH0DJaoroTghHtORedmTpyoeb6pNnVFzF1roV9Iq4/AUaG9ih5yLHa5FcXxH4cDrC0kqZWs72yl+2qp/C3xag/lRbQ/6GW6whfGHdPAgMBAAGjYzBhMA4GA1UdDwEB/wQEAwIBhjAP
+BgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBRF66Kv9JLLgjEtUYunpyGd823IDzAfBgNVHSMEGDAWgBRF66Kv9JLLgjEtUYunpyGd823IDzANBgkqhkiG9w0BAQUFAAOCAQEAog683+Lt8ONyc3pklL/3cmbYMuRC
+dWKuh+vy1dneVrOfzM4UKLkNl2BcEkxY5NM9g0lFWJc1aRqoR+pWxnmrEthngYTffwk8lOa4JiwgvT2zKIn3X/8i4peEH+ll74fg38FnSbNd67IJKusm7Xi+fT8r87cmNW1fiQG2SVufAQWbqz0lwcy2f8Lxb4bG
++mRo64EtlOtCt/qMHt1i8b5QZ7dsvfPxH2sMNgcWfzd8qVttevESRmCD1ycEvkvOl77DZypoEd+A5wwzZr8TDRRu838fYxAe+o0bJW1sj6W3YQGx0qMmoRBxna3iw/nDmVG3KwcIzi7mULKn+gpFL6Lw8g==
+-----END CERTIFICATE-----
+'@ | Out-File "$env:ProgramData\Chocolatey-for-wine\assured.crt"
+
+    $C = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new("$env:ProgramData\Chocolatey-for-wine\assured.crt"); $C
+
+    $store=[System.Security.Cryptography.X509Certificates.X509Store]::new('Root', 'LocalMachine'); $store
+
+    $store.Open('ReadWrite');  $store.Add($C);   $store.Close()
 
 #    Start-Process $env:systemroot\Microsoft.NET\Framework64\v4.0.30319\ngen.exe -NoNewWindow -Wait -ArgumentList  "eqi"
 #    Start-Process $env:systemroot\Microsoft.NET\Framework\v4.0.30319\ngen.exe -NoNewWindow -Wait -ArgumentList "eqi"
