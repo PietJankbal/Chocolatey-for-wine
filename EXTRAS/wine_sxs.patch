@@ -1,58 +1,38 @@
 diff --git a/dlls/sxs/sxs.c b/dlls/sxs/sxs.c
-index 150a49a322f..a7aa4f630a7 100644
+index 150a49a322f..c9a149f4bcf 100644
 --- a/dlls/sxs/sxs.c
 +++ b/dlls/sxs/sxs.c
-@@ -24,6 +24,8 @@
- #include "windef.h"
- #include "winbase.h"
- 
-+#include "wine/exception.h"
+@@ -159,6 +159,33 @@ BOOL WINAPI SxsLookupClrGuid(DWORD flags, GUID *clsid, HANDLE actctx, void *buff
+     {
+         const struct comclassredirect_data *redirect_data = guid_info.lpData;
+         const struct clrclass_data *class_data;
++     /*The crash is caused by treating any ACTIVATION_CONTEXT_SECTION_COM_SERVER_REDIRECTION match as a CLR class. In your trace, the found COM redirection entry has:
 +
- #include "wine/debug.h"
- 
- WINE_DEFAULT_DEBUG_CHANNEL(sxs);
-@@ -199,21 +201,42 @@ BOOL WINAPI SxsLookupClrGuid(DWORD flags, GUID *clsid, HANDLE actctx, void *buff
-     ret->pcwszAssemblyIdentity = (WCHAR *)ret_strings;
-     ret_strings += len_identity;
- 
-+    /* FIXME the offsets like in ptr_name = (char *)surrogate + surrogate->name_offset; (line 175) seem to contain bogus values ???? */
-+    __TRY 
++class redirect: size=120 clrdata_len=0 clrdata_offset=0
++
++clrdata_len == 0 and clrdata_offset == 0 mean this COM server redirection entry contains no CLR class data. It is a plain COM redirection, not a .NET CLR class.
++
++The current code blindly does:
++
++class_data = (void *)((char *)redirect_data + redirect_data->clrdata_offset);
++
++With clrdata_offset == 0, that reinterprets the comclassredirect_data structure itself as a clrclass_data. The fields then read as garbage, producing the enormous len_name / len_version values and the bogus required buffer size of 4122686078. The subsequent memcpy then crashes.
++Fix
++
++Add validation in the SXS_LOOKUP_CLR_GUID_FIND_CLR_CLASS branch. If the redirection entry has no valid CLR data, fail with ERROR_NOT_FOUND instead of parsing it as a CLR class. */   
++        if (!redirect_data->clrdata_len ||
++        !redirect_data->clrdata_offset ||
++        redirect_data->clrdata_offset < sizeof(*redirect_data) ||
++        redirect_data->clrdata_len < sizeof(struct clrclass_data) ||
++        redirect_data->clrdata_offset + redirect_data->clrdata_len > guid_info.ulLength)
 +    {
-     memcpy(ret_strings, ptr_name, len_name);
-     ret->pcwszTypeName = (WCHAR *)ret_strings;
-     ret_strings += len_name;
++        FIXME("not a CLR class: clrdata_len=%lu clrdata_offset=%lu ulLength=%lu\n",
++              redirect_data->clrdata_len, redirect_data->clrdata_offset,
++              guid_info.ulLength);
++        retval = FALSE;
++        SetLastError(ERROR_NOT_FOUND);
++        goto out;
 +    }
-+    __EXCEPT_PAGE_FAULT
-+    {
-+	ret->pcwszTypeName=0;	
-+	}
-+    __ENDTRY
-+
-+
-+
  
-     if (len_version > 0)
--    {
-+    {   __TRY 
-+		{
-         memcpy(ret_strings, ptr_version, len_version);
-         ret->pcwszRuntimeVersion = (WCHAR *)ret_strings;
-+	    }
-+	    __EXCEPT_PAGE_FAULT
-+	    {
-+	    ret->pcwszRuntimeVersion = NULL;
-+	    }
-+	    __ENDTRY
-     }
-     else
-         ret->pcwszRuntimeVersion = NULL;
- 
-+
-+
-     SetLastError(0);
- 
--out:
-+out: if(retval) FIXME("version /identity /name = %s, %s, %s\n", wine_dbgstr_w(ret->pcwszRuntimeVersion), wine_dbgstr_w(ret->pcwszAssemblyIdentity), wine_dbgstr_w(ret->pcwszTypeName));
-     ReleaseActCtx(guid_info.hActCtx);
- 
-     if (flags & SXS_LOOKUP_CLR_GUID_USE_ACTCTX)
+         class_data = (void *)((char *)redirect_data + redirect_data->clrdata_offset);
+         ptr_name = (char *)class_data + class_data->name_offset;
