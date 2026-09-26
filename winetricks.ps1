@@ -2330,7 +2330,7 @@ function func_d3dx
 
     Remove-Item -Force -Recurse "$env:TEMP\$(verb)"
         
-    foreach($i in 'concrt140', 'msvcp140', 'msvcp140_1', 'msvcp140_2', 'vcruntime140', 'vcruntime140_1', 'ucrtbase') { dlloverride 'native' $i }
+    foreach($i in 'concrt140', 'msvcp140', 'msvcp140_1', 'msvcp140_2', 'vcruntime140', 'vcruntime140_1', 'ucrtbase') { dlloverride 'native,builtin' $i }
 } <# end vcrun2019 #>
 
 function func_vcrun2022
@@ -2372,7 +2372,7 @@ function func_vcrun2022
     
     Remove-Item -Force -Recurse "$env:TEMP\$(verb)"
         
-    foreach($i in 'concrt140', 'msvcp140', 'msvcp140_1', 'msvcp140_2', 'vcruntime140', 'vcruntime140_1', 'ucrtbase') { dlloverride 'native' $i }
+    foreach($i in 'concrt140', 'msvcp140', 'msvcp140_1', 'msvcp140_2', 'vcruntime140', 'vcruntime140_1', 'ucrtbase') { dlloverride 'native,builtin' $i }
 } <# end vcrun2022 #>
 
 function func_cmd <# native cmd #>
