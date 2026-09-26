@@ -8,7 +8,7 @@ else                 {$cachedir = [System.IO.Path]::Combine( "$([Environment]::G
     "apps","creative_cloud","Adobe Creative Cloud",    
 #   "apps","itunes","itunes, with fixed black GUI",
 #   "apps","mspaint","mspaint, inserting text does not work :(",
-    "apps","office365","Microsoft Office365HomePremium (registering does not work, many glitches...)",
+    "apps","office365","Microsoft Office365HomePremium (registering does not work, use wine-staging to avoid many glitches ...)",
     "apps","use_chromium_as_browser", "replace winebrowser with chrome to open webpages",
     "apps","vs19_interactive_installer", "Visual Studio 2019 interactive installer",
     "apps","vs22_interactive_installer", "Visual Studio 2022 interactive installer",
@@ -53,6 +53,7 @@ else                 {$cachedir = [System.IO.Path]::Combine( "$([Environment]::G
     "dlls","riched20","riched20.dll, msls31.dll, msftedit.dll",
     "dlls","sapi", "Speech api (sapi.dll), experimental, makes Balabolka work",
     "dlls","sspicli", "dangerzone, only for testing, might break things, only use on a per app base (sspicli.dll)",
+    "dlls","tar", "tar.exe (bsdtar actually)",
     "dlls","uianimation", "uianimation.dll",
     "dlls","uiautomationcore", "uiautomationcore.dll",
     "dlls","uiribbon", "uiribbon.dll",
@@ -75,6 +76,7 @@ else                 {$cachedir = [System.IO.Path]::Combine( "$([Environment]::G
     "misc","access_winrt_from_powershell", "codesnippets from around the internet: howto use Windows Runtime classes in powershell; requires powershell 5.1, so 1st time usage may take very long time!!!",
     "misc","cef", "codesnippets from around the internet: how to use cef / test cef",
     "misc","d3d11_silk_cube","spinning cube in d3d11 using Silk",
+    "misc","d3d12_silk_cube","spinning cube in d3d12 using Silk",
     "misc","embed-exe-in-psscript", "codesnippets from around the internet: samplescript howto embed and run an exe into a powershell-scripts (vkcube.exe); might trigger a viruswarning (!) but is really harmless",
 #   "misc","GE-Proton","Install bunch of dlls from GE-Proton",
     "misc","Get-PEHeader", "codesnippets from around the internet: add Get-PEHeader to cmdlets, handy to explore dlls imports/exports",
@@ -84,12 +86,14 @@ else                 {$cachedir = [System.IO.Path]::Combine( "$([Environment]::G
     "misc","install_dll_from_msu","extract and install a dll/file from an msu file (installation in right place might or might not work ;) )",
     "misc","net_cmdlets", "some cmdlets to test net connection",
     "misc","ps2exe", "codesnippets from around the internet: convert a ps1-script into an executable; requires powershell 5.1, so 1st time usage may take very long time!!!",
+    "misc","pscore2exe", "convert a powershell core script into an executable",
 #   "misc","sharpdx", "directX with powershell (spinning cube), test if your d3d11 works, further rather useless verb for now ;)",
+    "misc","Start-PSPester","Start-PSPester, prepares a PowerShell repository clone for running its test suite.",
     "misc","vanara","vanara https://github.com/dahall/Vanara",
     "misc","winrt_hacks","WIP, enable all included wine hacks for (hopefully) bit more winrt ",
     "misc","wpf_msgbox", "codesnippets from around the internet: some fancy messageboxes (via wpf) in powershell",
-    "misc","wpf_routedevents", "codesnippets from around the internet: how to use wpf+xaml+routedevents in powershell",
-    "misc","wpf_xaml", "codesnippets from around the internet: how to use wpf+xaml in powershell",
+#    "misc","wpf_routedevents", "codesnippets from around the internet: how to use wpf+xaml+routedevents in powershell",
+#    "misc","wpf_xaml", "codesnippets from around the internet: how to use wpf+xaml in powershell",
     "sets","app_paths", "start new shell with app paths added to the path (permanently), invoke from powershell console!",
     "sets","nocrashdialog", "Disable graphical crash dialog",
     "sets","renderer=gl", "renderer=gl",
@@ -134,7 +138,6 @@ function print_info
         Write-Host -foregroundcolor yellow "**********************************************************"
 }
 
-
 function w_download_to
 {
     Param ($dldir, $w_url, $w_file)
@@ -143,7 +146,7 @@ function w_download_to
 
     if (![System.IO.File]::Exists("$cachedir\\$dldir\\$w_file")){
          print_info
-         wget2 --restrict-file-names=nocontrol <# do not escape any character #> "$w_url" -P "$cachedir\\$dldir"; quit?('wget2')
+         wget2 --restrict-file-names=nocontrol <# do not escape any character #> "$w_url" -O "$cachedir\\$dldir\\$w_file"; quit?('wget2')
         }
 }
 
@@ -2262,6 +2265,12 @@ function func_findstr
     foreach($i in 'findstr.exe') { dlloverride 'native' $i }
 } <# end findstr #>
 
+function func_tar
+{
+   $null= wget2 --restrict-file-names=nocontrol <# do not escape any character #> "https://github.com/hermeticbuild/bsdtar-prebuilt/releases/download/v3.8.1-3/tar_windows_x86_64.exe" -O "$env:SystemRoot\system32\tar.exe"; quit?('wget2')
+
+} <# end tar #>
+
 function func_d3dx
 {
     $dldir = "d3dx"
@@ -3141,7 +3150,6 @@ Function Set-WmiInstance( [string]$class, [hashtable]$arguments, [string]$comput
     return $result.Path
 }
 #>
-
 }
 
 function func_ping <# fake ping for when wine's ping fails due to permission issues  #>
@@ -3853,6 +3861,16 @@ REGEDIT4
     & "$env:TMP\\vs_Community.exe" --wait
     
     quit?('vs_Community')
+    <# don't force reboot#>
+    $id = & "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -property instanceId
+    #[HKEY_LOCAL_MACHINE\Software\Wow6432Node\Microsoft\VisualStudio\Setup\Reboot]
+    if(!(Test-Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\VisualStudio\\Setup\\Reboot')) {New-Item  -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\VisualStudio\\Setup\\Reboot'}
+    New-ItemProperty -Path 'HKLM:\\Software\\Wow6432Node\\Microsoft\\VisualStudio\\Setup\\Reboot' -Name $id -Value 0 -PropertyType 'Dword' -force
+
+    Copy-Item  "$env:systemroot\\SysWOW64\\dism.exe" "$env:systemroot\\SysWOW64\\perfwatson2.exe" -Force -Verbose
+    Copy-Item  "$env:systemroot\\System32\\dism.exe" "$env:systemroot\\System32\\perfwatson2.exe" -Force -Verbose
+    
+    foreach($i in 'perfwatson2.exe') { dlloverride 'builtin' $i }
 }
 
 function func_vs19_interactive_installer
@@ -3888,7 +3906,7 @@ function func_vs19_interactive_installer
 function func_creative_cloud
 {
     func_wine_msxml3
-    func_wine_kernel32
+#    func_wine_kernel32
     func_wine_mshtml
 
     foreach($i in 'msxml3, mshtml, kernel32') { dlloverride 'native,builtin' $i }
@@ -4008,6 +4026,12 @@ function func_d3d11_silk_cube
     func_d3d11_silk_cube2
 }
 
+function func_d3d12_silk_cube
+{
+    . "$env:ProgramData\Chocolatey-for-wine\powershell_collected_codesnippets_examples.ps1"
+    func_d3d12_silk_cube2
+}
+
 function func_wpf_xaml
 {
     . "$env:ProgramData\Chocolatey-for-wine\powershell_collected_codesnippets_examples.ps1"
@@ -4074,11 +4098,24 @@ function func_ps2exe
     func_ps2exe2
 }
 
+function func_pscore2exe
+{
+    . "$env:ProgramData\Chocolatey-for-wine\powershell_collected_codesnippets_examples.ps1"
+    func_pscore2exe2
+}
+
+function func_Start-PSPester
+{
+    . "$env:ProgramData\Chocolatey-for-wine\powershell_collected_codesnippets_examples.ps1"
+    func_Start-PSPester2
+}
+
 function func_vanara
 {
     . "$env:ProgramData\Chocolatey-for-wine\powershell_collected_codesnippets_examples.ps1"
     func_vanara2
 }
+
 
 function func_vulkansamples  <# force a full software rendering for Vulkan and OpenGL:  LIBGL_ALWAYS_SOFTWARE=1 __GLX_VENDOR_LIBRARY_NAME=mesa VK_DRIVER_FILES=/usr/share/vulkan/icd.d/lvp_icd.i686.json:/usr/share/vulkan/icd.d/lvp_icd.x86_64.json #>
 {   <# https://www.saschawillems.de/blog/2017/03/25/updated-vulkan-example-binaries/ #>
@@ -4426,10 +4463,10 @@ function func_dotnet481
 
     Move-Item "$env:systemdrive\mscoreei.dll" "$env:systemroot\Microsoft.NET\Framework64\v4.0.30319\mscoreei.dll" -verbose -force
 
-    Write-Host -foregroundColor yellow 'Writing registry keys , patience please...' 
+#    Write-Host -foregroundColor yellow 'Writing registry keys , patience please...' 
 
-    reg.exe IMPORT "c:\windows\temp\reg_keys64.ps1" /reg:64 ; Remove-Item -Force "c:\windows\temp\reg_keys64.ps1"
-    reg.exe IMPORT "c:\windows\temp\reg_keys32.ps1" /reg:32 ; Remove-Item -Force "c:\windows\temp\reg_keys32.ps1"
+#    reg.exe IMPORT "c:\windows\temp\reg_keys64.ps1" /reg:64 ; Remove-Item -Force "c:\windows\temp\reg_keys64.ps1"
+#    reg.exe IMPORT "c:\windows\temp\reg_keys32.ps1" /reg:32 ; Remove-Item -Force "c:\windows\temp\reg_keys32.ps1"
     
     Write-Host -foregroundColor yellow 'Done , hopefully nothing''s screwed up ;)'     <# FIXME:  mscoreei.dll is not installed as it is in use by pwsh.exe #>
     #Start-Process -FilePath $env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.3031\\ngen.exe -NoNewWindow -ArgumentList "eqi"
@@ -4634,7 +4671,6 @@ function func_mdac_deprecated_win7
     reg.exe DELETE 'HKEY_LOCAL_MACHINE\HKEY_CLASSES_ROOT' /f
      
     Remove-Item -Force -Recurse "$env:TEMP\$(verb)"
-
     }   
     
     & "$env:ProgramFiles\7-Zip\7z.exe" x -spf "$cachedir\$(verb)\$(verb).7z" -aoa 
