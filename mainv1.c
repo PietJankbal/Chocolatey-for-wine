@@ -11,14 +11,14 @@
  * 
  * Build: For fun code is changed from standard main(argc,*argv[]) to something like https://nullprogram.com/blog/2016/01/31/ and https://scorpiosoftware.net/2023/03/16/minimal-executables/)
  * https://gist.githubusercontent.com/pts/9ef2b1036d0b42508327559eeb2e0eb5/raw/971aeca2b1d0906ac67b68a4526bae58b67415be/tinygccpe.scr
- * echo 'SECTIONS { . = SIZEOF_HEADERS;  . = ALIGN(__section_alignment__);
-  .idata __image_base__ + (__section_alignment__ < 0x1000 ? . : __section_alignment__) : { SORT(*)(.idata$2); SORT(*)(.idata$3); 
-    LONG (0); LONG (0); LONG (0); LONG (0); LONG (0); SORT(*)(.idata$4); __IAT_start__ = .; SORT(*)(.idata$5); __IAT_end__ = .; SORT(*)(.idata$6); SORT(*)(.idata$7); }
-  .text BLOCK(__section_alignment__) : { *(.text) *(SORT(.text$*)) *(.text.*) *(.rdata) *(SORT(.rdata$*)) }  .reloc : { *(.reloc) } }' > linker.ld && x86_64-w64-mingw32-gcc -Oz -fno-asynchronous-unwind-tables -municode -Wall -Wextra -mno-stack-arg-probe -nostartfiles\
+ * echo 'SECTIONS { . = SIZEOF_HEADERS; . = ALIGN(__section_alignment__); .text __image_base__ + (__section_alignment__ < 0x1000 ? . : __section_alignment__) : 
+   { *(.text) *(SORT(.text$*)) *(.text.*) *(.rdata) *(SORT(.rdata$*)) } .idata BLOCK(__section_alignment__)
+   : { SORT(*)(.idata$2) SORT(*)(.idata$3) LONG(0); LONG(0); LONG(0); LONG(0); LONG(0); SORT(*)(.idata$4) __IAT_start__ = .; SORT(*)(.idata$5) __IAT_end__ = .; 
+   SORT(*)(.idata$6) SORT(*)(.idata$7) } .reloc BLOCK(__section_alignment__)
+   : { *(.reloc) } }' > linker.ld && x86_64-w64-mingw32-gcc -Oz -fno-asynchronous-unwind-tables -municode -Wall -Wextra -mno-stack-arg-probe -nostartfiles\
    -Wl,-gc-sections -Xlinker --stack=0x100000,0x100000 mainv1.c -nostdlib -lucrtbase -lkernel32 -lntdll -s -o powershell64.exe -Wl,--section-alignment,512,--file-alignment,512,-T,linker.ld && strip -R .reloc powershell64.exe
    i686-w64-mingw32-gcc -Oz -fno-asynchronous-unwind-tables -mno-stack-arg-probe -municode -Wall -Wextra -mno-stack-arg-probe -nostartfiles\
-   -Wl,-gc-sections -Xlinker --stack=0x100000,0x100000 mainv1.c -nostdlib -lucrtbase -lkernel32 -lntdll -s -o powershell32.exe -Wl,--section-alignment,512,--file-alignment,512,-T,linker.ld && strip -R .reloc  powershell32.exe
- */
+   -Wl,-gc-sections -Xlinker --stack=0x100000,0x100000 mainv1.c -nostdlib -lucrtbase -lkernel32 -lntdll -s -o powershell32.exe -Wl,-T,linker.ld #&& strip -R .reloc  powershell32.exe*/
 
 #include <wchar.h>
 #include <windows.h>
