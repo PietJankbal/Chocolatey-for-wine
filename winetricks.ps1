@@ -28,7 +28,8 @@ else                 {$cachedir = [System.IO.Path]::Combine( "$([Environment]::G
     "dlls","dotnet35", "dotnet35",
     "dlls","dotnet481", "experimental dotnet481 install (includes System.Runtime.WindowsRuntime.dll)",
     "dlls","dshow", "directshow dlls: amstream.dll,qasf.dll,qcap.dll,qdvd.dll,qedit.dll,quartz.dll",
-    "dlls","dxvk1103", "dxvk 1.10.3, latest compatible with Kepler (Nvidia GT 470) ??? )",
+#   "dlls","dxvk1103", "dxvk 1.10.3, latest compatible with Kepler (Nvidia GT 470) ??? )",
+    "dlls","dxvk-sarek-1141", "dxvk compatible with older GPU's like Kepler Nvidia GT 470 )",
     "dlls","dxvk271", "dxvk 2.7.1",
     "dlls","expand", "native expand.exe, it's renamed to expnd_.exe to not interfere with wine's expand",
     "dlls","findstr", "findstr.exe",
@@ -46,7 +47,8 @@ else                 {$cachedir = [System.IO.Path]::Combine( "$([Environment]::G
     "dlls","msvbvm60", "msvbvm60.dll",
     "dlls","msxml3","msxml3.dll",
 #   "dlls","msxml3_win10","msxml3.dll from win10", 
-    "dlls","msxml6","(experimental) msxml6.dll",
+    "dlls","msxml6","msxml6.dll",
+#   "dlls","msxml6_win10","msxml6.dll from win10", 
     "dlls","oleaut32","native oleaut32, (dangerzone) can only be set on a per app base",
     "dlls","ps51_ise", "PowerShell 5.1 Integrated Scripting Environment",
     "dlls","ps51", "rudimentary PowerShell 5.1 (downloads yet another huge amount of Mb`s!)",
@@ -451,6 +453,16 @@ function func_msxml3
     foreach($i in 'msxml3') { dlloverride 'native' $i }
 } <# end msxml3 #>
 
+function func_msxml6
+{
+    $dlls = @('msxml6.dll','msxml6r.dll'); check_aik_sanity3;
+
+    foreach ($i in $dlls) {
+        7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/System32/$i" -y | Select-String 'ok'
+        7z e "$cachedir\aik70\F1_WINPE.WIM" "-o$env:systemroot\syswow64" "Windows/System32/$i" -y| Select-String 'ok' } ; quit?('7z') 
+    foreach($i in 'msxml6') { dlloverride 'native' $i }
+} <# end msxml6 #>
+
 function func_mfc42
 {
     $dlls = @('mfc42.dll', 'mfc42u.dll'); check_aik_sanity3;
@@ -634,7 +646,7 @@ function func_oleaut32 <# oleaut32  #>
     New-ItemProperty -Path "HKCU:\\Software\\Wine\\AppDefaults\\$file\\DllOverrides" -Name "$(verb)" -Value 'native,builtin' -PropertyType 'String' -force
 } <# end oleaut32 #>
 
-function func_msxml6 <# experimental... #>
+function func_msxml6_win10 <# experimental... #>
 {
     $url = "https://catalog.s.download.windowsupdate.com/c/msdownload/update/software/secu/2014/04/windows8.1-kb2934018-x64_234a5fc4955f81541f5bfc0d447e4fc4934efc38.msu"
     $range = '71000000'
@@ -2837,11 +2849,15 @@ else {return}
         # Save the byte array back to the file.
         Set-Content -AsByteStream "$env:SystemRoot\$dir\stubdll.dll" -Value $modifiedData -verbose
     }
-    
-    foreach($i in 'stubdll') {
-        & "$env:systemroot\\syswow64\\regsvr32" /s "$env:systemroot\\syswow64\\$i"
-        & "$env:systemroot\\system32\\regsvr32" /s "$env:systemroot\\system32\\$i"
-    }
+#    foreach($i in 'stubdll') {
+#        & "$env:systemroot\\syswow64\\regsvr32" /s "$env:systemroot\\syswow64\\$i"
+#        & "$env:systemroot\\system32\\regsvr32" /s "$env:systemroot\\system32\\$i"
+#    }
+    New-Item  -Path "HKLM:\\Software\\Classes\\CLSID\\$x"
+    New-Item  -Path "HKLM:\\Software\\Classes\\CLSID\\$x\\InprocServer32"
+    New-ItemProperty -Path "HKLM:\\Software\\Classes\\CLSID\\$x\\InprocServer32" -Name "(Default)" -Value 'c:\windows\system32\stubdll.dll' -PropertyType 'String' -force
+    New-ItemProperty -Path "HKLM:\\Software\\Classes\\CLSID\\$x\\InprocServer32" -Name "Threadingmodel" -Value 'Both' -PropertyType 'String' -force
+
 
 #  {00000000-aaaa-aaaa-9C00-00AA00A14F56} // {2a811bb2-303b-48b8-82c2-e029a22c3ef2}
 }
@@ -2952,7 +2968,7 @@ function func_wine_kernelbase <# wine kernelbase with rudimentary MUI support + 
 
 function func_win7_fonts
 {
-    $fonts = @('segoeui.ttf', 'segoeuib.ttf', 'segoeuii.ttf', 'segoeuil.ttf', 'segoeuiz.ttf', 'tahomabd.ttf', 'tahoma.ttf', 'lucon.ttf', 'micross.ttf'); check_aik_sanity;
+    $fonts = @('segoeui.ttf', 'segoeuib.ttf', 'segoeuii.ttf', 'segoeuil.ttf', 'segoeuiz.ttf', 'tahomabd.ttf', 'tahoma.ttf', 'lucon.ttf', 'micross.ttf'); check_aik_sanity3;
     
     foreach ($i in $fonts) { 7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\Fonts" "Windows/Fonts/$i" -y | Select-String 'ok'; quit?('7z') }
     
@@ -3042,16 +3058,16 @@ REGEDIT4
     reg_edit $regkey
 } <# end gdiplus #>
 
-function func_dxvk1103
+function func_dxvk-sarek-1141
 {
-    $dldir = "dxvk1103"
-    w_download_to "dxvk1103" "https://github.com/doitsujin/dxvk/releases/download/v1.10.3/dxvk-1.10.3.tar.gz" "dxvk-1.10.3.tar.gz"
+    $dldir = "dxvk-sarek-1141"
+    w_download_to "dxvk-sarek-1141" "https://github.com/pythonlover02/dxvk-sarek/releases/download/v1.14.1/dxvk-sarek-1.14.1.tar.gz" "dxvk-sarek-1.14.1.tar.gz"
 
-    7z x -y $cachedir\\$dldir\\dxvk-1.10.3.tar.gz "-o$env:TEMP";quit?('7z') 
-    7z e $env:TEMP\\dxvk-1.10.3.tar "-o$env:systemroot\\system32" dxvk-1.10.3/x64 -y;
-    7z e $env:TEMP\\dxvk-1.10.3.tar "-o$env:systemroot\\syswow64" dxvk-1.10.3/x32 -y;
-    foreach($i in 'dxgi', 'd3d9', 'd3d10_1', 'd3d10core', 'd3d10', 'd3d11') { dlloverride 'native' $i }
-} <# end dxvk1101 #>
+    7z x -y $cachedir\\$dldir\\dxvk-sarek-1.14.1.tar.gz "-o$env:TEMP";quit?('7z') 
+    7z e $env:TEMP\\dxvk-sarek-1.14.1.tar "-o$env:systemroot\\system32" dxvk-sarek-1.14.1/build/x64/ -y;
+    7z e $env:TEMP\\dxvk-sarek-1.14.1.tar "-o$env:systemroot\\syswow64" dxvk-sarek-1.14.1/build/x32/ -y;
+    foreach($i in 'dxgi', 'd3d9', 'd3d8', 'd3d10core', 'ddraw', 'd3d11') { dlloverride 'native,builtin' $i }
+} <# end dxvk1141 #>
 
 function func_dxvk271
 {
@@ -3540,7 +3556,7 @@ function func_vs19
 
 function func_vs22
 {
-    func_wine_msxml3
+#   func_wine_msxml3
 #   func_vcrun2019
     func_xmllite
     func_uiautomationcore
@@ -3636,7 +3652,7 @@ function func_vs22
 
 function func_vs22_interactive_installer
 {
-    func_wine_msxml3
+#   func_wine_msxml3
     #func_ps51
 #   func_vcrun2019
     #func_xmllite
@@ -3751,7 +3767,7 @@ REGEDIT4
 
 function func_vs26_interactive_installer
 {
-    func_wine_msxml3
+#   func_wine_msxml3
     func_wine_sxs  <# FIXME: now very sad hack, probably disabling functionality (?), needs more work to figure out what goes wrong #>
     func_wine_advapi32
     func_wine_combase
@@ -4104,8 +4120,33 @@ function func_pscore2exe
     func_pscore2exe2
 }
 
+function func_wsmauto
+{   
+    $url = "http://download.windowsupdate.com/d/msdownload/update/software/updt/2016/05/windows6.1-kb3125574-v4-x64_2dafb1d203c8964239af3048b5dd4b1264cd93b9.msu"
+    $cab = "Windows6.1-KB3125574-v4-x64.cab"
+    $sourcefile = @('wsmauto.dll', 'wsmsvc.dll', 'miutils.dll', 'mi.dll')
+    if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z") ) ) {
+        check_msu_sanity $url $cab;
+        foreach ($i in $sourcefile) { & $expand_exe $([IO.Path]::Combine($cachedir,  $(verb),  $cab)) -f:$i $([IO.Path]::Combine($cachedir,  $(verb) ) ) }
+        7z a -t7z -m0=lzma -mx=9 -mfb=64 -md=32m -ms=on "$cachedir\$(verb)\$(verb).7z" "$cachedir\$(verb)\amd64_*" "$cachedir\$(verb)\x86_*" "$cachedir\$(verb)\wow64_*"; quit?('7z')
+
+
+    foreach($i in "$cab", "amd64", "x86", "wow64") { Remove-Item -Force -Recurse "$cachedir\$(verb)\$i*" -Erroraction SilentlyContinue }
+    }
+    
+    7z e "$cachedir\$(verb)\$(verb).7z" amd64_*\* -o"$env:systemroot\\system32" -aoa
+    7z e "$cachedir\$(verb)\$(verb).7z" x86_*\* -o"$env:systemroot\\syswow64" -aoa
+    7z e "$cachedir\$(verb)\$(verb).7z" wow64_*\* -o"$env:systemroot\\syswow64" -aoa ; quit?('7z')
+    
+    foreach($i in 'wsmauto') {
+        & "$env:systemroot\\syswow64\\regsvr32" /s "$env:systemroot\\syswow64\\$i.dll"
+        & "$env:systemroot\\system32\\regsvr32" /s "$env:systemroot\\system32\\$i.dll" }
+
+} <# end wsmauto #>
+
 function func_Start-PSPester
 {
+    func_wsmauto
     . "$env:ProgramData\Chocolatey-for-wine\powershell_collected_codesnippets_examples.ps1"
     func_Start-PSPester2
 }
@@ -4216,7 +4257,7 @@ REGEDIT4
     Remove-Item -Force -Recurse  "$env:TEMP\dotnet35"
 }
 
-function write_keys_from_manifest([parameter(position=0)] [string] $manifest, [switch] $to_file){
+function write_keys_from_manifest_deprecated([parameter(position=0)] [string] $manifest, [switch] $to_file){
 
     
     $Xml = [xml](Get-Content -Path "$manifest")
@@ -4271,7 +4312,7 @@ function write_keys_from_manifest([parameter(position=0)] [string] $manifest, [s
 } <# end write_keys_from_manifest #>
 
 <# FIXME, very fragile!!! / bogus parts!!! / bugs!!! #>
-function install_from_manifest ( [parameter(position=0)] [string] $manifestfile, [parameter(position=1)] [string] $file , [parameter(position=2)] [string] $prefix) { <# installs files to systemdirs using info from manifestfile #>
+function install_from_manifest_deprecated ( [parameter(position=0)] [string] $manifestfile, [parameter(position=1)] [string] $file , [parameter(position=2)] [string] $prefix) { <# installs files to systemdirs using info from manifestfile #>
 
 
 
@@ -4414,8 +4455,7 @@ function func_dotnet481_deprecated
         #Move-Item "$env:TEMP\$(([System.IO.FileInfo]$i).Name)" $i -force -verbose
      }
     
-  
-    & "$env:ProgramFiles\7-Zip\7z.exe" x -spf "$cachedir\$(verb)\$(verb).7z" -aoa 
+      & "$env:ProgramFiles\7-Zip\7z.exe" x -spf "$cachedir\$(verb)\$(verb).7z" -aoa 
     Write-Host -foregroundColor yellow 'Writing registry keys , patience please...' 
     #$null =  . "$env:TEMP\reg_keys.ps1"
 
@@ -4429,6 +4469,275 @@ function func_dotnet481_deprecated
     #Start-Process -FilePath $env:SystemRoot\\Microsoft.NET\\Framework\\v4.0.3031\\ngen.exe -NoNewWindow -ArgumentList "eqi"
 } <# end dotnet481 #>
 
+
+
+
+# manifest-install.ps1  --  revised version of write_keys_from_manifest / install_from_manifest
+# NOTE: written without access to PowerShell, so it is UNTESTED. Try with -WhatIf first.
+#
+#   Write-ManifestRegistry  <manifest> [-RegFile out.reg] [-WhatIf]
+#   Install-FromManifest    <manifest> [<file>] [<prefix>] [-WhatIf]
+
+#Set-StrictMode -Version 2.0
+
+# ---------------------------------------------------------------- helpers ----
+
+function Get-ManifestChild {   # direct children of an element, by local name (namespace-agnostic)
+    param([System.Xml.XmlElement]$Node, [string]$Name)
+    @($Node.ChildNodes | Where-Object { $_.LocalName -eq $Name })
+}
+
+function Expand-ManifestVars {
+    # Replaces $(runtime.xxx) in one pass. Single place instead of 6 copy-pasted -replace chains.
+    param([AllowNull()][AllowEmptyString()][string]$Text, [string]$Arch)
+
+    if ([string]::IsNullOrEmpty($Text)) { return $Text }
+    $is32  = $Arch -in 'x86', 'wow64'
+    $win   = $env:SystemRoot
+    $sys32 = if ($is32) { Join-Path $win 'SysWOW64' } else { Join-Path $win 'System32' }
+    $pf    = if ($is32 -and ${env:ProgramFiles(x86)}) { ${env:ProgramFiles(x86)} } else { $env:ProgramFiles }
+    $cf    = if ($is32 -and ${env:CommonProgramFiles(x86)}) { ${env:CommonProgramFiles(x86)} } else { $env:CommonProgramFiles }
+
+    $vars = @{                     # hashtable keys are case-insensitive in PowerShell
+        windows     = $win
+        system32    = $sys32
+        wbem        = Join-Path $sys32 'wbem'
+        drivers     = Join-Path $sys32 'drivers'
+        inf         = Join-Path $win 'inf'
+        fonts       = Join-Path $win 'Fonts'
+        help        = Join-Path $win 'Help'
+        programFiles = $pf
+        commonFiles = $cf
+        bootDrive   = $env:SystemDrive
+    }
+
+    [regex]::Replace($Text, '\$\(runtime\.(\w+)\)', {
+        param($m)
+        $k = $m.Groups[1].Value
+        if ($vars.ContainsKey($k)) { $vars[$k] }
+        else { Write-Warning "Unknown manifest variable $($m.Value)"; $m.Value }
+    })
+}
+
+function ConvertTo-Wow64KeyName {
+    param([string]$Key)
+    if ($Key -match '\\Wow6432Node(\\|$)')              { return $Key }
+    if ($Key -match '^HKEY_LOCAL_MACHINE\\SOFTWARE\\Classes(\\|$)') {
+        return $Key -replace '^HKEY_LOCAL_MACHINE\\SOFTWARE\\Classes', 'HKEY_LOCAL_MACHINE\SOFTWARE\Classes\Wow6432Node'
+    }
+    if ($Key -match '^HKEY_LOCAL_MACHINE\\SOFTWARE(\\|$)') {
+        return $Key -replace '^HKEY_LOCAL_MACHINE\\SOFTWARE', 'HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node'
+    }
+    if ($Key -match '^HKEY_CLASSES_ROOT(\\|$)') {
+        return $Key -replace '^HKEY_CLASSES_ROOT', 'HKEY_CLASSES_ROOT\Wow6432Node'
+    }
+    $Key
+}
+
+function ConvertTo-RegData {
+    # manifest valueType + string  ->  .NET RegistryValueKind name + correctly typed data
+    param([string]$Type, [string]$Raw)
+    switch ($Type) {
+        'REG_SZ'        { [pscustomobject]@{ Kind = 'String';       Data = $Raw } }
+        'REG_EXPAND_SZ' { [pscustomobject]@{ Kind = 'ExpandString'; Data = $Raw } }
+        'REG_MULTI_SZ'  { [pscustomobject]@{ Kind = 'MultiString';  Data = [string[]]@($Raw) } }  # TODO: check how your manifests separate multiple strings
+        'REG_DWORD'     {
+            $u = [uint32]$Raw                                   # accepts "1" and "0x00000001"
+            [pscustomobject]@{ Kind = 'DWord'; Data = [BitConverter]::ToInt32([BitConverter]::GetBytes($u), 0) }
+        }
+        'REG_QWORD'     {
+            $u = [uint64]$Raw
+            [pscustomobject]@{ Kind = 'QWord'; Data = [BitConverter]::ToInt64([BitConverter]::GetBytes($u), 0) }
+        }
+        { $_ -in 'REG_BINARY', 'REG_NONE' } {
+            $hex = $Raw -replace '\s', ''
+            if ($hex.Length % 2) { throw "Odd-length hex string: $Raw" }
+            $bytes = New-Object byte[] ($hex.Length / 2)
+            for ($i = 0; $i -lt $bytes.Length; $i++) { $bytes[$i] = [Convert]::ToByte($hex.Substring(2 * $i, 2), 16) }
+            $kind = if ($Type -eq 'REG_NONE') { 'None' } else { 'Binary' }
+            [pscustomobject]@{ Kind = $kind; Data = $bytes }
+        }
+        default { throw "Unsupported valueType '$Type'" }
+    }
+}
+
+function Format-RegLine {
+    # one line of a .reg (v5) file
+    param([string]$Name, $Data, [string]$Kind)
+    $esc = { param($s) $s -replace '\\', '\\' -replace '"', '\"' }
+    $n   = if ($Name -eq '') { '@' } else { '"' + (& $esc $Name) + '"' }
+    $hex = { param($prefix, [byte[]]$b) $prefix + (($b | ForEach-Object { '{0:x2}' -f $_ }) -join ',') }
+
+    switch ($Kind) {
+        'String'       { '{0}="{1}"' -f $n, (& $esc $Data) }
+        'DWord'        { '{0}=dword:{1:x8}' -f $n, $Data }
+        'Binary'       { "$n=" + (& $hex 'hex:'     $Data) }
+        'None'         { "$n=" + (& $hex 'hex(0):'  $Data) }
+        'ExpandString' { "$n=" + (& $hex 'hex(2):'  ([Text.Encoding]::Unicode.GetBytes("$Data`0"))) }
+        'MultiString'  { "$n=" + (& $hex 'hex(7):'  ([Text.Encoding]::Unicode.GetBytes((($Data -join "`0") + "`0`0")))) }
+        'QWord'        { "$n=" + (& $hex 'hex(b):'  ([BitConverter]::GetBytes([int64]$Data))) }
+    }
+}
+
+# --------------------------------------------------------------- registry ----
+
+function write_keys_from_manifest_tofile {
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [Parameter(Mandatory, Position = 0)][string]$Manifest,
+        [string]$RegFile        # if given: append a .reg file instead of touching the registry
+    )
+
+    $path = (Resolve-Path -LiteralPath $Manifest).Path
+    $xml  = New-Object System.Xml.XmlDocument
+    $xml.Load($path)                                   # honours the encoding declared in the XML
+    $asm   = $xml.DocumentElement
+    $ident = Get-ManifestChild $asm 'assemblyIdentity' | Select-Object -First 1
+    $arch  = $ident.GetAttribute('processorArchitecture')
+    $is32  = $arch -in 'x86', 'wow64'
+
+    $regLines = New-Object System.Collections.Generic.List[string]
+
+    foreach ($rks in Get-ManifestChild $asm 'registryKeys') {
+        foreach ($key in Get-ManifestChild $rks 'registryKey') {
+            $keyName = $key.GetAttribute('keyName')
+            if ($is32) { $keyName = ConvertTo-Wow64KeyName $keyName }
+            $regLines.Add("[$keyName]")
+
+            $values = Get-ManifestChild $key 'registryValue'
+            # NOTE: a <registryKey> with no <registryValue> children is not created here (only values create keys).
+
+            foreach ($v in $values) {
+                # GetAttribute returns '' when the attribute is absent -> maps to (Default).
+                # (That is what the old 'registryValue' special case was working around.)
+                $name = $v.GetAttribute('name')
+                $type = $v.GetAttribute('valueType')
+                $raw  = Expand-ManifestVars $v.GetAttribute('value') $arch
+
+                try   { $d = ConvertTo-RegData $type $raw }
+                catch { Write-Warning "$keyName\$name : $_"; continue }
+
+                if ($RegFile) {
+                    $regLines.Add((Format-RegLine $name $d.Data $d.Kind))
+                }
+                elseif ($PSCmdlet.ShouldProcess("$keyName [$name]", "Set $($d.Kind)")) {
+                    $kind = if ($d.Kind -eq 'None') { 'Binary' } else { $d.Kind }   # .NET can't reliably write REG_NONE
+                    try   { [Microsoft.Win32.Registry]::SetValue($keyName, $name, $d.Data, $kind) }
+                    catch { Write-Warning "Failed: $keyName [$name]: $_" }
+                }
+            }
+            $regLines.Add('')
+        }
+    }
+
+    if ($RegFile -and $regLines.Count) {
+        if (-not (Test-Path -LiteralPath $RegFile)) {
+            Set-Content -LiteralPath $RegFile -Encoding Unicode -Value 'Windows Registry Editor Version 5.00', ''
+        }
+        Add-Content -LiteralPath $RegFile -Encoding Unicode -Value $regLines
+    }
+}
+
+# ------------------------------------------------------------------ files ----
+
+function Join-Prefix {
+    # Staging prefix, original behaviour on purpose: Join-Path $prefix 'C:\x' gives 'prefix\C:\x'
+    # (a directory literally named "C:" under the prefix, which is fine under Wine).
+    param([string]$Prefix, [string]$Path)
+    if ($Prefix) { Join-Path $Prefix $Path } else { $Path }
+}
+
+function Copy-ManifestFile {
+    [CmdletBinding(SupportsShouldProcess)]
+    param([string]$Source, [string]$Destination, [string]$Prefix)
+    $dest = Join-Prefix $Prefix $Destination
+    $dir  = Split-Path $dest -Parent
+    if ($PSCmdlet.ShouldProcess($dest, "Copy $Source")) {
+        if (-not (Test-Path -LiteralPath $dir)) { $null = New-Item -ItemType Directory -Force -Path $dir }
+        Copy-Item -LiteralPath $Source -Destination $dest -Force -Verbose
+    }
+}
+
+function Get-GacDirectory {
+    # Only used for <file> elements WITHOUT destinationPath
+    param($Ident, $FileNode, [string]$SrcDir, [string]$Arch)
+
+    $gac = Get-ManifestChild $FileNode 'gac' | Select-Object -First 1
+    $clrArch = if ($gac) { $gac.GetAttribute('clrarch') } else { switch ($Arch) { 'amd64' { 'amd64' } 'x86' { 'x86' } default { 'msil' } } }
+    $gacDir  = switch ($clrArch) { 'amd64' { 'GAC_64' } 'x86' { 'GAC_32' } default { 'GAC_MSIL' } }
+    $clrVer  = if ($gac -and $gac.GetAttribute('clrversion')) { $gac.GetAttribute('clrversion') } else { '4.0' }
+
+    $name    = $Ident.GetAttribute('name')
+    $token   = $Ident.GetAttribute('publicKeyToken')
+    $culture = $Ident.GetAttribute('language'); if ($culture -in 'neutral', '*') { $culture = '' }
+
+    # GAC folder uses the *assembly* version (4.0.0.0), not the manifest version (4.0.15840.x)
+    $dll = Join-Path $SrcDir "$name.dll"
+    if (-not (Test-Path -LiteralPath $dll)) { $dll = (Get-ChildItem -LiteralPath $SrcDir -Filter *.dll | Select-Object -First 1).FullName }
+    try   { $ver = [Reflection.AssemblyName]::GetAssemblyName($dll).Version.ToString() }
+    catch { $ver = $Ident.GetAttribute('version'); Write-Warning "Could not read assembly version of $dll, using manifest version $ver" }
+
+    Join-Path $env:SystemRoot "Microsoft.NET\assembly\$gacDir\$name\v${clrVer}_${ver}_${culture}_${token}"
+}
+
+function install_from_manifest {
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [Parameter(Mandatory, Position = 0)][string]$ManifestFile,
+        [Parameter(Position = 1)][string]$File,     # optional: only this file name
+        [Parameter(Position = 2)][string]$Prefix    # optional: stage under this root instead of the real paths
+    )
+
+    $ManifestFile = (Resolve-Path -LiteralPath $ManifestFile).Path
+    $xml = New-Object System.Xml.XmlDocument
+    $xml.Load($ManifestFile)
+    $asm   = $xml.DocumentElement
+    $ident = Get-ManifestChild $asm 'assemblyIdentity' | Select-Object -First 1
+    $arch  = $ident.GetAttribute('processorArchitecture')
+
+    # extracted payload lives in a folder named like the manifest, minus ".manifest"
+    $srcDir = Join-Path (Split-Path $ManifestFile -Parent) ([IO.Path]::GetFileNameWithoutExtension($ManifestFile))
+
+    $nodes = Get-ManifestChild $asm 'file' | Where-Object { $_.GetAttribute('name') }
+    if ($File) {
+        $wanted = [IO.Path]::GetFileName($File)
+        $nodes  = @($nodes | Where-Object { $_.GetAttribute('name') -ieq $wanted })
+    }
+
+    foreach ($f in $nodes) {
+        $name = $f.GetAttribute('name')
+        $src  = Join-Path $srcDir $name
+        if (-not (Test-Path -LiteralPath $src) -and $File -and (Test-Path -LiteralPath $File)) { $src = $File }
+        if (-not (Test-Path -LiteralPath $src)) { Write-Warning "Source file not found: $src"; continue }
+
+        # 1) main destination: per FILE, not "every file to every destination"
+        $destAttr = $f.GetAttribute('destinationPath')
+        if ($destAttr) {
+            $destDir = Expand-ManifestVars $destAttr $arch
+            Copy-ManifestFile -Source $src -Destination (Join-Path $destDir $name) -Prefix $Prefix
+        }
+        else {
+            $gacDir = Get-GacDirectory $ident $f $srcDir $arch
+            Copy-ManifestFile -Source $src -Destination (Join-Path $gacDir $name) -Prefix $Prefix
+        }
+
+        # 2) <link> elements (hardlinks on Windows; plain copies here), only for THIS file
+        foreach ($l in $f.GetElementsByTagName('link')) {
+            $dest = Expand-ManifestVars $l.GetAttribute('destination') $arch
+            if ($dest) { Copy-ManifestFile -Source $src -Destination $dest -Prefix $Prefix }
+        }
+    }
+
+    if (-not $nodes) { Write-Warning "No matching <file> entries in $ManifestFile" }
+}
+
+
+
+
+
+
+
+
 function func_dotnet481
 {   
     if (![System.IO.File]::Exists(  [IO.Path]::Combine($cachedir,  $(verb),  "$(verb).7z" ) ) ){
@@ -4439,15 +4748,18 @@ function func_dotnet481
 
     Stop-Process -Name mscorsvw -ErrorAction SilentlyContinue <# otherwise some dlls fail to be replaced as they are in use by mscorvw; only mscoreei.dll has to be copied manually afaict as it is in use by pwsh #>
 
-    Write-Host -foregroundColor yellow 'Starting copying files , this takes a while (> 3 minutes), patience...'    
+    Write-Host -foregroundColor yellow 'Starting copying files , this takes a while (> 3 minutes), patience...'   
+     
     foreach ($i in $(Get-ChildItem $env:TEMP\\$(verb)\\*.manifest).FullName) { install_from_manifest -manifestfile $i -prefix "$env:TEMP\$(verb)"  }
 
     foreach ($i in $(Get-ChildItem $env:TEMP\\$(verb)\\*.manifest).FullName ) { write_keys_from_manifest_tofile $i -todir "$env:TEMP\$(verb)\c:\windows\temp"}
 
     Push-Location ; Set-Location "$env:TEMP\$(verb)"
+    
+    Copy-Item ".\C:\windows\Microsoft.NET\Framework64\v4.0.30319\mscoreei.dll" ".\c:\"
+
     & "$env:ProgramFiles\7-Zip\7z.exe" a -m0=BCJ2   -m1=LZMA:29:lc8:pb1 -m2=LZMA:24 -m3=LZMA:24 -mx=9  -ms=on  "$cachedir\$(verb)\$(verb).7z" ".\c:\"; quit?(7z)
 
-    7z a "$cachedir\$(verb)\$(verb).7z" "C:\users\louis\AppData\Local\Temp\dotnet481\C:\windows\Microsoft.NET\Framework64\v4.0.30319\mscoreei.dll"
     Pop-Location
 
     Remove-Item -Force -Recurse "$env:TEMP\$(verb)"
@@ -4463,10 +4775,10 @@ function func_dotnet481
 
     Move-Item "$env:systemdrive\mscoreei.dll" "$env:systemroot\Microsoft.NET\Framework64\v4.0.30319\mscoreei.dll" -verbose -force
 
-#    Write-Host -foregroundColor yellow 'Writing registry keys , patience please...' 
+    Write-Host -foregroundColor yellow 'Writing registry keys , patience please...' 
 
-#    reg.exe IMPORT "c:\windows\temp\reg_keys64.ps1" /reg:64 ; Remove-Item -Force "c:\windows\temp\reg_keys64.ps1"
-#    reg.exe IMPORT "c:\windows\temp\reg_keys32.ps1" /reg:32 ; Remove-Item -Force "c:\windows\temp\reg_keys32.ps1"
+    reg.exe IMPORT "c:\windows\temp\reg_keys64.ps1" /reg:64 ; Remove-Item -Force "c:\windows\temp\reg_keys64.ps1"
+    reg.exe IMPORT "c:\windows\temp\reg_keys32.ps1" /reg:32 ; Remove-Item -Force "c:\windows\temp\reg_keys32.ps1"
     
     Write-Host -foregroundColor yellow 'Done , hopefully nothing''s screwed up ;)'     <# FIXME:  mscoreei.dll is not installed as it is in use by pwsh.exe #>
     #Start-Process -FilePath $env:SystemRoot\\Microsoft.NET\\Framework64\\v4.0.3031\\ngen.exe -NoNewWindow -ArgumentList "eqi"
