@@ -62,6 +62,7 @@ DWORD mainCRTStartup(PPEB peb) {
                     join(cl, L"-c");
                 join(cl, token);                 /* add arg */
                 join(cl, ptr);                   /* add remainder of cmdline and done */
+                cl[0] = 'P';                     /* marker that a command is being fed to powershell */
                 break;
             }
             
@@ -78,6 +79,5 @@ DWORD mainCRTStartup(PPEB peb) {
     CreateProcessW(0, cl, 0, 0, 0, 0, 0, 0, &si, &pi);
     WaitForSingleObject(pi.hProcess, INFINITE); GetExitCodeProcess(pi.hProcess, &exitcode); CloseHandle(pi.hProcess); CloseHandle(pi.hThread);
     free(cl);
-    
     return exitcode;
 }
