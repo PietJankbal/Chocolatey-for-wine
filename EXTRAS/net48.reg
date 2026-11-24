@@ -7487,6 +7487,7 @@ REGEDIT4
 "Assembly"="System.ServiceModel.ServiceMoniker40, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089"
 "RuntimeVersion"="v4.0.30319"
 
+
 [HKEY_LOCAL_MACHINE\SOFTWARE\Classes\CLSID\{F4E1E7F6-A035-41B3-9856-A3C3A1C4684F}\InprocServer32\4.0.0.0]
 "RuntimeVersion"="v4.0.30319"
 "Assembly"="System.ServiceModel.ServiceMoniker40, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089"
