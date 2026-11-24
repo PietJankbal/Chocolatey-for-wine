@@ -81,7 +81,7 @@ REGEDIT4
 
 [HKEY_CURRENT_USER\Software\ConEmu\.Vanilla]
 "BackColorIdx"=hex:10
-"CmdLine"="%ProgramFiles%\\Powershell\\7\\pwsh.exe"
+"CmdLine"="%ProgramFiles%\\Powershell\\7\\pwsh.exe -nol"
 "ColorTable00"=dword:00562401
 "ColorTable01"=dword:00423607
 "ColorTable02"=dword:00808000
@@ -361,7 +361,7 @@ $null = [ntdll]::NtQueryVolumeInformationFile($h, [ref]$io, [ref]$info, [System.
 
 $parent = [System.Diagnostics.Process]::GetCurrentProcess().Parent
 
-if (($parent.ProcessName -eq 'powershell') -and ($kernel32::GetCommandLineW() -eq 'pwsh') -and ($info.DeviceType -eq 80)) {
+if (($parent.ProcessName -eq 'powershell') -and ($kernel32::GetCommandLineW()[0] -cne "P") -and ($info.DeviceType -eq 80)) {
     [System.Diagnostics.Process]::Start("c:\ConEmu\conemu64") | Out-Null
     #[System.Diagnostics.Process]::GetProcessById($parent.Id).Kill()
     [System.Diagnostics.Process]::GetCurrentProcess().Kill()
@@ -511,7 +511,7 @@ $inf += [PSCustomObject]@{DisplayName='ConEmu 230724.x64';DisplayVersion='11.230
 $inf
 '@
 
-[void][Diagnostics.Process]::Start('c:\conemu\conemu64.exe', "-NoUpdate -LoadRegistry -run %ProgramFiles%\PowerShell\7\pwsh.exe -noe -c $script")
+[void][Diagnostics.Process]::Start('c:\conemu\conemu64.exe', "-NoUpdate -LoadRegistry -run %ProgramFiles%\PowerShell\7\pwsh.exe -nol -noe -c $script")
    }
 #while (![Microsoft.Win32.RegistryKey]::OpenBaseKey('LocalMachine',0).OpenSubKey('SOFTWARE\Microsoft\.NETFramework\NGenQueueMSI')) {Sleep 0.25}
 #    Get-Process 'msiexec' -ErrorAction:SilentlyContinue | Foreach-Object { $_.WaitForExit()}
@@ -562,7 +562,7 @@ $inf
     <# Backup files if wanted #>
     if(($args[1] -eq '/s') -or ($args[2] -eq '/s')) {
         [System.IO.Directory]::CreateDirectory("$cachedir")
-        foreach($i in ((gci $setupcache\\PowerShell-*-win-x64.msi)).name, 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', 'ConEmuPack.230724.7z', 'windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe', 'Windows.winmd',((gci $setupcache\\chocolatey.*.nupkg)).name) {
+        foreach($i in ((gci $setupcache\\PowerShell-*-win-x64.zip)).name, 'd3dcompiler_47.dll', 'd3dcompiler_47_32.dll', 'windows6.1-kb958488-v6001-x64_a137e4f328f01146dfa75d7b5a576090dee948dc.msu', 'ConEmuPack.230724.7z', 'windowsserver2003-kb968930-x64-eng_8ba702aa016e4c5aed581814647f4d55635eff5c.exe', 'Windows.winmd',((gci $setupcache\\chocolatey.*.nupkg)).name) {
             Move-Item -Path "$setupcache\\$i" -Destination "$cachedir" -force -ErrorAction SilentlyContinue}
         Move-Item -path  "$setupcache\\v4.8.03761" -destination "$cachedir" -ErrorAction SilentlyContinue;
     }
@@ -613,12 +613,15 @@ $inf
         [IO.File]::Copy("$env:systemroot\Microsoft.NET\Framework\v4.0.30319\$i",   "$env:systemroot\Microsoft.NET\Framework\v2.0.50727\$i",$true)
         [IO.File]::Copy("$env:systemroot\Microsoft.NET\Framework64\v4.0.30319\$i", "$env:systemroot\Microsoft.NET\Framework64\v2.0.50727\$i",$true)
     }
-    while(!(Test-path "$env:systemdrive\ProgramFilesFolder") ) {start-Sleep 0.25}
-
+    while (![System.IO.Path]::Exists("$env:systemdrive\WindowsFolder")) { [System.Threading.Thread]::Sleep(250) }
+    
     [IO.Directory]::Move("$env:systemDrive\ProgramFilesFolder\Microsoft.NET", [IO.Path]::Combine($([Environment]::GetFolderPath('programfilesX86')), 'Microsoft.NET')  )
     [System.IO.Directory]::Delete("$env:systemdrive\WindowsFolder",'true')
     [System.IO.Directory]::Delete("$env:systemdrive\ProgramFilesFolder",'true') 
     [System.IO.File]::Delete("$env:systemdrive\netfx_Full_x64.msi") 
+    
+    $pathvar=[System.Environment]::GetEnvironmentVariable('PATH')
+    [System.Environment]::SetEnvironmentVariable("PATH", $pathvar + ";$env:ProgramFiles\Powershell\7",'Machine')
     <# dxvk (if installed) doesn't work well with WPF, add workaround from dxvk site  #>
 #####################################################################################################
 @"
