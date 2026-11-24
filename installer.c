@@ -95,7 +95,7 @@ DWORD WINAPI chocolatey_install(void *ptr){
 
 DWORD WINAPI pscore_install(void *ptr){
 
-    wchar_t cmdlineW[MAX_PATH]=L"", bufW[MAX_PATH] = L"", bufW1[MAX_PATH] = L"", pwsh_pathW[MAX_PATH];
+    wchar_t cmdlineW[MAX_PATH]=L"", bufW[MAX_PATH] = L"", bufW1[MAX_PATH] = L"", pwsh_pathW[MAX_PATH], pwsh_dirW[MAX_PATH];
     int i;
     STARTUPINFOW si = {0}, si1 = {0};
     PROCESS_INFORMATION pi = {0}, pi1 = {0};
@@ -103,13 +103,14 @@ DWORD WINAPI pscore_install(void *ptr){
     struct paths *p = (struct paths*)ptr;
     
     ExpandEnvironmentStringsW(L"%ProgramFiles%\\Powershell\\7\\pwsh.exe", pwsh_pathW, MAX_PATH + 1);
+    ExpandEnvironmentStringsW(L"\"%ProgramFiles%\\Powershell\\7\" ", pwsh_dirW, MAX_PATH + 1);
 
     /* Download and Install */
     WCHAR versionW[] = L".....", msiW[MAX_PATH]=L"", downloadW[MAX_PATH]=L"";
  
     versionW[0] = p->filenameW[20]; versionW[2] = p->filenameW[21]; versionW[4] = p->filenameW[22];
     wcscat(wcscat(msiW, L"PowerShell-"), versionW);
-    wcscat(msiW, L"-win-x64.msi");
+    wcscat(msiW, L"-win-x64.zip");
         
     wchar_t *ps_url = wcscat(wcscat(wcscat(wcscat(downloadW, L"https://github.com/PowerShell/PowerShell/releases/download/v"), versionW), L"/"), msiW);
     
@@ -118,8 +119,8 @@ DWORD WINAPI pscore_install(void *ptr){
         URLDownloadToFileW(NULL, ps_url, wcscat(wcscat(bufW1, p->setupcache), wcsrchr(ps_url, L'/') + 1) , 0, NULL);
     }
     
-    CreateProcessW(0, wcscat(  wcscat( wcscat(bufW, L"msiexec.exe /i "), bufW1), L" DISABLE_TELEMETRY=1 ENABLE_PSREMOTING=1 REGISTER_MANIFEST=1 MSIFASTINSTALL=2 DISABLEROLLBACK=1 MSIDISABLEEEUI=1 /QN"), 0, 0, 0, REALTIME_PRIORITY_CLASS, 0, 0, &si, &pi);
-
+    CreateProcessW(0, wcscat(wcscat(  wcscat(   wcscat(bufW, p->sevenzippath)  , L" x -o"), pwsh_dirW), bufW1), 0, 0, 0, REALTIME_PRIORITY_CLASS, 0, 0, &si, &pi); //fputws(bufW,stderr);
+    
     for(i=0 ; i<6; i++) {
 		bufW[0]=0;
         if(GetFileAttributesW( wcscat(wcscat(bufW, p->cache_dir), wcsrchr(url[i], L'/') + 1)) == INVALID_FILE_ATTRIBUTES) {
@@ -128,7 +129,7 @@ DWORD WINAPI pscore_install(void *ptr){
         }
     }
     
-    WCHAR webview[] = L"--in-process-gpu --disable-dwm-composition --disable_direct_composition --disable-gpu-composition   --disable-gpu";
+    WCHAR webview[] = L" --in-process-gpu --disable-gpu --disable-gpu-compositing --disable-direct-composition";// --disable-dwm-composition --disable_direct_composition --disable-gpu-composition   --disable-gpu";
     RegCreateKeyExW(HKEY_CURRENT_USER, L"Environment", 0, NULL, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hKey, NULL);
     RegSetValueExW(hKey, L"PS7\0", 0, REG_SZ, (BYTE*) pwsh_pathW, sizeof(WCHAR)*wcslen(pwsh_pathW)+1); RegCloseKey(hKey);
     RegCreateKeyExW(HKEY_CURRENT_USER, L"Environment", 0, NULL, REG_OPTION_NON_VOLATILE, KEY_SET_VALUE, NULL, &hKey, NULL);
@@ -143,6 +144,7 @@ DWORD WINAPI pscore_install(void *ptr){
 
     return 0;
 }
+
 
 int mainCRTStartup(void) {
     wchar_t bufW[MAX_PATH] = L"",bufW1[MAX_PATH] = L"",   pwsh_pathW[MAX_PATH], **argv, *ptr , subdir[] = L"Microsoft.NET\\Framework64\\v4.0.30319\\SetupCache\\", *token = wcstok_s( subdir, L"\\", &ptr), rootdir[MAX_PATH];
