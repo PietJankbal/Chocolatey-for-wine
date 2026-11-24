@@ -582,17 +582,19 @@ function func_comctl32 <# comctl32 #>
     #https://4sysops.com/archives/how-to-create-an-open-file-folder-dialog-box-with-powershell/
     try{ $null=[System.Reflection.Assembly]::GetAssembly([System.Windows.Forms]) }
     catch { [System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") | Out-Null }
-    $FileBrowser = New-Object System.Windows.Forms.OpenFileDialog -Property @{
-    InitialDirectory =  [System.IO.Directory]::GetCurrentDirectory() 
-    Filter = 'exe files (*.exe)|*.exe'
-    Title = "Select the exe for which you want to add the 'native' $(verb) override" }
-    if ( $FileBrowser.ShowDialog() -eq 'Cancel' ) {exit}
+    $dlg = [System.Windows.Forms.OpenFileDialog]::new()
+    $dlg.Title            = 'Open'
+    $dlg.InitialDirectory = 'D:\'
+    $dlg.Filter           = 'Text Documents (*.exe)|*.exe|All Files (*.*)|*.*'
+    $dlg.FilterIndex      = 1
+    $dlg.Multiselect      = $false
+    $dlg.AutoUpgradeEnabled = $false   # optional: classic XP-style dialog like your screenshot
 
-    $file = ([System.IO.FileInfo]($FileBrowser.FileName)).name
-    $filepath = ([System.IO.FileInfo]($FileBrowser.FileName)).Fullname
-    $destdir =([System.IO.FileInfo]($FileBrowser.FileName)).Directory
+    if ($dlg.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { $file = ([System.IO.FileInfo]($dlg.FileName)).name } else {exit}
 
-    $dlls = @("$(verb).dll"); check_aik_sanity;
+    $dlg.Dispose()
+
+    $dlls = @("$(verb).dll"); check_aik_sanity3;
 
     foreach ($i in $dlls) {
         7z e "$cachedir\aik70\F3_WINPE.WIM" "-o$env:systemroot\system32" "Windows/winsxs/amd64_microsoft.windows.common-controls_6595b64144ccf1df_6.0.7600.16385_none_fa645303170382f6/$i" -y 
